@@ -153,10 +153,48 @@
 
     <target name="core" description="Build the core module" depends="api,util,core.compile"/>
 
+    <!-- samples module -->
+
+    <target name="samples.compile.depcheck">
+        <mkdir dir="samples/target/main"/>
+        <uptodate property="samples.compile.uptodate" targetfile="samples/target/main/.lastcompile">
+            <srcfiles dir="samples/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="samples.compile" depends="samples.compile.depcheck" unless="samples.compile.uptodate">
+        <mkdir dir="samples/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="samples/src/main/java"
+                destdir="samples/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+            </classpath>
+        </javac>
+        <path id="samples.classpath">
+            <pathelement location="samples/target/main/classes"/>
+        </path>
+        <touch file="samples/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="samples.clean">
+        <delete dir="samples/target"/>
+    </target>
+
+    <target name="samples" description="Build the samples module" depends="api,samples.compile"/>
+
     <!-- Default targets -->
 
-    <target name="all" description="Build everything" depends="api,core,srp,util"/>
+    <target name="all" description="Build everything" depends="api,core,samples,srp,util"/>
 
-    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,srp.clean,util.clean"/>
+    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,samples.clean,srp.clean,util.clean"/>
 
 </project>
