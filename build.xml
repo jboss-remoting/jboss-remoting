@@ -151,7 +151,7 @@
         <delete dir="core/target"/>
     </target>
 
-    <target name="core" description="Build the core module" depends="util,api,core.compile"/>
+    <target name="core" description="Build the core module" depends="api,util,core.compile"/>
 
     <!-- Default targets -->
 
