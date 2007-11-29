@@ -88,9 +88,16 @@ public final class LocalProtocol {
             return new SimpleStreamIdentifier();
         }
 
+        public ServiceIdentifier openService() throws IOException {
+            return null;
+        }
+
         public void closeSession() throws IOException {
             log.trace("Closing session for local protocol");
             remoteContext.closeSession();
+        }
+
+        public void closeService(ServiceIdentifier serviceIdentifier) throws IOException {
         }
 
         public void closeContext(ContextIdentifier contextIdentifier) throws IOException {

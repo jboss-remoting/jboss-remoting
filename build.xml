@@ -1,0 +1,162 @@
+<project name="JBoss Remoting 3" default="all">
+
+    <property file="build.properties.local"/>
+    <property file="build.properties"/>
+
+    <!-- api module -->
+
+    <target name="api.compile.depcheck">
+        <mkdir dir="api/target/main"/>
+        <uptodate property="api.compile.uptodate" targetfile="api/target/main/.lastcompile">
+            <srcfiles dir="api/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="api.compile" depends="api.compile.depcheck" unless="api.compile.uptodate">
+        <mkdir dir="api/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="api/src/main/java"
+                destdir="api/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="util.classpath"/>
+            </classpath>
+        </javac>
+        <path id="api.classpath">
+            <pathelement location="api/target/main/classes"/>
+        </path>
+        <touch file="api/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="api.clean">
+        <delete dir="api/target"/>
+    </target>
+
+    <target name="api" description="Build the API module" depends="util,api.compile"/>
+
+    <!-- Utility module -->
+
+    <target name="util.compile.depcheck">
+        <mkdir dir="util/target/main"/>
+        <uptodate property="util.compile.uptodate" targetfile="util/target/main/.lastcompile">
+            <srcfiles dir="util/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="util.compile" depends="util.compile.depcheck" unless="util.compile.uptodate">
+        <mkdir dir="util/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="util/src/main/java"
+                destdir="util/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+        <path id="util.classpath">
+            <pathelement location="util/target/main/classes"/>
+        </path>
+        <touch file="util/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="util.clean">
+        <delete dir="util/target"/>
+    </target>
+
+    <target name="util" description="Build the utilities module" depends="util.compile"/>
+
+    <!-- srp module -->
+
+    <target name="srp.compile.depcheck">
+        <mkdir dir="srp/target/main"/>
+        <uptodate property="srp.compile.uptodate" targetfile="srp/target/main/.lastcompile">
+            <srcfiles dir="srp/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="srp.compile" depends="srp.compile.depcheck" unless="srp.compile.uptodate">
+        <mkdir dir="srp/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="srp/src/main/java"
+                destdir="srp/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="util.classpath"/>
+            </classpath>
+        </javac>
+        <path id="srp.classpath">
+            <pathelement location="srp/target/main/classes"/>
+        </path>
+        <touch file="srp/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="srp.clean">
+        <delete dir="srp/target"/>
+    </target>
+
+    <target name="srp" description="Build the SRP SASL module" depends="util,srp.compile"/>
+
+    <!-- core module -->
+
+    <target name="core.compile.depcheck">
+        <mkdir dir="core/target/main"/>
+        <uptodate property="core.compile.uptodate" targetfile="core/target/main/.lastcompile">
+            <srcfiles dir="core/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="core.compile" depends="core.compile.depcheck" unless="core.compile.uptodate">
+        <mkdir dir="core/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="core/src/main/java"
+                destdir="core/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="util.classpath"/>
+                <path refid="api.classpath"/>
+            </classpath>
+        </javac>
+        <path id="core.classpath">
+            <pathelement location="core/target/main/classes"/>
+        </path>
+        <touch file="core/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="core.clean">
+        <delete dir="core/target"/>
+    </target>
+
+    <target name="core" description="Build the core module" depends="util,api,core.compile"/>
+
+    <!-- Default targets -->
+
+    <target name="all" description="Build everything" depends="api,core,srp,util"/>
+
+    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,srp.clean,util.clean"/>
+
+</project>

@@ -28,7 +28,7 @@ public interface ProtocolContext {
 
     void failStream(ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier);
 
-    void receiveServiceMessage(ServiceIdentifier serviceIdentifier, ServiceNegotiationMessage message);
+//    void receiveServiceMessage(ServiceIdentifier serviceIdentifier, ServiceNegotiationMessage message);
 
     void receiveReply(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply);
 

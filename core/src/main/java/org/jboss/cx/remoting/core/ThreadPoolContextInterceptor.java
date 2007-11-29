@@ -11,9 +11,9 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.spi.AbstractContextInterceptor;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
-import org.jboss.logging.Logger;
 
 /**
  *

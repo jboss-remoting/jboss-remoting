@@ -27,9 +27,9 @@ public interface ProtocolHandler {
 
     void closeStream(ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier) throws IOException;
 
-    void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceRequest serviceRequest) throws IOException;
+//    void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceRequest serviceRequest) throws IOException;
 
-    void sendServiceAcknowledge(ServiceIdentifier serviceIdentifier, ServiceAcknowledgement serviceAcknowledgement) throws IOException;
+//    void sendServiceAcknowledge(ServiceIdentifier serviceIdentifier, ServiceAcknowledgement serviceAcknowledgement) throws IOException;
 
     void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) throws IOException;
 

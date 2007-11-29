@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import org.jboss.cx.remoting.spi.BufferFactory;
+import org.jboss.cx.remoting.core.util.BufferFactory;
 
 /**
  *

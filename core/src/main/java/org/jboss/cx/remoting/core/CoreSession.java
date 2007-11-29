@@ -149,10 +149,16 @@ public final class CoreSession {
             if (locator == null) {
                 throw new NullPointerException("locator is null");
             }
-            final ServiceIdentifier serviceIdentifier = protocolHandler.openService();
-            
+            final ServiceIdentifier serviceIdentifier;
+            try {
+                serviceIdentifier = protocolHandler.openService();
+            } catch (IOException e) {
+                // todo...
+                return null;
+            }
+
             // todo
-            return new ServiceContextSource<I,O>();
+            return new ServiceContextSource<I,O>(serviceIdentifier);
         }
     }
 

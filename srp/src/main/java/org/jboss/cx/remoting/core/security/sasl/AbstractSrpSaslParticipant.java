@@ -31,7 +31,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.jboss.cx.remoting.spi.BufferFactory;
+import org.jboss.cx.remoting.core.util.BufferFactory;
 import org.jboss.cx.remoting.core.util.IoUtil;
 
 /**
