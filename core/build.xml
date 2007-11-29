@@ -1,0 +1,98 @@
+<project name="JBoss CX Remoting Core" default="jar">
+
+    <property file="../build.properties.local"/>
+    <property file="build.properties.local"/>
+    <property file="../build.properties"/>
+    <property file="build.properties"/>
+
+    <property name="jar" value="${basedir}/target/${jarname}.jar"/>
+
+    <!-- Fetch deps -->
+
+    <target name="lib.jbosscx-remoting-api-check">
+        <available property="lib.jbosscx-remoting-api.exists" file="${lib.jbosscx-remoting-api.local}"/>
+    </target>
+
+    <target name="lib.jbosscx-remoting-api" depends="lib.jbosscx-remoting-api-check" unless="lib.jbosscx-remoting-api.exists">
+        <mkdir dir="${local.repository}/${lib.jbosscx-remoting-api.dir}"/>
+        <get src="${lib.jbosscx-remoting-api.remote}" dest="${lib.jbosscx-remoting-api.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jbosscx-remoting-api.license}.txt" dest="${lib.jbosscx-remoting-api.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <target name="lib.jboss-logging-spi-check">
+        <available property="lib.jboss-logging-spi.exists" file="${lib.jboss-logging-spi.local}"/>
+    </target>
+
+    <target name="lib.jboss-logging-spi" depends="lib.jboss-logging-spi-check" unless="lib.jboss-logging-spi.exists">
+        <mkdir dir="${local.repository}/${lib.jboss-logging-spi.dir}"/>
+        <get src="${lib.jboss-logging-spi.remote}" dest="${lib.jboss-logging-spi.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jboss-logging-spi.license}.txt" dest="${lib.jboss-logging-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <!-- Build targets -->
+
+    <target name="compile-classpath" depends="lib.jbosscx-remoting-api,lib.jboss-logging-spi">
+        <path id="compile-classpath">
+            <pathelement location="${lib.jbosscx-remoting-api.local}"/>
+            <pathelement location="${lib.jboss-logging-spi.local}"/>
+        </path>
+    </target>
+
+    <target name="compile-depcheck">
+        <mkdir dir="target/main"/>
+        <uptodate property="compile-uptodate" targetfile="target/main/.lastcompile">
+            <srcfiles dir="src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="compile" depends="compile-classpath,compile-depcheck" unless="compile-uptodate" description="Compile source files">
+        <mkdir dir="target/main/classes"/>
+        <javac
+            source="1.5"
+            target="1.5"
+            srcdir="src/main/java"
+            destdir="target/main/classes"
+            debug="true"
+            classpathref="compile-classpath"
+        >
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+        <touch file="target/main/.lastcompile"/>
+    </target>
+
+    <target name="jar-depcheck">
+        <uptodate property="jar-uptodate" targetfile="target/jbosscx-remoting-api.jar">
+            <srcfiles dir="target/main/classes">
+                <include name="**/*.class"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="jar" depends="compile,jar-depcheck" unless="jar-uptodate" description="Build API JAR">
+        <delete file="target/${jarname}.jar"/>
+        <jar file="target/${jarname}.jar">
+            <zipfileset dir="target/main/classes">
+                <include name="**/*.class"/>
+            </zipfileset>
+            <manifest>
+                <attribute name="Specification-Title" value="JBoss CX Remoting"/>
+                <attribute name="Specification-Vendor" value="JBoss, a division of Red Hat, Inc."/>
+                <attribute name="Specification-Version" value="${version}"/>
+                <attribute name="Implementation-Title" value="JBoss CX Remoting Core"/>
+                <attribute name="Implementation-Vendor" value="JBoss, a division of Red Hat, Inc."/>
+                <attribute name="Implementation-Vendor-Id" value="http://www.jboss.org"/>
+                <attribute name="Implementation-Version" value="${version}"/>
+            </manifest>
+        </jar>
+    </target>
+
+    <target name="clean" description="Clean built files">
+        <delete dir="target"/>
+    </target>
+
+</project>
