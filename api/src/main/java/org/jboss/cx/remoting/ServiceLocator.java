@@ -1,5 +1,8 @@
 package org.jboss.cx.remoting;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.Map;
 import org.jboss.cx.remoting.spi.RequestListenerFactory;
 
 /**
@@ -20,32 +23,32 @@ public final class ServiceLocator<I, O> {
     /**
      * A basic service locator.  Use this instance to create more specific locators.
      */
-    public static final ServiceLocator<Void, Void> DEFAULT = new ServiceLocator<Void, Void>(Void.class, Void.class, null, "*", "*", DEFAULT_INTERCEPTOR_POLICY_CALLBACK, null);
+    public static final ServiceLocator<Void, Void> DEFAULT = new ServiceLocator<Void, Void>(Void.class, Void.class, null, "*", "*", Collections.<String>emptySet(), null);
 
     private final Class<I> requestType;
     private final Class<O> replyType;
     private final String serviceType;
-    private final String serviceMemberName;
+    private final String serviceGroupName;
     private final String serviceGroupMemberName;
-    private final InterceptorPolicyCallback interceptorPolicyCallback;
+    private final Set<String> availableInterceptors;
     private final RequestListenerFactory requestListenerFactory;
 
-    private ServiceLocator(final Class<I> requestType, final Class<O> replyType, final String serviceType, final String serviceMemberName, final String serviceGroupMemberName, final InterceptorPolicyCallback interceptorPolicyCallback, final RequestListenerFactory requestListenerFactory) {
+    private ServiceLocator(final Class<I> requestType, final Class<O> replyType, final String serviceType, final String serviceGroupName, final String serviceGroupMemberName, final Set<String> availableInterceptors, final RequestListenerFactory requestListenerFactory) {
         if (requestType == null) {
             throw new NullPointerException("requestType is null");
         }
         if (replyType == null) {
             throw new NullPointerException("replyType is null");
         }
-        if (interceptorPolicyCallback == null) {
-            throw new NullPointerException("interceptorPolicyCallback is null");
+        if (availableInterceptors == null) {
+            throw new NullPointerException("availableInterceptors is null");
         }
         this.requestType = requestType;
         this.replyType = replyType;
         this.serviceType = serviceType;
-        this.serviceMemberName = serviceMemberName;
+        this.serviceGroupName = serviceGroupName;
         this.serviceGroupMemberName = serviceGroupMemberName;
-        this.interceptorPolicyCallback = interceptorPolicyCallback;
+        this.availableInterceptors = availableInterceptors;
         this.requestListenerFactory = requestListenerFactory;
     }
 
@@ -74,8 +77,8 @@ public final class ServiceLocator<I, O> {
      *
      * @return the service name
      */
-    public String getServiceMemberName() {
-        return serviceMemberName;
+    public String getServiceGroupName() {
+        return serviceGroupName;
     }
 
     /**
@@ -97,16 +100,6 @@ public final class ServiceLocator<I, O> {
     }
 
     /**
-     * Get the local interceptor policy for this service locator.  By default, all required interceptors are accepted,
-     * and all optional interceptors supported by the endpoint are accepted.
-     *
-     * @return the interceptor policy
-     */
-    public InterceptorPolicyCallback getInterceptorPolicy() {
-        return interceptorPolicyCallback;
-    }
-
-    /**
      * Get the request listener factory for return requests from this service.
      * <p/>
      * todo - do we really want this symmetry
@@ -125,7 +118,7 @@ public final class ServiceLocator<I, O> {
      * @return an updated service locator
      */
     public <T> ServiceLocator<T, O> setRequestType(Class<T> requestType) {
-        return new ServiceLocator<T, O>(requestType, replyType, serviceType, serviceMemberName, serviceGroupMemberName, interceptorPolicyCallback, requestListenerFactory);
+        return new ServiceLocator<T, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
     }
 
     /**
@@ -136,7 +129,7 @@ public final class ServiceLocator<I, O> {
      * @return an updated service locator
      */
     public <T> ServiceLocator<I, T> setReplyType(Class<T> replyType) {
-        return new ServiceLocator<I, T>(requestType, replyType, serviceType, serviceMemberName, serviceGroupMemberName, interceptorPolicyCallback, requestListenerFactory);
+        return new ServiceLocator<I, T>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
     }
 
     /**
@@ -155,7 +148,22 @@ public final class ServiceLocator<I, O> {
         if (serviceType == null) {
             throw new NullPointerException("serviceType is null");
         }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceMemberName, serviceGroupMemberName, interceptorPolicyCallback, requestListenerFactory);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
+    }
+
+    /**
+     * Change the service group name.  The service group name is a string that identifies a group of endpoints that are
+     * all providing the same service, for load-balancing or clustering purposes.
+     *
+     * @param serviceGroupName
+     *
+     * @return an updated service locator
+     */
+    public ServiceLocator<I, O> setServiceGroupName(String serviceGroupName) {
+        if (serviceGroupName == null) {
+            throw new NullPointerException("serviceGroupName is null");
+        }
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
     }
 
     /**
@@ -180,34 +188,21 @@ public final class ServiceLocator<I, O> {
         if (serviceGroupMemberName == null) {
             throw new NullPointerException("serviceGroupMemberName is null");
         }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupMemberName, this.serviceGroupMemberName, interceptorPolicyCallback, requestListenerFactory);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
     }
 
     /**
-     * Change the service group name.  The service group name is a string that identifies a group of endpoints that are
-     * all providing the same service, for load-balancing or clustering purposes.
+     * Change the set of locally available interceptors.
      *
-     * @param serviceGroupName
-     *
-     * @return
-     */
-    public ServiceLocator<I, O> setServiceGroupName(String serviceGroupName) {
-        if (serviceGroupName == null) {
-            throw new NullPointerException("serviceGroupName is null");
-        }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceMemberName, serviceGroupName, interceptorPolicyCallback, requestListenerFactory);
-    }
-
-    /**
-     * Change the interceptor policy callback.  This method does not modify this object; instead, it returns a new
-     * modified instance.
-     *
-     * @param interceptorPolicyCallback the new callback
+     * @param availableInterceptors the set of interceptors
      *
      * @return an updated service locator
      */
-    public ServiceLocator<I, O> setInterceptorPolicy(InterceptorPolicyCallback interceptorPolicyCallback) {
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceMemberName, serviceGroupMemberName, interceptorPolicyCallback, requestListenerFactory);
+    public ServiceLocator<I, O> setAvailableInterceptors(Set<String> availableInterceptors) {
+        if (availableInterceptors == null) {
+            throw new NullPointerException("availableInterceptors is null");
+        }
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
     }
 
     /**
@@ -221,6 +216,6 @@ public final class ServiceLocator<I, O> {
      * @return an updated service locator
      */
     public ServiceLocator<I, O> setRequestListenerFactory(RequestListenerFactory requestListenerFactory) {
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceMemberName, serviceGroupMemberName, interceptorPolicyCallback, requestListenerFactory);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
     }
 }

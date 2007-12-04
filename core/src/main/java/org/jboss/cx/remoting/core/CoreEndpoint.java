@@ -64,6 +64,16 @@ public final class CoreEndpoint {
             final CoreSession session = new CoreSession(CoreEndpoint.this, handler);
             return session.getProtocolContext();
         }
+
+        public CallbackHandler getClientCallbackHandler() {
+            // todo - endpoint should have this configured
+            return null;
+        }
+
+        public CallbackHandler getServerCallbackHandler() {
+            // todo - endpoint should have this configured
+            return null;
+        }
     }
 
     public final class CoreProtocolRegistration implements ProtocolRegistration {

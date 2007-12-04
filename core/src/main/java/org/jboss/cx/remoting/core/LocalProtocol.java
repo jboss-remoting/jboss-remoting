@@ -10,6 +10,7 @@ import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.SimpleContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.SimpleRequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.SimpleStreamIdentifier;
+import org.jboss.cx.remoting.spi.protocol.SimpleServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
@@ -18,11 +19,14 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Logger;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
+
+import javax.security.auth.callback.CallbackHandler;
 
 /**
  *
@@ -52,7 +56,7 @@ public final class LocalProtocol {
             return true;
         }
 
-        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri) throws IOException {
+        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, final CallbackHandler clientCallbackHandler, final CallbackHandler serverCallbackHandler) throws IOException {
             final String remoteName = remoteUri.getSchemeSpecificPart();
             final ProtocolServerContext serverContext = endpoints.get(remoteName);
             if (serverContext == null) {
@@ -89,7 +93,7 @@ public final class LocalProtocol {
         }
 
         public ServiceIdentifier openService() throws IOException {
-            return null;
+            return new SimpleServiceIdentifier();
         }
 
         public void closeSession() throws IOException {
@@ -111,6 +115,16 @@ public final class LocalProtocol {
 
         public void closeStream(ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier) throws IOException {
             log.trace("Closing stream for local protocol");
+        }
+
+        public void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) throws IOException {
+            log.trace("Sending service request for local protocol");
+            remoteContext.receiveServiceRequest(serviceIdentifier, locator);
+        }
+
+        public void sendServiceActivate(ServiceIdentifier serviceIdentifier) throws IOException {
+            log.trace("Sending service activation for local protocol");
+            remoteContext.receiveServiceActivate(serviceIdentifier);
         }
 
         public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) throws IOException {

@@ -66,7 +66,7 @@ public final class CoreSession {
             throw new NullPointerException("endpointLocator is null");
         }
         this.endpoint = endpoint;
-        protocolHandler = factory.createHandler(protocolContext, endpointLocator.getEndpointUri());
+        protocolHandler = factory.createHandler(protocolContext, endpointLocator.getEndpointUri(), null, null);
         resource.doStart(null);
     }
 
@@ -194,6 +194,15 @@ public final class CoreSession {
         }
 
         public void closeStream(final ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier) {
+        }
+
+        public void closeService(ServiceIdentifier serviceIdentifier) {
+        }
+
+        public void receiveServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) {
+        }
+
+        public void receiveServiceActivate(ServiceIdentifier serviceIdentifier) {
         }
 
         public void failSession() {

@@ -4,6 +4,7 @@ import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.ServiceLocator;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 
@@ -20,6 +21,8 @@ public interface ProtocolContext {
 
     void closeStream(ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier);
 
+    void closeService(ServiceIdentifier serviceIdentifier);
+
     void failSession();
 
     void failContext(ContextIdentifier contextIdentifier);
@@ -28,7 +31,9 @@ public interface ProtocolContext {
 
     void failStream(ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier);
 
-//    void receiveServiceMessage(ServiceIdentifier serviceIdentifier, ServiceNegotiationMessage message);
+    void receiveServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator);
+
+    void receiveServiceActivate(ServiceIdentifier serviceIdentifier);
 
     void receiveReply(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply);
 
