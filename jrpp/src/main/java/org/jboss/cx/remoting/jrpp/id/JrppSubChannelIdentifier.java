@@ -23,25 +23,21 @@ public abstract class JrppSubChannelIdentifier {
     }
 
     public synchronized void close() {
-        if (! dead) {
-            dead = true;
+        if (! dead.getAndSet(true)) {
             manager.freeIdentifier(streamId);
         }
     }
 
     protected void finalize() throws Throwable {
         super.finalize();
-        // for visibility of "dead"
-        synchronized (this) {
-            if (! dead) {
-                log.trace("Leaked a subchannel instance");
-                close();
-            }
+        if (! dead.get()) {
+            log.trace("Leaked a subchannel instance");
+            close();
         }
     }
 
     public synchronized short getId() {
-        if (dead) {
+        if (dead.get()) {
             throw new IllegalStateException("Read channel ID after close");
         }
         return streamId;
