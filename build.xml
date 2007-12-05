@@ -3,6 +3,16 @@
     <property file="build.properties.local"/>
     <property file="build.properties"/>
 
+    <target name="lib.mina-check">
+        <available property="lib.mina.exists" file="${lib.mina.local}"/>
+    </target>
+
+    <target name="lib.mina" depends="lib.mina-check" unless="lib.mina.exists">
+        <mkdir dir="${local.repository}/${lib.mina.dir}"/>
+        <get src="${lib.mina.remote}" dest="${lib.mina.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.mina.license}.txt" dest="${lib.mina.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
     <!-- api module -->
 
     <target name="api.compile.depcheck">
@@ -153,6 +163,86 @@
 
     <target name="core" description="Build the core module" depends="api,util,core.compile"/>
 
+    <!-- jrpp module -->
+
+    <target name="jrpp.compile.depcheck">
+        <mkdir dir="jrpp/target/main"/>
+        <uptodate property="jrpp.compile.uptodate" targetfile="jrpp/target/main/.lastcompile">
+            <srcfiles dir="jrpp/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="jrpp.compile" depends="jrpp.compile.depcheck" unless="jrpp.compile.uptodate">
+        <mkdir dir="jrpp/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="jrpp/src/main/java"
+                destdir="jrpp/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="mina-sasl.classpath"/>
+                <path refid="core.classpath"/>
+                <path refid="util.classpath"/>
+                <path refid="api.classpath"/>
+                <pathelement location="${lib.mina.local}"/>
+            </classpath>
+        </javac>
+        <path id="jrpp.classpath">
+            <pathelement location="jrpp/target/main/classes"/>
+        </path>
+        <touch file="jrpp/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="jrpp.clean">
+        <delete dir="jrpp/target"/>
+    </target>
+
+    <target name="jrpp" description="Build the jrpp module" depends="lib.mina,mina-sasl,core,util,api,jrpp.compile"/>
+
+    <!-- mina-sasl module -->
+
+    <target name="mina-sasl.compile.depcheck">
+        <mkdir dir="mina-sasl/target/main"/>
+        <uptodate property="mina-sasl.compile.uptodate" targetfile="mina-sasl/target/main/.lastcompile">
+            <srcfiles dir="mina-sasl/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="mina-sasl.compile" depends="mina-sasl.compile.depcheck" unless="mina-sasl.compile.uptodate">
+        <mkdir dir="mina-sasl/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="mina-sasl/src/main/java"
+                destdir="mina-sasl/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <pathelement location="${lib.mina.local}"/>
+            </classpath>
+        </javac>
+        <path id="mina-sasl.classpath">
+            <pathelement location="mina-sasl/target/main/classes"/>
+        </path>
+        <touch file="mina-sasl/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="mina-sasl.clean">
+        <delete dir="mina-sasl/target"/>
+    </target>
+
+    <target name="mina-sasl" description="Build the mina-sasl module" depends="lib.mina,mina-sasl.compile"/>
+
     <!-- samples module -->
 
     <target name="samples.compile.depcheck">
@@ -193,7 +283,7 @@
 
     <!-- Default targets -->
 
-    <target name="all" description="Build everything" depends="api,core,samples,srp,util"/>
+    <target name="all" description="Build everything" depends="api,core,jrpp,samples,srp,util"/>
 
     <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,samples.clean,srp.clean,util.clean"/>
 
