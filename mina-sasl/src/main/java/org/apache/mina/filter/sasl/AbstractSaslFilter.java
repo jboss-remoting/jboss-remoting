@@ -47,11 +47,22 @@ public abstract class AbstractSaslFilter extends IoFilterAdapter {
     public void messageReceived(NextFilter nextFilter, IoSession ioSession, Object msg) throws Exception {
         if (isWrap(ioSession)) {
             final IoBuffer buffer = (IoBuffer) msg;
-            final byte[] bytes = buffer.array();
-            final int offs = buffer.arrayOffset();
-            final int limit = buffer.limit();
-            final int pos = buffer.position();
-            final byte[] unwrapped = unwrap(ioSession, bytes, offs + pos, limit - pos);
+            final byte[] unwrapped;
+            if (buffer.hasArray()) {
+                // buffer is backed by a single array, so just use that directly
+                final byte[] bytes = buffer.array();
+                final int offs = buffer.arrayOffset();
+                final int limit = buffer.limit();
+                final int pos = buffer.position();
+                unwrapped = unwrap(ioSession, bytes, offs + pos, limit - pos);
+                buffer.position(buffer.limit());
+            } else {
+                // copy the data into an array :(
+                final int remaining = buffer.remaining();
+                final byte[] bytes = new byte[remaining];
+                buffer.get(bytes);
+                unwrapped = unwrap(ioSession, bytes, 0, remaining);
+            }
             nextFilter.messageReceived(ioSession, IoBuffer.wrap(unwrapped));
         } else {
             nextFilter.messageReceived(ioSession, msg);
@@ -69,11 +80,22 @@ public abstract class AbstractSaslFilter extends IoFilterAdapter {
     public void filterWrite(NextFilter nextFilter, IoSession ioSession, WriteRequest writeRequest) throws Exception {
         if (isWrap(ioSession)) {
             final IoBuffer buffer = (IoBuffer) writeRequest.getMessage();
-            final byte[] bytes = buffer.array();
-            final int offs = buffer.arrayOffset();
-            final int limit = buffer.limit();
-            final int pos = buffer.position();
-            final byte[] wrapped = wrap(ioSession, bytes, offs + pos, limit - pos);
+            final byte[] wrapped;
+            if (buffer.hasArray()) {
+                // buffer is backed by a single array, so just use that directly
+                final byte[] bytes = buffer.array();
+                final int offs = buffer.arrayOffset();
+                final int limit = buffer.limit();
+                final int pos = buffer.position();
+                wrapped = wrap(ioSession, bytes, offs + pos, limit - pos);
+                buffer.position(buffer.limit());
+            } else {
+                // copy the data into an array :(
+                final int remaining = buffer.remaining();
+                final byte[] bytes = new byte[remaining];
+                buffer.get(bytes);
+                wrapped = wrap(ioSession, bytes, 0, remaining);
+            }
             nextFilter.filterWrite(ioSession, new WrappedWriteRequest(writeRequest, IoBuffer.wrap(wrapped)));
         } else {
             nextFilter.filterWrite(ioSession, writeRequest);
