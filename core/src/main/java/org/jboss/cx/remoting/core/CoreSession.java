@@ -164,6 +164,7 @@ public final class CoreSession {
 
     public final class ServiceContextSource<I, O> implements ContextSource<I, O> {
         private final ServiceIdentifier serviceIdentifier;
+        
 
         private ServiceContextSource(final ServiceIdentifier serviceIdentifier) {
             this.serviceIdentifier = serviceIdentifier;
@@ -180,6 +181,7 @@ public final class CoreSession {
                 throw new RemotingException("Unable to open context", e);
             }
             CoreContext<I, O> coreContext = CoreSession.this.createContext(serviceIdentifier);
+            contexts.put(contextIdentifier, coreContext);
             return coreContext.getUserContext();
         }
     }
@@ -268,6 +270,14 @@ public final class CoreSession {
         }
 
         public void receiveStreamData(final ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier, final Object data) {
+        }
+
+        public <T> Reply<T> createReply(T body) {
+            return new ReplyImpl<T>(body);
+        }
+
+        public <T> Request<T> createRequest(T body) {
+            return new RequestImpl<T>(body);
         }
 
         public Object deserialize(Collection<ByteBuffer> buffers) throws RemotingException {

@@ -5,9 +5,8 @@ import java.util.List;
 import java.util.Collections;
 import java.util.ListIterator;
 import java.util.Iterator;
-import java.util.Set;
+import java.util.Collection;
 import org.jboss.cx.remoting.BasicMessage;
-import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.Header;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 
@@ -18,11 +17,10 @@ public abstract class AbstractBasicMessage<T> implements BasicMessage<T> {
 
     private final T body;
     private final ConcurrentMap<Object, Object> messageMap = CollectionUtil.concurrentMap();
-    private final List<Header> headers;
+    private final List<Header> headers = Collections.synchronizedList(CollectionUtil.<Header>arrayList());
 
     protected AbstractBasicMessage(final T body) {
         this.body = body;
-        headers = Collections.synchronizedList(CollectionUtil.<Header>arrayList());
     }
 
     public T getBody() {
@@ -73,7 +71,7 @@ public abstract class AbstractBasicMessage<T> implements BasicMessage<T> {
         return Collections.unmodifiableCollection(values);
     }
 
-    public Iterable<Header> getHeaders() {
+    public Collection<Header> getHeaders() {
         return Collections.unmodifiableCollection(CollectionUtil.arrayList(headers));
     }
 

@@ -47,6 +47,10 @@ public interface ProtocolContext {
 
     void receiveStreamData(ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier, final Object data);
 
+    <T> Reply<T> createReply(T body);
+
+    <T> Request<T> createRequest(T body);
+
     Object deserialize(Collection<ByteBuffer> buffers) throws RemotingException;
 
     Collection<ByteBuffer> serialize(Object object) throws RemotingException;

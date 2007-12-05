@@ -1,6 +1,7 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.ConcurrentMap;
+import java.util.Collection;
 
 /**
  * A message that can pass between associated sessions.
@@ -78,5 +79,5 @@ public interface BasicMessage<T> {
      *
      * @return the header names
      */
-    Iterable<Header> getHeaders();
+    Collection<Header> getHeaders();
 }

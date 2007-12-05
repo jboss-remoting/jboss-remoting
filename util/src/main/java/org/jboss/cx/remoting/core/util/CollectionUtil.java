@@ -138,4 +138,8 @@ public final class CollectionUtil {
     public static <T> List<T> unmodifiableList(final T[] entries) {
         return new UnmodifiableArrayList<T>(entries);
     }
+
+    public static <K, V> Map<K, V> hashMap() {
+        return new HashMap<K, V>();
+    }
 }

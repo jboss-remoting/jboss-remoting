@@ -2,23 +2,12 @@ package org.jboss.cx.remoting;
 
 import java.util.Collections;
 import java.util.Set;
-import java.util.Map;
 import org.jboss.cx.remoting.spi.RequestListenerFactory;
 
 /**
  *
  */
 public final class ServiceLocator<I, O> {
-
-    /**
-     * A default interceptor policy callback.  The default policy will accept any supported interceptor requested by the
-     * remote side.
-     */
-    public static final InterceptorPolicyCallback DEFAULT_INTERCEPTOR_POLICY_CALLBACK = new InterceptorPolicyCallback() {
-        public boolean isAllowed(String interceptorName, int slot) {
-            return true;
-        }
-    };
 
     /**
      * A basic service locator.  Use this instance to create more specific locators.
