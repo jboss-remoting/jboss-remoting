@@ -3,6 +3,8 @@
     <property file="build.properties.local"/>
     <property file="build.properties"/>
 
+    <!-- External library: MINA -->
+
     <target name="lib.mina-check">
         <available property="lib.mina.exists" file="${lib.mina.local}"/>
     </target>
@@ -11,6 +13,18 @@
         <mkdir dir="${local.repository}/${lib.mina.dir}"/>
         <get src="${lib.mina.remote}" dest="${lib.mina.local}" usetimestamp="true" ignoreerrors="false"/>
         <get src="${remote.license.dir}/${lib.mina.license}.txt" dest="${lib.mina.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <!-- External library: JBoss Serialization -->
+
+    <target name="lib.jboss-serialization-check">
+        <available property="lib.jboss-serialization.exists" file="${lib.jboss-serialization.local}"/>
+    </target>
+
+    <target name="lib.jboss-serialization" depends="lib.jboss-serialization-check" unless="lib.jboss-serialization.exists">
+        <mkdir dir="${local.repository}/${lib.jboss-serialization.dir}"/>
+        <get src="${lib.jboss-serialization.remote}" dest="${lib.jboss-serialization.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jboss-serialization.license}.txt" dest="${lib.jboss-serialization.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- api module -->
@@ -280,6 +294,41 @@
     </target>
 
     <target name="samples" description="Build the samples module" depends="api,samples.compile"/>
+
+    <!-- tools module -->
+
+    <target name="tools.compile.depcheck">
+        <mkdir dir="tools/target/main"/>
+        <uptodate property="tools.compile.uptodate" targetfile="tools/target/main/.lastcompile">
+            <srcfiles dir="tools/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="tools.compile" depends="tools.compile.depcheck" unless="tools.compile.uptodate">
+        <mkdir dir="tools/target/main/classes"/>
+        <javac
+                source="1.6"
+                target="1.6"
+                srcdir="tools/src/main/java"
+                destdir="tools/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+        <path id="tools.classpath">
+            <pathelement location="tools/target/main/classes"/>
+        </path>
+        <touch file="tools/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="tools.clean">
+        <delete dir="tools/target"/>
+    </target>
+
+    <target name="tools" description="Build the tools module" depends="srp,util,tools.compile"/>
 
     <!-- Default targets -->
 
