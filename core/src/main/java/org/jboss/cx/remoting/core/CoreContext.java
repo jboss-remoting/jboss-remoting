@@ -329,10 +329,6 @@ public final class CoreContext<I, O> {
                 firstInterceptor.processOutboundCancelAcknowledge(null, requestIdentifier);
             }
 
-            public <S, R> Context<S, R> getContext(final Class<S> requestType, final Class<R> replyType) {
-                // todo
-                return null;
-            }
         }
 
     }

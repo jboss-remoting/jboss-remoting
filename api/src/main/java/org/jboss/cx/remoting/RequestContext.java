@@ -47,15 +47,4 @@ public interface RequestContext<O> {
      * @throws IllegalStateException if a reply was already sent
      */
     void sendCancelled() throws RemotingException, IllegalStateException;
-
-    /**
-     * Get a context which can be used to send requests back to the calling side.
-     *
-     * todo - do we really want this symmetry
-     *
-     * @param requestType
-     * @param replyType
-     * @return
-     */
-    <S, R> Context<S, R> getContext(Class<S> requestType, Class<R> replyType);
 }

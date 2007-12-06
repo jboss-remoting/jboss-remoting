@@ -2,7 +2,6 @@ package org.jboss.cx.remoting;
 
 import java.util.Collections;
 import java.util.Set;
-import org.jboss.cx.remoting.spi.RequestListenerFactory;
 
 /**
  *
@@ -12,7 +11,7 @@ public final class ServiceLocator<I, O> {
     /**
      * A basic service locator.  Use this instance to create more specific locators.
      */
-    public static final ServiceLocator<Void, Void> DEFAULT = new ServiceLocator<Void, Void>(Void.class, Void.class, null, "*", "*", Collections.<String>emptySet(), null);
+    public static final ServiceLocator<Void, Void> DEFAULT = new ServiceLocator<Void, Void>(Void.class, Void.class, null, "*", "*", Collections.<String>emptySet());
 
     private final Class<I> requestType;
     private final Class<O> replyType;
@@ -20,9 +19,8 @@ public final class ServiceLocator<I, O> {
     private final String serviceGroupName;
     private final String serviceGroupMemberName;
     private final Set<String> availableInterceptors;
-    private final RequestListenerFactory requestListenerFactory;
 
-    private ServiceLocator(final Class<I> requestType, final Class<O> replyType, final String serviceType, final String serviceGroupName, final String serviceGroupMemberName, final Set<String> availableInterceptors, final RequestListenerFactory requestListenerFactory) {
+    private ServiceLocator(final Class<I> requestType, final Class<O> replyType, final String serviceType, final String serviceGroupName, final String serviceGroupMemberName, final Set<String> availableInterceptors) {
         if (requestType == null) {
             throw new NullPointerException("requestType is null");
         }
@@ -38,7 +36,6 @@ public final class ServiceLocator<I, O> {
         this.serviceGroupName = serviceGroupName;
         this.serviceGroupMemberName = serviceGroupMemberName;
         this.availableInterceptors = availableInterceptors;
-        this.requestListenerFactory = requestListenerFactory;
     }
 
     /**
@@ -89,17 +86,6 @@ public final class ServiceLocator<I, O> {
     }
 
     /**
-     * Get the request listener factory for return requests from this service.
-     * <p/>
-     * todo - do we really want this symmetry
-     *
-     * @return the request listener factory
-     */
-    public RequestListenerFactory getRequestListenerFactory() {
-        return requestListenerFactory;
-    }
-
-    /**
      * Change the request type.  This method does not modify this object; instead, it returns a new modified instance.
      *
      * @param requestType the new request type
@@ -107,7 +93,7 @@ public final class ServiceLocator<I, O> {
      * @return an updated service locator
      */
     public <T> ServiceLocator<T, O> setRequestType(Class<T> requestType) {
-        return new ServiceLocator<T, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
+        return new ServiceLocator<T, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
     }
 
     /**
@@ -118,7 +104,7 @@ public final class ServiceLocator<I, O> {
      * @return an updated service locator
      */
     public <T> ServiceLocator<I, T> setReplyType(Class<T> replyType) {
-        return new ServiceLocator<I, T>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
+        return new ServiceLocator<I, T>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
     }
 
     /**
@@ -137,7 +123,7 @@ public final class ServiceLocator<I, O> {
         if (serviceType == null) {
             throw new NullPointerException("serviceType is null");
         }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
     }
 
     /**
@@ -152,7 +138,7 @@ public final class ServiceLocator<I, O> {
         if (serviceGroupName == null) {
             throw new NullPointerException("serviceGroupName is null");
         }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
     }
 
     /**
@@ -177,7 +163,7 @@ public final class ServiceLocator<I, O> {
         if (serviceGroupMemberName == null) {
             throw new NullPointerException("serviceGroupMemberName is null");
         }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
     }
 
     /**
@@ -191,20 +177,7 @@ public final class ServiceLocator<I, O> {
         if (availableInterceptors == null) {
             throw new NullPointerException("availableInterceptors is null");
         }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
     }
 
-    /**
-     * Change the request listener factory.  This method does not modify this object; instead, it returns a new modified
-     * instance.
-     * <p/>
-     * todo - do we really want this symmetry
-     *
-     * @param requestListenerFactory the new request listener factory
-     *
-     * @return an updated service locator
-     */
-    public ServiceLocator<I, O> setRequestListenerFactory(RequestListenerFactory requestListenerFactory) {
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors, requestListenerFactory);
-    }
 }
