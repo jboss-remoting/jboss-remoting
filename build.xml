@@ -334,6 +334,6 @@
 
     <target name="all" description="Build everything" depends="api,core,jrpp,samples,srp,util"/>
 
-    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,jrpp.clean,mina-sasl.clean,samples.clean,srp.clean,util.clean"/>
+    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,jrpp.clean,mina-sasl.clean,samples.clean,srp.clean,tools.clean,util.clean"/>
 
 </project>
