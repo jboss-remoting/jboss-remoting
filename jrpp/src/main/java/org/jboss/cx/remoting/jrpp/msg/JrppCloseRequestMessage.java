@@ -16,7 +16,7 @@ public final class JrppCloseRequestMessage extends JrppRequestMessage implements
         super(contextIdentifier, requestIdentifier);
     }
 
-    protected JrppCloseRequestMessage(ObjectInputStream ois) throws IOException {
+    public JrppCloseRequestMessage(ObjectInputStream ois) throws IOException {
         super(ois);
     }
 

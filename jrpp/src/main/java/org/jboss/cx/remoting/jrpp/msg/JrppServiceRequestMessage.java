@@ -19,7 +19,7 @@ public final class JrppServiceRequestMessage extends JrppServiceMessage implemen
         this.serviceLocator = serviceLocator;
     }
 
-    protected JrppServiceRequestMessage(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+    public JrppServiceRequestMessage(ObjectInputStream ois) throws IOException, ClassNotFoundException {
         super(ois);
         serviceLocator = (ServiceLocator<?, ?>) ois.readObject();
     }

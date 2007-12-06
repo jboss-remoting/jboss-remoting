@@ -15,7 +15,7 @@ public final class JrppServiceActivateMessage extends JrppServiceMessage impleme
         super(serviceIdentifier);
     }
 
-    protected JrppServiceActivateMessage(ObjectInputStream ois) throws IOException {
+    public JrppServiceActivateMessage(ObjectInputStream ois) throws IOException {
         super(ois);
     }
 

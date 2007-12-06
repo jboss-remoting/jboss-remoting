@@ -15,7 +15,7 @@ public final class JrppCloseServiceMessage extends JrppServiceMessage implements
         super(serviceIdentifier);
     }
 
-    protected JrppCloseServiceMessage(ObjectInputStream ois) throws IOException {
+    public JrppCloseServiceMessage(ObjectInputStream ois) throws IOException {
         super(ois);
     }
 

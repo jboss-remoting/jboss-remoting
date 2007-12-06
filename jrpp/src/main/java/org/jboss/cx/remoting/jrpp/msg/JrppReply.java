@@ -6,6 +6,7 @@ import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.Header;
+import org.jboss.cx.remoting.jrpp.mina.JrppProtocolDecoder;
 
 /**
  *
@@ -17,7 +18,7 @@ public final class JrppReply extends JrppRequestBodyMessage implements Serializa
         super(contextIdentifier, requestIdentifier, body, headers);
     }
 
-    protected JrppReply(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+    public JrppReply(ObjectInputStream ois) throws IOException, ClassNotFoundException {
         super(ois);
     }
 

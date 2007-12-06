@@ -22,7 +22,7 @@ public abstract class JrppRequestMessage extends JrppContextMessage implements S
 
     protected JrppRequestMessage(ObjectInputStream ois) throws IOException {
         super(ois);
-        requestIdentifier = JrppRequestIdentifier.forValue(ois.readShort());
+        requestIdentifier = new JrppRequestIdentifier(ois);
     }
 
     public final RequestIdentifier getRequestIdentifier() {

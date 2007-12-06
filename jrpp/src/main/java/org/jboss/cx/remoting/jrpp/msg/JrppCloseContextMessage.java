@@ -15,7 +15,7 @@ public final class JrppCloseContextMessage extends JrppContextMessage implements
         super(contextIdentifier);
     }
 
-    protected JrppCloseContextMessage(ObjectInputStream ois) throws IOException {
+    public JrppCloseContextMessage(ObjectInputStream ois) throws IOException {
         super(ois);
     }
 

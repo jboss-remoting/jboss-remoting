@@ -18,7 +18,7 @@ public final class JrppCancelRequestMessage extends JrppRequestMessage implement
         this.mayInterrupt = mayInterrupt;
     }
 
-    protected JrppCancelRequestMessage(ObjectInputStream ois) throws IOException {
+    public JrppCancelRequestMessage(ObjectInputStream ois) throws IOException {
         super(ois);
         mayInterrupt = ois.readBoolean();
     }

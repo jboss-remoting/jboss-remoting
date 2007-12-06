@@ -19,7 +19,7 @@ public abstract class JrppServiceMessage extends JrppMessage implements Serializ
 
     protected JrppServiceMessage(ObjectInputStream ois) throws IOException {
         super(ois);
-        serviceIdentifier = JrppServiceIdentifier.forValue(ois.readShort());
+        serviceIdentifier = new JrppServiceIdentifier(ois);
     }
 
     public final ServiceIdentifier getServiceIdentifier() {

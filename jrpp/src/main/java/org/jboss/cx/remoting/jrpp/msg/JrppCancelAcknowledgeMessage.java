@@ -16,7 +16,7 @@ public final class JrppCancelAcknowledgeMessage extends JrppRequestMessage imple
         super(contextIdentifier, requestIdentifier);
     }
 
-    protected JrppCancelAcknowledgeMessage(ObjectInputStream ois) throws IOException {
+    public JrppCancelAcknowledgeMessage(ObjectInputStream ois) throws IOException {
         super(ois);
     }
 

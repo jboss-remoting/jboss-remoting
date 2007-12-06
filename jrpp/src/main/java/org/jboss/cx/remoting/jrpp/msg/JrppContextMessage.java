@@ -19,7 +19,7 @@ public abstract class JrppContextMessage extends JrppMessage implements Serializ
 
     protected JrppContextMessage(ObjectInputStream ois) throws IOException {
         super(ois);
-        contextIdentifier = JrppContextIdentifier.forValue(ois.readShort());
+        contextIdentifier = new JrppContextIdentifier(ois);
     }
 
     public final ContextIdentifier getContextIdentifier() {

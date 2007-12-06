@@ -19,7 +19,7 @@ public final class JrppExceptionMessage extends JrppRequestMessage implements Se
         this.exception = exception;
     }
 
-    protected JrppExceptionMessage(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+    public JrppExceptionMessage(ObjectInputStream ois) throws IOException, ClassNotFoundException {
         super(ois);
         exception = (RemoteExecutionException) ois.readObject();
     }

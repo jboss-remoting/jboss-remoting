@@ -16,7 +16,7 @@ public final class JrppCloseStreamMessage extends JrppStreamMessage implements S
         super(contextIdentifier, streamIdentifier);
     }
 
-    protected JrppCloseStreamMessage(ObjectInputStream ois) throws IOException {
+    public JrppCloseStreamMessage(ObjectInputStream ois) throws IOException {
         super(ois);
     }
 

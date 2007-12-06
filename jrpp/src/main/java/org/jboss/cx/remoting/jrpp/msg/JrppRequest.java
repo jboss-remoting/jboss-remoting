@@ -17,7 +17,7 @@ public final class JrppRequest extends JrppRequestBodyMessage implements Seriali
         super(contextIdentifier, requestIdentifier, body, headers);
     }
 
-    protected JrppRequest(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+    public JrppRequest(ObjectInputStream ois) throws IOException, ClassNotFoundException {
         super(ois);
     }
 

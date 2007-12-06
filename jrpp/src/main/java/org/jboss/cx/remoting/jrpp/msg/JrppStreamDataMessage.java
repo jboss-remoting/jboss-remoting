@@ -18,7 +18,7 @@ public final class JrppStreamDataMessage extends JrppStreamMessage implements Se
         this.data = data;
     }
 
-    protected JrppStreamDataMessage(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+    public JrppStreamDataMessage(ObjectInputStream ois) throws IOException, ClassNotFoundException {
         super(ois);
         data = ois.readObject();
     }
