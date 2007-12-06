@@ -20,4 +20,8 @@ public final class IdentifierManager {
     public synchronized void freeIdentifier(short id) {
         bitSet.clear(id & 0xffff);
     }
+
+    public void getIdentifier(final short id) {
+        
+    }
 }

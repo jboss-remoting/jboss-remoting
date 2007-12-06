@@ -2,44 +2,44 @@ package org.jboss.cx.remoting.jrpp.id;
 
 import org.jboss.cx.remoting.core.util.Logger;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  *
  */
 public abstract class JrppSubChannelIdentifier {
-    private final short streamId;
-    private final IdentifierManager manager;
-    private final AtomicBoolean dead = new AtomicBoolean();
+    private final short id;
+    private final AtomicBoolean dead = new AtomicBoolean(false);
 
-    private static final Logger log = Logger.getLogger(JrppSubChannelIdentifier.class);
+    public JrppSubChannelIdentifier(short id) throws IOException {
+        this.id = id;
+    }
 
-    public JrppSubChannelIdentifier(IdentifierManager manager) throws IOException {
-        this.manager = manager;
-        streamId = this.manager.getIdentifier();
-        if (streamId == 0) {
-            throw new IOException("Channel is full");
+    public JrppSubChannelIdentifier(ObjectInputStream ois) throws IOException {
+        id = ois.readShort();
+    }
+
+    public void release(IdentifierManager manager) {
+        if (!dead.getAndSet(true)) {
+            manager.freeIdentifier(id);
         }
     }
 
-    public synchronized void close() {
-        if (! dead.getAndSet(true)) {
-            manager.freeIdentifier(streamId);
-        }
-    }
-
-    protected void finalize() throws Throwable {
-        super.finalize();
-        if (! dead.get()) {
-            log.trace("Leaked a subchannel instance");
-            close();
-        }
-    }
-
-    public synchronized short getId() {
+    public short getId() {
         if (dead.get()) {
             throw new IllegalStateException("Read channel ID after close");
         }
-        return streamId;
+        return id;
+    }
+
+    public boolean equals(Object obj) {
+        if (!(obj instanceof JrppSubChannelIdentifier)) return false;
+        JrppSubChannelIdentifier other = (JrppSubChannelIdentifier) obj;
+        return !(dead.get() || other.dead.get()) && other.id == id;
+    }
+
+    public int hashCode() {
+        return id;
     }
 }
