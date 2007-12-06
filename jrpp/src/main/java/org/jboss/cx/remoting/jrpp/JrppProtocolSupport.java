@@ -2,6 +2,7 @@ package org.jboss.cx.remoting.jrpp;
 
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.jrpp.mina.FramingIoFilter;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
@@ -14,18 +15,28 @@ import org.apache.mina.common.IoSession;
 import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.ConnectFuture;
 import org.apache.mina.common.IoHandler;
+import org.apache.mina.common.AttributeKey;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
 import org.apache.mina.handler.multiton.SingleSessionIoHandlerDelegate;
 import org.apache.mina.handler.multiton.SingleSessionIoHandlerFactory;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
+import org.apache.mina.filter.sasl.SaslServerFilter;
+import org.apache.mina.filter.sasl.SaslServerFactory;
+import org.apache.mina.filter.sasl.SaslClientFactory;
+import org.apache.mina.filter.sasl.SaslClientFilter;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.net.InetSocketAddress;
 import java.util.Set;
+import java.util.Collections;
 
 import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.SaslServer;
+import javax.security.sasl.SaslException;
+import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslClient;
 
 /**
  *
@@ -34,6 +45,9 @@ public final class JrppProtocolSupport {
     private final ProtocolServerContext serverContext;
     private final IoHandler ioHandler = new SingleSessionIoHandlerDelegate(new SessionHandlerFactory());
     private final Set<IoAcceptor> ioAcceptors = CollectionUtil.hashSet();
+
+    private static final AttributeKey SERVER_CALLBACK_HANDLER = new AttributeKey(JrppProtocolSupport.class, "serverCallbackHandler");
+    private static final AttributeKey CLIENT_CALLBACK_HANDLER = new AttributeKey(JrppProtocolSupport.class, "clientCallbackHandler");
 
     public JrppProtocolSupport(final Endpoint endpoint) throws RemotingException {
         final ProtocolRegistrationSpec spec = ProtocolRegistrationSpec.DEFAULT.setScheme("jrpp").setProtocolHandlerFactory(new ProtocolHandlerFactoryImpl());
@@ -47,6 +61,9 @@ public final class JrppProtocolSupport {
         final IoAcceptor ioAcceptor = new NioSocketAcceptor();
         ioAcceptor.setLocalAddress(address);
         ioAcceptor.setHandler(ioHandler);
+        ioAcceptor.getFilterChain().addLast("framing filter", new FramingIoFilter());
+        ioAcceptor.getFilterChain().addLast("SASL server filter", new SaslServerFilter(new SaslServerMaker(), null));
+        ioAcceptor.getFilterChain().addLast("SASL client filter", new SaslClientFilter(new SaslClientMaker(), null));
         ioAcceptor.bind();
         ioAcceptors.add(ioAcceptor);
     }
@@ -57,6 +74,19 @@ public final class JrppProtocolSupport {
             return connection.getIoHandler();
         }
     }
+
+    private final class SaslServerMaker implements SaslServerFactory {
+        public SaslServer createSaslServer(IoSession ioSession) throws SaslException {
+            return Sasl.createSaslServer("SRP", "JRPP", "Server", Collections.<String, Object>emptyMap(), (CallbackHandler) ioSession.getAttribute(SERVER_CALLBACK_HANDLER));
+        }
+    }
+
+    private final class SaslClientMaker implements SaslClientFactory {
+        public SaslClient createSaslClient(IoSession ioSession) throws SaslException {
+            return Sasl.createSaslClient(new String[] { "SRP" }, "authorizId", "JRPP", "Server", Collections.<String, Object>emptyMap(), (CallbackHandler) ioSession.getAttribute(CLIENT_CALLBACK_HANDLER));
+        }
+    }
+
 
     /**
      * Protocol handler factory implementation.  There will ever only be one of these.
@@ -71,6 +101,9 @@ public final class JrppProtocolSupport {
 
         public ProtocolHandlerFactoryImpl() {
             connector = new NioSocketConnector();
+            connector.getFilterChain().addLast("framing filter", new FramingIoFilter());
+            connector.getFilterChain().addLast("SASL client filter", new SaslClientFilter(new SaslClientMaker(), null));
+            connector.getFilterChain().addLast("SASL server filter", new SaslServerFilter(new SaslServerMaker(), null));
             connector.setHandler(ioHandler);
         }
 
