@@ -1,7 +1,10 @@
 package org.jboss.cx.remoting.jrpp.msg;
 
 import java.io.Serializable;
+import java.io.ObjectInputStream;
+import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
 
 /**
  *
@@ -14,7 +17,12 @@ public abstract class JrppContextMessage extends JrppMessage implements Serializ
         this.contextIdentifier = contextIdentifier;
     }
 
-    public ContextIdentifier getContextIdentifier() {
+    protected JrppContextMessage(ObjectInputStream ois) throws IOException {
+        super(ois);
+        contextIdentifier = JrppContextIdentifier.forValue(ois.readShort());
+    }
+
+    public final ContextIdentifier getContextIdentifier() {
         return contextIdentifier;
     }
 }

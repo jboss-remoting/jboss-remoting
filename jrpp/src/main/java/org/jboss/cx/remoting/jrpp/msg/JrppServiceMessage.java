@@ -1,7 +1,10 @@
 package org.jboss.cx.remoting.jrpp.msg;
 
 import java.io.Serializable;
+import java.io.ObjectInputStream;
+import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppServiceIdentifier;
 
 /**
  *
@@ -14,7 +17,12 @@ public abstract class JrppServiceMessage extends JrppMessage implements Serializ
         this.serviceIdentifier = serviceIdentifier;
     }
 
-    public ServiceIdentifier getServiceIdentifier() {
+    protected JrppServiceMessage(ObjectInputStream ois) throws IOException {
+        super(ois);
+        serviceIdentifier = JrppServiceIdentifier.forValue(ois.readShort());
+    }
+
+    public final ServiceIdentifier getServiceIdentifier() {
         return serviceIdentifier;
     }
 }

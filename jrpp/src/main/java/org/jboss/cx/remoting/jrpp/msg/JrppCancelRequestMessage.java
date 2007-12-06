@@ -1,6 +1,8 @@
 package org.jboss.cx.remoting.jrpp.msg;
 
 import java.io.Serializable;
+import java.io.ObjectInputStream;
+import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
@@ -14,6 +16,11 @@ public final class JrppCancelRequestMessage extends JrppRequestMessage implement
     public JrppCancelRequestMessage(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final boolean mayInterrupt) {
         super(contextIdentifier, requestIdentifier);
         this.mayInterrupt = mayInterrupt;
+    }
+
+    protected JrppCancelRequestMessage(ObjectInputStream ois) throws IOException {
+        super(ois);
+        mayInterrupt = ois.readBoolean();
     }
 
     public boolean isMayInterrupt() {

@@ -1,6 +1,8 @@
 package org.jboss.cx.remoting.jrpp.msg;
 
 import java.io.Serializable;
+import java.io.ObjectInputStream;
+import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.Header;
@@ -20,11 +22,17 @@ public abstract class JrppRequestBodyMessage extends JrppRequestMessage implemen
         this.headers = headers;
     }
 
-    public Object getBody() {
+    protected JrppRequestBodyMessage(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        super(ois);
+        headers = (Header[]) ois.readObject();
+        body = ois.readObject();
+    }
+
+    public final Object getBody() {
         return body;
     }
 
-    public Header[] getHeaders() {
+    public final Header[] getHeaders() {
         return headers;
     }
 }

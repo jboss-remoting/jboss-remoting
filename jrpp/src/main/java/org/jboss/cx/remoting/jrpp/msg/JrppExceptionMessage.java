@@ -1,6 +1,8 @@
 package org.jboss.cx.remoting.jrpp.msg;
 
 import java.io.Serializable;
+import java.io.ObjectInputStream;
+import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.RemoteExecutionException;
@@ -15,6 +17,11 @@ public final class JrppExceptionMessage extends JrppRequestMessage implements Se
     public JrppExceptionMessage(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final RemoteExecutionException exception) {
         super(contextIdentifier, requestIdentifier);
         this.exception = exception;
+    }
+
+    protected JrppExceptionMessage(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        super(ois);
+        exception = (RemoteExecutionException) ois.readObject();
     }
 
     public RemoteExecutionException getException() {
