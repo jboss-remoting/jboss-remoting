@@ -17,10 +17,10 @@ public final class ServiceLocator<I, O> {
     private final Class<O> replyType;
     private final String serviceType;
     private final String serviceGroupName;
-    private final String serviceGroupMemberName;
+    private final String endpointName;
     private final Set<String> availableInterceptors;
 
-    private ServiceLocator(final Class<I> requestType, final Class<O> replyType, final String serviceType, final String serviceGroupName, final String serviceGroupMemberName, final Set<String> availableInterceptors) {
+    private ServiceLocator(final Class<I> requestType, final Class<O> replyType, final String serviceType, final String serviceGroupName, final String endpointName, final Set<String> availableInterceptors) {
         if (requestType == null) {
             throw new NullPointerException("requestType is null");
         }
@@ -34,7 +34,7 @@ public final class ServiceLocator<I, O> {
         this.replyType = replyType;
         this.serviceType = serviceType;
         this.serviceGroupName = serviceGroupName;
-        this.serviceGroupMemberName = serviceGroupMemberName;
+        this.endpointName = endpointName;
         this.availableInterceptors = availableInterceptors;
     }
 
@@ -81,8 +81,17 @@ public final class ServiceLocator<I, O> {
      *
      * @return the service group name
      */
-    public String getServiceGroupMemberName() {
-        return serviceGroupMemberName;
+    public String getEndpointName() {
+        return endpointName;
+    }
+
+    /**
+     * Get the names of the interceptors that the client has available.
+     *
+     * @return the names
+     */
+    public Set<String> getAvailableInterceptors() {
+        return availableInterceptors;
     }
 
     /**
@@ -93,7 +102,7 @@ public final class ServiceLocator<I, O> {
      * @return an updated service locator
      */
     public <T> ServiceLocator<T, O> setRequestType(Class<T> requestType) {
-        return new ServiceLocator<T, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
+        return new ServiceLocator<T, O>(requestType, replyType, serviceType, serviceGroupName, endpointName, availableInterceptors);
     }
 
     /**
@@ -104,7 +113,7 @@ public final class ServiceLocator<I, O> {
      * @return an updated service locator
      */
     public <T> ServiceLocator<I, T> setReplyType(Class<T> replyType) {
-        return new ServiceLocator<I, T>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
+        return new ServiceLocator<I, T>(requestType, replyType, serviceType, serviceGroupName, endpointName, availableInterceptors);
     }
 
     /**
@@ -123,7 +132,7 @@ public final class ServiceLocator<I, O> {
         if (serviceType == null) {
             throw new NullPointerException("serviceType is null");
         }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, endpointName, availableInterceptors);
     }
 
     /**
@@ -138,32 +147,29 @@ public final class ServiceLocator<I, O> {
         if (serviceGroupName == null) {
             throw new NullPointerException("serviceGroupName is null");
         }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, endpointName, availableInterceptors);
     }
 
     /**
-     * Change the service group member name.  The service group member name is an (optional) name that identifies the
-     * individual member within a service group.  If you have more than one instance within a service group, the service
-     * group member  name can be used to disambiguate them.  For example, if there are two instances running in a
-     * cluster, you might have services with the same type named "node1" and "node2".
+     * Change the endpoint name.
      * <p/>
-     * The service group member name should be a dot-separated name (like an Internet host name).  A {@code "*"}
+     * The endpoint name should be a dot-separated name (like an Internet host name).  A {@code "*"}
      * character can be used as a wildcard to match any name.  So, the name {@code "foo.*"} would match {@code
      * "foo.bar"} and {@code "foo.bar.two"} but not {@code "foobar"}.
      * <p/>
-     * If no service name is specified, then this value defaults to {@code "*"} (match all names).
+     * If no endpoint name is specified, then this value defaults to {@code "*"} (match all endpoints).
      * <p/>
      * This method does not modify this object; instead, it returns a new modified instance.
      *
-     * @param serviceGroupMemberName the new service group member name; may not be {@code null}
+     * @param endpointName the new endpoint name; may not be {@code null}
      *
      * @return an updated service locator
      */
-    public ServiceLocator<I, O> setServiceGroupMemberName(String serviceGroupMemberName) {
-        if (serviceGroupMemberName == null) {
-            throw new NullPointerException("serviceGroupMemberName is null");
+    public ServiceLocator<I, O> setEndpointName(String endpointName) {
+        if (endpointName == null) {
+            throw new NullPointerException("endpointName is null");
         }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, endpointName, availableInterceptors);
     }
 
     /**
@@ -177,7 +183,7 @@ public final class ServiceLocator<I, O> {
         if (availableInterceptors == null) {
             throw new NullPointerException("availableInterceptors is null");
         }
-        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, serviceGroupMemberName, availableInterceptors);
+        return new ServiceLocator<I, O>(requestType, replyType, serviceType, serviceGroupName, endpointName, availableInterceptors);
     }
 
 }

@@ -2,29 +2,19 @@ package org.jboss.cx.remoting.jrpp.mina;
 
 import org.apache.mina.filter.codec.ProtocolDecoder;
 import org.apache.mina.filter.codec.ProtocolDecoderOutput;
+import org.apache.mina.filter.codec.ProtocolEncoder;
+import org.apache.mina.filter.codec.ProtocolEncoderOutput;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.IoBuffer;
 import org.apache.mina.common.AttributeKey;
 import org.jboss.serial.io.JBossObjectInputStream;
-import org.jboss.cx.remoting.jrpp.msg.JrppRequest;
-import org.jboss.cx.remoting.jrpp.msg.JrppReply;
-import org.jboss.cx.remoting.jrpp.msg.JrppCancelRequestMessage;
-import org.jboss.cx.remoting.jrpp.msg.JrppCancelAcknowledgeMessage;
-import org.jboss.cx.remoting.jrpp.msg.JrppCloseContextMessage;
-import org.jboss.cx.remoting.jrpp.msg.JrppCloseRequestMessage;
-import org.jboss.cx.remoting.jrpp.msg.JrppCloseServiceMessage;
-import org.jboss.cx.remoting.jrpp.msg.JrppCloseStreamMessage;
-import org.jboss.cx.remoting.jrpp.msg.JrppExceptionMessage;
-import org.jboss.cx.remoting.jrpp.msg.JrppServiceActivateMessage;
-import org.jboss.cx.remoting.jrpp.msg.JrppServiceRequestMessage;
-import org.jboss.cx.remoting.jrpp.msg.JrppStreamDataMessage;
 import java.io.InputStream;
 import java.io.IOException;
 
 /**
  *
  */
-public final class JrppProtocolDecoder implements ProtocolDecoder {
+public final class JrppProtocolDecoder implements ProtocolDecoder, ProtocolEncoder {
 
     private static final AttributeKey OBJECT_INPUT_STREAM_KEY = new AttributeKey(JrppProtocolDecoder.class, "objectInputStreamKey");
 
@@ -33,52 +23,16 @@ public final class JrppProtocolDecoder implements ProtocolDecoder {
     }
 
     public void decode(IoSession session, IoBuffer in, ProtocolDecoderOutput out) throws Exception {
-        int v = in.get();
         final JrppObjectInputStream ois = getObjectInputStream(session);
-        switch (v) {
-            case 0:
-                out.write(new JrppRequest(ois));
-                return;
-            case 1:
-                out.write(new JrppReply(ois));
-                return;
-            case 2:
-                out.write(new JrppCancelRequestMessage(ois));
-                return;
-            case 3:
-                out.write(new JrppCancelAcknowledgeMessage(ois));
-                return;
-            case 4:
-                out.write(new JrppCloseContextMessage(ois));
-                return;
-            case 5:
-                out.write(new JrppCloseRequestMessage(ois));
-                return;
-            case 6:
-                out.write(new JrppCloseServiceMessage(ois));
-                return;
-            case 7:
-                out.write(new JrppCloseStreamMessage(ois));
-                return;
-            case 8:
-                out.write(new JrppExceptionMessage(ois));
-                return;
-            case 9:
-                out.write(new JrppServiceActivateMessage(ois));
-                return;
-            case 10:
-                out.write(new JrppServiceRequestMessage(ois));
-                return;
-            case 11:
-                out.write(new JrppStreamDataMessage(ois));
-                return;
-            default:
-                throw new IOException("Corrupted stream (wrong message type)");
-        }
+        ois.setInputStream(in.asInputStream());
+        ois.reset();
     }
 
     public void finishDecode(IoSession session, ProtocolDecoderOutput out) throws Exception {
         // nothing
+    }
+
+    public void encode(IoSession session, Object message, ProtocolEncoderOutput out) throws Exception {
     }
 
     public void dispose(IoSession session) throws Exception {
@@ -86,8 +40,15 @@ public final class JrppProtocolDecoder implements ProtocolDecoder {
     }
 
     private static final class JrppObjectInputStream extends JBossObjectInputStream {
-        public JrppObjectInputStream(final InputStream is, final ClassLoader loader) throws IOException {
-            super(is, loader);
+        private DelegatingInputStream inputStream;
+
+        private JrppObjectInputStream(DelegatingInputStream inputStream, ClassLoader loader) throws IOException {
+            super(inputStream, loader);
+            this.inputStream = inputStream;
+        }
+
+        public JrppObjectInputStream(final ClassLoader loader) throws IOException {
+            this(new DelegatingInputStream(), loader);
         }
 
         protected Class<?> resolveProxyClass(String[] interfaces) throws IOException, ClassNotFoundException {
@@ -102,8 +63,57 @@ public final class JrppProtocolDecoder implements ProtocolDecoder {
             } else {
                 return o;
             }
-
         }
+
+        private void setInputStream(InputStream newInputStream) {
+            inputStream.target = newInputStream;
+        }
+    }
+
+    private static final class DelegatingInputStream extends InputStream {
+        private final JrppObjectInputStream objectInputStream;
+        private InputStream target;
+
+        public DelegatingInputStream() throws IOException {
+            objectInputStream = new JrppObjectInputStream(this, null);
+        }
+
+        public int read() throws IOException {
+            return target.read();
+        }
+
+        public int read(final byte[] b) throws IOException {
+            return target.read(b);
+        }
+
+        public int read(final byte[] b, final int off, final int len) throws IOException {
+            return target.read(b, off, len);
+        }
+
+        public long skip(final long n) throws IOException {
+            return target.skip(n);
+        }
+
+        public int available() throws IOException {
+            return target.available();
+        }
+
+        public void close() throws IOException {
+            target.close();
+        }
+
+        public void mark(final int readlimit) {
+            target.mark(readlimit);
+        }
+
+        public void reset() throws IOException {
+            target.reset();
+        }
+
+        public boolean markSupported() {
+            return target.markSupported();
+        }
+
     }
 }
 

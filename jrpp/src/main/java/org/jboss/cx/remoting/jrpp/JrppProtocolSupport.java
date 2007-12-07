@@ -42,6 +42,7 @@ import javax.security.sasl.SaslClient;
  *
  */
 public final class JrppProtocolSupport {
+    private final String endpointName;
     private final ProtocolServerContext serverContext;
     private final IoHandler ioHandler = new SingleSessionIoHandlerDelegate(new SessionHandlerFactory());
     private final Set<IoAcceptor> ioAcceptors = CollectionUtil.hashSet();
@@ -54,6 +55,7 @@ public final class JrppProtocolSupport {
         final ProtocolRegistration registration = endpoint.registerProtocol(spec);
         serverContext = registration.getProtocolServerContext();
         // todo - add a hook to protocol registration for deregister notification?
+        endpointName = endpoint.getName();
     }
 
     public void addServer(final SocketAddress address) throws IOException {
@@ -70,20 +72,25 @@ public final class JrppProtocolSupport {
 
     private final class SessionHandlerFactory implements SingleSessionIoHandlerFactory {
         public SingleSessionIoHandler getHandler(IoSession ioSession) {
-            final JrppConnection connection = new JrppConnection(ioSession, serverContext);
+            final JrppConnection connection;
+            try {
+                connection = new JrppConnection(ioSession, serverContext);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to initiate JRPP connection", e);
+            }
             return connection.getIoHandler();
         }
     }
 
     private final class SaslServerMaker implements SaslServerFactory {
         public SaslServer createSaslServer(IoSession ioSession) throws SaslException {
-            return Sasl.createSaslServer("SRP", "JRPP", "Server", Collections.<String, Object>emptyMap(), (CallbackHandler) ioSession.getAttribute(SERVER_CALLBACK_HANDLER));
+            return Sasl.createSaslServer("SRP", "JRPP", endpointName, Collections.<String, Object>emptyMap(), (CallbackHandler) ioSession.getAttribute(SERVER_CALLBACK_HANDLER));
         }
     }
 
     private final class SaslClientMaker implements SaslClientFactory {
         public SaslClient createSaslClient(IoSession ioSession) throws SaslException {
-            return Sasl.createSaslClient(new String[] { "SRP" }, "authorizId", "JRPP", "Server", Collections.<String, Object>emptyMap(), (CallbackHandler) ioSession.getAttribute(CLIENT_CALLBACK_HANDLER));
+            return Sasl.createSaslClient(new String[] { "SRP" }, "authorizId", "JRPP", endpointName, Collections.<String, Object>emptyMap(), (CallbackHandler) ioSession.getAttribute(CLIENT_CALLBACK_HANDLER));
         }
     }
 
