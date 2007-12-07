@@ -23,8 +23,9 @@ import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.ContextService;
-import org.jboss.cx.remoting.spi.AbstractContextInterceptor;
-import org.jboss.cx.remoting.spi.ContextInterceptor;
+import org.jboss.cx.remoting.spi.AbstractInterceptor;
+import org.jboss.cx.remoting.spi.Interceptor;
+import org.jboss.cx.remoting.spi.InterceptorContext;
 
 /**
  *
@@ -40,7 +41,7 @@ public final class CoreContext<I, O> {
 
     private final ProtocolHandler protocolHandler;
     private final ConcurrentMap<Object, Object> contextMap = CollectionUtil.concurrentMap();
-    private final ConcurrentMap<RequestIdentifier, ExecutingRequest> remoteRequests = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<RequestIdentifier, RemoteRequest> remoteRequests = CollectionUtil.concurrentMap();
 
     private final Resource resource = new Resource();
     private final TypeMap<ContextService> contextServices = new LinkedHashTypeMap<ContextService>();
@@ -61,6 +62,7 @@ public final class CoreContext<I, O> {
         resource.doStop(new Runnable() {
             public void run() {
                 // todo - cancel all outstanding requests, send context close message via protocolHandler
+
             }
         }, null);
     }
@@ -69,11 +71,11 @@ public final class CoreContext<I, O> {
         return coreSession;
     }
 
-    public ContextInterceptor getLastInterceptor() {
+    public Interceptor getLastInterceptor() {
         return lastInterceptor;
     }
 
-    public ContextInterceptor getFirstInterceptor() {
+    public Interceptor getFirstInterceptor() {
         return firstInterceptor;
     }
 
@@ -99,36 +101,36 @@ public final class CoreContext<I, O> {
     }
 
     void handleInboundReply(final RequestIdentifier requestIdentifier, final Reply<O> reply) {
-        ExecutingRequest executingRequest = remoteRequests.get(requestIdentifier);
+        RemoteRequest remoteRequest = remoteRequests.get(requestIdentifier);
         try {
-            lastInterceptor.processInboundReply(new InboundReplyInterceptorContext(executingRequest), requestIdentifier, reply);
+            lastInterceptor.processInboundReply(new InboundReplyInterceptorContext(remoteRequest), requestIdentifier, reply);
         } catch (RuntimeException e) {
             // todo log failure
         }
     }
 
     void handleInboundException(final RequestIdentifier requestIdentifier, final RemoteExecutionException exception) {
-        ExecutingRequest executingRequest = remoteRequests.get(requestIdentifier);
+        RemoteRequest remoteRequest = remoteRequests.get(requestIdentifier);
         try {
-            lastInterceptor.processInboundException(new InboundReplyInterceptorContext(executingRequest), requestIdentifier, exception);
+            lastInterceptor.processInboundException(new InboundReplyInterceptorContext(remoteRequest), requestIdentifier, exception);
         } catch (RuntimeException e) {
             // todo log failure
         }
     }
 
-    public class GenericInterceptorContext implements ContextInterceptor.InterceptorContext {
+    public class GenericInterceptorContext implements InterceptorContext {
 
     }
 
     public final class InboundReplyInterceptorContext extends GenericInterceptorContext {
-        private final ExecutingRequest executingRequest;
+        private final RemoteRequest remoteRequest;
 
-        protected InboundReplyInterceptorContext(final ExecutingRequest executingRequest) {
-            this.executingRequest = executingRequest;
+        protected InboundReplyInterceptorContext(final RemoteRequest remoteRequest) {
+            this.remoteRequest = remoteRequest;
         }
     }
 
-    public final class FirstInterceptor extends AbstractContextInterceptor {
+    public final class FirstInterceptor extends AbstractInterceptor {
         private FirstInterceptor() {
             super(userContext);
         }
@@ -139,7 +141,7 @@ public final class CoreContext<I, O> {
                 log.trace("Received inbound reply for request identifier " + requestIdentifier);
             }
             InboundReplyInterceptorContext iContext = (InboundReplyInterceptorContext) context;
-            iContext.executingRequest.complete((Reply<O>)reply);
+            iContext.remoteRequest.receiveReply((Reply<O>)reply);
         }
 
         @SuppressWarnings ({"unchecked"})
@@ -148,7 +150,7 @@ public final class CoreContext<I, O> {
                 log.trace("Received inbound exception for request identifier " + requestIdentifier, exception);
             }
             InboundReplyInterceptorContext iContext = (InboundReplyInterceptorContext) context;
-            iContext.executingRequest.setException(exception);
+            iContext.remoteRequest.setException(exception);
         }
 
         @SuppressWarnings ({"unchecked"})
@@ -157,7 +159,7 @@ public final class CoreContext<I, O> {
                 log.trace("Received inbound cancel request for request identifier " + requestIdentifier);
             }
             InboundReplyInterceptorContext iContext = (InboundReplyInterceptorContext) context;
-            iContext.executingRequest.cancel(mayInterruptIfRunning);
+            iContext.remoteRequest.sendCancel(mayInterruptIfRunning);
         }
 
         @SuppressWarnings ({"unchecked"})
@@ -167,7 +169,6 @@ public final class CoreContext<I, O> {
             }
             // todo
             final RequestListener<I, O> requestListener = null;
-            final boolean trace = log.isTrace();
             if (requestListener == null) {
                 processOutboundException(context, requestIdentifier, new RemoteExecutionException("No such operation on this service"));
                 return;
@@ -187,7 +188,7 @@ public final class CoreContext<I, O> {
 
     }
 
-    public final class LastInterceptor extends AbstractContextInterceptor {
+    public final class LastInterceptor extends AbstractInterceptor {
         private LastInterceptor() {
             super(userContext);
         }
@@ -256,11 +257,11 @@ public final class CoreContext<I, O> {
             } catch (IOException e) {
                 throw new RemotingException("Failed to open a request", e);
             }
-            final ExecutingRequest executingRequest = new ExecutingRequest(request, identifier);
-            remoteRequests.put(identifier, executingRequest);
+            final RemoteRequest remoteRequest = new RemoteRequest(identifier);
+            remoteRequests.put(identifier, remoteRequest);
             resource.doAcquire();
             try {
-                final ExecutingRequest.FutureReplyImpl futureReply = executingRequest.new FutureReplyImpl();
+                final RemoteRequest.FutureReplyImpl futureReply = remoteRequest.new FutureReplyImpl();
                 protocolHandler.sendRequest(contextIdentifier, identifier, request);
                 ok = true;
                 return futureReply;
@@ -292,12 +293,17 @@ public final class CoreContext<I, O> {
         }
     }
 
+    private enum ReceivedRequestState {
+        RUNNING,
+        REPLY_SENT,
+        CANCELLED,
+    }
+
     public final class ReceivedRequest {
         private final RequestContext<O> requestContext = new CoreRequestContext();
+        private final AtomicStateMachine<ReceivedRequestState> state = AtomicStateMachine.start(ReceivedRequestState.RUNNING);
 
         private final RequestIdentifier requestIdentifier;
-
-        private volatile boolean cancelled = false;
 
         private ReceivedRequest(final RequestIdentifier requestIdentifier) {
             this.requestIdentifier = requestIdentifier;
@@ -308,7 +314,7 @@ public final class CoreContext<I, O> {
             private CoreRequestContext() {}
 
             public boolean isCancelled() {
-                return cancelled;
+                return state.in(ReceivedRequestState.CANCELLED);
             }
 
             public Reply<O> createReply(O body) {
@@ -316,16 +322,17 @@ public final class CoreContext<I, O> {
             }
 
             public void sendReply(Reply<O> reply) throws RemotingException, IllegalStateException {
-                // todo
+                state.requireTransition(ReceivedRequestState.REPLY_SENT);
                 firstInterceptor.processOutboundReply(null, requestIdentifier, reply);
             }
 
             public void sendFailure(String msg, Throwable cause) throws RemotingException, IllegalStateException {
-                // todo
+                state.requireTransition(ReceivedRequestState.REPLY_SENT);
                 firstInterceptor.processOutboundException(null, requestIdentifier, new RemoteExecutionException(msg, cause));
             }
 
             public void sendCancelled() throws RemotingException, IllegalStateException {
+                state.requireTransition(ReceivedRequestState.CANCELLED);
                 firstInterceptor.processOutboundCancelAcknowledge(null, requestIdentifier);
             }
 
@@ -333,93 +340,83 @@ public final class CoreContext<I, O> {
 
     }
 
-    private enum ExecutingRequestState {
+    private enum RemoteRequestState {
         WAITING,
         DONE,
         EXCEPTION,
         CANCELLED,
     }
 
-    private final class ExecutingRequest {
-        private Reply<O> reply;
-        private RemoteExecutionException exception;
-        private ExecutingRequestState state = ExecutingRequestState.WAITING;
-        private final Object monitor = new Object();
-        private final Request<I> request;
+    private final class RemoteRequest {
+        private final AtomicStateMachine<RemoteRequestState> state = AtomicStateMachine.start(RemoteRequestState.WAITING);
         private final RequestIdentifier requestIdentifier;
+        private final FutureReply<O> futureReply = new FutureReplyImpl();
 
-        private ExecutingRequest(final Request<I> request, final RequestIdentifier requestIdentifier) {
-            this.request = request;
+        /* Protected by {@code state} */
+        private Reply<O> reply;
+        /* Protected by {@code state} */
+        private RemoteExecutionException exception;
+        /* Protected by {@code state} */
+        private RequestCompletionHandler handler;
+
+        private RemoteRequest(final RequestIdentifier requestIdentifier) {
             this.requestIdentifier = requestIdentifier;
         }
 
-        public boolean complete(final Reply<O> reply) {
-            synchronized(monitor) {
-                if (state != ExecutingRequestState.WAITING) {
-                    return false;
+        public void receiveReply(final Reply<O> reply) {
+            synchronized(state) {
+                if (state.transition(RemoteRequestState.WAITING, RemoteRequestState.DONE)) {
+                    this.reply = reply;
+                } else {
+                    throw new IllegalStateException("Got reply from state " + state.getState());
                 }
-                this.reply = reply;
-                state = ExecutingRequestState.DONE;
-                monitor.notifyAll();
-                return true;
             }
         }
 
-        public ExecutingRequestState await() throws InterruptedException {
-            synchronized(monitor) {
-                for(;;) {
-                    if (state != ExecutingRequestState.WAITING) {
-                        return state;
-                    }
-                    monitor.wait();
-                }
-            }
+        public RemoteRequestState await() throws InterruptedException {
+            return state.waitForNot(RemoteRequestState.WAITING);
         }
 
         public RemoteExecutionException getException() {
-            synchronized(monitor) {
-                if (state != ExecutingRequestState.EXCEPTION) {
-                    throw new IllegalStateException("No exception available");
-                }
+            synchronized(state) {
+                state.require(RemoteRequestState.EXCEPTION);
                 return exception;
             }
         }
 
         public Reply<O> getReply() {
-            return reply;
+            synchronized(state) {
+                state.require(RemoteRequestState.DONE);
+                return reply;
+            }
         }
 
         public void setException(final RemoteExecutionException exception) {
-            synchronized(monitor) {
-                if (state != ExecutingRequestState.WAITING) {
-                    // ignore...
-                    return;
+            synchronized(state) {
+                if (state.transition(RemoteRequestState.WAITING, RemoteRequestState.EXCEPTION)) {
+                    this.exception = exception;
                 }
-                this.exception = exception;
-                state = ExecutingRequestState.EXCEPTION;
-                monitor.notifyAll();
+                RequestCompletionHandler handler = this.handler;
+                this.handler = null;
+                handler.notifyComplete(futureReply);
             }
         }
 
         public void sendCancel(boolean mayInterruptIfRunning) {
-            
+            lastInterceptor.processOutboundCancelRequest(null, requestIdentifier, mayInterruptIfRunning);
         }
 
-        public boolean cancel(boolean mayInterruptIfRunning) {
-            synchronized(monitor) {
-                if (state == ExecutingRequestState.WAITING) {
-                    lastInterceptor.processOutboundCancelRequest(null/*todo*/, requestIdentifier, true);
-                    state = ExecutingRequestState.CANCELLED;
-                    // todo notify
-                    return true;
+        public void setCancelled() {
+            synchronized(state) {
+                if (state.transition(RemoteRequestState.WAITING, RemoteRequestState.CANCELLED)) {
+                    RequestCompletionHandler handler = this.handler;
+                    this.handler = null;
+                    handler.notifyComplete(futureReply);
                 }
-                return state == ExecutingRequestState.CANCELLED;
             }
         }
 
         public final class FutureReplyImpl implements FutureReply<O> {
-
-            private RequestCompletionHandler handler;
 
             private FutureReplyImpl() {
             }
@@ -430,71 +427,64 @@ public final class CoreContext<I, O> {
                 remoteRequests.remove(requestIdentifier);
             }
 
-            public boolean cancel(boolean mayInterruptIfRunning) {
-                return ExecutingRequest.this.cancel(mayInterruptIfRunning);
+            public boolean cancel(final boolean mayInterruptIfRunning) {
+                state.doIf(RemoteRequestState.WAITING, new Runnable() {
+                    public void run() {
+                        sendCancel(mayInterruptIfRunning);
+                    }
+                });
+                return state.waitUninterruptiblyForNot(RemoteRequestState.WAITING) == RemoteRequestState.CANCELLED;
             }
 
             public boolean isCancelled() {
-                synchronized(monitor) {
-                    return state == ExecutingRequestState.CANCELLED;
-                }
+                return state.in(RemoteRequestState.CANCELLED);
             }
 
             public boolean isDone() {
-                synchronized(monitor) {
-                    return state == ExecutingRequestState.DONE;
-                }
+                return state.in(RemoteRequestState.DONE);
             }
 
             public Reply<O> get() throws InterruptedException, CancellationException, RemoteExecutionException {
-                synchronized(monitor) {
-                    while (state == ExecutingRequestState.WAITING) {
-                        monitor.wait();
-                    }
-                    switch (state) {
-                        case CANCELLED:
-                            throw new CancellationException("Request was cancelled");
-                        case EXCEPTION:
-                            throw exception;
-                        case DONE:
-                            return reply;
-                    }
+                switch (state.waitForNot(RemoteRequestState.WAITING)) {
+                    case CANCELLED:
+                        throw new CancellationException("Request was cancelled");
+                    case EXCEPTION:
+                        throw exception;
+                    case DONE:
+                        return reply;
                 }
                 throw new IllegalStateException("Wrong state");
             }
 
             public Reply<O> get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException, TimeoutException {
-                synchronized(monitor) {
-                    while (state == ExecutingRequestState.WAITING) {
-                        unit.timedWait(monitor, timeout);
-                    }
-                    switch (state) {
-                        case CANCELLED:
-                            throw new CancellationException("Request was cancelled");
-                        case EXCEPTION:
-                            throw exception;
-                        case DONE:
-                            return reply;
-                    }
+                switch (state.waitForNot(RemoteRequestState.WAITING, timeout, unit)) {
+                    case CANCELLED:
+                        throw new CancellationException("Request was cancelled");
+                    case EXCEPTION:
+                        throw exception;
+                    case DONE:
+                        return reply;
+                    case WAITING:
+                        throw new TimeoutException("Timed out while waiting for reply");
                 }
                 throw new IllegalStateException("Wrong state");
             }
 
             public FutureReply<O> setCompletionNotifier(RequestCompletionHandler handler) {
-                synchronized(monitor) {
-                    switch (state) {
+                synchronized(state) {
+                    switch (state.getState()) {
                         case CANCELLED:
                         case DONE:
                         case EXCEPTION:
                             handler.notifyComplete(this);
                             break;
                         case WAITING:
-                            this.handler = handler;
+                            RemoteRequest.this.handler = handler;
+                            break;
                     }
                 }
                 return this;
             }
-
         }
     }
 

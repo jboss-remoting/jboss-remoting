@@ -7,5 +7,5 @@ import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
  *
  */
 public interface ContextInterceptorFactory {
-    ContextInterceptor createInstance(Context<?, ?> context, ContextIdentifier contextIdentifier);
+    Interceptor createInstance(Context<?, ?> context, ContextIdentifier contextIdentifier);
 }

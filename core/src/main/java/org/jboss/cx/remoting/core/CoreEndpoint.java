@@ -4,13 +4,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
-import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.EndpointLocator;
 import org.jboss.cx.remoting.InterceptorDeploymentSpec;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ServiceDeploymentSpec;
-import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Resource;
@@ -157,7 +155,7 @@ public final class CoreEndpoint {
     public final class UserEndpoint implements Endpoint {
 
         public ConcurrentMap<Object, Object> getAttributes() {
-            return null;
+            return endpointMap;
         }
 
         public void shutdown() {
@@ -197,14 +195,6 @@ public final class CoreEndpoint {
                     resource.doRelease();
                 }
             }
-        }
-
-        public Session openSession(URI remoteEndpoint, CallbackHandler clientCallbackHandler, final CallbackHandler serverCallbackHandler) throws RemotingException {
-            return null;
-        }
-
-        public <I, O> ContextSource<I, O> locateService(ServiceLocator<I, O> serviceLocator) {
-            return null;
         }
 
         public String getName() {

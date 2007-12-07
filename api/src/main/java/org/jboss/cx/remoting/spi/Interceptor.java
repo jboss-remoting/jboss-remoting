@@ -27,10 +27,7 @@ import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
  * methods, {@code processInboundRequest}, {@code processInboundMessage}, {@code processOutboundReply}, and {@code
  * processOutboundException} all operate on the responding ("server") side of the context.
  */
-public interface ContextInterceptor {
-
-    interface InterceptorContext {
-    }
+public interface Interceptor {
 
     // intialization methods
 
@@ -38,17 +35,17 @@ public interface ContextInterceptor {
      * Set the next context service handler.  When requests are processed, each handler delegates to the next handler in
      * the chain.  Called once after the context service hander is created.
      *
-     * @param nextContextInterceptor the next interceptor
+     * @param nextInterceptor the next interceptor
      */
-    void setNext(ContextInterceptor nextContextInterceptor);
+    void setNext(Interceptor nextInterceptor);
 
     /**
      * Set the previous context service handler.  When replies are processed, each handler delegates to the previous
      * handler in the chain.  Called once after the context service hander is created.
      *
-     * @param previousContextInterceptor the previous interceptor
+     * @param previousInterceptor the previous interceptor
      */
-    void setPrevious(ContextInterceptor previousContextInterceptor);
+    void setPrevious(Interceptor previousInterceptor);
 
     /**
      * Get the context service object associated with this handler.  This instance is the end-user's interface into this

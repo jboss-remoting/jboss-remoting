@@ -10,19 +10,19 @@ import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
  * A simple base implementation of {@code ContextServiceInterceptor}.  Use this class as a base for simple
  * implementations of that interface.
  */
-public abstract class AbstractContextInterceptor implements ContextInterceptor {
+public abstract class AbstractInterceptor implements Interceptor {
     protected final Context<?, ?> context;
-    protected ContextInterceptor next, prev;
+    protected Interceptor next, prev;
 
-    protected AbstractContextInterceptor(final Context<?, ?> context) {
+    protected AbstractInterceptor(final Context<?, ?> context) {
         this.context = context;
     }
 
-    public final void setNext(final ContextInterceptor next) {
+    public final void setNext(final Interceptor next) {
         this.next = next;
     }
 
-    public final void setPrevious(final ContextInterceptor prev) {
+    public final void setPrevious(final Interceptor prev) {
         this.prev = prev;
     }
 

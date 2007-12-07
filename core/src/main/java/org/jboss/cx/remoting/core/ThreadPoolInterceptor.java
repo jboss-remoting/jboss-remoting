@@ -12,19 +12,20 @@ import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Logger;
-import org.jboss.cx.remoting.spi.AbstractContextInterceptor;
+import org.jboss.cx.remoting.spi.AbstractInterceptor;
+import org.jboss.cx.remoting.spi.InterceptorContext;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**
  *
  */
-public final class ThreadPoolContextInterceptor extends AbstractContextInterceptor {
+public final class ThreadPoolInterceptor extends AbstractInterceptor {
     private static final ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(30, 50, 0, null, new ArrayBlockingQueue<Runnable>(100, true));
     private final ConcurrentMap<RequestIdentifier, Future<Void>> requests = CollectionUtil.concurrentWeakHashMap();
 
-    private static final Logger log = Logger.getLogger(ThreadPoolContextInterceptor.class);
+    private static final Logger log = Logger.getLogger(ThreadPoolInterceptor.class);
 
-    public ThreadPoolContextInterceptor(final Context<?, ?> context) {
+    public ThreadPoolInterceptor(final Context<?, ?> context) {
         super(context);
     }
 
@@ -46,7 +47,7 @@ public final class ThreadPoolContextInterceptor extends AbstractContextIntercept
             // Use FutureTask so that we get a Future<> before the task actually starts
             FutureTask<Void> task = new FutureTask<Void>(new Runnable() {
                 public void run() {
-                    ThreadPoolContextInterceptor.super.processInboundRequest(context, requestIdentifier, request);
+                    ThreadPoolInterceptor.super.processInboundRequest(context, requestIdentifier, request);
                 }
             }, null);
             requests.put(requestIdentifier, task);
