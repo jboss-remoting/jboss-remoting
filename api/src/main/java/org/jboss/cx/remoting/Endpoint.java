@@ -39,17 +39,6 @@ public interface Endpoint {
     Session openSession(EndpointLocator endpointLocator) throws RemotingException;
 
     /**
-     * Attempt to find a service in one or more neighboring {@code Endpoint}s.  The resultant context source may choose
-     * to load- balance or otherwise distribute context acquisition among one or more sessions associated with one or
-     * more endpoints.
-     *
-     * @param serviceLocator the service locator
-     *
-     * @return a context source
-     */
-    <I, O> ContextSource<I, O> locateService(ServiceLocator<I, O> serviceLocator);
-
-    /**
      * Get the name of this endpoint.
      *
      * @return the endpoint name, or {@code null} if there is no name

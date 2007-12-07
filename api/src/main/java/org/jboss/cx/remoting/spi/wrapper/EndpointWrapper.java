@@ -2,13 +2,11 @@ package org.jboss.cx.remoting.spi.wrapper;
 
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
-import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ServiceDeploymentSpec;
-import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.InterceptorDeploymentSpec;
 import org.jboss.cx.remoting.EndpointLocator;
@@ -35,10 +33,6 @@ public class EndpointWrapper implements Endpoint {
 
     public Session openSession(final EndpointLocator endpointLocator) throws RemotingException {
         return delegate.openSession(endpointLocator);
-    }
-
-    public <I, O> ContextSource<I, O> locateService(final ServiceLocator<I, O> serviceLocator) {
-        return delegate.locateService(serviceLocator);
     }
 
     public Registration deployService(final ServiceDeploymentSpec spec) throws RemotingException {
