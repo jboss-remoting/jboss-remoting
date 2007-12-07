@@ -318,6 +318,10 @@
                 destdir="tools/target/main/classes"
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="srp.classpath"/>
+                <path refid="util.classpath"/>
+            </classpath>
         </javac>
         <path id="tools.classpath">
             <pathelement location="tools/target/main/classes"/>
