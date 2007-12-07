@@ -1,9 +1,7 @@
 package org.jboss.cx.remoting.core;
 
 import java.util.concurrent.ConcurrentMap;
-import java.util.Collection;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.Reply;
@@ -195,7 +193,7 @@ public final class CoreSession {
         public void closeContext(ContextIdentifier remoteContextIdentifier) {
         }
 
-        public void closeStream(final ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier) {
+        public void closeStream(StreamIdentifier streamIdentifier) {
         }
 
         public void closeService(ServiceIdentifier serviceIdentifier) {
@@ -208,18 +206,6 @@ public final class CoreSession {
         }
 
         public void failSession() {
-            // todo
-        }
-
-        public void failContext(ContextIdentifier contextIdentifier) {
-            // todo
-        }
-
-        public void failRequest(final ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier) {
-            // todo
-        }
-
-        public void failStream(final ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier) {
             // todo
         }
 
@@ -266,10 +252,13 @@ public final class CoreSession {
         public void receiveCancelAcknowledge(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier) {
         }
 
+        public void receiveServiceTerminate(ServiceIdentifier serviceIdentifier) {
+        }
+
         public void receiveCancelRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) {
         }
 
-        public void receiveStreamData(final ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier, final Object data) {
+        public void receiveStreamData(StreamIdentifier streamIdentifier, final Object data) {
         }
 
         public <T> Reply<T> createReply(T body) {
@@ -280,12 +269,5 @@ public final class CoreSession {
             return new RequestImpl<T>(body);
         }
 
-        public Object deserialize(Collection<ByteBuffer> buffers) throws RemotingException {
-            return null;
-        }
-
-        public Collection<ByteBuffer> serialize(Object object) throws RemotingException {
-            return null;
-        }
     }
 }

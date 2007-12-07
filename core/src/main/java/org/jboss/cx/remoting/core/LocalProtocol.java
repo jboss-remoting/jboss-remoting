@@ -87,7 +87,7 @@ public final class LocalProtocol {
             return new SimpleRequestIdentifier();
         }
 
-        public StreamIdentifier openStream(ContextIdentifier contextIdentifier) throws IOException {
+        public StreamIdentifier openStream() throws IOException {
             log.trace("Opening stream for local protocol");
             return new SimpleStreamIdentifier();
         }
@@ -109,11 +109,7 @@ public final class LocalProtocol {
             remoteContext.closeContext(contextIdentifier);
         }
 
-        public void closeRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier) throws IOException {
-            log.trace("Closing request for local protocol");
-        }
-
-        public void closeStream(ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier) throws IOException {
+        public void closeStream(StreamIdentifier streamIdentifier) throws IOException {
             log.trace("Closing stream for local protocol");
         }
 
@@ -147,14 +143,17 @@ public final class LocalProtocol {
             remoteContext.receiveCancelAcknowledge(remoteContextIdentifier, requestIdentifier);
         }
 
+        public void sendServiceTerminate(ServiceIdentifier remoteServiceIdentifier) throws IOException {
+        }
+
         public void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException {
             log.trace("Sending cancel request for local protocol");
             remoteContext.receiveCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
         }
 
-        public void sendStreamData(ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier, Object data) throws IOException {
+        public void sendStreamData(StreamIdentifier streamIdentifier, Object data) throws IOException {
             log.trace("Sending stream data for local protocol");
-            remoteContext.receiveStreamData(contextIdentifier, streamIdentifier, data);
+            remoteContext.receiveStreamData(streamIdentifier, data);
         }
     }
 }

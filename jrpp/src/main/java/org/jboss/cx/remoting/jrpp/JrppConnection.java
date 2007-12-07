@@ -92,7 +92,7 @@ public final class JrppConnection {
             return new JrppRequestIdentifier(identifierManager);
         }
 
-        public StreamIdentifier openStream(ContextIdentifier contextIdentifier) throws IOException {
+        public StreamIdentifier openStream() throws IOException {
             return new JrppStreamIdentifier(identifierManager);
         }
 
@@ -115,12 +115,7 @@ public final class JrppConnection {
             ((JrppContextIdentifier)contextIdentifier).close();
         }
 
-        public void closeRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier) throws IOException {
-            ioSession.write(new JrppCloseRequestMessage(contextIdentifier, requestIdentifier));
-            ((JrppRequestIdentifier)requestIdentifier).close();
-        }
-
-        public void closeStream(ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier) throws IOException {
+        public void closeStream(StreamIdentifier streamIdentifier) throws IOException {
             ioSession.write(new JrppCloseStreamMessage(contextIdentifier, streamIdentifier));
             ((JrppStreamIdentifier)streamIdentifier).close();
         }
@@ -155,7 +150,7 @@ public final class JrppConnection {
             ioSession.write(new JrppCancelRequestMessage(contextIdentifier, requestIdentifier, mayInterrupt));
         }
 
-        public void sendStreamData(ContextIdentifier contextIdentifier, StreamIdentifier streamIdentifier, Object data) throws IOException {
+        public void sendStreamData(StreamIdentifier streamIdentifier, Object data) throws IOException {
             ioSession.write(new JrppStreamDataMessage(contextIdentifier, streamIdentifier, data));
         }
     }
@@ -203,7 +198,7 @@ public final class JrppConnection {
         }
 
         public void visit(JrppCloseStreamMessage msg) {
-            protocolContext.closeStream(msg.getContextIdentifier(), msg.getStreamIdentifier());
+            protocolContext.closeStream(msg.getStreamIdentifier());
         }
 
         public void visit(JrppRequest msg) {
@@ -227,7 +222,7 @@ public final class JrppConnection {
         }
 
         public void visit(JrppStreamDataMessage msg) {
-            protocolContext.receiveStreamData(msg.getContextIdentifier(), msg.getStreamIdentifier(), msg.getData());
+            protocolContext.receiveStreamData(msg.getStreamIdentifier(), msg.getData());
         }
     }
 }
