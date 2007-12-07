@@ -1,6 +1,6 @@
 package org.jboss.cx.remoting;
 
-import org.jboss.cx.remoting.spi.ContextInterceptorFactory;
+import org.jboss.cx.remoting.spi.ClientInterceptorFactory;
 
 /**
  *
@@ -8,9 +8,9 @@ import org.jboss.cx.remoting.spi.ContextInterceptorFactory;
 public final class InterceptorDeploymentSpec {
     private final String identifier;
     private final int preference;
-    private final ContextInterceptorFactory contextInterceptorFactory;
+    private final ClientInterceptorFactory contextInterceptorFactory;
 
-    public InterceptorDeploymentSpec(final String identifier, final int preference, final ContextInterceptorFactory contextInterceptorFactory) {
+    public InterceptorDeploymentSpec(final String identifier, final int preference, final ClientInterceptorFactory contextInterceptorFactory) {
         this.identifier = identifier;
         this.preference = preference;
         this.contextInterceptorFactory = contextInterceptorFactory;
@@ -22,7 +22,7 @@ public final class InterceptorDeploymentSpec {
         return identifier;
     }
 
-    public ContextInterceptorFactory getContextInterceptorFactory() {
+    public ClientInterceptorFactory getContextInterceptorFactory() {
         return contextInterceptorFactory;
     }
 
@@ -34,7 +34,7 @@ public final class InterceptorDeploymentSpec {
         return new InterceptorDeploymentSpec(identifier, preference, contextInterceptorFactory);
     }
 
-    public InterceptorDeploymentSpec setContextInterceptorFactory(ContextInterceptorFactory contextInterceptorFactory) {
+    public InterceptorDeploymentSpec setContextInterceptorFactory(ClientInterceptorFactory contextInterceptorFactory) {
         return new InterceptorDeploymentSpec(identifier, preference, contextInterceptorFactory);
     }
 }

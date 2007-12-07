@@ -10,10 +10,8 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
-import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RequestCompletionHandler;
-import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Resource;
 import org.jboss.cx.remoting.core.util.TypeMap;
@@ -23,9 +21,9 @@ import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.ContextService;
-import org.jboss.cx.remoting.spi.AbstractInterceptor;
-import org.jboss.cx.remoting.spi.Interceptor;
 import org.jboss.cx.remoting.spi.InterceptorContext;
+import org.jboss.cx.remoting.spi.ClientInterceptor;
+import org.jboss.cx.remoting.spi.AbstractClientInterceptor;
 
 /**
  *
@@ -71,11 +69,11 @@ public final class CoreContext<I, O> {
         return coreSession;
     }
 
-    public Interceptor getLastInterceptor() {
+    public ClientInterceptor getLastInterceptor() {
         return lastInterceptor;
     }
 
-    public Interceptor getFirstInterceptor() {
+    public ClientInterceptor getFirstInterceptor() {
         return firstInterceptor;
     }
 
@@ -90,14 +88,6 @@ public final class CoreContext<I, O> {
     private void dropRequest(RequestIdentifier requestIdentifier) {
         remoteRequests.remove(requestIdentifier);
         resource.doRelease();
-    }
-
-    void handleInboundRequest(final RequestIdentifier requestIdentifier, final Request<I> request) {
-        try {
-            lastInterceptor.processInboundRequest(new GenericInterceptorContext(), requestIdentifier, request);
-        } catch (RuntimeException e) {
-            // todo log failure
-        }
     }
 
     void handleInboundReply(final RequestIdentifier requestIdentifier, final Reply<O> reply) {
@@ -118,7 +108,7 @@ public final class CoreContext<I, O> {
         }
     }
 
-    public class GenericInterceptorContext implements InterceptorContext {
+    public static class GenericInterceptorContext implements InterceptorContext {
 
     }
 
@@ -130,7 +120,7 @@ public final class CoreContext<I, O> {
         }
     }
 
-    public final class FirstInterceptor extends AbstractInterceptor {
+    public final class FirstInterceptor extends AbstractClientInterceptor {
         private FirstInterceptor() {
             super(userContext);
         }
@@ -144,7 +134,6 @@ public final class CoreContext<I, O> {
             iContext.remoteRequest.receiveReply((Reply<O>)reply);
         }
 
-        @SuppressWarnings ({"unchecked"})
         public void processInboundException(final InterceptorContext context, final RequestIdentifier requestIdentifier, final RemoteExecutionException exception) {
             if (log.isTrace()) {
                 log.trace("Received inbound exception for request identifier " + requestIdentifier, exception);
@@ -153,42 +142,16 @@ public final class CoreContext<I, O> {
             iContext.remoteRequest.setException(exception);
         }
 
-        @SuppressWarnings ({"unchecked"})
-        public void processInboundCancelRequest(final InterceptorContext context, final RequestIdentifier requestIdentifier, final boolean mayInterruptIfRunning) {
+        public void processInboundCancelAcknowledge(final InterceptorContext context, final RequestIdentifier requestIdentifier) {
             if (log.isTrace()) {
                 log.trace("Received inbound cancel request for request identifier " + requestIdentifier);
             }
             InboundReplyInterceptorContext iContext = (InboundReplyInterceptorContext) context;
-            iContext.remoteRequest.sendCancel(mayInterruptIfRunning);
+            iContext.remoteRequest.setCancelled();
         }
-
-        @SuppressWarnings ({"unchecked"})
-        public void processInboundRequest(final InterceptorContext context, final RequestIdentifier requestIdentifier, final Request<?> request) {
-            if (log.isTrace()) {
-                log.trace("Received inbound request for request identifier " + requestIdentifier);
-            }
-            // todo
-            final RequestListener<I, O> requestListener = null;
-            if (requestListener == null) {
-                processOutboundException(context, requestIdentifier, new RemoteExecutionException("No such operation on this service"));
-                return;
-            }
-            final ReceivedRequest receivedRequest = new ReceivedRequest(requestIdentifier);
-            try {
-                requestListener.handleRequest(receivedRequest.requestContext, (Request<I>) request);
-            } catch (RemoteExecutionException e) {
-                processOutboundException(context, requestIdentifier, e);
-            } catch (RuntimeException e) {
-                processOutboundException(context, requestIdentifier, new RemoteExecutionException("Request execution failed", e));
-            } catch (InterruptedException e) {
-                // todo
-                e.printStackTrace();
-            }
-        }
-
     }
 
-    public final class LastInterceptor extends AbstractInterceptor {
+    public final class LastInterceptor extends AbstractClientInterceptor {
         private LastInterceptor() {
             super(userContext);
         }
@@ -293,53 +256,6 @@ public final class CoreContext<I, O> {
         }
     }
 
-    private enum ReceivedRequestState {
-        RUNNING,
-        REPLY_SENT,
-        CANCELLED,
-    }
-
-    public final class ReceivedRequest {
-        private final RequestContext<O> requestContext = new CoreRequestContext();
-        private final AtomicStateMachine<ReceivedRequestState> state = AtomicStateMachine.start(ReceivedRequestState.RUNNING);
-
-        private final RequestIdentifier requestIdentifier;
-
-        private ReceivedRequest(final RequestIdentifier requestIdentifier) {
-            this.requestIdentifier = requestIdentifier;
-        }
-
-        public final class CoreRequestContext implements RequestContext<O> {
-
-            private CoreRequestContext() {}
-
-            public boolean isCancelled() {
-                return state.in(ReceivedRequestState.CANCELLED);
-            }
-
-            public Reply<O> createReply(O body) {
-                return new ReplyImpl<O>(body);
-            }
-
-            public void sendReply(Reply<O> reply) throws RemotingException, IllegalStateException {
-                state.requireTransition(ReceivedRequestState.REPLY_SENT);
-                firstInterceptor.processOutboundReply(null, requestIdentifier, reply);
-            }
-
-            public void sendFailure(String msg, Throwable cause) throws RemotingException, IllegalStateException {
-                state.requireTransition(ReceivedRequestState.REPLY_SENT);
-                firstInterceptor.processOutboundException(null, requestIdentifier, new RemoteExecutionException(msg, cause));
-            }
-
-            public void sendCancelled() throws RemotingException, IllegalStateException {
-                state.requireTransition(ReceivedRequestState.CANCELLED);
-                firstInterceptor.processOutboundCancelAcknowledge(null, requestIdentifier);
-            }
-
-        }
-
-    }
-
     private enum RemoteRequestState {
         WAITING,
         DONE,
@@ -357,7 +273,7 @@ public final class CoreContext<I, O> {
         /* Protected by {@code state} */
         private RemoteExecutionException exception;
         /* Protected by {@code state} */
-        private RequestCompletionHandler handler;
+        private RequestCompletionHandler<O> handler;
 
         private RemoteRequest(final RequestIdentifier requestIdentifier) {
             this.requestIdentifier = requestIdentifier;
@@ -396,7 +312,7 @@ public final class CoreContext<I, O> {
                 if (state.transition(RemoteRequestState.WAITING, RemoteRequestState.EXCEPTION)) {
                     this.exception = exception;
                 }
-                RequestCompletionHandler handler = this.handler;
+                RequestCompletionHandler<O> handler = this.handler;
                 this.handler = null;
                 handler.notifyComplete(futureReply);
             }
@@ -409,7 +325,7 @@ public final class CoreContext<I, O> {
         public void setCancelled() {
             synchronized(state) {
                 if (state.transition(RemoteRequestState.WAITING, RemoteRequestState.CANCELLED)) {
-                    RequestCompletionHandler handler = this.handler;
+                    RequestCompletionHandler<O> handler = this.handler;
                     this.handler = null;
                     handler.notifyComplete(futureReply);
                 }
@@ -470,7 +386,7 @@ public final class CoreContext<I, O> {
                 throw new IllegalStateException("Wrong state");
             }
 
-            public FutureReply<O> setCompletionNotifier(RequestCompletionHandler handler) {
+            public FutureReply<O> setCompletionNotifier(RequestCompletionHandler<O> handler) {
                 synchronized(state) {
                     switch (state.getState()) {
                         case CANCELLED:

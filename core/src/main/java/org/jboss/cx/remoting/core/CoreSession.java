@@ -37,6 +37,7 @@ public final class CoreSession {
     // don't GC the endpoint while a session lives
     private final CoreEndpoint endpoint;
     private final ConcurrentMap<ContextIdentifier, CoreContext> contexts = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<ContextIdentifier, CoreServerContext> serverContexts = CollectionUtil.concurrentMap();
     private static final Logger log = Logger.getLogger(CoreSession.class);
 
     private final ProtocolHandler protocolHandler;
@@ -234,9 +235,9 @@ public final class CoreSession {
 
         @SuppressWarnings ({"unchecked"})
         public void receiveRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Request<?> request) {
-            final CoreContext context = contexts.get(remoteContextIdentifier);
+            final CoreServerContext context = serverContexts.get(remoteContextIdentifier);
             if (context != null) {
-                context.handleInboundRequest(requestIdentifier, request);
+                context.getLastInterceptor().processInboundRequest(null, requestIdentifier, request);
             } else {
                 if (log.isTrace()) {
                     log.trace("Missing context identifier for inbound request " + remoteContextIdentifier);
@@ -268,6 +269,5 @@ public final class CoreSession {
         public <T> Request<T> createRequest(T body) {
             return new RequestImpl<T>(body);
         }
-
     }
 }

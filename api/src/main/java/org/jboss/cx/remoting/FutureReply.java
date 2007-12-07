@@ -88,5 +88,5 @@ public interface FutureReply<T> extends Future<Reply<T>> {
      *
      * @return this future reply
      */
-    FutureReply<T> setCompletionNotifier(RequestCompletionHandler handler);
+    FutureReply<T> setCompletionNotifier(RequestCompletionHandler<T> handler);
 }

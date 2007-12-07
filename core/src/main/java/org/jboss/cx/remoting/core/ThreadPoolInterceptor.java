@@ -6,28 +6,23 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.FutureTask;
-import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Logger;
-import org.jboss.cx.remoting.spi.AbstractInterceptor;
 import org.jboss.cx.remoting.spi.InterceptorContext;
+import org.jboss.cx.remoting.spi.AbstractServerInterceptor;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**
  *
  */
-public final class ThreadPoolInterceptor extends AbstractInterceptor {
+public final class ThreadPoolInterceptor extends AbstractServerInterceptor {
     private static final ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(30, 50, 0, null, new ArrayBlockingQueue<Runnable>(100, true));
     private final ConcurrentMap<RequestIdentifier, Future<Void>> requests = CollectionUtil.concurrentWeakHashMap();
 
     private static final Logger log = Logger.getLogger(ThreadPoolInterceptor.class);
-
-    public ThreadPoolInterceptor(final Context<?, ?> context) {
-        super(context);
-    }
 
     public void processInboundCancelRequest(final InterceptorContext context, final RequestIdentifier requestIdentifier, final boolean mayInterruptIfRunning) {
         try {

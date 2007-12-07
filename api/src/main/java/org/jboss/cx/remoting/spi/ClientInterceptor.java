@@ -1,10 +1,9 @@
 package org.jboss.cx.remoting.spi;
 
-import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
+import org.jboss.cx.remoting.Request;
+import org.jboss.cx.remoting.Reply;
+import org.jboss.cx.remoting.RemoteExecutionException;
 
 /**
  * An interceptor that provides an additional service to a {@code Context}.  A context service interceptor is created
@@ -23,21 +22,16 @@ import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
  * way.
  * <p/>
  * The methods {@code processOutboundRequest}, {@code processOutboundMessage}, {@code processInboundReply}, and {@code
- * processInboundException} are all executed on the requesting ("client") side of the context.  The remaining four
- * methods, {@code processInboundRequest}, {@code processInboundMessage}, {@code processOutboundReply}, and {@code
- * processOutboundException} all operate on the responding ("server") side of the context.
+ * processInboundException} are all executed on the requesting ("client") side of the context.
  */
-public interface Interceptor {
-
-    // intialization methods
-
+public interface ClientInterceptor {
     /**
      * Set the next context service handler.  When requests are processed, each handler delegates to the next handler in
      * the chain.  Called once after the context service hander is created.
      *
      * @param nextInterceptor the next interceptor
      */
-    void setNext(Interceptor nextInterceptor);
+    void setNext(ClientInterceptor nextInterceptor);
 
     /**
      * Set the previous context service handler.  When replies are processed, each handler delegates to the previous
@@ -45,7 +39,7 @@ public interface Interceptor {
      *
      * @param previousInterceptor the previous interceptor
      */
-    void setPrevious(Interceptor previousInterceptor);
+    void setPrevious(ClientInterceptor previousInterceptor);
 
     /**
      * Get the context service object associated with this handler.  This instance is the end-user's interface into this
@@ -53,9 +47,7 @@ public interface Interceptor {
      *
      * @return the context service object
      */
-    <T extends ContextService> T getContextService();
-
-    // client-view methods
+    <T extends ContextService> T getContextService(InterceptorContext context);
 
     /**
      * Process an outbound request.
@@ -63,8 +55,6 @@ public interface Interceptor {
      * @param context the context service interceptor context
      * @param requestIdentifier the request identifier
      * @param request the outbound request
-     *
-     * @throws RemotingException if processing failed
      */
     void processOutboundRequest(InterceptorContext context, RequestIdentifier requestIdentifier, Request<?> request);
 
@@ -74,8 +64,6 @@ public interface Interceptor {
      * @param context the context service interceptor context
      * @param requestIdentifier the request identifier
      * @param reply the inbound reply
-     *
-     * @throws RemotingException if processing failed
      */
     void processInboundReply(InterceptorContext context, RequestIdentifier requestIdentifier, Reply<?> reply);
 
@@ -85,8 +73,6 @@ public interface Interceptor {
      * @param context the context service interceptor context
      * @param requestIdentifier the request identifier
      * @param exception the inbound exception
-     *
-     * @throws RemotingException if processing failed
      */
     void processInboundException(InterceptorContext context, RequestIdentifier requestIdentifier, RemoteExecutionException exception);
 
@@ -96,78 +82,16 @@ public interface Interceptor {
      * @param context the context service interceptor context
      * @param requestIdentifier the request identifier
      * @param mayInterrupt {@code true} if the operation can be interrupted
-     *
-     * @throws RemotingException if processing failed
      */
     void processOutboundCancelRequest(InterceptorContext context, RequestIdentifier requestIdentifier, boolean mayInterrupt);
 
     /**
-     * Process an inbound cancellatino acknowledgement.
+     * Process an inbound cancellation acknowledgement.
      *
      * @param context the context service interceptor context
      * @param requestIdentifier the request identifier
-     *
-     * @throws RemotingException if processing failed
      */
     void processInboundCancelAcknowledge(InterceptorContext context, RequestIdentifier requestIdentifier);
-
-    // server-view methods
-
-    /**
-     * Process an inbound request.
-     *
-     * @param context the context service interceptor context
-     * @param requestIdentifier the request identifier
-     * @param request the inbound request
-     *
-     * @throws RemotingException if processing failed
-     */
-    void processInboundRequest(InterceptorContext context, RequestIdentifier requestIdentifier, Request<?> request);
-
-    /**
-     * Process an outbound reply.
-     *
-     * @param context the context service interceptor context
-     * @param requestIdentifier the request identifier
-     * @param reply the outbound reply
-     *
-     * @throws RemotingException if processing failed
-     */
-    void processOutboundReply(InterceptorContext context, RequestIdentifier requestIdentifier, Reply<?> reply);
-
-    /**
-     * Process an outbound request exception.
-     *
-     * @param context the context service interceptor context
-     * @param requestIdentifier the request identifier
-     * @param exception the exception that was thrown
-     *
-     * @throws RemotingException if processing failed
-     */
-    void processOutboundException(InterceptorContext context, RequestIdentifier requestIdentifier, RemoteExecutionException exception);
-
-    /**
-     * Process an inbound cancellation request.
-     *
-     * @param context the context service interceptor context
-     * @param requestIdentifier the request identifier
-     * @param mayInterruptIfRunning {@code true} if the operation can be interrupted
-     *
-     * @throws RemotingException if processing failed
-     */
-    void processInboundCancelRequest(InterceptorContext context, RequestIdentifier requestIdentifier, boolean mayInterruptIfRunning);
-
-    /**
-     * Process an outbound cancellation acknowledgement.
-     *
-     * @param context the context service interceptor context
-     * @param requestIdentifier the request identifier
-     *
-     * @throws RemotingException if processing failed
-     */
-    void processOutboundCancelAcknowledge(InterceptorContext context, RequestIdentifier requestIdentifier);
-
-    // universal
 
     /**
      * Close this interceptor.  The handler MUST subsequently close the NEXT interceptor in the chain (i.e. in a {@code
