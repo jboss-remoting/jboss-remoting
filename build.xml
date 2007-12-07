@@ -307,9 +307,16 @@
                 <exclude name="**/.*"/>
             </srcfiles>
         </uptodate>
+        <condition property="tools.compiler.newenough" else="false">
+            <or>
+                <contains string="${java.version}" substring="1.6."/>
+                <contains string="${java.version}" substring="1.7."/>
+            </or>
+        </condition>
+        
     </target>
 
-    <target name="tools.compile" depends="tools.compile.depcheck" unless="tools.compile.uptodate">
+    <target name="tools.compile" depends="tools.compile.depcheck" unless="tools.compile.uptodate" if="tools.compiler.newenough">
         <mkdir dir="tools/target/main/classes"/>
         <javac
                 source="1.6"
@@ -337,7 +344,7 @@
 
     <!-- Default targets -->
 
-    <target name="all" description="Build everything" depends="api,core,jrpp,samples,srp,util"/>
+    <target name="all" description="Build everything" depends="api,core,jrpp,samples,srp,tools,util"/>
 
     <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,jrpp.clean,mina-sasl.clean,samples.clean,srp.clean,tools.clean,util.clean"/>
 
