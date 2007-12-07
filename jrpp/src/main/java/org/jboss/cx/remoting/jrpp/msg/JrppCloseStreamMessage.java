@@ -2,6 +2,8 @@ package org.jboss.cx.remoting.jrpp.msg;
 
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppStreamIdentifier;
 import java.io.Serializable;
 import java.io.ObjectInputStream;
 import java.io.IOException;
@@ -9,10 +11,9 @@ import java.io.IOException;
 /**
  *
  */
-public final class JrppCloseStreamMessage extends JrppStreamMessage implements Serializable {
-    private static final long serialVersionUID = 1L;
+public final class JrppCloseStreamMessage extends JrppStreamMessage {
 
-    public JrppCloseStreamMessage(final ContextIdentifier contextIdentifier, final StreamIdentifier streamIdentifier) {
+    public JrppCloseStreamMessage(final JrppContextIdentifier contextIdentifier, final JrppStreamIdentifier streamIdentifier) {
         super(contextIdentifier, streamIdentifier);
     }
 

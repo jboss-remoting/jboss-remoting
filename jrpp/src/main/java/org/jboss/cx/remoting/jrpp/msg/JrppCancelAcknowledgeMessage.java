@@ -5,14 +5,15 @@ import java.io.ObjectInputStream;
 import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
 
 /**
  *
  */
-public final class JrppCancelAcknowledgeMessage extends JrppRequestMessage implements Serializable {
-    private static final long serialVersionUID = 1L;
+public final class JrppCancelAcknowledgeMessage extends JrppRequestMessage {
 
-    public JrppCancelAcknowledgeMessage(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier) {
+    public JrppCancelAcknowledgeMessage(final JrppContextIdentifier contextIdentifier, final JrppRequestIdentifier requestIdentifier) {
         super(contextIdentifier, requestIdentifier);
     }
 

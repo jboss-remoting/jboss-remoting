@@ -6,16 +6,16 @@ import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
 
 /**
  *
  */
-public abstract class JrppRequestMessage extends JrppContextMessage implements Serializable {
-    private static final long serialVersionUID = 1L;
+public abstract class JrppRequestMessage extends JrppContextMessage {
 
-    protected RequestIdentifier requestIdentifier;
+    protected JrppRequestIdentifier requestIdentifier;
 
-    protected JrppRequestMessage(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier) {
+    protected JrppRequestMessage(final JrppContextIdentifier contextIdentifier, final JrppRequestIdentifier requestIdentifier) {
         super(contextIdentifier);
         this.requestIdentifier = requestIdentifier;
     }
@@ -25,7 +25,7 @@ public abstract class JrppRequestMessage extends JrppContextMessage implements S
         requestIdentifier = new JrppRequestIdentifier(ois);
     }
 
-    public final RequestIdentifier getRequestIdentifier() {
+    public final JrppRequestIdentifier getRequestIdentifier() {
         return requestIdentifier;
     }
 }

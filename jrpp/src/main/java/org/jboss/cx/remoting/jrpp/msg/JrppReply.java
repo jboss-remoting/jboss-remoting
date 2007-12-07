@@ -7,14 +7,15 @@ import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.Header;
 import org.jboss.cx.remoting.jrpp.mina.JrppProtocolDecoder;
+import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
 
 /**
  *
  */
-public final class JrppReply extends JrppRequestBodyMessage implements Serializable {
-    private static final long serialVersionUID = 1L;
+public final class JrppReply extends JrppRequestBodyMessage {
 
-    public JrppReply(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Object body, final Header[] headers) {
+    public JrppReply(final JrppContextIdentifier contextIdentifier, final JrppRequestIdentifier requestIdentifier, final Object body, final Header[] headers) {
         super(contextIdentifier, requestIdentifier, body, headers);
     }
 

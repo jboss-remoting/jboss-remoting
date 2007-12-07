@@ -6,16 +6,16 @@ import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppStreamIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
 
 /**
  *
  */
-public abstract class JrppStreamMessage extends JrppContextMessage implements Serializable {
-    private static final long serialVersionUID = 1L;
+public abstract class JrppStreamMessage extends JrppContextMessage {
 
-    private final StreamIdentifier streamIdentifier;
+    private final JrppStreamIdentifier streamIdentifier;
 
-    protected JrppStreamMessage(final ContextIdentifier contextIdentifier, final StreamIdentifier streamIdentifier) {
+    protected JrppStreamMessage(final JrppContextIdentifier contextIdentifier, final JrppStreamIdentifier streamIdentifier) {
         super(contextIdentifier);
         this.streamIdentifier = streamIdentifier;
     }
@@ -25,7 +25,7 @@ public abstract class JrppStreamMessage extends JrppContextMessage implements Se
         streamIdentifier = new JrppStreamIdentifier(ois);
     }
 
-    public final StreamIdentifier getStreamIdentifier() {
+    public final JrppStreamIdentifier getStreamIdentifier() {
         return streamIdentifier;
     }
 }

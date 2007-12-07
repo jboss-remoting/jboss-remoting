@@ -5,15 +5,16 @@ import java.io.ObjectInputStream;
 import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppStreamIdentifier;
 
 /**
  *
  */
-public final class JrppStreamDataMessage extends JrppStreamMessage implements Serializable {
-    private static final long serialVersionUID = 1L;
+public final class JrppStreamDataMessage extends JrppStreamMessage {
     private final Object data;
 
-    public JrppStreamDataMessage(final ContextIdentifier contextIdentifier, final StreamIdentifier streamIdentifier, final Object data) {
+    public JrppStreamDataMessage(final JrppContextIdentifier contextIdentifier, final JrppStreamIdentifier streamIdentifier, final Object data) {
         super(contextIdentifier, streamIdentifier);
         this.data = data;
     }

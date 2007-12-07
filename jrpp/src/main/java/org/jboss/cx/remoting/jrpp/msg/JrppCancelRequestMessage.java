@@ -5,15 +5,16 @@ import java.io.ObjectInputStream;
 import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
 
 /**
  *
  */
-public final class JrppCancelRequestMessage extends JrppRequestMessage implements Serializable {
-    private static final long serialVersionUID = 1L;
+public final class JrppCancelRequestMessage extends JrppRequestMessage {
     private final boolean mayInterrupt;
 
-    public JrppCancelRequestMessage(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final boolean mayInterrupt) {
+    public JrppCancelRequestMessage(final JrppContextIdentifier contextIdentifier, final JrppRequestIdentifier requestIdentifier, final boolean mayInterrupt) {
         super(contextIdentifier, requestIdentifier);
         this.mayInterrupt = mayInterrupt;
     }

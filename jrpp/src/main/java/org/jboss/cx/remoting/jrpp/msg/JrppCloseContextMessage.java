@@ -4,14 +4,14 @@ import java.io.Serializable;
 import java.io.ObjectInputStream;
 import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
 
 /**
  *
  */
-public final class JrppCloseContextMessage extends JrppContextMessage implements Serializable {
-    private static final long serialVersionUID = 1L;
+public final class JrppCloseContextMessage extends JrppContextMessage {
 
-    public JrppCloseContextMessage(final ContextIdentifier contextIdentifier) {
+    public JrppCloseContextMessage(final JrppContextIdentifier contextIdentifier) {
         super(contextIdentifier);
     }
 

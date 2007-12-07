@@ -14,7 +14,7 @@ import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Request;
-import org.jboss.cx.remoting.Header;
+//import org.jboss.cx.remoting.Header;
 import org.jboss.cx.remoting.jrpp.msg.JrppCloseServiceMessage;
 import org.jboss.cx.remoting.jrpp.msg.JrppCloseContextMessage;
 import org.jboss.cx.remoting.jrpp.msg.JrppMessageVisitorIoHandler;
@@ -80,24 +80,24 @@ public final class JrppConnection {
         return protocolContext;
     }
 
-    private static final Header[] emptyHeaders = new Header[0];
+//    private static final Header[] emptyHeaders = new Header[0];
 
     public final class RemotingProtocolHandler implements ProtocolHandler {
 
         public ContextIdentifier openContext(ServiceIdentifier serviceIdentifier) throws IOException {
-            return new JrppContextIdentifier(identifierManager);
+            return new JrppContextIdentifier(identifierManager.getIdentifier());
         }
 
         public RequestIdentifier openRequest(ContextIdentifier contextIdentifier) throws IOException {
-            return new JrppRequestIdentifier(identifierManager);
+            return new JrppRequestIdentifier(identifierManager.getIdentifier());
         }
 
         public StreamIdentifier openStream() throws IOException {
-            return new JrppStreamIdentifier(identifierManager);
+            return new JrppStreamIdentifier(identifierManager.getIdentifier());
         }
 
         public ServiceIdentifier openService() throws IOException {
-            return new JrppServiceIdentifier(identifierManager);
+            return new JrppServiceIdentifier(identifierManager.getIdentifier());
         }
 
         public void closeSession() throws IOException {
@@ -107,17 +107,13 @@ public final class JrppConnection {
 
         public void closeService(ServiceIdentifier serviceIdentifier) throws IOException {
             ioSession.write(new JrppCloseServiceMessage(serviceIdentifier));
-            ((JrppServiceIdentifier)serviceIdentifier).close();
         }
 
         public void closeContext(ContextIdentifier contextIdentifier) throws IOException {
-            ioSession.write(new JrppCloseContextMessage(contextIdentifier));
-            ((JrppContextIdentifier)contextIdentifier).close();
+            ioSession.write(new JrppCloseContextMessage((JrppContextIdentifier)contextIdentifier));
         }
 
         public void closeStream(StreamIdentifier streamIdentifier) throws IOException {
-            ioSession.write(new JrppCloseStreamMessage(contextIdentifier, streamIdentifier));
-            ((JrppStreamIdentifier)streamIdentifier).close();
         }
 
         public void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) throws IOException {
@@ -129,29 +125,24 @@ public final class JrppConnection {
         }
 
         public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) throws IOException {
-            final Header[] headers = reply.getHeaders().toArray(emptyHeaders);
-            ioSession.write(new JrppReply(remoteContextIdentifier, requestIdentifier, reply.getBody(), headers));
         }
 
         public void sendException(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) throws IOException {
-            ioSession.write(new JrppExceptionMessage(remoteContextIdentifier, requestIdentifier, exception));
         }
 
         public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request) throws IOException {
-            final Header[] headers = request.getHeaders().toArray(emptyHeaders);
-            ioSession.write(new JrppRequest(contextIdentifier, requestIdentifier, request.getBody(), headers));
         }
 
         public void sendCancelAcknowledge(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier) throws IOException {
-            ioSession.write(new JrppCancelAcknowledgeMessage(remoteContextIdentifier, requestIdentifier));
+        }
+
+        public void sendServiceTerminate(ServiceIdentifier remoteServiceIdentifier) throws IOException {
         }
 
         public void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException {
-            ioSession.write(new JrppCancelRequestMessage(contextIdentifier, requestIdentifier, mayInterrupt));
         }
 
         public void sendStreamData(StreamIdentifier streamIdentifier, Object data) throws IOException {
-            ioSession.write(new JrppStreamDataMessage(contextIdentifier, streamIdentifier, data));
         }
     }
 
@@ -171,7 +162,6 @@ public final class JrppConnection {
 
         public void exceptionCaught(Throwable throwable) {
             // todo log exception
-            protocolContext.failSession();
         }
 
         public void messageSent(Object object) {

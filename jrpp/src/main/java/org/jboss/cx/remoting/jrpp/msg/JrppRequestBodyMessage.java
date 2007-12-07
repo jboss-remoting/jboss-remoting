@@ -6,17 +6,18 @@ import java.io.IOException;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.Header;
+import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
 
 /**
  *
  */
-public abstract class JrppRequestBodyMessage extends JrppRequestMessage implements Serializable {
-    private static final long serialVersionUID = 1L;
+public abstract class JrppRequestBodyMessage extends JrppRequestMessage {
 
     private final Object body;
     private final Header[] headers;
 
-    protected JrppRequestBodyMessage(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Object body, final Header[] headers) {
+    protected JrppRequestBodyMessage(final JrppContextIdentifier contextIdentifier, final JrppRequestIdentifier requestIdentifier, final Object body, final Header[] headers) {
         super(contextIdentifier, requestIdentifier);
         this.body = body;
         this.headers = headers;
