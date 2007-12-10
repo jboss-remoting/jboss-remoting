@@ -3,7 +3,10 @@ package org.jboss.cx.remoting.jrpp;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoBuffer;
+import org.apache.mina.common.AttributeKey;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
+import org.apache.mina.filter.sasl.SaslServerFilter;
+import org.apache.mina.filter.sasl.SaslClientFilter;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
@@ -18,6 +21,8 @@ import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.Header;
 import org.jboss.cx.remoting.BasicMessage;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.core.AtomicStateMachine;
 import org.jboss.cx.remoting.jrpp.id.IdentifierManager;
 import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
@@ -34,10 +39,19 @@ import java.io.ObjectInputStream;
 import java.util.Collection;
 import java.util.Set;
 
+import javax.security.sasl.SaslException;
+
 /**
  *
  */
 public final class JrppConnection {
+    /**
+     * The protocol version used by this version of Remoting.  Value is transmitted as an unsigned short.
+     */
+    private static final int PROTOCOL_VERSION = 0x0000;
+
+    private static final AttributeKey JRPP_CONNECTION = new AttributeKey(JrppConnection.class, "jrppConnection");
+
     private final IoSession ioSession;
     private final ProtocolHandler protocolHandler;
     private final ProtocolContext protocolContext;
@@ -45,6 +59,42 @@ public final class JrppConnection {
     private final IdentifierManager identifierManager;
     private final JrppObjectOutputStream objectOutputStream;
 
+    /**
+     * The negotiated protocol version.  Value is set to {@code min(PROTOCOL_VERSION, remote PROTOCOL_VERSION)}.
+     */
+    @SuppressWarnings ({"UnusedDeclaration"})
+    private int protocolVersion;
+
+    private enum State {
+        /** Client side, waiting to receive protocol version info */
+        AWAITING_SERVER_VERSION,
+        /** Server side, waiting to receive protocol version info */
+        AWAITING_CLIENT_VERSION,
+        /** Client side, phase 1 (server auths client) */
+        AWAITING_SERVER_CHALLENGE,
+        /** Server side, phase 1 (server auths client) */
+        AWAITING_CLIENT_RESPONSE,
+        /** Client side, phase 2 (client auths server) */
+        AWAITING_SERVER_RESPONSE,
+        /** Server side, phase 2 (client auths server) */
+        AWAITING_CLIENT_CHALLENGE,
+        /** Connection is up */
+        UP,
+        /** Session is shutting down or closed */
+        CLOSED,
+    }
+
+    private AtomicStateMachine<State> currentState;
+
+    private static final Logger log = Logger.getLogger(JrppConnection.class);
+
+    /**
+     * Client side.
+     *
+     * @param ioSession
+     * @param protocolContext
+     * @throws IOException
+     */
     public JrppConnection(final IoSession ioSession, final ProtocolContext protocolContext) throws IOException {
         this.ioSession = ioSession;
         this.protocolContext = protocolContext;
@@ -53,8 +103,17 @@ public final class JrppConnection {
         ioHandler = new IoHandlerImpl();
         identifierManager = new IdentifierManager();
         objectOutputStream = new JrppObjectOutputStream(new BufferedOutputStream(new IoSessionOutputStream()), false);
+        currentState = AtomicStateMachine.start(State.AWAITING_SERVER_CHALLENGE);
+        ioSession.setAttribute(JRPP_CONNECTION, this);
     }
 
+    /**
+     * Server side.
+     *
+     * @param ioSession
+     * @param serverContext
+     * @throws IOException
+     */
     public JrppConnection(final IoSession ioSession, final ProtocolServerContext serverContext) throws IOException {
         this.ioSession = ioSession;
 
@@ -64,6 +123,12 @@ public final class JrppConnection {
         protocolContext = serverContext.establishSession(protocolHandler);
         identifierManager = new IdentifierManager();
         objectOutputStream = new JrppObjectOutputStream(new IoSessionOutputStream(), false);
+        currentState = AtomicStateMachine.start(State.AWAITING_CLIENT_RESPONSE);
+        ioSession.setAttribute(JRPP_CONNECTION, this);
+    }
+
+    public static JrppConnection getConnection(IoSession ioSession) {
+        return (JrppConnection) ioSession.getAttribute(JRPP_CONNECTION);
     }
 
     public IoSession getIoSession() {
@@ -82,7 +147,60 @@ public final class JrppConnection {
         return protocolContext;
     }
 
-    private static final Header[] emptyHeaders = new Header[0];
+    private void write(MessageType messageType) throws IOException {
+        objectOutputStream.writeByte(messageType.ordinal());
+    }
+
+    private void write(ServiceIdentifier serviceIdentifier) throws IOException {
+        objectOutputStream.writeShort(((JrppServiceIdentifier)serviceIdentifier).getId());
+    }
+
+    private void write(ContextIdentifier contextIdentifier) throws IOException {
+        objectOutputStream.writeShort(((JrppContextIdentifier)contextIdentifier).getId());
+    }
+
+    private void write(StreamIdentifier streamIdentifier) throws IOException {
+        objectOutputStream.writeShort(((JrppStreamIdentifier)streamIdentifier).getId());
+    }
+
+    private void write(RequestIdentifier requestIdentifier) throws IOException {
+        objectOutputStream.writeShort(((JrppRequestIdentifier)requestIdentifier).getId());
+    }
+
+    private void write(BasicMessage<?> message) throws IOException {
+        objectOutputStream.writeObject(message.getBody());
+        final Collection<Header> headers = message.getHeaders();
+        objectOutputStream.writeInt(headers.size());
+        for (Header header : headers) {
+            objectOutputStream.writeUTF(header.getName());
+            objectOutputStream.writeUTF(header.getValue());
+        }
+    }
+
+    public void sendResponse(final byte[] rawMsgData) throws IOException {
+        write(MessageType.SASL_RESPONSE);
+        objectOutputStream.write(rawMsgData);
+        objectOutputStream.flush();
+    }
+
+    public void sendChallenge(final byte[] rawMsgData) throws IOException {
+        write(MessageType.SASL_CHALLENGE);
+        objectOutputStream.write(rawMsgData);
+        objectOutputStream.flush();
+    }
+
+    public boolean waitForUp() {
+        while (! currentState.in(State.UP, State.CLOSED)) {
+            currentState.waitUninterruptiplyForAny();
+        }
+        return currentState.in(State.UP);
+    }
+
+    private void close() {
+        currentState.transition(State.CLOSED);
+        ioSession.close();
+        protocolContext.closeSession();
+    }
 
     private final class JrppObjectInputStream extends JBossObjectInputStream {
         public JrppObjectInputStream(final InputStream is, final ClassLoader loader) throws IOException {
@@ -136,13 +254,14 @@ public final class JrppConnection {
 
         public void flush() throws IOException {
             if (target.position() > 0) {
-                ioSession.write(target.flip());
+                ioSession.write(target.flip().skip(4));
                 allocate();
             }
         }
 
         private void allocate() {
             target = IoBuffer.allocate(2048);
+            target.skip(4);
         }
     }
 
@@ -165,53 +284,34 @@ public final class JrppConnection {
         }
 
         public void closeSession() throws IOException {
-            // todo - maybe we don't need to wait?
-            ioSession.close().awaitUninterruptibly();
-        }
-
-        private void write(MessageType messageType) throws IOException {
-            objectOutputStream.writeByte(messageType.ordinal());
-        }
-
-        private void write(ServiceIdentifier serviceIdentifier) throws IOException {
-            objectOutputStream.writeShort(((JrppServiceIdentifier)serviceIdentifier).getId());
-        }
-
-        private void write(ContextIdentifier contextIdentifier) throws IOException {
-            objectOutputStream.writeShort(((JrppContextIdentifier)contextIdentifier).getId());
-        }
-
-        private void write(StreamIdentifier streamIdentifier) throws IOException {
-            objectOutputStream.writeShort(((JrppStreamIdentifier)streamIdentifier).getId());
-        }
-
-        private void write(RequestIdentifier requestIdentifier) throws IOException {
-            objectOutputStream.writeShort(((JrppRequestIdentifier)requestIdentifier).getId());
-        }
-
-        private void write(BasicMessage<?> message) throws IOException {
-            objectOutputStream.writeObject(message.getBody());
-            final Collection<Header> headers = message.getHeaders();
-            objectOutputStream.writeInt(headers.size());
-            for (Header header : headers) {
-                objectOutputStream.writeUTF(header.getName());
-                objectOutputStream.writeUTF(header.getValue());
+            if (currentState.transition(State.CLOSED)) {
+                // todo - maybe we don't need to wait?
+                ioSession.close().awaitUninterruptibly();
             }
         }
 
         public void closeService(ServiceIdentifier serviceIdentifier) throws IOException {
+            if (! currentState.in(State.UP)) {
+                throw new IllegalStateException("JrppConnection is not in the UP state!");
+            }
             write(MessageType.CLOSE_SERVICE);
             write(serviceIdentifier);
             objectOutputStream.flush();
         }
 
         public void closeContext(ContextIdentifier contextIdentifier) throws IOException {
+            if (! currentState.in(State.UP)) {
+                throw new IllegalStateException("JrppConnection is not in the UP state!");
+            }
             write(MessageType.CLOSE_CONTEXT);
             write(contextIdentifier);
             objectOutputStream.flush();
         }
 
         public void closeStream(StreamIdentifier streamIdentifier) throws IOException {
+            if (! currentState.in(State.UP)) {
+                throw new IllegalStateException("JrppConnection is not in the UP state!");
+            }
             if (true /* todo if close not already sent */) {
                 // todo mark as sent or remove from table
                 write(MessageType.CLOSE_STREAM);
@@ -221,6 +321,9 @@ public final class JrppConnection {
         }
 
         public void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) throws IOException {
+            if (! currentState.in(State.UP)) {
+                throw new IllegalStateException("JrppConnection is not in the UP state!");
+            }
             write(MessageType.SERVICE_REQUEST);
             write(serviceIdentifier);
             objectOutputStream.writeObject(locator.getRequestType());
@@ -300,7 +403,11 @@ public final class JrppConnection {
         public void sessionCreated() {
         }
 
-        public void sessionOpened() {
+        public void sessionOpened() throws IOException {
+            // send version info
+            write(MessageType.VERSION);
+            objectOutputStream.writeShort(PROTOCOL_VERSION);
+            objectOutputStream.flush();
         }
 
         public void sessionClosed() {
@@ -343,97 +450,221 @@ public final class JrppConnection {
             IoBuffer buf = (IoBuffer) message;
             final JrppObjectInputStream ois = new JrppObjectInputStream(buf.asInputStream(), null /* todo */);
             final MessageType type = MessageType.values()[ois.readByte() & 0xff];
-            switch (type) {
-                case CANCEL_ACK: {
-                    final ContextIdentifier contextIdentifier = readCtxtId(ois);
-                    final RequestIdentifier requestIdentifier = readReqId(ois);
-                    protocolContext.receiveCancelAcknowledge(contextIdentifier, requestIdentifier);
-                    break;
-                }
-                case CANCEL_REQ: {
-                    final ContextIdentifier contextIdentifier = readCtxtId(ois);
-                    final RequestIdentifier requestIdentifier = readReqId(ois);
-                    final boolean mayInterrupt = ois.readBoolean();
-                    protocolContext.receiveCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
-                    break;
-                }
-                case CLOSE_CONTEXT: {
-                    final ContextIdentifier contextIdentifier = readCtxtId(ois);
-                    protocolContext.closeContext(contextIdentifier);
-                    break;
-                }
-                case CLOSE_SERVICE: {
-                    final ServiceIdentifier serviceIdentifier = readSvcId(ois);
-                    protocolContext.closeService(serviceIdentifier);
-                    break;
-                }
-                case CLOSE_STREAM: {
-                    final StreamIdentifier streamIdentifier = readStrId(ois);
-                    protocolContext.closeStream(streamIdentifier);
-                    break;
-                }
-                case EXCEPTION: {
-                    final ContextIdentifier contextIdentifier = readCtxtId(ois);
-                    final RequestIdentifier requestIdentifier = readReqId(ois);
-                    final RemoteExecutionException exception = (RemoteExecutionException) ois.readObject();
-                    protocolContext.receiveException(contextIdentifier, requestIdentifier, exception);
-                    break;
-                }
-                case REPLY: {
-                    final ContextIdentifier contextIdentifier = readCtxtId(ois);
-                    final RequestIdentifier requestIdentifier = readReqId(ois);
-                    final Reply<?> reply = protocolContext.createReply(ois.readObject());
-                    readHeaders(ois, reply);
-                    protocolContext.receiveReply(contextIdentifier, requestIdentifier, reply);
-                    break;
-                }
-                case REQUEST: {
-                    final ContextIdentifier contextIdentifier = readCtxtId(ois);
-                    final RequestIdentifier requestIdentifier = readReqId(ois);
-                    final Request<?> request = protocolContext.createRequest(ois.readObject());
-                    readHeaders(ois, request);
-                    protocolContext.receiveRequest(contextIdentifier, requestIdentifier, request);
-                    break;
-                }
-                case SERVICE_ACTIVATE: {
-                    final ServiceIdentifier serviceIdentifier = readSvcId(ois);
-                    protocolContext.receiveServiceActivate(serviceIdentifier);
-                    break;
-                }
-                case SERVICE_REQUEST: {
-                    final ServiceIdentifier serviceIdentifier = readSvcId(ois);
-                    final Class<?> requestType = (Class<?>) ois.readObject();
-                    final Class<?> replyType = (Class<?>) ois.readObject();
-                    final String endpointName = ois.readUTF();
-                    final String serviceType = ois.readUTF();
-                    final String serviceGroupName = ois.readUTF();
-                    final Set<String> interceptors = CollectionUtil.hashSet();
-                    int c = ois.readInt();
-                    for (int i = 0; i < c; i ++) {
-                        interceptors.add(ois.readUTF());
+            OUT: switch (currentState.getState()) {
+                case AWAITING_CLIENT_VERSION: {
+                    switch (type) {
+                        case VERSION: {
+                            protocolVersion = Math.min(ois.readShort() & 0xffff, PROTOCOL_VERSION);
+                            SaslServerFilter saslServerFilter = null; // todo
+                            if (saslServerFilter.sendInitialChallenge(ioSession)) {
+                                // complete; now client may optionally auth server
+                                currentState.requireTransition(State.AWAITING_CLIENT_VERSION, State.AWAITING_CLIENT_CHALLENGE);
+                            } else {
+                                currentState.requireTransition(State.AWAITING_CLIENT_VERSION, State.AWAITING_CLIENT_RESPONSE);
+                            }
+                            return;
+                        }
+                        default: break OUT;
                     }
-                    final ServiceLocator<?, ?> locator = ServiceLocator.DEFAULT
-                            .setRequestType(requestType)
-                            .setReplyType(replyType)
-                            .setEndpointName(endpointName)
-                            .setServiceType(serviceType)
-                            .setServiceGroupName(serviceGroupName)
-                            .setAvailableInterceptors(interceptors);
-                    protocolContext.receiveServiceRequest(serviceIdentifier, locator);
-                    break;
                 }
-                case SERVICE_TERMINATE: {
-                    final ServiceIdentifier serviceIdentifier = readSvcId(ois);
-                    protocolContext.receiveServiceTerminate(serviceIdentifier);
-                    break;
+                case AWAITING_SERVER_VERSION: {
+                    switch (type) {
+                        case VERSION: {
+                            protocolVersion = Math.min(ois.readShort() & 0xffff, PROTOCOL_VERSION);
+                            currentState.requireTransition(State.AWAITING_SERVER_VERSION, State.AWAITING_SERVER_CHALLENGE);
+                            return;
+                        }
+                        default: break OUT;
+                    }
                 }
-                case STREAM_DATA: {
-                    final StreamIdentifier streamIdentifier = readStrId(ois);
-                    final Object data = ois.readObject();
-                    protocolContext.receiveStreamData(streamIdentifier, data);
-                    break;
+                case AWAITING_CLIENT_RESPONSE: {
+                    switch (type) {
+                        case SASL_RESPONSE: {
+                            byte[] bytes = new byte[buf.remaining()];
+                            ois.readFully(bytes);
+                            SaslServerFilter saslServerFilter = null; // todo
+                            try {
+                                if (saslServerFilter.handleSaslResponse(ioSession, bytes)) {
+                                    write(MessageType.AUTH_SUCCESS);
+                                    objectOutputStream.flush();
+                                    currentState.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.AWAITING_CLIENT_CHALLENGE);
+                                }
+                            } catch (SaslException ex) {
+                                write(MessageType.AUTH_FAILED);
+                                objectOutputStream.flush();
+                                close();
+                                log.info("Client authentication failed (" + ex.getMessage() + ")");
+                            }
+                            return;
+                        }
+                        default: break OUT;
+                    }
+                }
+                case AWAITING_SERVER_CHALLENGE: {
+                    switch (type) {
+                        case SASL_CHALLENGE: {
+                            byte[] bytes = new byte[buf.remaining()];
+                            ois.readFully(bytes);
+                            SaslClientFilter saslClientFilter = null; // todo
+                            saslClientFilter.handleSaslChallenge(ioSession, bytes);
+                            return;
+                        }
+                        case AUTH_SUCCESS: {
+                            currentState.requireTransition(State.AWAITING_SERVER_CHALLENGE, State.AWAITING_SERVER_RESPONSE);
+                            SaslServerFilter saslServerFilter = null; // todo
+                            saslServerFilter.sendInitialChallenge(ioSession);
+                            return;
+                        }
+                        case AUTH_FAILED: {
+                            log.info("JRPP client rejected authentication");
+                            close();
+                            return;
+                        }
+                        default: break OUT;
+                    }
+                }
+                case AWAITING_CLIENT_CHALLENGE: {
+                    switch (type) {
+                        case SASL_CHALLENGE: {
+                            byte[] bytes = new byte[buf.remaining()];
+                            ois.readFully(bytes);
+                            SaslClientFilter saslClientFilter = null; // todo
+                            saslClientFilter.handleSaslChallenge(ioSession, bytes);
+                            return;
+                        }
+                        case AUTH_SUCCESS: {
+                            currentState.requireTransition(State.AWAITING_CLIENT_CHALLENGE, State.UP);
+                            SaslServerFilter saslServerFilter = null; // todo
+                            saslServerFilter.sendInitialChallenge(ioSession);
+                            return;
+                        }
+                        case AUTH_FAILED: {
+                            log.info("JRPP client rejected authentication");
+                            close();
+                            return;
+                        }
+                        default: break OUT;
+                    }
+                }
+                case AWAITING_SERVER_RESPONSE: {
+                    switch (type) {
+                        case SASL_RESPONSE: {
+                            byte[] bytes = new byte[buf.remaining()];
+                            ois.readFully(bytes);
+                            SaslServerFilter saslServerFilter = null; // todo
+                            try {
+                                if (saslServerFilter.handleSaslResponse(ioSession, bytes)) {
+                                    write(MessageType.AUTH_SUCCESS);
+                                    objectOutputStream.flush();
+                                    currentState.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.UP);
+                                }
+                            } catch (SaslException ex) {
+                                write(MessageType.AUTH_FAILED);
+                                objectOutputStream.flush();
+                                close();
+                                log.info("Server authentication failed (" + ex.getMessage() + ")");
+                            }
+                            return;
+                        }
+                        default: break OUT;
+                    }
+                }
+                case UP: {
+                    switch (type) {
+                        case CANCEL_ACK: {
+                            final ContextIdentifier contextIdentifier = readCtxtId(ois);
+                            final RequestIdentifier requestIdentifier = readReqId(ois);
+                            protocolContext.receiveCancelAcknowledge(contextIdentifier, requestIdentifier);
+                            return;
+                        }
+                        case CANCEL_REQ: {
+                            final ContextIdentifier contextIdentifier = readCtxtId(ois);
+                            final RequestIdentifier requestIdentifier = readReqId(ois);
+                            final boolean mayInterrupt = ois.readBoolean();
+                            protocolContext.receiveCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
+                            return;
+                        }
+                        case CLOSE_CONTEXT: {
+                            final ContextIdentifier contextIdentifier = readCtxtId(ois);
+                            protocolContext.closeContext(contextIdentifier);
+                            return;
+                        }
+                        case CLOSE_SERVICE: {
+                            final ServiceIdentifier serviceIdentifier = readSvcId(ois);
+                            protocolContext.closeService(serviceIdentifier);
+                            return;
+                        }
+                        case CLOSE_STREAM: {
+                            final StreamIdentifier streamIdentifier = readStrId(ois);
+                            protocolContext.closeStream(streamIdentifier);
+                            return;
+                        }
+                        case EXCEPTION: {
+                            final ContextIdentifier contextIdentifier = readCtxtId(ois);
+                            final RequestIdentifier requestIdentifier = readReqId(ois);
+                            final RemoteExecutionException exception = (RemoteExecutionException) ois.readObject();
+                            protocolContext.receiveException(contextIdentifier, requestIdentifier, exception);
+                            return;
+                        }
+                        case REPLY: {
+                            final ContextIdentifier contextIdentifier = readCtxtId(ois);
+                            final RequestIdentifier requestIdentifier = readReqId(ois);
+                            final Reply<?> reply = protocolContext.createReply(ois.readObject());
+                            readHeaders(ois, reply);
+                            protocolContext.receiveReply(contextIdentifier, requestIdentifier, reply);
+                            return;
+                        }
+                        case REQUEST: {
+                            final ContextIdentifier contextIdentifier = readCtxtId(ois);
+                            final RequestIdentifier requestIdentifier = readReqId(ois);
+                            final Request<?> request = protocolContext.createRequest(ois.readObject());
+                            readHeaders(ois, request);
+                            protocolContext.receiveRequest(contextIdentifier, requestIdentifier, request);
+                            return;
+                        }
+                        case SERVICE_ACTIVATE: {
+                            final ServiceIdentifier serviceIdentifier = readSvcId(ois);
+                            protocolContext.receiveServiceActivate(serviceIdentifier);
+                            return;
+                        }
+                        case SERVICE_REQUEST: {
+                            final ServiceIdentifier serviceIdentifier = readSvcId(ois);
+                            final Class<?> requestType = (Class<?>) ois.readObject();
+                            final Class<?> replyType = (Class<?>) ois.readObject();
+                            final String endpointName = ois.readUTF();
+                            final String serviceType = ois.readUTF();
+                            final String serviceGroupName = ois.readUTF();
+                            final Set<String> interceptors = CollectionUtil.hashSet();
+                            int c = ois.readInt();
+                            for (int i = 0; i < c; i ++) {
+                                interceptors.add(ois.readUTF());
+                            }
+                            final ServiceLocator<?, ?> locator = ServiceLocator.DEFAULT
+                                    .setRequestType(requestType)
+                                    .setReplyType(replyType)
+                                    .setEndpointName(endpointName)
+                                    .setServiceType(serviceType)
+                                    .setServiceGroupName(serviceGroupName)
+                                    .setAvailableInterceptors(interceptors);
+                            protocolContext.receiveServiceRequest(serviceIdentifier, locator);
+                            return;
+                        }
+                        case SERVICE_TERMINATE: {
+                            final ServiceIdentifier serviceIdentifier = readSvcId(ois);
+                            protocolContext.receiveServiceTerminate(serviceIdentifier);
+                            return;
+                        }
+                        case STREAM_DATA: {
+                            final StreamIdentifier streamIdentifier = readStrId(ois);
+                            final Object data = ois.readObject();
+                            protocolContext.receiveStreamData(streamIdentifier, data);
+                            return;
+                        }
+                        default: break OUT;
+                    }
                 }
             }
+            throw new IllegalStateException("Got message " + type + " during " + currentState);
         }
 
         public void messageSent(Object object) {
@@ -444,6 +675,11 @@ public final class JrppConnection {
      * Keep elements in order.  If an element is to be deleted, replace it with a placeholder.
      */
     private enum MessageType {
+        VERSION,
+        SASL_CHALLENGE,
+        SASL_RESPONSE,
+        AUTH_SUCCESS,
+        AUTH_FAILED,
         CANCEL_ACK,
         CANCEL_REQ,
         CLOSE_CONTEXT,

@@ -25,6 +25,7 @@ import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.filter.sasl.SaslServerFactory;
 import org.apache.mina.filter.sasl.SaslClientFactory;
 import org.apache.mina.filter.sasl.SaslClientFilter;
+import org.apache.mina.filter.sasl.SaslMessageSender;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.URI;
@@ -46,6 +47,8 @@ public final class JrppProtocolSupport {
     private final ProtocolServerContext serverContext;
     private final IoHandler ioHandler = new SingleSessionIoHandlerDelegate(new SessionHandlerFactory());
     private final Set<IoAcceptor> ioAcceptors = CollectionUtil.hashSet();
+    private final SaslMessageSender clientSender = new SaslClientSender();
+    private final SaslMessageSender serverSender = new SaslServerSender();
 
     private static final AttributeKey SERVER_CALLBACK_HANDLER = new AttributeKey(JrppProtocolSupport.class, "serverCallbackHandler");
     private static final AttributeKey CLIENT_CALLBACK_HANDLER = new AttributeKey(JrppProtocolSupport.class, "clientCallbackHandler");
@@ -64,8 +67,8 @@ public final class JrppProtocolSupport {
         ioAcceptor.setDefaultLocalAddress(address);
         ioAcceptor.setHandler(ioHandler);
         ioAcceptor.getFilterChain().addLast("framing filter", new FramingIoFilter());
-        ioAcceptor.getFilterChain().addLast("SASL server filter", new SaslServerFilter(new SaslServerMaker(), null));
-        ioAcceptor.getFilterChain().addLast("SASL client filter", new SaslClientFilter(new SaslClientMaker(), null));
+        ioAcceptor.getFilterChain().addLast("SASL server filter", new SaslServerFilter(new SaslServerMaker(), clientSender));
+        ioAcceptor.getFilterChain().addLast("SASL client filter", new SaslClientFilter(new SaslClientMaker(), serverSender));
         ioAcceptor.bind();
         ioAcceptors.add(ioAcceptor);
     }
@@ -94,6 +97,17 @@ public final class JrppProtocolSupport {
         }
     }
 
+    private final class SaslClientSender implements SaslMessageSender {
+        public void sendSaslMessage(IoSession ioSession, byte[] rawMsgData) throws IOException {
+            final JrppConnection connection = JrppConnection.getConnection(ioSession);
+            connection.sendResponse(rawMsgData);
+        }
+    }
+
+    private final class SaslServerSender implements SaslMessageSender {
+        public void sendSaslMessage(IoSession ioSession, byte[] rawMsgData) throws IOException {
+        }
+    }
 
     /**
      * Protocol handler factory implementation.  There will ever only be one of these.
@@ -109,8 +123,8 @@ public final class JrppProtocolSupport {
         public ProtocolHandlerFactoryImpl() {
             connector = new NioSocketConnector();
             connector.getFilterChain().addLast("framing filter", new FramingIoFilter());
-            connector.getFilterChain().addLast("SASL client filter", new SaslClientFilter(new SaslClientMaker(), null));
-            connector.getFilterChain().addLast("SASL server filter", new SaslServerFilter(new SaslServerMaker(), null));
+            connector.getFilterChain().addLast("SASL client filter", new SaslClientFilter(new SaslClientMaker(), new SaslClientSender()));
+            connector.getFilterChain().addLast("SASL server filter", new SaslServerFilter(new SaslServerMaker(), new SaslServerSender()));
             connector.setHandler(ioHandler);
         }
 
@@ -123,7 +137,12 @@ public final class JrppProtocolSupport {
             // todo - local connect addr
             final InetSocketAddress socketAddress = new InetSocketAddress(remoteUri.getHost(), remoteUri.getPort());
             final ConnectFuture future = connector.connect(socketAddress).awaitUninterruptibly();
-            return new JrppConnection(future.getSession(), context).getProtocolHandler();
+            final JrppConnection jrppConnection = new JrppConnection(future.getSession(), context);
+            if (jrppConnection.waitForUp()) {
+                return jrppConnection.getProtocolHandler();
+            } else {
+                throw new IOException("Failed to initiate a JRPP connection");
+            }
         }
 
         public void close() {

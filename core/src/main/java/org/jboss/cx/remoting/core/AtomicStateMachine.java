@@ -66,6 +66,10 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
+    public synchronized void waitUninterruptiplyForAny() {
+        waitUninterruptiblyForNot(state);
+    }
+
     public synchronized boolean waitFor(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
