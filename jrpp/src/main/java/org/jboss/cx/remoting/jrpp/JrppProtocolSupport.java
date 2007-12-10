@@ -61,7 +61,7 @@ public final class JrppProtocolSupport {
     public void addServer(final SocketAddress address) throws IOException {
         // todo - make the acceptor managable so it can be started and stopped
         final IoAcceptor ioAcceptor = new NioSocketAcceptor();
-        ioAcceptor.setLocalAddress(address);
+        ioAcceptor.setDefaultLocalAddress(address);
         ioAcceptor.setHandler(ioHandler);
         ioAcceptor.getFilterChain().addLast("framing filter", new FramingIoFilter());
         ioAcceptor.getFilterChain().addLast("SASL server filter", new SaslServerFilter(new SaslServerMaker(), null));
