@@ -21,10 +21,20 @@
         <available property="lib.jboss-serialization.exists" file="${lib.jboss-serialization.local}"/>
     </target>
 
-    <target name="lib.jboss-serialization" depends="lib.jboss-serialization-check" unless="lib.jboss-serialization.exists">
+    <target name="lib.jboss-serialization" depends="lib.trove,lib.jboss-serialization-check" unless="lib.jboss-serialization.exists">
         <mkdir dir="${local.repository}/${lib.jboss-serialization.dir}"/>
         <get src="${lib.jboss-serialization.remote}" dest="${lib.jboss-serialization.local}" usetimestamp="true" ignoreerrors="false"/>
         <get src="${remote.license.dir}/${lib.jboss-serialization.license}.txt" dest="${lib.jboss-serialization.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <target name="lib.trove-check">
+        <available property="lib.trove.exists" file="${lib.trove.local}"/>
+    </target>
+
+    <target name="lib.trove" depends="lib.trove-check" unless="lib.trove.exists">
+        <mkdir dir="${local.repository}/${lib.trove.dir}"/>
+        <get src="${lib.trove.remote}" dest="${lib.trove.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.trove.license}.txt" dest="${lib.trove.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- api module -->
