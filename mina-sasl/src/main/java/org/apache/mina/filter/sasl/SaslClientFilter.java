@@ -71,6 +71,26 @@ public final class SaslClientFilter extends AbstractSaslFilter {
     }
 
     /**
+     * Send an initial response to the server to get things rolling.  Useful for protocols where the client initiates
+     * authentication.
+     *
+     * @param ioSession the session
+     * @throws IOException if an error occurs during transmission of the response
+     */
+    public void sendInitialResponse(IoSession ioSession) throws IOException {
+        final SaslClient client = getSaslClient(ioSession);
+        final byte[] response;
+        if (client.hasInitialResponse()) {
+            response = client.evaluateChallenge(new byte[0]);
+        } else {
+            response = new byte[0];
+        }
+        if (response != null) {
+            sendSaslMessage(ioSession, response);
+        }
+    }
+
+    /**
      * Determine whether SASL negotiation is complete for a session.
      *
      * @param ioSession the session

@@ -60,14 +60,31 @@ public final class SaslServerFilter extends AbstractSaslFilter {
      * @param ioSession the session
      * @param response the received response data
      *
+     * @return {@code true} if authentication is complete (no more responses are needed from the client)
+     *
      * @throws IOException if an error occurs during processing of the message, or during the transmission of the next challenge
      */
-    public void handleSaslResponse(IoSession ioSession, byte[] response) throws IOException {
+    public boolean handleSaslResponse(IoSession ioSession, byte[] response) throws IOException {
         final SaslServer server = getSaslServer(ioSession);
         final byte[] challenge = server.evaluateResponse(response);
         if (challenge != null) {
             sendSaslMessage(ioSession, challenge);
         }
+        return server.isComplete();
+    }
+
+    /**
+     * Send an initial challenge.  Useful for protocols where authentication is initiated by the server (rather than
+     * the client).
+     *
+     * @param ioSession the session
+     *
+     * @return {@code true} if authentication is complete (no more responses are needed from the client)
+     *
+     * @throws IOException if an error occurs during processing of the message, or during the transmission of the next challenge
+     */
+    public boolean sendInitialChallenge(IoSession ioSession) throws IOException {
+        return handleSaslResponse(ioSession, new byte[0]);
     }
 
     /**
