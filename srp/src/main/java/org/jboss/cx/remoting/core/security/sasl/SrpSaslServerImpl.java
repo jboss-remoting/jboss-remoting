@@ -121,6 +121,9 @@ public final class SrpSaslServerImpl extends AbstractSrpSaslParticipant implemen
         switch (state) {
             case INITIAL:
                 try {
+                    if (response.length == 0) {
+                        return new byte[0];
+                    }
                     final byte[] bytes = receiveIdentity(response);
                     state = State.RECEIVED_IDENTITY;
                     return bytes;
