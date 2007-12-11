@@ -121,7 +121,9 @@ public final class SaslServerFilter extends AbstractSaslFilter {
     public void onPostRemove(IoFilterChain ioFilterChain, String string, NextFilter nextFilter) throws Exception {
         final IoSession ioSession = ioFilterChain.getSession();
         final SaslServer server = getSaslServer(ioSession);
-        server.dispose();
+        if (server != null) {
+            server.dispose();
+        }
     }
 
     protected byte[] wrap(IoSession ioSession, byte[] data, int offs, int len) throws SaslException {

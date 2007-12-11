@@ -124,7 +124,9 @@ public final class SaslClientFilter extends AbstractSaslFilter {
     public void onPostRemove(IoFilterChain ioFilterChain, String string, NextFilter nextFilter) throws Exception {
         final IoSession ioSession = ioFilterChain.getSession();
         final SaslClient client = getSaslClient(ioSession);
-        client.dispose();
+        if (client != null) {
+            client.dispose();
+        }
     }
 
     protected byte[] wrap(IoSession ioSession, byte[] data, int offs, int len) throws SaslException {
