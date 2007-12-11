@@ -411,7 +411,7 @@ public final class JrppConnection {
         }
 
         public void sessionClosed() {
-            protocolContext.closeSession();
+            close();
         }
 
         public void sessionIdle(IdleStatus idleStatus) {
@@ -419,6 +419,8 @@ public final class JrppConnection {
 
         public void exceptionCaught(Throwable throwable) {
             // todo log exception
+            log.error("Exception from JRPP connection handler", throwable);
+            close();
         }
 
         private void readHeaders(ObjectInputStream ois, BasicMessage<?> msg) throws IOException {
@@ -447,6 +449,7 @@ public final class JrppConnection {
         }
 
         public void messageReceived(Object message) throws Exception {
+            final boolean trace = log.isTrace();
             IoBuffer buf = (IoBuffer) message;
             final JrppObjectInputStream ois = new JrppObjectInputStream(buf.asInputStream(), null /* todo */);
             final MessageType type = MessageType.values()[ois.readByte() & 0xff];
@@ -455,6 +458,9 @@ public final class JrppConnection {
                     switch (type) {
                         case VERSION: {
                             protocolVersion = Math.min(ois.readShort() & 0xffff, PROTOCOL_VERSION);
+                            if (trace) {
+                                log.trace("Server negotiated protocol version " + protocolVersion);
+                            }
                             SaslServerFilter saslServerFilter = null; // todo
                             if (saslServerFilter.sendInitialChallenge(ioSession)) {
                                 // complete; now client may optionally auth server
@@ -471,6 +477,9 @@ public final class JrppConnection {
                     switch (type) {
                         case VERSION: {
                             protocolVersion = Math.min(ois.readShort() & 0xffff, PROTOCOL_VERSION);
+                            if (trace) {
+                                log.trace("Client negotiated protocol version " + protocolVersion);
+                            }
                             currentState.requireTransition(State.AWAITING_SERVER_VERSION, State.AWAITING_SERVER_CHALLENGE);
                             return;
                         }
@@ -480,6 +489,9 @@ public final class JrppConnection {
                 case AWAITING_CLIENT_RESPONSE: {
                     switch (type) {
                         case SASL_RESPONSE: {
+                            if (trace) {
+                                log.trace("Recevied SASL response from client");
+                            }
                             byte[] bytes = new byte[buf.remaining()];
                             ois.readFully(bytes);
                             SaslServerFilter saslServerFilter = null; // todo
@@ -693,5 +705,4 @@ public final class JrppConnection {
         SERVICE_TERMINATE,
         STREAM_DATA,
     }
-
 }
