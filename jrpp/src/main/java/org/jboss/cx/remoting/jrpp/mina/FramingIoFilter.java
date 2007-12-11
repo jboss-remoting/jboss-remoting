@@ -7,6 +7,8 @@ import org.apache.mina.common.AttributeKey;
 import org.apache.mina.common.IoBuffer;
 import org.apache.mina.common.IoBufferWrapper;
 import org.apache.mina.common.WriteRequestWrapper;
+import org.apache.mina.common.IoFilterChain;
+import org.apache.mina.common.IoFilter;
 
 /**
  *
@@ -80,6 +82,11 @@ public final class FramingIoFilter extends IoFilterAdapter {
 
     private Framer getFramer(IoSession session) {
         return (Framer) session.getAttribute(FRAMER_KEY);
+    }
+
+    public void onPreAdd(IoFilterChain parent, String name, NextFilter nextFilter) throws Exception {
+        final IoSession session = parent.getSession();
+        session.setAttribute(FRAMER_KEY, new Framer(session));
     }
 
     public void messageReceived(NextFilter nextFilter, IoSession session, Object message) throws Exception {
