@@ -58,19 +58,13 @@ public final class FramingIoFilter extends IoFilterAdapter {
                             target.put(buffer);
                             return;
                         } else {
-                            target.put(consume(buffer, target.remaining()));
+                            target.put(buffer.getSlice(target.remaining()));
                             nextFilter.messageReceived(session, target);
                             state = State.INITIAL;
                             break;
                         }
                 }
             }
-        }
-
-        private IoBuffer consume(IoBuffer buffer, int cnt) {
-            final IoBuffer slice = buffer.duplicate().limit(buffer.limit() - cnt);
-            buffer.position(buffer.position() + cnt);
-            return slice;
         }
 
         private enum State {
