@@ -7,6 +7,8 @@ import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 
+import javax.security.auth.callback.CallbackHandler;
+
 /**
  * A potential participant in a JBoss Remoting communications relationship.
  */
@@ -98,4 +100,32 @@ public interface Endpoint {
      * @throws RemotingException if there is a problem with the discovery parameters
      */
     Discovery discover(String endpointName, URI nextHop, int cost) throws RemotingException;
+
+    /**
+     * Get the callback handler used to authenticate a remote endpoint by default.
+     *
+     * @return the callback handler
+     */
+    CallbackHandler getRemoteCallbackHandler();
+
+    /**
+     * Change the callback handler used to authenticate a remote endpoint by default.
+     *
+     * @param callbackHandler the callback handler
+     */
+    void setRemoteCallbackHandler(CallbackHandler callbackHandler);
+
+    /**
+     * Get the callback handler used to authenticate this endpoint to a remote endpoint by default.
+     *
+     * @return the callback handler
+     */
+    CallbackHandler getLocalCallbackHandler();
+
+    /**
+     * Change the callback handler used to authenticate this endpoint to a remote endpoint by default.
+     *
+     * @param callbackHandler the callback handler
+     */
+    void setLocalCallbackHandler(CallbackHandler callbackHandler);
 }

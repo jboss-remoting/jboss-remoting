@@ -35,6 +35,8 @@ public final class CoreEndpoint {
     private final String name;
     private final Resource resource = new Resource();
     private final Endpoint userEndpoint = new UserEndpoint();
+    private CallbackHandler remoteCallbackHandler;
+    private CallbackHandler localCallbackHandler;
 
     protected CoreEndpoint(final String name) {
         this.name = name;
@@ -61,16 +63,6 @@ public final class CoreEndpoint {
         public ProtocolContext establishSession(ProtocolHandler handler) {
             final CoreSession session = new CoreSession(CoreEndpoint.this, handler);
             return session.getProtocolContext();
-        }
-
-        public CallbackHandler getClientCallbackHandler() {
-            // todo - endpoint should have this configured
-            return null;
-        }
-
-        public CallbackHandler getServerCallbackHandler() {
-            // todo - endpoint should have this configured
-            return null;
         }
     }
 
@@ -228,6 +220,20 @@ public final class CoreEndpoint {
             return null;
         }
 
-    }
+        public CallbackHandler getRemoteCallbackHandler() {
+            return remoteCallbackHandler;
+        }
 
+        public CallbackHandler getLocalCallbackHandler() {
+            return localCallbackHandler;
+        }
+
+        public void setRemoteCallbackHandler(final CallbackHandler remoteCallbackHandler) {
+            CoreEndpoint.this.remoteCallbackHandler = remoteCallbackHandler;
+        }
+
+        public void setLocalCallbackHandler(final CallbackHandler localCallbackHandler) {
+            CoreEndpoint.this.localCallbackHandler = localCallbackHandler;
+        }
+    }
 }

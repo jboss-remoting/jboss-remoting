@@ -56,7 +56,7 @@ public final class CoreContext<I, O> {
         resource.doStart(null);
     }
 
-    public void close() throws RemotingException {
+    protected void shutdown() {
         resource.doStop(new Runnable() {
             public void run() {
                 // todo - cancel all outstanding requests, send context close message via protocolHandler
@@ -344,11 +344,11 @@ public final class CoreContext<I, O> {
             }
 
             public boolean cancel(final boolean mayInterruptIfRunning) {
-                state.doIf(RemoteRequestState.WAITING, new Runnable() {
+                state.doIf(new Runnable() {
                     public void run() {
                         sendCancel(mayInterruptIfRunning);
                     }
-                });
+                }, RemoteRequestState.WAITING);
                 return state.waitUninterruptiblyForNot(RemoteRequestState.WAITING) == RemoteRequestState.CANCELLED;
             }
 

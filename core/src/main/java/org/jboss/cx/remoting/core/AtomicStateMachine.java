@@ -148,7 +148,7 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
-    public synchronized boolean doIf(final T state, final Runnable task) {
+    public synchronized boolean doIf(final Runnable task, final T state) {
         if (state == null) {
             throw new NullPointerException("state is null");
         }

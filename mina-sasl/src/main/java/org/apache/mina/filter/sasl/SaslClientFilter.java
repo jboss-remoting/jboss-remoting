@@ -30,6 +30,7 @@ public final class SaslClientFilter extends AbstractSaslFilter {
     private static final AttributeKey SASL_CLIENT_KEY = new AttributeKey(SaslClientFilter.class, "saslClient");
 
     private final SaslClientFactory saslClientFactory;
+    private final CallbackHandlerFactory callbackHandlerFactory;
 
     /**
      * Construct a new SASL client filter.
@@ -37,9 +38,10 @@ public final class SaslClientFilter extends AbstractSaslFilter {
      * @param saslClientFactory a factory which may be used to create a new SASL client instance for an {@code IoSession}.
      * @param messageSender the message sender, used to send response messages
      */
-    public SaslClientFilter(final SaslClientFactory saslClientFactory, final SaslMessageSender messageSender) {
+    public SaslClientFilter(final SaslClientFactory saslClientFactory, final SaslMessageSender messageSender, final CallbackHandlerFactory callbackHandlerFactory) {
         super(messageSender);
         this.saslClientFactory = saslClientFactory;
+        this.callbackHandlerFactory = callbackHandlerFactory;
     }
 
     /**
@@ -118,7 +120,7 @@ public final class SaslClientFilter extends AbstractSaslFilter {
 
     public void onPreAdd(IoFilterChain ioFilterChain, String string, NextFilter nextFilter) throws Exception {
         final IoSession ioSession = ioFilterChain.getSession();
-        ioSession.setAttribute(SASL_CLIENT_KEY, saslClientFactory.createSaslClient(ioSession));
+        ioSession.setAttribute(SASL_CLIENT_KEY, saslClientFactory.createSaslClient(ioSession, callbackHandlerFactory.getCallbackHandler()));
     }
 
     public void onPostRemove(IoFilterChain ioFilterChain, String string, NextFilter nextFilter) throws Exception {

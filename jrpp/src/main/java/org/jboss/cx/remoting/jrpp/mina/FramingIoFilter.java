@@ -59,7 +59,8 @@ public final class FramingIoFilter extends IoFilterAdapter {
                             return;
                         } else {
                             target.put(buffer.getSlice(target.remaining()));
-                            nextFilter.messageReceived(session, target);
+                            nextFilter.messageReceived(session, target.flip());
+                            target = null;
                             state = State.INITIAL;
                             break;
                         }

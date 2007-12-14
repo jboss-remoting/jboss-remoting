@@ -4,9 +4,16 @@ import org.apache.mina.common.IoSession;
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoBuffer;
 import org.apache.mina.common.AttributeKey;
+import org.apache.mina.common.IoConnector;
+import org.apache.mina.common.ConnectFuture;
+import org.apache.mina.common.SessionCallback;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
 import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.filter.sasl.SaslClientFilter;
+import org.apache.mina.filter.sasl.SaslClientFactory;
+import org.apache.mina.filter.sasl.SaslMessageSender;
+import org.apache.mina.filter.sasl.CallbackHandlerFactory;
+import org.apache.mina.filter.sasl.SaslServerFactory;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
@@ -32,14 +39,18 @@ import org.jboss.cx.remoting.jrpp.mina.StreamMarker;
 import org.jboss.serial.io.JBossObjectInputStream;
 import org.jboss.serial.io.JBossObjectOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.BufferedOutputStream;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Collection;
 import java.util.Set;
+import java.util.Collections;
+import java.net.SocketAddress;
 
 import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslClient;
+import javax.security.sasl.SaslServer;
+import javax.security.sasl.Sasl;
+import javax.security.auth.callback.CallbackHandler;
 
 /**
  *
@@ -52,12 +63,14 @@ public final class JrppConnection {
 
     private static final AttributeKey JRPP_CONNECTION = new AttributeKey(JrppConnection.class, "jrppConnection");
 
-    private final IoSession ioSession;
+    private static final String SASL_CLIENT_FILTER_NAME = "SASL client filter";
+    private static final String SASL_SERVER_FILTER_NAME = "SASL server filter";
+
+    private IoSession ioSession;
     private final ProtocolHandler protocolHandler;
     private final ProtocolContext protocolContext;
     private final SingleSessionIoHandler ioHandler;
     private final IdentifierManager identifierManager;
-    private final JrppObjectOutputStream objectOutputStream;
 
     /**
      * The negotiated protocol version.  Value is set to {@code min(PROTOCOL_VERSION, remote PROTOCOL_VERSION)}.
@@ -65,19 +78,20 @@ public final class JrppConnection {
     @SuppressWarnings ({"UnusedDeclaration"})
     private int protocolVersion;
 
+    public static SingleSessionIoHandler getHandler(final IoSession session) {
+        final JrppConnection connection = (JrppConnection) session.getAttribute(JRPP_CONNECTION);
+        return connection.getIoHandler();
+    }
+
     private enum State {
         /** Client side, waiting to receive protocol version info */
         AWAITING_SERVER_VERSION,
         /** Server side, waiting to receive protocol version info */
         AWAITING_CLIENT_VERSION,
-        /** Client side, phase 1 (server auths client) */
+        /** Client side, auth phase */
         AWAITING_SERVER_CHALLENGE,
-        /** Server side, phase 1 (server auths client) */
+        /** Server side, auth phase */
         AWAITING_CLIENT_RESPONSE,
-        /** Client side, phase 2 (client auths server) */
-        AWAITING_SERVER_RESPONSE,
-        /** Server side, phase 2 (client auths server) */
-        AWAITING_CLIENT_CHALLENGE,
         /** Connection is up */
         UP,
         /** Session is shutting down or closed */
@@ -91,20 +105,42 @@ public final class JrppConnection {
     /**
      * Client side.
      *
-     * @param ioSession
+     * @param connector
+     * @param remoteAddress
      * @param protocolContext
-     * @throws IOException
+     * @param clientCallbackHandler
      */
-    public JrppConnection(final IoSession ioSession, final ProtocolContext protocolContext) throws IOException {
-        this.ioSession = ioSession;
+    public JrppConnection(final IoConnector connector, final SocketAddress remoteAddress, final ProtocolContext protocolContext, final CallbackHandler clientCallbackHandler) {
+        ioHandler = new IoHandlerImpl();
+        final ConnectFuture future = connector.connect(remoteAddress, new SessionCallback() {
+            public void onSession(IoSession session) {
+                session.setAttribute(JRPP_CONNECTION, JrppConnection.this);
+                JrppConnection.this.ioSession = session;
+            }
+        });
+        // make sure it's initialized for *this* thread as well
+        ioSession = future.awaitUninterruptibly().getSession();
         this.protocolContext = protocolContext;
 
         protocolHandler = new RemotingProtocolHandler();
-        ioHandler = new IoHandlerImpl();
         identifierManager = new IdentifierManager();
-        objectOutputStream = new JrppObjectOutputStream(new BufferedOutputStream(new IoSessionOutputStream()), false);
-        currentState = AtomicStateMachine.start(State.AWAITING_SERVER_CHALLENGE);
-        ioSession.setAttribute(JRPP_CONNECTION, this);
+        currentState = AtomicStateMachine.start(State.AWAITING_SERVER_VERSION);
+        ioSession.getFilterChain().addLast(SASL_CLIENT_FILTER_NAME, new SaslClientFilter(new SaslClientFactory(){
+            public SaslClient createSaslClient(IoSession ioSession, CallbackHandler callbackHandler) throws SaslException {
+                return Sasl.createSaslClient(new String[] { "SRP" }, "authz", "JRPP", "server name", Collections.<String,Object>emptyMap(), callbackHandler);
+            }
+        }, new SaslMessageSender() {
+            public void sendSaslMessage(IoSession ioSession, byte[] rawMsgData) throws IOException {
+                final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(rawMsgData.length + 30, false);
+                write(objectOutputStream, MessageType.SASL_RESPONSE);
+                objectOutputStream.write(rawMsgData);
+                objectOutputStream.send(ioSession);
+            }
+        }, new CallbackHandlerFactory() {
+            public CallbackHandler getCallbackHandler() {
+                return clientCallbackHandler;
+            }
+        }));
     }
 
     /**
@@ -112,9 +148,10 @@ public final class JrppConnection {
      *
      * @param ioSession
      * @param serverContext
-     * @throws IOException
+     * @throws java.io.IOException
      */
-    public JrppConnection(final IoSession ioSession, final ProtocolServerContext serverContext) throws IOException {
+    public JrppConnection(final IoSession ioSession, final ProtocolServerContext serverContext, final CallbackHandler serverCallbackHandler) throws IOException {
+        ioSession.setAttribute(JRPP_CONNECTION, this);
         this.ioSession = ioSession;
 
         protocolHandler = new RemotingProtocolHandler();
@@ -122,9 +159,23 @@ public final class JrppConnection {
 
         protocolContext = serverContext.establishSession(protocolHandler);
         identifierManager = new IdentifierManager();
-        objectOutputStream = new JrppObjectOutputStream(new IoSessionOutputStream(), false);
-        currentState = AtomicStateMachine.start(State.AWAITING_CLIENT_RESPONSE);
-        ioSession.setAttribute(JRPP_CONNECTION, this);
+        currentState = AtomicStateMachine.start(State.AWAITING_CLIENT_VERSION);
+        ioSession.getFilterChain().addLast(SASL_SERVER_FILTER_NAME, new SaslServerFilter(new SaslServerFactory(){
+            public SaslServer createSaslServer(IoSession ioSession, CallbackHandler callbackHandler) throws SaslException {
+                return Sasl.createSaslServer("SRP", "JRPP", "server name", Collections.<String,Object>emptyMap(), callbackHandler);
+            }
+        }, new SaslMessageSender(){
+            public void sendSaslMessage(IoSession ioSession, byte[] rawMsgData) throws IOException {
+                final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(rawMsgData.length + 30, false);
+                write(objectOutputStream, MessageType.SASL_CHALLENGE);
+                objectOutputStream.write(rawMsgData);
+                objectOutputStream.send(ioSession);
+            }
+        }, new CallbackHandlerFactory(){
+            public CallbackHandler getCallbackHandler() {
+                return serverCallbackHandler;
+            }
+        }));
     }
 
     public static JrppConnection getConnection(IoSession ioSession) {
@@ -147,27 +198,27 @@ public final class JrppConnection {
         return protocolContext;
     }
 
-    private void write(MessageType messageType) throws IOException {
+    private void write(ObjectOutputStream objectOutputStream, MessageType messageType) throws IOException {
         objectOutputStream.writeByte(messageType.ordinal());
     }
 
-    private void write(ServiceIdentifier serviceIdentifier) throws IOException {
+    private void write(ObjectOutputStream objectOutputStream, ServiceIdentifier serviceIdentifier) throws IOException {
         objectOutputStream.writeShort(((JrppServiceIdentifier)serviceIdentifier).getId());
     }
 
-    private void write(ContextIdentifier contextIdentifier) throws IOException {
+    private void write(ObjectOutputStream objectOutputStream, ContextIdentifier contextIdentifier) throws IOException {
         objectOutputStream.writeShort(((JrppContextIdentifier)contextIdentifier).getId());
     }
 
-    private void write(StreamIdentifier streamIdentifier) throws IOException {
+    private void write(ObjectOutputStream objectOutputStream, StreamIdentifier streamIdentifier) throws IOException {
         objectOutputStream.writeShort(((JrppStreamIdentifier)streamIdentifier).getId());
     }
 
-    private void write(RequestIdentifier requestIdentifier) throws IOException {
+    private void write(ObjectOutputStream objectOutputStream, RequestIdentifier requestIdentifier) throws IOException {
         objectOutputStream.writeShort(((JrppRequestIdentifier)requestIdentifier).getId());
     }
 
-    private void write(BasicMessage<?> message) throws IOException {
+    private void write(ObjectOutputStream objectOutputStream, BasicMessage<?> message) throws IOException {
         objectOutputStream.writeObject(message.getBody());
         final Collection<Header> headers = message.getHeaders();
         objectOutputStream.writeInt(headers.size());
@@ -177,16 +228,22 @@ public final class JrppConnection {
         }
     }
 
-    public void sendResponse(final byte[] rawMsgData) throws IOException {
-        write(MessageType.SASL_RESPONSE);
+    public void sendResponse(byte[] rawMsgData) throws IOException {
+        final IoBuffer buffer = IoBuffer.allocate(rawMsgData.length + 100);
+        final ObjectOutputStream objectOutputStream = new JrppObjectOutputStream(buffer);
+        write(objectOutputStream, MessageType.SASL_RESPONSE);
         objectOutputStream.write(rawMsgData);
-        objectOutputStream.flush();
+        objectOutputStream.close();
+        ioSession.write(buffer.flip());
     }
 
-    public void sendChallenge(final byte[] rawMsgData) throws IOException {
-        write(MessageType.SASL_CHALLENGE);
+    public void sendChallenge(byte[] rawMsgData) throws IOException {
+        final IoBuffer buffer = IoBuffer.allocate(rawMsgData.length + 100);
+        final ObjectOutputStream objectOutputStream = new JrppObjectOutputStream(buffer);
+        write(objectOutputStream, MessageType.SASL_CHALLENGE);
         objectOutputStream.write(rawMsgData);
-        objectOutputStream.flush();
+        objectOutputStream.close();
+        ioSession.write(buffer.flip());
     }
 
     public boolean waitForUp() {
@@ -203,8 +260,8 @@ public final class JrppConnection {
     }
 
     private final class JrppObjectInputStream extends JBossObjectInputStream {
-        public JrppObjectInputStream(final InputStream is, final ClassLoader loader) throws IOException {
-            super(is, loader);
+        public JrppObjectInputStream(final IoBuffer source, final ClassLoader loader) throws IOException {
+            super(source.asInputStream(), loader);
         }
 
         protected Class<?> resolveProxyClass(String[] interfaces) throws IOException, ClassNotFoundException {
@@ -222,46 +279,26 @@ public final class JrppConnection {
         }
     }
 
-    private final class JrppObjectOutputStream extends JBossObjectOutputStream {
-        public JrppObjectOutputStream(final OutputStream output, final boolean checkSerializableClass) throws IOException {
-            super(output, checkSerializableClass);
+    private static final class JrppObjectOutputStream extends JBossObjectOutputStream {
+        private final IoBuffer buffer;
+
+        public JrppObjectOutputStream(final int initialSize, final boolean autoexpand) throws IOException {
+            this(IoBuffer.allocate(initialSize).setAutoExpand(autoexpand).skip(4));
+        }
+
+        private JrppObjectOutputStream(final IoBuffer buffer) throws IOException {
+            super(buffer.asOutputStream(), true);
+            this.buffer = buffer;
         }
 
         protected Object replaceObject(Object obj) throws IOException {
+            // todo do stream checks
             return super.replaceObject(obj);
         }
 
-        public void flush() throws IOException {
-            super.flush();
-            reset();
-        }
-    }
-
-    private final class IoSessionOutputStream extends OutputStream {
-        private IoBuffer target;
-
-        public IoSessionOutputStream() {
-            allocate();
-        }
-
-        public void write(int b) throws IOException {
-            target.put((byte)b);
-        }
-
-        public void write(byte b[], int off, int len) throws IOException {
-            target.put(b, off, len);
-        }
-
-        public void flush() throws IOException {
-            if (target.position() > 0) {
-                ioSession.write(target.flip().skip(4));
-                allocate();
-            }
-        }
-
-        private void allocate() {
-            target = IoBuffer.allocate(2048);
-            target.skip(4);
+        public void send(IoSession ioSession) throws IOException {
+            close();
+            ioSession.write(buffer.flip().skip(4));
         }
     }
 
@@ -294,18 +331,20 @@ public final class JrppConnection {
             if (! currentState.in(State.UP)) {
                 throw new IllegalStateException("JrppConnection is not in the UP state!");
             }
-            write(MessageType.CLOSE_SERVICE);
-            write(serviceIdentifier);
-            objectOutputStream.flush();
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+            write(objectOutputStream, MessageType.CLOSE_SERVICE);
+            write(objectOutputStream, serviceIdentifier);
+            objectOutputStream.send(ioSession);
         }
 
         public void closeContext(ContextIdentifier contextIdentifier) throws IOException {
             if (! currentState.in(State.UP)) {
                 throw new IllegalStateException("JrppConnection is not in the UP state!");
             }
-            write(MessageType.CLOSE_CONTEXT);
-            write(contextIdentifier);
-            objectOutputStream.flush();
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+            write(objectOutputStream, MessageType.CLOSE_CONTEXT);
+            write(objectOutputStream, contextIdentifier);
+            objectOutputStream.send(ioSession);
         }
 
         public void closeStream(StreamIdentifier streamIdentifier) throws IOException {
@@ -314,9 +353,10 @@ public final class JrppConnection {
             }
             if (true /* todo if close not already sent */) {
                 // todo mark as sent or remove from table
-                write(MessageType.CLOSE_STREAM);
-                write(streamIdentifier);
-                objectOutputStream.flush();
+                final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+                write(objectOutputStream, MessageType.CLOSE_STREAM);
+                write(objectOutputStream, streamIdentifier);
+                objectOutputStream.send(ioSession);
             }
         }
 
@@ -324,8 +364,9 @@ public final class JrppConnection {
             if (! currentState.in(State.UP)) {
                 throw new IllegalStateException("JrppConnection is not in the UP state!");
             }
-            write(MessageType.SERVICE_REQUEST);
-            write(serviceIdentifier);
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(500, true);
+            write(objectOutputStream, MessageType.SERVICE_REQUEST);
+            write(objectOutputStream, serviceIdentifier);
             objectOutputStream.writeObject(locator.getRequestType());
             objectOutputStream.writeObject(locator.getReplyType());
             objectOutputStream.writeObject(locator.getEndpointName());
@@ -337,65 +378,73 @@ public final class JrppConnection {
             for (String name : interceptors) {
                 objectOutputStream.writeUTF(name);
             }
-            objectOutputStream.flush();
+            objectOutputStream.send(ioSession);
         }
 
         public void sendServiceActivate(ServiceIdentifier serviceIdentifier) throws IOException {
-            write(MessageType.SERVICE_ACTIVATE);
-            write(serviceIdentifier);
-            objectOutputStream.flush();
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+            write(objectOutputStream, MessageType.SERVICE_ACTIVATE);
+            write(objectOutputStream, serviceIdentifier);
+            objectOutputStream.send(ioSession);
         }
 
         public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) throws IOException {
-            write(MessageType.REPLY);
-            write(remoteContextIdentifier);
-            write(requestIdentifier);
-            write(reply);
-            objectOutputStream.flush();
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(500, true);
+            write(objectOutputStream, MessageType.REPLY);
+            write(objectOutputStream, remoteContextIdentifier);
+            write(objectOutputStream, requestIdentifier);
+            write(objectOutputStream, reply);
+            objectOutputStream.send(ioSession);
         }
 
         public void sendException(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) throws IOException {
-            write(MessageType.EXCEPTION);
-            write(remoteContextIdentifier);
-            write(requestIdentifier);
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+            write(objectOutputStream, MessageType.EXCEPTION);
+            write(objectOutputStream, remoteContextIdentifier);
+            write(objectOutputStream, requestIdentifier);
             objectOutputStream.writeObject(exception);
-            objectOutputStream.flush();
+            objectOutputStream.send(ioSession);
         }
 
         public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request) throws IOException {
-            write(MessageType.REQUEST);
-            write(contextIdentifier);
-            write(requestIdentifier);
-            write(request);
-            objectOutputStream.flush();
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+            write(objectOutputStream, MessageType.REQUEST);
+            write(objectOutputStream, contextIdentifier);
+            write(objectOutputStream, requestIdentifier);
+            write(objectOutputStream, request);
+            objectOutputStream.send(ioSession);
         }
 
         public void sendCancelAcknowledge(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier) throws IOException {
-            write(MessageType.CANCEL_ACK);
-            write(remoteContextIdentifier);
-            write(requestIdentifier);
-            objectOutputStream.flush();
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(500, true);
+            write(objectOutputStream, MessageType.CANCEL_ACK);
+            write(objectOutputStream, remoteContextIdentifier);
+            write(objectOutputStream, requestIdentifier);
+            objectOutputStream.send(ioSession);
         }
 
         public void sendServiceTerminate(ServiceIdentifier remoteServiceIdentifier) throws IOException {
-            write(MessageType.SERVICE_TERMINATE);
-            write(remoteServiceIdentifier);
-            objectOutputStream.flush();
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+            write(objectOutputStream, MessageType.SERVICE_TERMINATE);
+            write(objectOutputStream, remoteServiceIdentifier);
+            objectOutputStream.send(ioSession);
         }
 
         public void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException {
-            write(MessageType.CANCEL_REQ);
-            write(contextIdentifier);
-            write(requestIdentifier);
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+            write(objectOutputStream, MessageType.CANCEL_REQ);
+            write(objectOutputStream, contextIdentifier);
+            write(objectOutputStream, requestIdentifier);
             objectOutputStream.writeBoolean(mayInterrupt);
-            objectOutputStream.flush();
+            objectOutputStream.send(ioSession);
         }
 
         public void sendStreamData(StreamIdentifier streamIdentifier, Object data) throws IOException {
-            write(MessageType.STREAM_DATA);
-            write(streamIdentifier);
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(500, true);
+            write(objectOutputStream, MessageType.STREAM_DATA);
+            write(objectOutputStream, streamIdentifier);
             objectOutputStream.writeObject(data);
-            objectOutputStream.flush();
+            objectOutputStream.send(ioSession);
         }
     }
 
@@ -405,9 +454,10 @@ public final class JrppConnection {
 
         public void sessionOpened() throws IOException {
             // send version info
-            write(MessageType.VERSION);
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+            write(objectOutputStream, MessageType.VERSION);
             objectOutputStream.writeShort(PROTOCOL_VERSION);
-            objectOutputStream.flush();
+            objectOutputStream.send(ioSession);
         }
 
         public void sessionClosed() {
@@ -451,7 +501,7 @@ public final class JrppConnection {
         public void messageReceived(Object message) throws Exception {
             final boolean trace = log.isTrace();
             IoBuffer buf = (IoBuffer) message;
-            final JrppObjectInputStream ois = new JrppObjectInputStream(buf.asInputStream(), null /* todo */);
+            final JrppObjectInputStream ois = new JrppObjectInputStream(buf, null /* todo */);
             final MessageType type = MessageType.values()[ois.readByte() & 0xff];
             OUT: switch (currentState.getState()) {
                 case AWAITING_CLIENT_VERSION: {
@@ -461,10 +511,13 @@ public final class JrppConnection {
                             if (trace) {
                                 log.trace("Server negotiated protocol version " + protocolVersion);
                             }
-                            SaslServerFilter saslServerFilter = null; // todo
+                            SaslServerFilter saslServerFilter = getSaslServerFilter();
                             if (saslServerFilter.sendInitialChallenge(ioSession)) {
-                                // complete; now client may optionally auth server
-                                currentState.requireTransition(State.AWAITING_CLIENT_VERSION, State.AWAITING_CLIENT_CHALLENGE);
+                                // complete (that was quick!)
+                                final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+                                write(objectOutputStream, MessageType.AUTH_SUCCESS);
+                                objectOutputStream.send(ioSession);
+                                currentState.requireTransition(State.AWAITING_CLIENT_VERSION, State.UP);
                             } else {
                                 currentState.requireTransition(State.AWAITING_CLIENT_VERSION, State.AWAITING_CLIENT_RESPONSE);
                             }
@@ -494,17 +547,18 @@ public final class JrppConnection {
                             }
                             byte[] bytes = new byte[buf.remaining()];
                             ois.readFully(bytes);
-                            SaslServerFilter saslServerFilter = null; // todo
+                            SaslServerFilter saslServerFilter = getSaslServerFilter();
                             try {
                                 if (saslServerFilter.handleSaslResponse(ioSession, bytes)) {
-                                    write(MessageType.AUTH_SUCCESS);
-                                    objectOutputStream.flush();
-                                    currentState.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.AWAITING_CLIENT_CHALLENGE);
+                                    final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+                                    write(objectOutputStream, MessageType.AUTH_SUCCESS);
+                                    objectOutputStream.send(ioSession);
+                                    currentState.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.UP);
                                 }
                             } catch (SaslException ex) {
-                                write(MessageType.AUTH_FAILED);
-                                objectOutputStream.flush();
-                                close();
+                                final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+                                write(objectOutputStream, MessageType.AUTH_FAILED);
+                                objectOutputStream.send(ioSession);
                                 log.info("Client authentication failed (" + ex.getMessage() + ")");
                             }
                             return;
@@ -517,65 +571,17 @@ public final class JrppConnection {
                         case SASL_CHALLENGE: {
                             byte[] bytes = new byte[buf.remaining()];
                             ois.readFully(bytes);
-                            SaslClientFilter saslClientFilter = null; // todo
+                            SaslClientFilter saslClientFilter = getSaslClientFilter();
                             saslClientFilter.handleSaslChallenge(ioSession, bytes);
                             return;
                         }
                         case AUTH_SUCCESS: {
-                            currentState.requireTransition(State.AWAITING_SERVER_CHALLENGE, State.AWAITING_SERVER_RESPONSE);
-                            SaslServerFilter saslServerFilter = null; // todo
-                            saslServerFilter.sendInitialChallenge(ioSession);
+                            currentState.requireTransition(State.AWAITING_SERVER_CHALLENGE, State.UP);
                             return;
                         }
                         case AUTH_FAILED: {
                             log.info("JRPP client rejected authentication");
                             close();
-                            return;
-                        }
-                        default: break OUT;
-                    }
-                }
-                case AWAITING_CLIENT_CHALLENGE: {
-                    switch (type) {
-                        case SASL_CHALLENGE: {
-                            byte[] bytes = new byte[buf.remaining()];
-                            ois.readFully(bytes);
-                            SaslClientFilter saslClientFilter = null; // todo
-                            saslClientFilter.handleSaslChallenge(ioSession, bytes);
-                            return;
-                        }
-                        case AUTH_SUCCESS: {
-                            currentState.requireTransition(State.AWAITING_CLIENT_CHALLENGE, State.UP);
-                            SaslServerFilter saslServerFilter = null; // todo
-                            saslServerFilter.sendInitialChallenge(ioSession);
-                            return;
-                        }
-                        case AUTH_FAILED: {
-                            log.info("JRPP client rejected authentication");
-                            close();
-                            return;
-                        }
-                        default: break OUT;
-                    }
-                }
-                case AWAITING_SERVER_RESPONSE: {
-                    switch (type) {
-                        case SASL_RESPONSE: {
-                            byte[] bytes = new byte[buf.remaining()];
-                            ois.readFully(bytes);
-                            SaslServerFilter saslServerFilter = null; // todo
-                            try {
-                                if (saslServerFilter.handleSaslResponse(ioSession, bytes)) {
-                                    write(MessageType.AUTH_SUCCESS);
-                                    objectOutputStream.flush();
-                                    currentState.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.UP);
-                                }
-                            } catch (SaslException ex) {
-                                write(MessageType.AUTH_FAILED);
-                                objectOutputStream.flush();
-                                close();
-                                log.info("Server authentication failed (" + ex.getMessage() + ")");
-                            }
                             return;
                         }
                         default: break OUT;
@@ -677,6 +683,14 @@ public final class JrppConnection {
                 }
             }
             throw new IllegalStateException("Got message " + type + " during " + currentState);
+        }
+
+        private SaslClientFilter getSaslClientFilter() {
+            return (SaslClientFilter) ioSession.getFilterChain().get(SASL_CLIENT_FILTER_NAME);
+        }
+
+        private SaslServerFilter getSaslServerFilter() {
+            return (SaslServerFilter) ioSession.getFilterChain().get(SASL_SERVER_FILTER_NAME);
         }
 
         public void messageSent(Object object) {

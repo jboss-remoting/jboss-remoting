@@ -30,6 +30,7 @@ public final class SaslServerFilter extends AbstractSaslFilter {
     private static final AttributeKey SASL_SERVER_KEY = new AttributeKey(SaslServerFilter.class, "saslServer");
 
     private final SaslServerFactory saslServerFactory;
+    private final CallbackHandlerFactory callbackHandlerFactory;
 
     /**
      * Construct a new SASL server filter.
@@ -37,9 +38,10 @@ public final class SaslServerFilter extends AbstractSaslFilter {
      * @param saslServerFactory a factory which may be used to create a new SASL server instance for an {@code IoSession}.
      * @param messageSender the message sender, used to send challenge messages
      */
-    public SaslServerFilter(final SaslServerFactory saslServerFactory, final SaslMessageSender messageSender) {
+    public SaslServerFilter(final SaslServerFactory saslServerFactory, final SaslMessageSender messageSender, final CallbackHandlerFactory callbackHandlerFactory) {
         super(messageSender);
         this.saslServerFactory = saslServerFactory;
+        this.callbackHandlerFactory = callbackHandlerFactory;
     }
 
     /**
@@ -115,7 +117,11 @@ public final class SaslServerFilter extends AbstractSaslFilter {
 
     public void onPreAdd(IoFilterChain ioFilterChain, String string, NextFilter nextFilter) throws Exception {
         final IoSession ioSession = ioFilterChain.getSession();
-        ioSession.setAttribute(SASL_SERVER_KEY, saslServerFactory.createSaslServer(ioSession));
+        final SaslServer saslServer = saslServerFactory.createSaslServer(ioSession, callbackHandlerFactory.getCallbackHandler());
+        if (saslServer == null) {
+            throw new NullPointerException("saslServer is null");
+        }
+        ioSession.setAttribute(SASL_SERVER_KEY, saslServer);
     }
 
     public void onPostRemove(IoFilterChain ioFilterChain, String string, NextFilter nextFilter) throws Exception {

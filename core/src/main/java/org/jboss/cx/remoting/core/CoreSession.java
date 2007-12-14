@@ -1,7 +1,9 @@
 package org.jboss.cx.remoting.core;
 
 import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.Reply;
@@ -11,8 +13,8 @@ import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.EndpointLocator;
+import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
-import org.jboss.cx.remoting.core.util.Resource;
 import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
@@ -21,6 +23,8 @@ import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
+
+import javax.security.auth.callback.CallbackHandler;
 
 
 /**
@@ -31,16 +35,24 @@ import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
  * - Local work handler - ExecutorService provided to Endpoint
  */
 public final class CoreSession {
-    private final ProtocolContextImpl protocolContext = new ProtocolContextImpl();
-    private final UserSession userSession = new UserSession();
-    private final Resource resource = new Resource();
-    // don't GC the endpoint while a session lives
-    private final CoreEndpoint endpoint;
-    private final ConcurrentMap<ContextIdentifier, CoreContext> contexts = CollectionUtil.concurrentMap();
-    private final ConcurrentMap<ContextIdentifier, CoreServerContext> serverContexts = CollectionUtil.concurrentMap();
     private static final Logger log = Logger.getLogger(CoreSession.class);
 
+    private final ProtocolContextImpl protocolContext = new ProtocolContextImpl();
+    private final UserSession userSession = new UserSession();
+    private final ConcurrentMap<ContextIdentifier, WeakReference<CoreContext>> contexts = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<ContextIdentifier, WeakReference<CoreServerContext>> serverContexts = CollectionUtil.concurrentMap();
+
+    // don't GC the endpoint while a session lives
+    private final CoreEndpoint endpoint;
     private final ProtocolHandler protocolHandler;
+
+    private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
+
+    private enum State {
+        DOWN,
+        UP,
+        STOPPING,
+    }
 
     protected CoreSession(final CoreEndpoint endpoint, final ProtocolHandler protocolHandler) {
         if (endpoint == null) {
@@ -51,7 +63,6 @@ public final class CoreSession {
         }
         this.endpoint = endpoint;
         this.protocolHandler = protocolHandler;
-        resource.doStart(null);
     }
 
     protected CoreSession(final CoreEndpoint endpoint, final ProtocolHandlerFactory factory, final EndpointLocator endpointLocator) throws IOException {
@@ -65,58 +76,81 @@ public final class CoreSession {
             throw new NullPointerException("endpointLocator is null");
         }
         this.endpoint = endpoint;
-        protocolHandler = factory.createHandler(protocolContext, endpointLocator.getEndpointUri(), null, null);
-        resource.doStart(null);
+        final CallbackHandler locatorCallbackHandler = endpointLocator.getClientCallbackHandler();
+        final Endpoint userEndpoint = endpoint.getUserEndpoint();
+        protocolHandler = factory.createHandler(protocolContext, endpointLocator.getEndpointUri(), locatorCallbackHandler == null ? userEndpoint.getLocalCallbackHandler() : locatorCallbackHandler, userEndpoint.getRemoteCallbackHandler());
     }
 
     public <I, O> CoreContext<I, O> createContext(final ServiceIdentifier serviceIdentifier) throws RemotingException {
         if (serviceIdentifier == null) {
             throw new NullPointerException("serviceIdentifier is null");
         }
-        resource.doAcquire();
-        boolean ok = false;
+        final ContextIdentifier contextIdentifier;
         try {
-            final ContextIdentifier contextIdentifier;
-            try {
-                contextIdentifier = protocolHandler.openContext(serviceIdentifier);
-            } catch (IOException e) {
-                RemotingException rex = new RemotingException("Failed to open context: " + e.getMessage());
-                rex.setStackTrace(e.getStackTrace());
-                throw rex;
-            }
-            final CoreContext<I, O> context = new CoreContext<I, O>(this, contextIdentifier);
-            if (log.isTrace()) {
-                log.trace("Adding new context, ID = " + contextIdentifier);
-            }
-            contexts.put(contextIdentifier, context);
-            ok = true;
-            return context;
-        } finally {
-            if (! ok) {
-                resource.doRelease();
-            }
+            contextIdentifier = protocolHandler.openContext(serviceIdentifier);
+        } catch (IOException e) {
+            RemotingException rex = new RemotingException("Failed to open context: " + e.getMessage());
+            rex.setStackTrace(e.getStackTrace());
+            throw rex;
         }
+        final CoreContext<I, O> context = new CoreContext<I, O>(this, contextIdentifier);
+        if (log.isTrace()) {
+            log.trace("Adding new context, ID = " + contextIdentifier);
+        }
+        contexts.put(contextIdentifier, new WeakReference<CoreContext>(context));
+        return context;
     }
 
-    protected CoreContext getContext(final ContextIdentifier identifier) {
+    protected CoreContext getContext(final ContextIdentifier contextIdentifier) {
+        if (contextIdentifier == null) {
+            throw new NullPointerException("contextIdentifier is null");
+        }
+        final WeakReference<CoreContext> weakReference = contexts.get(contextIdentifier);
+        return weakReference == null ? null : weakReference.get();
+    }
+
+    protected CoreServerContext getServerContext(final ContextIdentifier remoteContextIdentifier) {
+        if (remoteContextIdentifier == null) {
+            throw new NullPointerException("remoteContextIdentifier is null");
+        }
+        final WeakReference<CoreServerContext> weakReference = serverContexts.get(remoteContextIdentifier);
+        return weakReference == null ? null : weakReference.get();
+    }
+
+    protected void removeContext(final ContextIdentifier identifier) {
         if (identifier == null) {
             throw new NullPointerException("identifier is null");
         }
-        return contexts.get(identifier);
+        contexts.remove(identifier);
+    }
+
+    protected void removeServerContext(final ContextIdentifier identifier) {
+        if (identifier == null) {
+            throw new NullPointerException("identifier is null");
+        }
+        serverContexts.remove(identifier);
     }
 
     public Session getUserSession() {
         return userSession;
     }
 
-    private void shutdown() {
-        resource.doStop(new Runnable() {
-            public void run() {
-                // TODO - shut down contexts
-
+    protected void shutdown() {
+        if (state.transition(State.UP, State.STOPPING)) {
+            for (Map.Entry<ContextIdentifier,WeakReference<CoreContext>> entry : contexts.entrySet()) {
+                final CoreContext context = entry.getValue().get();
+                if (context != null) {
+                    context.shutdown();
+                }
             }
-        }, null);
-        resource.doTerminate(null);
+            for (Map.Entry<ContextIdentifier,WeakReference<CoreServerContext>> entry : serverContexts.entrySet()) {
+                final CoreServerContext context = entry.getValue().get();
+                if (context != null) {
+                    context.shutdown();
+                }
+            }
+            state.requireTransition(State.STOPPING, State.DOWN);
+        }
     }
 
     public ProtocolContext getProtocolContext() {
@@ -180,7 +214,7 @@ public final class CoreSession {
                 throw new RemotingException("Unable to open context", e);
             }
             CoreContext<I, O> coreContext = CoreSession.this.createContext(serviceIdentifier);
-            contexts.put(contextIdentifier, coreContext);
+            contexts.put(contextIdentifier, new WeakReference<CoreContext>(coreContext));
             return coreContext.getUserContext();
         }
     }
@@ -212,7 +246,7 @@ public final class CoreSession {
 
         @SuppressWarnings ({"unchecked"})
         public void receiveReply(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) {
-            final CoreContext context = contexts.get(contextIdentifier);
+            final CoreContext context = getContext(contextIdentifier);
             if (context != null) {
                 context.handleInboundReply(requestIdentifier, reply);
             } else {
@@ -223,7 +257,7 @@ public final class CoreSession {
         }
 
         public void receiveException(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) {
-            final CoreContext context = contexts.get(contextIdentifier);
+            final CoreContext context = getContext(contextIdentifier);
             if (context != null) {
                 context.handleInboundException(requestIdentifier, exception);
             } else {
@@ -235,7 +269,7 @@ public final class CoreSession {
 
         @SuppressWarnings ({"unchecked"})
         public void receiveRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Request<?> request) {
-            final CoreServerContext context = serverContexts.get(remoteContextIdentifier);
+            final CoreServerContext context = getServerContext(remoteContextIdentifier);
             if (context != null) {
                 context.getLastInterceptor().processInboundRequest(null, requestIdentifier, request);
             } else {

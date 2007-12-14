@@ -13,6 +13,8 @@ import org.jboss.cx.remoting.EndpointLocator;
 import org.jboss.cx.remoting.spi.Discovery;
 import org.jboss.cx.remoting.spi.Registration;
 
+import javax.security.auth.callback.CallbackHandler;
+
 /**
  *
  */
@@ -53,5 +55,21 @@ public class EndpointWrapper implements Endpoint {
 
     public ProtocolRegistration registerProtocol(final ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException {
         return delegate.registerProtocol(spec);
+    }
+
+    public CallbackHandler getLocalCallbackHandler() {
+        return delegate.getLocalCallbackHandler();
+    }
+
+    public CallbackHandler getRemoteCallbackHandler() {
+        return delegate.getRemoteCallbackHandler();
+    }
+
+    public void setRemoteCallbackHandler(final CallbackHandler callbackHandler) {
+        delegate.setRemoteCallbackHandler(callbackHandler);
+    }
+
+    public void setLocalCallbackHandler(final CallbackHandler callbackHandler) {
+        delegate.setLocalCallbackHandler(callbackHandler);
     }
 }

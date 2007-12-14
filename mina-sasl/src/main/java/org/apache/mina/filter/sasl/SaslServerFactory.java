@@ -4,10 +4,11 @@ import org.apache.mina.common.IoSession;
 
 import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslException;
+import javax.security.auth.callback.CallbackHandler;
 
 /**
  *
  */
 public interface SaslServerFactory {
-    SaslServer createSaslServer(IoSession ioSession) throws SaslException;
+    SaslServer createSaslServer(IoSession ioSession, CallbackHandler callbackHandler) throws SaslException;
 }

@@ -62,6 +62,10 @@ public final class CoreServerContext<I, O> {
         return lastInterceptor;
     }
 
+    protected void shutdown() {
+
+    }
+
     private final class FirstInterceptor extends AbstractServerInterceptor {
         public void processInboundCancelRequest(final InterceptorContext context, final RequestIdentifier requestIdentifier, final boolean mayInterruptIfRunning) {
             requests.get(requestIdentifier).receiveCancelRequest(mayInterruptIfRunning);
