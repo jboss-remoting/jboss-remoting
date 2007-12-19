@@ -204,18 +204,23 @@ public final class CoreSession {
         if (serviceIdentifier == null) {
             throw new NullPointerException("serviceIdentifier is null");
         }
-        final ContextIdentifier contextIdentifier;
+        state.requireHold(State.UP);
         try {
-            contextIdentifier = protocolHandler.openContext(serviceIdentifier);
-        } catch (IOException e) {
-            RemotingException rex = new RemotingException("Failed to open context: " + e.getMessage());
-            rex.setStackTrace(e.getStackTrace());
-            throw rex;
+            final ContextIdentifier contextIdentifier;
+            try {
+                contextIdentifier = protocolHandler.openContext(serviceIdentifier);
+            } catch (IOException e) {
+                RemotingException rex = new RemotingException("Failed to open context: " + e.getMessage());
+                rex.setStackTrace(e.getStackTrace());
+                throw rex;
+            }
+            final CoreOutboundContext<I, O> context = new CoreOutboundContext<I, O>(this, contextIdentifier);
+            log.trace("Adding new context, ID = %s", contextIdentifier);
+            contexts.put(contextIdentifier, new WeakReference<CoreOutboundContext>(context));
+            return context;
+        } finally {
+            state.release();
         }
-        final CoreOutboundContext<I, O> context = new CoreOutboundContext<I, O>(this, contextIdentifier);
-        log.trace("Adding new context, ID = %s", contextIdentifier);
-        contexts.put(contextIdentifier, new WeakReference<CoreOutboundContext>(context));
-        return context;
     }
 
     <I, O> CoreInboundContext<I, O> createServerContext(final ServiceIdentifier remoteServiceIdentifier, final ContextIdentifier remoteContextIdentifier, final RequestListener<I, O> requestListener) {
@@ -225,10 +230,15 @@ public final class CoreSession {
         if (remoteContextIdentifier == null) {
             throw new NullPointerException("remoteContextIdentifier is null");
         }
-        final CoreInboundContext<I, O> context = new CoreInboundContext<I, O>(remoteContextIdentifier, this, requestListener, null);
-        log.trace("Adding new server (inbound) context, ID = %s", remoteContextIdentifier);
-        serverContexts.put(remoteContextIdentifier, context);
-        return context;
+        state.requireHold(State.UP);
+        try {
+            final CoreInboundContext<I, O> context = new CoreInboundContext<I, O>(remoteContextIdentifier, this, requestListener, null);
+            log.trace("Adding new server (inbound) context, ID = %s", remoteContextIdentifier);
+            serverContexts.put(remoteContextIdentifier, context);
+            return context;
+        } finally {
+            state.release();
+        }
     }
 
     CoreOutboundContext getContext(final ContextIdentifier contextIdentifier) {
@@ -264,39 +274,58 @@ public final class CoreSession {
     // Service mgmt
 
     <I, O> CoreOutboundService<I, O> createService(final ServiceLocator<I, O> locator) throws RemotingException {
-        final ServiceIdentifier serviceIdentifier;
-        try {
-            serviceIdentifier = protocolHandler.openService();
-        } catch (IOException e) {
-            throw new RemotingException("Failed to open service: " + e.toString());
+        if (locator == null) {
+            throw new NullPointerException("locator is null");
         }
-        final CoreOutboundService<I, O> service = new CoreOutboundService<I, O>(this, serviceIdentifier, locator);
-        log.trace("Adding new client service, ID = %s", serviceIdentifier);
-        services.put(serviceIdentifier, new WeakReference<CoreOutboundService>(service));
-        return service;
+        state.requireHold(State.UP);
+        try {
+            final ServiceIdentifier serviceIdentifier;
+            try {
+                serviceIdentifier = protocolHandler.openService();
+            } catch (IOException e) {
+                throw new RemotingException("Failed to open service: " + e.toString());
+            }
+            final CoreOutboundService<I, O> service = new CoreOutboundService<I, O>(this, serviceIdentifier, locator);
+            log.trace("Adding new client service, ID = %s", serviceIdentifier);
+            services.put(serviceIdentifier, new WeakReference<CoreOutboundService>(service));
+            return service;
+        } finally {
+            state.release();
+        }
     }
 
     <I, O> CoreInboundService<I, O> createServerService(final ServiceIdentifier serviceIdentifier, final ServiceLocator<I, O> locator) {
-        final CoreInboundService<I, O> service;
+        if (serviceIdentifier == null) {
+            throw new NullPointerException("serviceIdentifier is null");
+        }
+        if (locator == null) {
+            throw new NullPointerException("locator is null");
+        }
+        state.requireHold(State.UP);
         try {
-            service = new CoreInboundService<I, O>(endpoint, this, serviceIdentifier, locator);
-        } catch (RemotingException e) {
+            final CoreInboundService<I, O> service;
             try {
-                sendServiceTerminate(serviceIdentifier);
-            } catch (RemotingException e1) {
-                log.trace("Failed to notify client of service termination: %s", e);
+                service = new CoreInboundService<I, O>(endpoint, this, serviceIdentifier, locator);
+            } catch (RemotingException e) {
+                try {
+                    sendServiceTerminate(serviceIdentifier);
+                } catch (RemotingException e1) {
+                    log.trace("Failed to notify client of service termination: %s", e);
+                }
+                return null;
             }
-            return null;
+            try {
+                sendServiceActivate(serviceIdentifier);
+            } catch (RemotingException e) {
+                log.trace("Failed to notify client of service activation: %s", e);
+                return null;
+            }
+            log.trace("Adding new server service, ID = %s", serviceIdentifier);
+            serverServices.put(serviceIdentifier, service);
+            return service;
+        } finally {
+            state.release();
         }
-        try {
-            sendServiceActivate(serviceIdentifier);
-        } catch (RemotingException e) {
-            log.trace("Failed to notify client of service activation: %s", e);
-            return null;
-        }
-        log.trace("Adding new server service, ID = %s", serviceIdentifier);
-        serverServices.put(serviceIdentifier, service);
-        return service;
     }
 
     private void sendServiceTerminate(final ServiceIdentifier serviceIdentifier) throws RemotingException {
@@ -356,10 +385,15 @@ public final class CoreSession {
             if (locator.getServiceType() == null) {
                 throw new NullPointerException("locator.getServiceType() is null");
             }
-            final CoreOutboundService<I, O> service = createService(locator);
-            service.sendServiceRequest();
-            service.await();
-            return service.getUserContextSource();
+            state.requireHold(State.UP);
+            try {
+                final CoreOutboundService<I, O> service = createService(locator);
+                service.sendServiceRequest();
+                service.await();
+                return service.getUserContextSource();
+            } finally {
+                state.release();
+            }
         }
     }
 

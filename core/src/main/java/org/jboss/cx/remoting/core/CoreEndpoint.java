@@ -75,8 +75,8 @@ public final class CoreEndpoint {
 
     @SuppressWarnings ({"unchecked"})
     <I, O> CoreDeployedService<I, O> locateDeployedService(ServiceLocator<I, O> locator) {
-        synchronized(state) {
-            state.require(State.UP);
+        state.requireHold(State.UP);
+        try {
             final String name = locator.getServiceGroupName();
             final String type = locator.getServiceType();
             // first try the quick (exact) lookup
@@ -98,6 +98,8 @@ public final class CoreEndpoint {
                 }
             }
             return null;
+        } finally {
+            state.release();
         }
     }
 
@@ -239,16 +241,21 @@ public final class CoreEndpoint {
         }
 
         public void addShutdownListener(EndpointShutdownListener listener) {
-            synchronized(state) {
-                if (state.in(State.UP)) {
-                    synchronized(shutdownListeners) {
-                        shutdownListeners.add(listener);
-                        return;
-                    }
+            final State currentState = state.getStateHold();
+            try {
+                switch (currentState) {
+                    case UP:
+                        synchronized(shutdownListeners) {
+                            shutdownListeners.add(listener);
+                            return;
+                        }
+                    default:
+                        // must be shut down!
+                        listener.handleShutdown(this);
                 }
+            } finally {
+                state.release();
             }
-            // must be shut down!
-            listener.handleShutdown(this);
         }
 
         public void removeShutdownListener(EndpointShutdownListener listener) {
@@ -263,12 +270,12 @@ public final class CoreEndpoint {
         }
 
         public Session openSession(final EndpointLocator endpointLocator) throws RemotingException {
-            synchronized(state) {
-                state.require(State.UP);
-                final String scheme = endpointLocator.getEndpointUri().getScheme();
-                if (scheme == null) {
-                    throw new RemotingException("No scheme on remote endpoint URI");
-                }
+            final String scheme = endpointLocator.getEndpointUri().getScheme();
+            if (scheme == null) {
+                throw new RemotingException("No scheme on remote endpoint URI");
+            }
+            state.requireHold(State.UP);
+            try {
                 final CoreProtocolRegistration registration = protocolMap.get(scheme);
                 if (registration == null) {
                     throw new RemotingException("No handler available for URI scheme \"" + scheme + "\"");
@@ -283,6 +290,8 @@ public final class CoreEndpoint {
                     rex.setStackTrace(e.getStackTrace());
                     throw rex;
                 }
+            } finally {
+                state.release();
             }
         }
 
@@ -291,38 +300,42 @@ public final class CoreEndpoint {
         }
 
         public <I, O> Registration deployService(final ServiceDeploymentSpec<I, O> spec) throws RemotingException {
-            synchronized(state) {
-                state.require(State.UP);
-                if (spec.getServiceName() == null) {
-                    throw new NullPointerException("spec.getServiceName() is null");
-                }
-                if (spec.getServiceType() == null) {
-                    throw new NullPointerException("spec.getServiceType() is null");
-                }
-                if (spec.getRequestListener() == null) {
-                    throw new NullPointerException("spec.getRequestListener() is null");
-                }
+            if (spec.getServiceName() == null) {
+                throw new NullPointerException("spec.getServiceName() is null");
+            }
+            if (spec.getServiceType() == null) {
+                throw new NullPointerException("spec.getServiceType() is null");
+            }
+            if (spec.getRequestListener() == null) {
+                throw new NullPointerException("spec.getRequestListener() is null");
+            }
+            state.requireHold(State.UP);
+            try {
                 final CoreDeployedService<I, O> service = new CoreDeployedService<I, O>(spec.getServiceName(), spec.getServiceType(), spec.getRequestListener());
                 if (services.putIfAbsent(new ServiceKey(spec.getServiceName(), spec.getServiceType()), service) != null) {
                     throw new RemotingException("A service with the same name is already deployed");
                 }
                 // todo - return a registration instance
                 return null;
+            } finally {
+                state.release();
             }
         }
 
         public ProtocolRegistration registerProtocol(ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException {
-            synchronized(state) {
-                state.require(State.UP);
-                if (spec.getScheme() == null) {
-                    throw new NullPointerException("spec.getScheme() is null");
-                }
-                if (spec.getProtocolHandlerFactory() == null) {
-                    throw new NullPointerException("spec.getProtocolHandlerFactory() is null");
-                }
+            if (spec.getScheme() == null) {
+                throw new NullPointerException("spec.getScheme() is null");
+            }
+            if (spec.getProtocolHandlerFactory() == null) {
+                throw new NullPointerException("spec.getProtocolHandlerFactory() is null");
+            }
+            state.requireHold(State.UP);
+            try {
                 final CoreProtocolRegistration registration = new CoreProtocolRegistration(spec.getProtocolHandlerFactory());
                 protocolMap.put(spec.getScheme(), registration);
                 return registration;
+            } finally {
+                state.release();
             }
         }
 

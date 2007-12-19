@@ -47,8 +47,12 @@ public final class CoreOutboundContext<I, O> {
     // Outbound protocol messages
 
     boolean sendCancelRequest(final RequestIdentifier requestIdentifier, final boolean mayInterrupt) {
-        synchronized(state) {
-            return state.in(State.UP) && session.sendCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
+        if (state.inHold(State.UP)) try {
+            return session.sendCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
+        } finally {
+            state.release();
+        } else {
+            return false;
         }
     }
 
@@ -61,12 +65,10 @@ public final class CoreOutboundContext<I, O> {
     @SuppressWarnings ({"unchecked"})
     void receiveCloseContext() {
         final CoreOutboundRequest[] requestArray;
-        synchronized(state) {
-            if (! state.transition(State.UP, State.STOPPING)) {
-                return;
-            }
-            requestArray = requests.values().toArray(empty);
+        if (! state.transition(State.UP, State.STOPPING)) {
+            return;
         }
+        requestArray = requests.values().toArray(empty);
         for (CoreOutboundRequest<I, O> request : requestArray) {
             request.receiveClose();
         }
@@ -129,10 +131,8 @@ public final class CoreOutboundContext<I, O> {
         }
 
         public Request<I> createRequest(final I body) {
-            synchronized(state) {
-                state.require(State.UP);
-                return new RequestImpl<I>(body);
-            }
+            state.require(State.UP);
+            return new RequestImpl<I>(body);
         }
 
         public Reply<O> invoke(final Request<I> request) throws RemotingException, RemoteExecutionException, InterruptedException {
@@ -140,9 +140,8 @@ public final class CoreOutboundContext<I, O> {
         }
 
         public FutureReply<O> send(final Request<I> request) throws RemotingException {
-            synchronized(state) {
-                // todo: these tasks should be fast, but it may be worth exploring using a multi readers/single writer lock instead
-                state.require(State.UP);
+            state.requireHold(State.UP);
+            try {
                 final RequestIdentifier requestIdentifier;
                 requestIdentifier = openRequest();
                 final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>(CoreOutboundContext.this, requestIdentifier);
@@ -150,6 +149,8 @@ public final class CoreOutboundContext<I, O> {
                 // Request must be sent *after* the identifier is registered in the map
                 sendRequest(requestIdentifier, request);
                 return outboundRequest.getFutureReply();
+            } finally {
+                state.release();
             }
         }
 

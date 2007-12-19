@@ -3,6 +3,7 @@ package org.jboss.cx.remoting.core;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Collections;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
 import org.jboss.cx.remoting.FutureReply;
@@ -11,6 +12,7 @@ import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.IndeterminateOutcomeException;
 import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**
@@ -31,7 +33,7 @@ public final class CoreOutboundRequest<I, O> {
     /* Protected by {@code state} */
     private RemoteExecutionException exception;
     /* Protected by {@code state} */
-    private List<RequestCompletionHandler<O>> handlers;
+    private List<RequestCompletionHandler<O>> handlers = Collections.synchronizedList(new LinkedList<RequestCompletionHandler<O>>());
 
     public CoreOutboundRequest(final CoreOutboundContext<I, O> context, final RequestIdentifier requestIdentifier) {
         this.context = context;
@@ -81,10 +83,10 @@ public final class CoreOutboundRequest<I, O> {
      * Request was possibly abruptly terminated.
      */
     void receiveClose() {
-        synchronized(state) {
-            if (state.transition(State.WAITING, State.TERMINATED)) {
-                drop();
-            }
+        if (state.transitionHold(State.WAITING, State.TERMINATED)) try {
+            drop();
+        } finally {
+            state.release();
         }
     }
 
@@ -92,12 +94,11 @@ public final class CoreOutboundRequest<I, O> {
      * Receive a cancel acknowledge for this request.
      */
     void receiveCancelAcknowledge() {
-        synchronized(state) {
-            if (state.transition(State.WAITING, State.CANCELLED)) {
-                complete();
-            } else {
-                throw new IllegalStateException("Got cancel acknowledge from state " + state.getState());
-            }
+        state.requireTransitionHold(State.WAITING, State.CANCELLED);
+        try {
+            complete();
+        } finally {
+            state.release();
         }
     }
 
@@ -107,13 +108,13 @@ public final class CoreOutboundRequest<I, O> {
      * @param reply the reply
      */
     void receiveReply(final Reply<O> reply) {
-        synchronized(state) {
-            if (state.transition(State.WAITING, State.DONE)) {
-                this.reply = reply;
-                complete();
-            } else {
-                throw new IllegalStateException("Got reply from state " + state.getState());
-            }
+        state.requireTransitionExclusive(State.WAITING, State.DONE);
+        this.reply = reply;
+        state.releaseDowngrade();
+        try {
+            complete();
+        } finally {
+            state.release();
         }
     }
 
@@ -123,13 +124,13 @@ public final class CoreOutboundRequest<I, O> {
      * @param exception the exception
      */
     void receiveException(final RemoteExecutionException exception) {
-        synchronized(state) {
-            if (state.transition(State.WAITING, State.EXCEPTION)) {
-                this.exception = exception;
-                complete();
-            } else {
-                throw new IllegalStateException("Got exception from state " + state.getState());
-            }
+        state.requireTransitionExclusive(State.WAITING, State.DONE);
+        this.exception = exception;
+        state.releaseDowngrade();
+        try {
+            complete();
+        } finally {
+            state.release();
         }
     }
 
@@ -139,15 +140,15 @@ public final class CoreOutboundRequest<I, O> {
         }
 
         public boolean cancel(final boolean mayInterruptIfRunning) {
-            synchronized(state) {
-                if (state.in(State.WAITING)) {
-                    if (! context.sendCancelRequest(requestIdentifier, mayInterruptIfRunning)) {
-                        // the cancel request could not be sent at all
-                        return false;
-                    }
+            if (state.inHold(State.WAITING)) try {
+                if (! context.sendCancelRequest(requestIdentifier, mayInterruptIfRunning)) {
+                    // the cancel request could not be sent at all
+                    return false;
                 }
-                return state.waitForNot(State.WAITING) == State.CANCELLED;
+            } finally {
+                state.release();
             }
+            return state.waitForNot(State.WAITING) == State.CANCELLED;
         }
 
         public boolean isCancelled() {
@@ -159,8 +160,9 @@ public final class CoreOutboundRequest<I, O> {
         }
 
         public Reply<O> get() throws InterruptedException, CancellationException, RemoteExecutionException {
-            synchronized(state) {
-                switch (state.waitInterruptablyForNot(State.WAITING)) {
+            final State newState = state.waitInterruptablyForNotHold(State.WAITING);
+            try {
+                switch(newState) {
                     case CANCELLED:
                         throw new CancellationException("Request was cancelled");
                     case EXCEPTION:
@@ -169,14 +171,18 @@ public final class CoreOutboundRequest<I, O> {
                         return reply;
                     case TERMINATED:
                         throw new IndeterminateOutcomeException("Request terminated abruptly; outcome unknown");
+                    default:
+                        throw new IllegalStateException("Wrong state");
                 }
-                throw new IllegalStateException("Wrong state");
+            } finally {
+                state.release();
             }
         }
 
         public Reply<O> get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException {
-            synchronized(state) {
-                switch (state.waitInterruptablyForNot(State.WAITING, timeout, unit)) {
+            final State newState = state.waitInterruptablyForNotHold(State.WAITING, timeout, unit);
+            try {
+                switch (newState) {
                     case CANCELLED:
                         throw new CancellationException("Request was cancelled");
                     case EXCEPTION:
@@ -189,24 +195,26 @@ public final class CoreOutboundRequest<I, O> {
                         throw new IndeterminateOutcomeException("Request terminated abruptly; outcome unknown");
                 }
                 throw new IllegalStateException("Wrong state");
+            } finally {
+                state.release();
             }
         }
 
         public FutureReply<O> setCompletionNotifier(RequestCompletionHandler<O> handler) {
-            synchronized(state) {
-                switch (state.getState()) {
+            final State currentState = state.getStateHold();
+            try {
+                switch (currentState) {
                     case CANCELLED:
                     case DONE:
                     case EXCEPTION:
                         handler.notifyComplete(this);
                         break;
                     case WAITING:
-                        if (handlers == null) {
-                            handlers = new LinkedList<RequestCompletionHandler<O>>();
-                        }
                         handlers.add(handler);
                         break;
                 }
+            } finally {
+                state.release();
             }
             return this;
         }

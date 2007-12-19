@@ -1,54 +1,176 @@
 package org.jboss.cx.remoting.core;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.Condition;
+import java.util.Date;
 
 /**
  *
  */
 public final class AtomicStateMachine<T extends Enum<T>> {
-    /* protected by {@code this} */
+    // protected by {@code lock}
     private T state;
+
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    private final Lock readLock = lock.readLock();
+    private final Lock writeLock = lock.writeLock();
+    private final Condition cond = writeLock.newCondition();
 
     public static <T extends Enum<T>> AtomicStateMachine<T> start(final T initialState) {
         return new AtomicStateMachine<T>(initialState);
     }
 
-    public AtomicStateMachine(final T state) {
+    private AtomicStateMachine(final T state) {
         if (state == null) {
             throw new NullPointerException("state is null");
         }
         this.state = state;
     }
 
-    public synchronized boolean transition(final T state) {
+    public boolean transition(final T state) {
+        writeLock.lock();
+        try {
+            if (state == null) {
+                throw new NullPointerException("state is null");
+            }
+            if (this.state == state) {
+                return false;
+            }
+            this.state = state;
+            cond.signalAll();
+            return true;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    /**
+     * Transition the state, and hold it at the given state until {@link #release()} is called.  Must not be
+     * called if the state is already held from this thread.
+     *
+     * Example:
+     * <pre>
+     *     if (state.transitionHold(State.STOPPING)) try {
+     *         // do stuff
+     *     } finally {
+     *         state.release();
+     *     }
+     * </pre>
+     *
+     * @param state the target state
+     * @return {@code true} if the transition happened
+     */
+    public boolean transitionHold(final T state) {
         if (state == null) {
             throw new NullPointerException("state is null");
         }
-        if (this.state == state) {
-            return false;
+        writeLock.lock();
+        try {
+            if (this.state == state) {
+                return false;
+            }
+            this.state = state;
+            cond.signalAll();
+            readLock.lock();
+            return true;
+        } finally {
+            writeLock.unlock();
         }
-        this.state = state;
-        notifyAll();
-        return true;
     }
 
-    public synchronized boolean transition(final T fromState, final T toState) {
+    /**
+     * Release a held state.  Must be called from the same thread that is holding the state.
+     */
+    public void release() {
+        readLock.unlock();
+    }
+
+    public void releaseExclusive() {
+        writeLock.unlock();
+    }
+
+    public void releaseDowngrade() {
+        readLock.lock();
+        writeLock.unlock();
+    }
+
+    public boolean transition(final T fromState, final T toState) {
         if (fromState == null) {
             throw new NullPointerException("fromState is null");
         }
         if (toState == null) {
             throw new NullPointerException("toState is null");
         }
-        if (state != fromState) {
-            return false;
+        writeLock.lock();
+        try {
+            if (state != fromState) {
+                return false;
+            }
+            state = toState;
+            cond.signalAll();
+            return true;
+        } finally {
+            writeLock.unlock();
         }
-        state = toState;
-        notifyAll();
-        return true;
+    }
+
+    public boolean transitionHold(final T fromState, final T toState) {
+        if (fromState == null) {
+            throw new NullPointerException("fromState is null");
+        }
+        if (toState == null) {
+            throw new NullPointerException("toState is null");
+        }
+        writeLock.lock();
+        try {
+            if (state != fromState) {
+                return false;
+            }
+            state = toState;
+            cond.signalAll();
+            readLock.lock();
+            return true;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    public boolean transitionExclusive(final T fromState, final T toState) {
+        if (fromState == null) {
+            throw new NullPointerException("fromState is null");
+        }
+        if (toState == null) {
+            throw new NullPointerException("toState is null");
+        }
+        writeLock.lock();
+        boolean ok = false;
+        try {
+            if (state != fromState) {
+                writeLock.unlock();
+                return false;
+            }
+            state = toState;
+            cond.signalAll();
+            ok = true;
+            return true;
+        } finally {
+            if (! ok) {
+                writeLock.unlock();
+            }
+        }
     }
 
     public void requireTransition(final T state) {
         if (! transition(state)) {
+            throw new IllegalStateException("Already in state " + state);
+        }
+    }
+
+    public void requireTransitionHold(final T state) {
+        if (! transitionHold(state)) {
             throw new IllegalStateException("Already in state " + state);
         }
     }
@@ -59,153 +181,265 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
-    public synchronized void waitInterruptablyFor(final T state) throws InterruptedException {
-        while (this.state != state) {
-            wait();
+    public void requireTransitionHold(final T fromState, final T toState) {
+        if (! transitionHold(fromState, toState)) {
+            throw new IllegalStateException("Cannot transition from " + fromState + " to " + toState + " (current state is " + state + ")");
         }
     }
 
-    public synchronized void waitFor(final T state) {
-        boolean intr = Thread.interrupted();
+    public void requireTransitionExclusive(T fromState, T toState) {
+        if (! transitionExclusive(fromState, toState)) {
+            throw new IllegalStateException("Cannot transition from " + fromState + " to " + toState + " (current state is " + state + ")");
+        }
+    }
+
+
+    public void waitInterruptablyFor(final T state) throws InterruptedException {
+        writeLock.lockInterruptibly();
         try {
-            while (this.state == state) {
-                try {
-                    wait();
-                } catch (InterruptedException e) {
-                    intr = true;
-                }
+            while (this.state != state) {
+                cond.await();
             }
-            return;
         } finally {
-            if (intr) {
-                Thread.currentThread().interrupt();
-            }
+            writeLock.unlock();
         }
     }
 
-    public synchronized void waitForAny() {
-        waitForNot(state);
+    public void waitFor(final T state) {
+        writeLock.lock();
+        try {
+            while (this.state != state) {
+                cond.awaitUninterruptibly();
+            }
+        } finally {
+            writeLock.unlock();
+        }
     }
 
-    public synchronized boolean waitInterruptablyFor(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+    public void waitForHold(final T state) {
+        writeLock.lock();
+        try {
+            while (this.state != state) {
+                cond.awaitUninterruptibly();
+            }
+            readLock.lock();
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    public void waitForAny() {
+        writeLock.lock();
+        try {
+            waitForNot(state);
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    public boolean waitInterruptablyFor(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
-        while (this.state != state) {
-            final long now = System.currentTimeMillis();
-            if (now >= endTime) {
-                return false;
-            }
-            wait(endTime - now);
-        }
-        return true;
-    }
-
-    public synchronized T waitInterruptablyForNot(final T state) throws InterruptedException {
-        while (this.state == state) {
-            wait();
-        }
-        return this.state;
-    }
-
-    public synchronized T waitForNot(final T state) {
-        boolean intr = Thread.interrupted();
+        final Date deadline = new Date(endTime);
+        writeLock.lockInterruptibly();
         try {
-            while (this.state == state) {
-                try {
-                    wait();
-                } catch (InterruptedException e) {
-                    intr = true;
+            while (this.state != state) {
+                if (! cond.awaitUntil(deadline)) {
+                    return false;
                 }
             }
-            return this.state;
-        } finally {
-            if (intr) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
-    public synchronized T waitInterruptablyForNot(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
-        final long timeoutMillis = timeUnit.toMillis(timeout);
-        final long startTime = System.currentTimeMillis();
-        final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
-        while (this.state == state) {
-            final long now = System.currentTimeMillis();
-            if (now >= endTime) {
-                break;
-            }
-            wait(endTime - now);
-        }
-        return this.state;
-    }
-
-    public synchronized T waitForNot(final T state, final long timeout, final TimeUnit timeUnit) {
-        boolean intr = Thread.interrupted();
-        try {
-            final long timeoutMillis = timeUnit.toMillis(timeout);
-            final long startTime = System.currentTimeMillis();
-            final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
-            while (this.state == state) {
-                final long now = System.currentTimeMillis();
-                if (now >= endTime) {
-                    break;
-                }
-                try {
-                    wait(endTime - now);
-                } catch (InterruptedException e) {
-                    intr = true;
-                }
-            }
-            return this.state;
-        } finally {
-            if (intr) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
-    public synchronized boolean doIf(final Runnable task, final T state) {
-        if (state == null) {
-            throw new NullPointerException("state is null");
-        }
-        if (task == null) {
-            throw new NullPointerException("task is null");
-        }
-        if (this.state == state) {
-            task.run();
             return true;
-        } else {
-            return false;
+        } finally {
+            writeLock.unlock();
         }
     }
 
-    public synchronized T getState() {
+    public T waitInterruptablyForNot(final T state) throws InterruptedException {
+        writeLock.lockInterruptibly();
+        try {
+            while (this.state == state) {
+                cond.await();
+            }
+            return this.state;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    public T waitInterruptablyForNotHold(final T state) throws InterruptedException {
+        writeLock.lockInterruptibly();
+        try {
+            while (this.state == state) {
+                cond.await();
+            }
+            readLock.lockInterruptibly();
+            return this.state;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    public T waitForNot(final T state) {
+        writeLock.lock();
+        try {
+            while (this.state == state) {
+                cond.awaitUninterruptibly();
+            }
+            return this.state;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    public T waitForNotHold(final T state) {
+        writeLock.lock();
+        try {
+            while (this.state == state) {
+                cond.awaitUninterruptibly();
+            }
+            readLock.lock();
+            return this.state;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    public T waitInterruptablyForNot(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+        final long timeoutMillis = timeUnit.toMillis(timeout);
+        final long startTime = System.currentTimeMillis();
+        final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
+        final Date deadLine = new Date(endTime);
+        writeLock.lockInterruptibly();
+        try {
+            while (this.state == state) {
+                cond.awaitUntil(deadLine);
+            }
+            return this.state;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+
+    public T waitInterruptablyForNotHold(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+        final long timeoutMillis = timeUnit.toMillis(timeout);
+        final long startTime = System.currentTimeMillis();
+        final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
+        final Date deadLine = new Date(endTime);
+        writeLock.lockInterruptibly();
+        try {
+            while (this.state == state) {
+                cond.awaitUntil(deadLine);
+            }
+            readLock.lockInterruptibly();
+            return this.state;
+        } finally {
+            writeLock.unlock();
+        }
+    }
+
+    public T waitForNot(final T state, final long timeout, final TimeUnit timeUnit) {
+        final long timeoutMillis = timeUnit.toMillis(timeout);
+        final long startTime = System.currentTimeMillis();
+        final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
+        final Date deadLine = new Date(endTime);
+        boolean intr = false;
+        writeLock.lock();
+        try {
+            while (this.state == state) {
+                try {
+                    if (! cond.awaitUntil(deadLine)) {
+                        break;
+                    }
+                } catch (InterruptedException e) {
+                    intr = true;
+                }
+            }
+            return this.state;
+        } finally {
+            if (intr) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    public T getState() {
+        readLock.lock();
+        try {
+            return state;
+        } finally {
+            readLock.unlock();
+        }
+    }
+
+    public T getStateHold() {
+        readLock.lock();
         return state;
     }
 
-    public synchronized boolean in(T... states) {
+    public boolean inHold(T state) {
+        readLock.lock();
+        boolean ok = this.state == state;
+        if (! ok) {
+            readLock.unlock();
+        }
+        return ok;
+    }
+
+    public boolean in(T... states) {
         if (states == null) {
             throw new NullPointerException("states is null");
         }
-        for (T state : states) {
-            if (this.state == state) {
-                return true;
+        readLock.lock();
+        try {
+            for (T state : states) {
+                if (this.state == state) {
+                    return true;
+                }
             }
+            return false;
+        } finally {
+            readLock.unlock();
         }
-        return false;
     }
 
-    public synchronized void require(T state) {
+    public void require(T state) {
         if (state == null) {
             throw new NullPointerException("state is null");
         }
-        if (this.state != state) {
-            throw new IllegalStateException("Invalid state (expected " + state + ", but current state is " + this.state + ")");
+        readLock.lock();
+        try {
+            if (this.state != state) {
+                throw new IllegalStateException("Invalid state (expected " + state + ", but current state is " + this.state + ")");
+            }
+        } finally {
+            readLock.unlock();
         }
     }
 
-    public synchronized String toString() {
-        return "State = " + state;
+    public void requireHold(T state) {
+        if (state == null) {
+            throw new NullPointerException("state is null");
+        }
+        boolean ok = false;
+        readLock.lock();
+        try {
+            if (this.state != state) {
+                throw new IllegalStateException("Invalid state (expected " + state + ", but current state is " + this.state + ")");
+            }
+            ok = true;
+        } finally {
+            if (! ok) readLock.unlock();
+        }
+    }
+
+    public String toString() {
+        readLock.lock();
+        try {
+            return "State = " + state;
+        } finally {
+            readLock.unlock();
+        }
     }
 }

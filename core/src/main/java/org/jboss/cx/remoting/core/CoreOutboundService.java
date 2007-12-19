@@ -87,13 +87,13 @@ public final class CoreOutboundService<I, O> {
         }
 
         public Context<I, O> createContext() throws RemotingException {
-            synchronized(state) {
-                switch (state.waitForNot(State.WAITING_FOR_REPLY)) {
-                    case UP: break;
-                    case FAILED: throw new RemotingException("Context source open failed");
-                    default:
-                        throw new IllegalStateException("Context source is not open");
-                }
+            // Don't need waitForNotHold here since the state can't change again
+            final State currentState = state.waitForNot(State.WAITING_FOR_REPLY);
+            switch (currentState) {
+                case UP: break;
+                case FAILED: throw new RemotingException("Context source open failed");
+                default:
+                    throw new IllegalStateException("Context source is not open");
             }
             final CoreOutboundContext<I, O> context = coreSession.createContext(serviceIdentifier);
             return context.getUserContext();

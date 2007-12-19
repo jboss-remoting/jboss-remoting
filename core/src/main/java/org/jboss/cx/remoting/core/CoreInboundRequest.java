@@ -66,6 +66,7 @@ public final class CoreInboundRequest<I, O> {
     public final class UserRequestContext implements RequestContext<O> {
 
         public boolean isCancelled() {
+            // todo...
             return false;
         }
 
@@ -77,30 +78,24 @@ public final class CoreInboundRequest<I, O> {
             if (reply == null) {
                 throw new NullPointerException("reply is null");
             }
-            synchronized(state) {
-                state.requireTransition(State.UNSENT, State.SENT);
-                context.sendReply(requestIdentifier, reply);
-            }
+            state.requireTransition(State.UNSENT, State.SENT);
+            context.sendReply(requestIdentifier, reply);
         }
 
         public void sendFailure(final String msg, final Throwable cause) throws RemotingException, IllegalStateException {
-            synchronized(state) {
-                state.requireTransition(State.UNSENT, State.SENT);
-                final RemoteExecutionException rex = new RemoteExecutionException(msg, cause);
-                rex.setStackTrace(cause.getStackTrace());
-                sendException(rex);
-            }
+            state.requireTransition(State.UNSENT, State.SENT);
+            final RemoteExecutionException rex = new RemoteExecutionException(msg, cause);
+            rex.setStackTrace(cause.getStackTrace());
+            sendException(rex);
         }
 
         public void sendCancelled() throws RemotingException, IllegalStateException {
-            synchronized(state) {
-                state.requireTransition(State.UNSENT, State.SENT);
-                context.sendCancelAcknowledge(requestIdentifier);
-            }
+            state.requireTransition(State.UNSENT, State.SENT);
+            context.sendCancelAcknowledge(requestIdentifier);
         }
 
         public void setCancelHandler(final RequestCancelHandler<O> requestCancelHandler) {
-
+            // todo - should be a list
         }
     }
 }
