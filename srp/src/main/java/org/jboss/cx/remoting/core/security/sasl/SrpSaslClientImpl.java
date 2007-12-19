@@ -336,15 +336,16 @@ public final class SrpSaslClientImpl extends AbstractSrpSaslParticipant implemen
                 try {
                     selectConfidentiality(alg);
                     clientOptions.getConfidentialitySet().add(alg);
+                    log.trace("Selected cipher algorithm '%s'", alg);
                     break;
                 } catch (InvalidKeyException e) {
-                    if (trace) log.trace("Rejected JCA Cipher algorithm '" + alg + "' (invalid key): " + e.getMessage());
+                    log.trace("Rejected JCA Cipher algorithm '%s' (invalid key): %s", alg, e);
                 } catch (NoSuchAlgorithmException e) {
-                    if (trace) log.trace("Rejected JCA Cipher algorithm '" + alg + "' (no such algorithm): " + e.getMessage());
+                    log.trace("Rejected JCA Cipher algorithm '%s' (no such algorithm): %s", alg, e);
                 } catch (NoSuchPaddingException e) {
-                    if (trace) log.trace("Rejected JCA Cipher algorithm '" + alg + "' (no such padding): " + e.getMessage());
+                    log.trace("Rejected JCA Cipher algorithm '%s' (no such padding): %s", alg, e);
                 } catch (InvalidAlgorithmParameterException e) {
-                    if (trace) log.trace("Rejected JCA Cipher algorithm '" + alg + "' (invalid algorithm parameter): " + e.getMessage());
+                    log.trace("Rejected JCA Cipher algorithm '%s' (invalid algorithm parameter): %s", alg, e);
                 }
             }
         }
