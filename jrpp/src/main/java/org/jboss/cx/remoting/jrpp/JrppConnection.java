@@ -579,6 +579,7 @@ public final class JrppConnection {
                                     final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
                                     write(objectOutputStream, MessageType.AUTH_SUCCESS);
                                     objectOutputStream.send(ioSession);
+                                    saslServerFilter.startEncryption(ioSession);
                                     currentState.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.UP);
                                 }
                             } catch (SaslException ex) {
@@ -602,6 +603,8 @@ public final class JrppConnection {
                             return;
                         }
                         case AUTH_SUCCESS: {
+                            SaslClientFilter saslClientFilter = getSaslClientFilter();
+                            saslClientFilter.startEncryption(ioSession);
                             currentState.requireTransition(State.AWAITING_SERVER_CHALLENGE, State.UP);
                             return;
                         }
