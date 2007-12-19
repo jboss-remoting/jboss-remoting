@@ -8,7 +8,6 @@ import javax.security.auth.callback.CallbackHandler;
  *
  */
 public final class ProtocolRegistrationSpec {
-    // todo - recheck some of these fields
     private final String scheme;
     private final ProtocolHandlerFactory protocolHandlerFactory;
 

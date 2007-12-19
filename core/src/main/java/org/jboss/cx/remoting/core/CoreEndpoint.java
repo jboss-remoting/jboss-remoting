@@ -52,11 +52,11 @@ public final class CoreEndpoint {
     private final ConcurrentMap<ServiceKey, CoreDeployedService<?, ?>> services = CollectionUtil.concurrentMap();
     private final Set<CoreSession> sessions = CollectionUtil.synchronizedSet(CollectionUtil.<CoreSession>weakHashSet());
 
-    public ConcurrentMap<Object, Object> getAttributes() {
+    ConcurrentMap<Object, Object> getAttributes() {
         return endpointMap;
     }
 
-    public Endpoint getUserEndpoint() {
+    Endpoint getUserEndpoint() {
         return userEndpoint;
     }
 
@@ -275,6 +275,7 @@ public final class CoreEndpoint {
         }
 
         public Registration deployInterceptorType(final InterceptorDeploymentSpec spec) throws RemotingException {
+            // todo - interceptors
             return null;
         }
 
