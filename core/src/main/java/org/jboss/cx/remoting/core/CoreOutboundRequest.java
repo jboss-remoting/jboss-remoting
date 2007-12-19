@@ -9,6 +9,7 @@ import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.RequestCompletionHandler;
+import org.jboss.cx.remoting.IndeterminateOutcomeException;
 import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
@@ -167,8 +168,7 @@ public final class CoreOutboundRequest<I, O> {
                     case DONE:
                         return reply;
                     case TERMINATED:
-                        // todo - maybe we need a specific exception type
-                        throw new RemoteExecutionException("Request terminated; outcome unknown");
+                        throw new IndeterminateOutcomeException("Request terminated abruptly; outcome unknown");
                 }
                 throw new IllegalStateException("Wrong state");
             }
@@ -186,8 +186,7 @@ public final class CoreOutboundRequest<I, O> {
                     case WAITING:
                         return null;
                     case TERMINATED:
-                        // todo - maybe we need a specific exception type
-                        throw new RemoteExecutionException("Request terminated; outcome unknown");
+                        throw new IndeterminateOutcomeException("Request terminated abruptly; outcome unknown");
                 }
                 throw new IllegalStateException("Wrong state");
             }

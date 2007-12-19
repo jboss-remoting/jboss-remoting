@@ -365,7 +365,7 @@ public final class SrpSaslClientImpl extends AbstractSrpSaslParticipant implemen
         if (readInteger(challengeBuffer) != challengeBuffer.remaining()) {
             throw new SaslException("Buffer from server has incorrect size");
         }
-        final byte[] server_M2_bytes = readOctetSeq(challengeBuffer);// TODO - M2...
+        final byte[] server_M2_bytes = readOctetSeq(challengeBuffer);
         final byte[] value_sIV_bytes = readOctetSeq(challengeBuffer);
         final byte[] o_digest = digest.digest(bytesOf(clientOptionString));
         String sid = readUtf8(challengeBuffer);

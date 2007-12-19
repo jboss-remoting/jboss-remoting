@@ -263,7 +263,12 @@ public final class CoreEndpoint {
         }
 
         public ProtocolRegistration registerProtocol(ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException {
-            // todo validation, etc
+            if (spec.getScheme() == null) {
+                throw new NullPointerException("spec.getScheme() is null");
+            }
+            if (spec.getProtocolHandlerFactory() == null) {
+                throw new NullPointerException("spec.getProtocolHandlerFactory() is null");
+            }
             final CoreProtocolRegistration registration = new CoreProtocolRegistration(spec.getProtocolHandlerFactory());
             protocolMap.put(spec.getScheme(), registration);
             return registration;
