@@ -41,6 +41,7 @@ public final class JrppProtocolSupport {
     private final ProtocolServerContext serverContext;
     private final IoHandler serverIoHandler = new SingleSessionIoHandlerDelegate(new ServerSessionHandlerFactory());
     private final Set<IoAcceptor> ioAcceptors = CollectionUtil.synchronizedSet(CollectionUtil.<IoAcceptor>hashSet());
+    // todo - make the thread pools configurable
     private final ExecutorService threadPool = Executors.newCachedThreadPool();
     private final NioProcessor nioProcessor = new NioProcessor(threadPool);
     private final ProtocolHandlerFactoryImpl protocolHandlerFactory = new ProtocolHandlerFactoryImpl();
@@ -63,7 +64,6 @@ public final class JrppProtocolSupport {
         ioAcceptor.setDefaultLocalAddress(address);
         ioAcceptor.setHandler(serverIoHandler);
         ioAcceptor.getFilterChain().addLast("framing filter", new FramingIoFilter());
-        ioAcceptor.getFilterChain().addLast("DEBUG", new LoggingFilter());
         ioAcceptor.bind();
         ioAcceptors.add(ioAcceptor);
     }
@@ -97,7 +97,6 @@ public final class JrppProtocolSupport {
         public ProtocolHandlerFactoryImpl() {
             connector = new NioSocketConnector(threadPool, nioProcessor);
             connector.getFilterChain().addLast("framing filter", new FramingIoFilter());
-            connector.getFilterChain().addLast("DEBUG", new LoggingFilter());
             connector.setHandler(new SingleSessionIoHandlerDelegate(this));
         }
 
