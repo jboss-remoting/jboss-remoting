@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
 import java.util.Set;
+import java.util.List;
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,8 +16,8 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ServiceDeploymentSpec;
 import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.EndpointShutdownListener;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
-import org.jboss.cx.remoting.core.util.Resource;
 import org.jboss.cx.remoting.spi.Discovery;
 import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
@@ -37,20 +39,26 @@ import javax.security.auth.callback.UnsupportedCallbackException;
 public final class CoreEndpoint {
 
     private final String name;
-    private final Resource resource = new Resource();
     private final Endpoint userEndpoint = new UserEndpoint();
     private CallbackHandler remoteCallbackHandler;
     private CallbackHandler localCallbackHandler;
+    private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
+
+    private enum State {
+        UP,
+        DOWN,
+    }
 
     protected CoreEndpoint(final String name) {
         this.name = name;
-        resource.doStart(null);
     }
 
     private final ConcurrentMap<Object, Object> endpointMap = CollectionUtil.concurrentMap();
     private final ConcurrentMap<String, CoreProtocolRegistration> protocolMap = CollectionUtil.concurrentMap();
     private final ConcurrentMap<ServiceKey, CoreDeployedService<?, ?>> services = CollectionUtil.concurrentMap();
-    private final Set<CoreSession> sessions = CollectionUtil.synchronizedSet(CollectionUtil.<CoreSession>weakHashSet());
+    private final Set<CoreSession> sessions = CollectionUtil.synchronizedSet(CollectionUtil.<CoreSession>hashSet());
+    // accesses protected by {@code shutdownListeners} - always lock AFTER {@code state}
+    private final List<EndpointShutdownListener> shutdownListeners = CollectionUtil.arrayList();
 
     ConcurrentMap<Object, Object> getAttributes() {
         return endpointMap;
@@ -60,29 +68,37 @@ public final class CoreEndpoint {
         return userEndpoint;
     }
 
+    void removeSession(CoreSession coreSession) {
+        sessions.remove(coreSession);
+        sessions.notifyAll();
+    }
+
     @SuppressWarnings ({"unchecked"})
     <I, O> CoreDeployedService<I, O> locateDeployedService(ServiceLocator<I, O> locator) {
-        final String name = locator.getServiceGroupName();
-        final String type = locator.getServiceType();
-        // first try the quick (exact) lookup
-        if (name.indexOf('*') == -1) {
-            final CoreDeployedService<I, O> service = (CoreDeployedService<I, O>) services.get(new ServiceKey(name, type));
-            if (service != null) {
-                return service;
-            } else {
-                return null;
+        synchronized(state) {
+            state.require(State.UP);
+            final String name = locator.getServiceGroupName();
+            final String type = locator.getServiceType();
+            // first try the quick (exact) lookup
+            if (name.indexOf('*') == -1) {
+                final CoreDeployedService<I, O> service = (CoreDeployedService<I, O>) services.get(new ServiceKey(name, type));
+                if (service != null) {
+                    return service;
+                } else {
+                    return null;
+                }
             }
-        }
-        final Pattern pattern = createWildcardPattern(name);
-        for (Map.Entry<ServiceKey,CoreDeployedService<?,?>> entry : services.entrySet()) {
-            final CoreEndpoint.ServiceKey key = entry.getKey();
-            final String entryName = key.getName();
-            final String entryType = key.getType();
-            if (entryType.equals(type) && pattern.matcher(entryName).matches()) {
-                return (CoreDeployedService<I, O>) entry.getValue();
+            final Pattern pattern = createWildcardPattern(name);
+            for (Map.Entry<ServiceKey,CoreDeployedService<?,?>> entry : services.entrySet()) {
+                final CoreEndpoint.ServiceKey key = entry.getKey();
+                final String entryName = key.getName();
+                final String entryType = key.getType();
+                if (entryType.equals(type) && pattern.matcher(entryName).matches()) {
+                    return (CoreDeployedService<I, O>) entry.getValue();
+                }
             }
+            return null;
         }
-        return null;
     }
 
     private static final Pattern wildcardPattern = Pattern.compile("^([^*]+|\\*)+$");
@@ -203,18 +219,52 @@ public final class CoreEndpoint {
         }
 
         public void shutdown() {
-            resource.doStop(new Runnable() {
-                public void run() {
-                    // TODO - shut down sessions
+            final List<EndpointShutdownListener> listeners;
+            synchronized(state) {
+                if (!state.transition(State.UP, State.DOWN)) {
+                    return;
                 }
-            }, null);
-            resource.doTerminate(null);
+                synchronized(shutdownListeners) {
+                    listeners = CollectionUtil.arrayList(shutdownListeners);
+                    shutdownListeners.clear();
+                }
+            }
+            for (EndpointShutdownListener listener : listeners) {
+                listener.handleShutdown(this);
+            }
+            for (CoreSession coreSession : sessions) {
+                coreSession.shutdown();
+            }
+            sessions.clear();
+        }
+
+        public void addShutdownListener(EndpointShutdownListener listener) {
+            synchronized(state) {
+                if (state.in(State.UP)) {
+                    synchronized(shutdownListeners) {
+                        shutdownListeners.add(listener);
+                        return;
+                    }
+                }
+            }
+            // must be shut down!
+            listener.handleShutdown(this);
+        }
+
+        public void removeShutdownListener(EndpointShutdownListener listener) {
+            synchronized(shutdownListeners) {
+                final Iterator<EndpointShutdownListener> i = shutdownListeners.iterator();
+                while (i.hasNext()) {
+                    if (i.next() == listener) {
+                        i.remove();
+                    }
+                }
+            }
         }
 
         public Session openSession(final EndpointLocator endpointLocator) throws RemotingException {
-            boolean success = false;
-            resource.doAcquire();
-            try {
+            synchronized(state) {
+                state.require(State.UP);
                 final String scheme = endpointLocator.getEndpointUri().getScheme();
                 if (scheme == null) {
                     throw new RemotingException("No scheme on remote endpoint URI");
@@ -227,16 +277,11 @@ public final class CoreEndpoint {
                 try {
                     final CoreSession session = new CoreSession(CoreEndpoint.this, factory, endpointLocator);
                     sessions.add(session);
-                    success = true;
                     return session.getUserSession();
                 } catch (IOException e) {
                     RemotingException rex = new RemotingException("Failed to create protocol handler: " + e.getMessage());
                     rex.setStackTrace(e.getStackTrace());
                     throw rex;
-                }
-            } finally {
-                if (!success) {
-                    resource.doRelease();
                 }
             }
         }
@@ -246,32 +291,39 @@ public final class CoreEndpoint {
         }
 
         public <I, O> Registration deployService(final ServiceDeploymentSpec<I, O> spec) throws RemotingException {
-            if (spec.getServiceName() == null) {
-                throw new NullPointerException("spec.getServiceName() is null");
+            synchronized(state) {
+                state.require(State.UP);
+                if (spec.getServiceName() == null) {
+                    throw new NullPointerException("spec.getServiceName() is null");
+                }
+                if (spec.getServiceType() == null) {
+                    throw new NullPointerException("spec.getServiceType() is null");
+                }
+                if (spec.getRequestListener() == null) {
+                    throw new NullPointerException("spec.getRequestListener() is null");
+                }
+                final CoreDeployedService<I, O> service = new CoreDeployedService<I, O>(spec.getServiceName(), spec.getServiceType(), spec.getRequestListener());
+                if (services.putIfAbsent(new ServiceKey(spec.getServiceName(), spec.getServiceType()), service) != null) {
+                    throw new RemotingException("A service with the same name is already deployed");
+                }
+                // todo - return a registration instance
+                return null;
             }
-            if (spec.getServiceType() == null) {
-                throw new NullPointerException("spec.getServiceType() is null");
-            }
-            if (spec.getRequestListener() == null) {
-                throw new NullPointerException("spec.getRequestListener() is null");
-            }
-            final CoreDeployedService<I, O> service = new CoreDeployedService<I, O>(spec.getServiceName(), spec.getServiceType(), spec.getRequestListener());
-            if (services.putIfAbsent(new ServiceKey(spec.getServiceName(), spec.getServiceType()), service) != null) {
-                throw new RemotingException("A service with the same name is already deployed");
-            }
-            return null;
         }
 
         public ProtocolRegistration registerProtocol(ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException {
-            if (spec.getScheme() == null) {
-                throw new NullPointerException("spec.getScheme() is null");
+            synchronized(state) {
+                state.require(State.UP);
+                if (spec.getScheme() == null) {
+                    throw new NullPointerException("spec.getScheme() is null");
+                }
+                if (spec.getProtocolHandlerFactory() == null) {
+                    throw new NullPointerException("spec.getProtocolHandlerFactory() is null");
+                }
+                final CoreProtocolRegistration registration = new CoreProtocolRegistration(spec.getProtocolHandlerFactory());
+                protocolMap.put(spec.getScheme(), registration);
+                return registration;
             }
-            if (spec.getProtocolHandlerFactory() == null) {
-                throw new NullPointerException("spec.getProtocolHandlerFactory() is null");
-            }
-            final CoreProtocolRegistration registration = new CoreProtocolRegistration(spec.getProtocolHandlerFactory());
-            protocolMap.put(spec.getScheme(), registration);
-            return registration;
         }
 
         public Registration deployInterceptorType(final InterceptorDeploymentSpec spec) throws RemotingException {
@@ -285,19 +337,27 @@ public final class CoreEndpoint {
         }
 
         public CallbackHandler getRemoteCallbackHandler() {
-            return remoteCallbackHandler;
+            synchronized(this) {
+                return remoteCallbackHandler;
+            }
         }
 
         public CallbackHandler getLocalCallbackHandler() {
-            return localCallbackHandler;
+            synchronized(this) {
+                return localCallbackHandler;
+            }
         }
 
         public void setRemoteCallbackHandler(final CallbackHandler remoteCallbackHandler) {
-            CoreEndpoint.this.remoteCallbackHandler = remoteCallbackHandler;
+            synchronized(this) {
+                CoreEndpoint.this.remoteCallbackHandler = remoteCallbackHandler;
+            }
         }
 
         public void setLocalCallbackHandler(final CallbackHandler localCallbackHandler) {
-            CoreEndpoint.this.localCallbackHandler = localCallbackHandler;
+            synchronized(this) {
+                CoreEndpoint.this.localCallbackHandler = localCallbackHandler;
+            }
         }
     }
 }

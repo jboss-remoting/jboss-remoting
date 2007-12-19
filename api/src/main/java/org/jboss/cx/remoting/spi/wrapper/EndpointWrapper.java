@@ -8,6 +8,7 @@ import org.jboss.cx.remoting.InterceptorDeploymentSpec;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ServiceDeploymentSpec;
 import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.EndpointShutdownListener;
 import org.jboss.cx.remoting.spi.Discovery;
 import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
@@ -71,5 +72,13 @@ public class EndpointWrapper implements Endpoint {
 
     public void setLocalCallbackHandler(final CallbackHandler callbackHandler) {
         delegate.setLocalCallbackHandler(callbackHandler);
+    }
+
+    public void addShutdownListener(final EndpointShutdownListener listener) {
+        delegate.addShutdownListener(listener);
+    }
+
+    public void removeShutdownListener(final EndpointShutdownListener listener) {
+        delegate.removeShutdownListener(listener);
     }
 }

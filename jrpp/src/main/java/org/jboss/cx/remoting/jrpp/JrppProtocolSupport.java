@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.Set;
+import java.util.Iterator;
 import java.util.concurrent.Executors;
 import org.apache.mina.common.IoAcceptor;
 import org.apache.mina.common.IoConnector;
@@ -19,6 +20,7 @@ import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.EndpointShutdownListener;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.jrpp.mina.FramingIoFilter;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
@@ -38,15 +40,19 @@ public final class JrppProtocolSupport {
     private final Endpoint endpoint;
     private final ProtocolServerContext serverContext;
     private final IoHandler serverIoHandler = new SingleSessionIoHandlerDelegate(new ServerSessionHandlerFactory());
-    private final Set<IoAcceptor> ioAcceptors = CollectionUtil.hashSet();
+    private final Set<IoAcceptor> ioAcceptors = CollectionUtil.synchronizedSet(CollectionUtil.<IoAcceptor>hashSet());
     private final ProtocolHandlerFactoryImpl protocolHandlerFactory = new ProtocolHandlerFactoryImpl();
 
     public JrppProtocolSupport(final Endpoint endpoint) throws RemotingException {
         final ProtocolRegistrationSpec spec = ProtocolRegistrationSpec.DEFAULT.setScheme("jrpp").setProtocolHandlerFactory(protocolHandlerFactory);
         final ProtocolRegistration registration = endpoint.registerProtocol(spec);
         serverContext = registration.getProtocolServerContext();
-        // todo - add a hook to protocol registration for deregister notification?
         this.endpoint = endpoint;
+        endpoint.addShutdownListener(new EndpointShutdownListener() {
+            public void handleShutdown(Endpoint endpoint) {
+                shutdown();
+            }
+        });
     }
 
     public void addServer(final SocketAddress address) throws IOException {

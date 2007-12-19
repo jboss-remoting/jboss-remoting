@@ -27,6 +27,20 @@ public interface Endpoint {
     void shutdown();
 
     /**
+     * Add a shutdown listener.  This listener will be called after shutdown has been initiated.
+     *
+     * @param listener the listener
+     */
+    void addShutdownListener(EndpointShutdownListener listener);
+
+    /**
+     * Remove a previously added shutdown listener.
+     *
+     * @param listener the listener
+     */
+    void removeShutdownListener(EndpointShutdownListener listener);
+
+    /**
      * Open a session with another endpoint.  The protocol used is determined by the URI scheme.  The URI user-info part
      * must be {@code null} unless the specific protocol has an additional authentication scheme (e.g. HTTP BASIC).  The
      * authority is used to locate the server (the exact interpretation is dependent upon the protocol). The URI path is
