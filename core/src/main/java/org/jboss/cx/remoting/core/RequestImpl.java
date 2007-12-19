@@ -1,6 +1,5 @@
 package org.jboss.cx.remoting.core;
 
-import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.Request;
 
 /**

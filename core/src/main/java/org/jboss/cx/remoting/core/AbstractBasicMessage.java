@@ -1,11 +1,11 @@
 package org.jboss.cx.remoting.core;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.List;
-import java.util.Collections;
-import java.util.ListIterator;
-import java.util.Iterator;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.BasicMessage;
 import org.jboss.cx.remoting.Header;
 import org.jboss.cx.remoting.core.util.CollectionUtil;

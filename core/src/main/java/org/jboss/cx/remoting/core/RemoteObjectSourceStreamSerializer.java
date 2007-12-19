@@ -1,9 +1,9 @@
 package org.jboss.cx.remoting.core;
 
-import java.nio.ByteBuffer;
 import java.io.IOException;
-import org.jboss.cx.remoting.stream.ObjectSource;
+import java.nio.ByteBuffer;
 import org.jboss.cx.remoting.spi.stream.StreamContext;
+import org.jboss.cx.remoting.stream.ObjectSource;
 
 /**
  *

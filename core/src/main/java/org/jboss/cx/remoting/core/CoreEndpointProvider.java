@@ -1,11 +1,11 @@
 package org.jboss.cx.remoting.core;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.spi.EndpointProvider;
-import java.util.Set;
-import java.util.HashSet;
 
 /**
  *

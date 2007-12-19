@@ -1,13 +1,13 @@
 package org.jboss.cx.remoting.core;
 
-import org.jboss.cx.remoting.spi.stream.StreamDetector;
-import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
-import org.jboss.cx.remoting.stream.ObjectSource;
-import org.jboss.cx.remoting.stream.ObjectSink;
-import org.jboss.cx.remoting.stream.ProgressStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Iterator;
+import org.jboss.cx.remoting.spi.stream.StreamDetector;
+import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
+import org.jboss.cx.remoting.stream.ObjectSink;
+import org.jboss.cx.remoting.stream.ObjectSource;
+import org.jboss.cx.remoting.stream.ProgressStream;
 
 /**
  *

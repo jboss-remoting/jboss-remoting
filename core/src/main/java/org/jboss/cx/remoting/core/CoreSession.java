@@ -1,30 +1,30 @@
 package org.jboss.cx.remoting.core;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.Map;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.ref.WeakReference;
-import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Session;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.Request;
+import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.ContextSource;
-import org.jboss.cx.remoting.ServiceLocator;
-import org.jboss.cx.remoting.EndpointLocator;
 import org.jboss.cx.remoting.Endpoint;
+import org.jboss.cx.remoting.EndpointLocator;
+import org.jboss.cx.remoting.RemoteExecutionException;
+import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.Reply;
+import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.RequestListener;
+import org.jboss.cx.remoting.ServiceLocator;
+import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
-import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
-import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
+import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
-import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
+import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
+import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 
 import javax.security.auth.callback.CallbackHandler;
 

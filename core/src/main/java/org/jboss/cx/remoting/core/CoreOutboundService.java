@@ -1,16 +1,14 @@
 package org.jboss.cx.remoting.core;
 
-import org.jboss.cx.remoting.ContextSource;
+import java.util.List;
 import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ServiceLocator;
-import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
-import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
-import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
+import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.spi.ClientInterceptorFactory;
-import java.io.IOException;
-import java.util.List;
+import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 
 /**
  *

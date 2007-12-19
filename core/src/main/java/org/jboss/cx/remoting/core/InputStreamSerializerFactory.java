@@ -1,11 +1,11 @@
 package org.jboss.cx.remoting.core;
 
-import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
-import org.jboss.cx.remoting.spi.stream.StreamSerializer;
-import org.jboss.cx.remoting.spi.stream.StreamContext;
-import org.jboss.cx.remoting.core.util.BufferFactory;
-import org.jboss.cx.remoting.stream.Streams;
 import java.io.InputStream;
+import org.jboss.cx.remoting.core.util.BufferFactory;
+import org.jboss.cx.remoting.spi.stream.StreamContext;
+import org.jboss.cx.remoting.spi.stream.StreamSerializer;
+import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
+import org.jboss.cx.remoting.stream.Streams;
 
 /**
  *
