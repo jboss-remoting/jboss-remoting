@@ -256,7 +256,7 @@ public final class JrppConnection {
 
     private void close() {
         currentState.transition(State.CLOSED);
-        ioSession.close();
+        ioSession.close().awaitUninterruptibly();
         protocolContext.closeSession();
     }
 

@@ -5,8 +5,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.Set;
-import java.util.Iterator;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import org.apache.mina.common.IoAcceptor;
 import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoHandler;
@@ -41,6 +41,8 @@ public final class JrppProtocolSupport {
     private final ProtocolServerContext serverContext;
     private final IoHandler serverIoHandler = new SingleSessionIoHandlerDelegate(new ServerSessionHandlerFactory());
     private final Set<IoAcceptor> ioAcceptors = CollectionUtil.synchronizedSet(CollectionUtil.<IoAcceptor>hashSet());
+    private final ExecutorService threadPool = Executors.newCachedThreadPool();
+    private final NioProcessor nioProcessor = new NioProcessor(threadPool);
     private final ProtocolHandlerFactoryImpl protocolHandlerFactory = new ProtocolHandlerFactoryImpl();
 
     public JrppProtocolSupport(final Endpoint endpoint) throws RemotingException {
@@ -57,7 +59,7 @@ public final class JrppProtocolSupport {
 
     public void addServer(final SocketAddress address) throws IOException {
         // todo - make the acceptor managable so it can be started and stopped
-        final IoAcceptor ioAcceptor = new NioSocketAcceptor();
+        final IoAcceptor ioAcceptor = new NioSocketAcceptor(threadPool, nioProcessor);
         ioAcceptor.setDefaultLocalAddress(address);
         ioAcceptor.setHandler(serverIoHandler);
         ioAcceptor.getFilterChain().addLast("framing filter", new FramingIoFilter());
@@ -75,6 +77,7 @@ public final class JrppProtocolSupport {
         }
         ioAcceptors.clear();
         protocolHandlerFactory.connector.dispose();
+        threadPool.shutdown();
     }
 
     private final class ServerSessionHandlerFactory implements SingleSessionIoHandlerFactory {
@@ -92,8 +95,7 @@ public final class JrppProtocolSupport {
         private final IoConnector connector;
 
         public ProtocolHandlerFactoryImpl() {
-            final NioProcessor processor = new NioProcessor(Executors.newCachedThreadPool());
-            connector = new NioSocketConnector(processor);
+            connector = new NioSocketConnector(threadPool, nioProcessor);
             connector.getFilterChain().addLast("framing filter", new FramingIoFilter());
             connector.getFilterChain().addLast("DEBUG", new LoggingFilter());
             connector.setHandler(new SingleSessionIoHandlerDelegate(this));
@@ -116,11 +118,7 @@ public final class JrppProtocolSupport {
         }
 
         public void close() {
-            connector.dispose();
-            for (IoAcceptor ioAcceptor : ioAcceptors) {
-                ioAcceptor.dispose();
-                ioAcceptors.remove(ioAcceptor);
-            }
+            shutdown();
         }
 
         public SingleSessionIoHandler getHandler(IoSession session) throws Exception {

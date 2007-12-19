@@ -368,6 +368,11 @@ public final class CoreSession {
 
         public void close() throws RemotingException {
             shutdown();
+            try {
+                protocolHandler.closeSession();
+            } catch (IOException e) {
+                throw new RemotingException("Unable to close session: " + e.toString());
+            }
         }
 
         public ConcurrentMap<Object, Object> getAttributes() {
