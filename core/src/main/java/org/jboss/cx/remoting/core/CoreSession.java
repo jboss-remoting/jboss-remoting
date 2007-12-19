@@ -299,7 +299,7 @@ public final class CoreSession {
         return service;
     }
 
-    private <I, O> void sendServiceTerminate(final ServiceIdentifier serviceIdentifier) throws RemotingException {
+    private void sendServiceTerminate(final ServiceIdentifier serviceIdentifier) throws RemotingException {
         try {
             protocolHandler.sendServiceTerminate(serviceIdentifier);
         } catch (IOException e) {
@@ -421,10 +421,6 @@ public final class CoreSession {
             } else {
                 log.trace("Got service terminate for an unknown service (%s)", serviceIdentifier);
             }
-        }
-
-        public void failSession() {
-            // todo
         }
 
         @SuppressWarnings ({"unchecked"})
