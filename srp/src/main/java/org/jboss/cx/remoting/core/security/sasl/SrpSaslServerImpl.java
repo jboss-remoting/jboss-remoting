@@ -142,7 +142,7 @@ public final class SrpSaslServerImpl extends AbstractSrpSaslParticipant implemen
                 }
             case RECEIVED_KEY_AND_EVIDENCE:
                 state = State.COMPLETE;
-                return new byte[0];
+                return null;
             case COMPLETE:
                 throw new SaslException("Received SRP response after negotiation was already complete");
             case FAILED:

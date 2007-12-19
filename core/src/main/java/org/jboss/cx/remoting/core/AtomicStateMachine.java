@@ -1,7 +1,6 @@
 package org.jboss.cx.remoting.core;
 
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Callable;
 
 /**
  *
@@ -60,17 +59,35 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
-    public synchronized void waitFor(final T state) throws InterruptedException {
+    public synchronized void waitInterruptablyFor(final T state) throws InterruptedException {
         while (this.state != state) {
             wait();
         }
     }
 
-    public synchronized void waitUninterruptiplyForAny() {
-        waitUninterruptiblyForNot(state);
+    public synchronized void waitFor(final T state) {
+        boolean intr = Thread.interrupted();
+        try {
+            while (this.state == state) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    intr = true;
+                }
+            }
+            return;
+        } finally {
+            if (intr) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
-    public synchronized boolean waitFor(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+    public synchronized void waitForAny() {
+        waitForNot(state);
+    }
+
+    public synchronized boolean waitInterruptablyFor(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
@@ -84,14 +101,14 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         return true;
     }
 
-    public synchronized T waitForNot(final T state) throws InterruptedException {
+    public synchronized T waitInterruptablyForNot(final T state) throws InterruptedException {
         while (this.state == state) {
             wait();
         }
         return this.state;
     }
 
-    public synchronized T waitUninterruptiblyForNot(final T state) {
+    public synchronized T waitForNot(final T state) {
         boolean intr = Thread.interrupted();
         try {
             while (this.state == state) {
@@ -109,7 +126,7 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
-    public synchronized T waitForNot(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+    public synchronized T waitInterruptablyForNot(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
@@ -123,7 +140,7 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         return this.state;
     }
 
-    public synchronized T waitUninterruptiblyForNot(final T state, final long timeout, final TimeUnit timeUnit) {
+    public synchronized T waitForNot(final T state, final long timeout, final TimeUnit timeUnit) {
         boolean intr = Thread.interrupted();
         try {
             final long timeoutMillis = timeUnit.toMillis(timeout);

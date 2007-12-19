@@ -46,21 +46,28 @@ public final class Logger {
     }
 
     private void doLog(Level level, String msg, Throwable ex, Object[] params) {
-        LogRecord record = new LogRecord(level, msg);
-        record.setLoggerName(name);
-        if (ex != null) record.setThrown(ex);
-        if (params != null) record.setParameters(params);
-        record.setSourceMethodName("");
-        record.setSourceClassName("");
-        logger.log(record);
+        if (logger.isLoggable(level)) {
+            final String fmtMsg;
+            if (params != null && params.length > 0) {
+                fmtMsg = String.format(msg, params);
+            } else {
+                fmtMsg = msg;
+            }
+            LogRecord record = new LogRecord(level, fmtMsg);
+            record.setLoggerName(name);
+            if (ex != null) record.setThrown(ex);
+            record.setSourceMethodName("");
+            record.setSourceClassName("");
+            logger.log(record);
+        }
     }
 
     public void error(String msg) {
         doLog(ERROR, msg, null, null);
     }
 
-    public void error(String msg, Throwable ex) {
-        doLog(ERROR, msg, ex, null);
+    public void error(Throwable ex, String msg, Object... params) {
+        doLog(ERROR, msg, ex, params);
     }
 
     public void error(String msg, Object... params) {
@@ -71,8 +78,8 @@ public final class Logger {
         doLog(WARN, msg, null, null);
     }
 
-    public void warn(String msg, Throwable ex) {
-        doLog(WARN, msg, ex, null);
+    public void warn(Throwable ex, String msg, Object... params) {
+        doLog(WARN, msg, ex, params);
     }
 
     public void warn(String msg, Object... params) {
@@ -83,8 +90,8 @@ public final class Logger {
         doLog(INFO, msg, null, null);
     }
 
-    public void info(String msg, Throwable ex) {
-        doLog(INFO, msg, ex, null);
+    public void info(Throwable ex, String msg, Object... params) {
+        doLog(INFO, msg, ex, params);
     }
 
     public void info(String msg, Object... params) {
@@ -95,8 +102,8 @@ public final class Logger {
         doLog(DEBUG, msg, null, null);
     }
 
-    public void debug(String msg, Throwable ex) {
-        doLog(DEBUG, msg, ex, null);
+    public void debug(Throwable ex, String msg, Object... params) {
+        doLog(DEBUG, msg, ex, params);
     }
 
     public void debug(String msg, Object... params) {
@@ -107,8 +114,8 @@ public final class Logger {
         doLog(TRACE, msg, null, null);
     }
 
-    public void trace(String msg, Throwable ex) {
-        doLog(TRACE, msg, ex, null);
+    public void trace(Throwable ex, String msg, Object... params) {
+        doLog(TRACE, msg, ex, params);
     }
 
     public void trace(String msg, Object... params) {
@@ -119,8 +126,8 @@ public final class Logger {
         doLog(VERBOSE, msg, null, null);
     }
 
-    public void verbose(String msg, Throwable ex) {
-        doLog(VERBOSE, msg, ex, null);
+    public void verbose(Throwable ex, String msg, Object... params) {
+        doLog(VERBOSE, msg, ex, params);
     }
 
     public void verbose(String msg, Object... params) {

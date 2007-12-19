@@ -4,6 +4,9 @@ import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.ServiceLocator;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.InputStream;
 
 /**
  *
@@ -32,6 +35,8 @@ public interface ProtocolContext {
 
     void closeService(ServiceIdentifier remoteServiceIdentifier);
 
+    void receiveOpenedContext(ServiceIdentifier remoteServiceIdentifier, ContextIdentifier remoteContextIdentifier);
+
     void receiveRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Request<?> request);
 
     void receiveCancelRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt);
@@ -45,4 +50,10 @@ public interface ProtocolContext {
     void receiveStreamData(StreamIdentifier streamIdentifier, Object data);
 
     void closeSession();
+
+    /* CLIENT OR SERVER methods */
+
+    void serializeTo(Object src, OutputStream target) throws IOException;
+
+    Object deserializeFrom(InputStream source) throws IOException;
 }

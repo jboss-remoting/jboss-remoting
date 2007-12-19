@@ -13,7 +13,7 @@ import java.util.Iterator;
  *
  */
 public final class DefaultStreamDetector implements StreamDetector {
-    public <T> Class<? extends StreamSerializerFactory> detectStream(T candidate) {
+    public Class<? extends StreamSerializerFactory<?>> detectStream(Object candidate) {
         if (candidate instanceof InputStream) {
             return InputStreamSerializerFactory.class;
         } else if (candidate instanceof OutputStream) {

@@ -41,7 +41,9 @@ public interface ProtocolHandler {
 
     /**
      * Get a new context identifier that will be used to send requests to the remote side.  The service identifier
-     * was previously acquired from the {@link #openService()} method.
+     * was previously acquired from the {@link #openService()} method.  Should send a message to the remote side such
+     * that the {@link ProtocolContext#receiveOpenedContext(ServiceIdentifier, ContextIdentifier)} method is called with
+     * the new service and context identifiers.
      *
      * @param serviceIdentifier the service identifier
      * @return a context identifier associated with the given service identifier

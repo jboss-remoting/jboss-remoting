@@ -36,5 +36,5 @@ public interface Session {
      * @param locator the locator for the service
      * @return a context source which may be used to create communication contexts
      */
-    <I, O> ContextSource<I, O> openService(ServiceLocator<I, O> locator);
+    <I, O> ContextSource<I, O> openService(ServiceLocator<I, O> locator) throws RemotingException;
 }

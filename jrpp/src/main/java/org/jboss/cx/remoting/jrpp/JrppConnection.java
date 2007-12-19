@@ -6,7 +6,7 @@ import org.apache.mina.common.IoBuffer;
 import org.apache.mina.common.AttributeKey;
 import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.ConnectFuture;
-import org.apache.mina.common.SessionCallback;
+import org.apache.mina.common.IoSessionInitializer;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
 import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.filter.sasl.SaslClientFilter;
@@ -41,6 +41,7 @@ import org.jboss.serial.io.JBossObjectOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
 import java.util.Collection;
 import java.util.Set;
 import java.util.Collections;
@@ -71,6 +72,8 @@ public final class JrppConnection {
     private final ProtocolContext protocolContext;
     private final SingleSessionIoHandler ioHandler;
     private final IdentifierManager identifierManager;
+
+    private IOException failureReason;
 
     /**
      * The negotiated protocol version.  Value is set to {@code min(PROTOCOL_VERSION, remote PROTOCOL_VERSION)}.
@@ -112,8 +115,8 @@ public final class JrppConnection {
      */
     public JrppConnection(final IoConnector connector, final SocketAddress remoteAddress, final ProtocolContext protocolContext, final CallbackHandler clientCallbackHandler) {
         ioHandler = new IoHandlerImpl();
-        final ConnectFuture future = connector.connect(remoteAddress, new SessionCallback() {
-            public void onSession(IoSession session) {
+        final ConnectFuture future = connector.connect(remoteAddress, new IoSessionInitializer() {
+            public void initializeSession(IoSession session) {
                 session.setAttribute(JRPP_CONNECTION, JrppConnection.this);
                 JrppConnection.this.ioSession = session;
             }
@@ -230,25 +233,23 @@ public final class JrppConnection {
 
     public void sendResponse(byte[] rawMsgData) throws IOException {
         final IoBuffer buffer = IoBuffer.allocate(rawMsgData.length + 100);
-        final ObjectOutputStream objectOutputStream = new JrppObjectOutputStream(buffer);
+        final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(buffer);
         write(objectOutputStream, MessageType.SASL_RESPONSE);
         objectOutputStream.write(rawMsgData);
-        objectOutputStream.close();
-        ioSession.write(buffer.flip());
+        objectOutputStream.send(ioSession);
     }
 
     public void sendChallenge(byte[] rawMsgData) throws IOException {
         final IoBuffer buffer = IoBuffer.allocate(rawMsgData.length + 100);
-        final ObjectOutputStream objectOutputStream = new JrppObjectOutputStream(buffer);
+        final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(buffer);
         write(objectOutputStream, MessageType.SASL_CHALLENGE);
         objectOutputStream.write(rawMsgData);
-        objectOutputStream.close();
-        ioSession.write(buffer.flip());
+        objectOutputStream.send(ioSession);
     }
 
-    public boolean waitForUp() {
+    public boolean waitForUp() throws IOException {
         while (! currentState.in(State.UP, State.CLOSED)) {
-            currentState.waitUninterruptiplyForAny();
+            currentState.waitForAny();
         }
         return currentState.in(State.UP);
     }
@@ -266,6 +267,14 @@ public final class JrppConnection {
 
         protected Class<?> resolveProxyClass(String[] interfaces) throws IOException, ClassNotFoundException {
             return super.resolveProxyClass(interfaces);
+        }
+
+        protected Class resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+            return super.resolveClass(desc);
+        }
+
+        protected ObjectStreamClass readClassDescriptor() throws IOException, ClassNotFoundException {
+            return super.readClassDescriptor();
         }
 
         public Object readObjectOverride() throws IOException, ClassNotFoundException {
@@ -289,11 +298,21 @@ public final class JrppConnection {
         private JrppObjectOutputStream(final IoBuffer buffer) throws IOException {
             super(buffer.asOutputStream(), true);
             this.buffer = buffer;
+            enableReplaceObject(true);
         }
 
+//        private static final StackTraceElement[] emptyStack = new StackTraceElement[0];
+
         protected Object replaceObject(Object obj) throws IOException {
+//            if (obj instanceof StackTraceElement[]) {
+//                return emptyStack;
+//            }
             // todo do stream checks
             return super.replaceObject(obj);
+        }
+
+        protected void writeClassDescriptor(ObjectStreamClass desc) throws IOException {
+            super.writeClassDescriptor(desc);
         }
 
         public void send(IoSession ioSession) throws IOException {
@@ -305,7 +324,13 @@ public final class JrppConnection {
     public final class RemotingProtocolHandler implements ProtocolHandler {
 
         public ContextIdentifier openContext(ServiceIdentifier serviceIdentifier) throws IOException {
-            return new JrppContextIdentifier(identifierManager.getIdentifier());
+            final ContextIdentifier contextIdentifier = new JrppContextIdentifier(identifierManager.getIdentifier());
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+            write(objectOutputStream, MessageType.OPEN_CONTEXT);
+            write(objectOutputStream, serviceIdentifier);
+            write(objectOutputStream, contextIdentifier);
+            objectOutputStream.send(ioSession);
+            return contextIdentifier;
         }
 
         public RequestIdentifier openRequest(ContextIdentifier contextIdentifier) throws IOException {
@@ -369,9 +394,8 @@ public final class JrppConnection {
             write(objectOutputStream, serviceIdentifier);
             objectOutputStream.writeObject(locator.getRequestType());
             objectOutputStream.writeObject(locator.getReplyType());
-            objectOutputStream.writeObject(locator.getEndpointName());
-            objectOutputStream.writeObject(locator.getServiceType());
-            objectOutputStream.writeObject(locator.getServiceGroupName());
+            objectOutputStream.writeUTF(locator.getServiceType());
+            objectOutputStream.writeUTF(locator.getServiceGroupName());
             final Set<String> interceptors = locator.getAvailableInterceptors();
             final int cnt = interceptors.size();
             objectOutputStream.writeInt(cnt);
@@ -398,7 +422,7 @@ public final class JrppConnection {
         }
 
         public void sendException(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) throws IOException {
-            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(60, false);
+            final JrppObjectOutputStream objectOutputStream = new JrppObjectOutputStream(500, true);
             write(objectOutputStream, MessageType.EXCEPTION);
             write(objectOutputStream, remoteContextIdentifier);
             write(objectOutputStream, requestIdentifier);
@@ -468,8 +492,7 @@ public final class JrppConnection {
         }
 
         public void exceptionCaught(Throwable throwable) {
-            // todo log exception
-            log.error("Exception from JRPP connection handler", throwable);
+            log.error(throwable, "Exception from JRPP connection handler");
             close();
         }
 
@@ -503,6 +526,9 @@ public final class JrppConnection {
             IoBuffer buf = (IoBuffer) message;
             final JrppObjectInputStream ois = new JrppObjectInputStream(buf, null /* todo */);
             final MessageType type = MessageType.values()[ois.readByte() & 0xff];
+            if (trace) {
+                log.trace("Received message of type " + type + " in state " + currentState.getState());
+            }
             OUT: switch (currentState.getState()) {
                 case AWAITING_CLIENT_VERSION: {
                     switch (type) {
@@ -589,6 +615,12 @@ public final class JrppConnection {
                 }
                 case UP: {
                     switch (type) {
+                        case OPEN_CONTEXT: {
+                            final ServiceIdentifier serviceIdentifier = readSvcId(ois);
+                            final ContextIdentifier contextIdentifier = readCtxtId(ois);
+                            protocolContext.receiveOpenedContext(serviceIdentifier, contextIdentifier);
+                            return;
+                        }
                         case CANCEL_ACK: {
                             final ContextIdentifier contextIdentifier = readCtxtId(ois);
                             final RequestIdentifier requestIdentifier = readReqId(ois);
@@ -649,7 +681,6 @@ public final class JrppConnection {
                             final ServiceIdentifier serviceIdentifier = readSvcId(ois);
                             final Class<?> requestType = (Class<?>) ois.readObject();
                             final Class<?> replyType = (Class<?>) ois.readObject();
-                            final String endpointName = ois.readUTF();
                             final String serviceType = ois.readUTF();
                             final String serviceGroupName = ois.readUTF();
                             final Set<String> interceptors = CollectionUtil.hashSet();
@@ -660,7 +691,6 @@ public final class JrppConnection {
                             final ServiceLocator<?, ?> locator = ServiceLocator.DEFAULT
                                     .setRequestType(requestType)
                                     .setReplyType(replyType)
-                                    .setEndpointName(endpointName)
                                     .setServiceType(serviceType)
                                     .setServiceGroupName(serviceGroupName)
                                     .setAvailableInterceptors(interceptors);
@@ -706,6 +736,7 @@ public final class JrppConnection {
         SASL_RESPONSE,
         AUTH_SUCCESS,
         AUTH_FAILED,
+        OPEN_CONTEXT,
         CANCEL_ACK,
         CANCEL_REQ,
         CLOSE_CONTEXT,

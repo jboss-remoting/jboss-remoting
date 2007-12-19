@@ -59,9 +59,9 @@ public final class ServiceLocator<I, O> {
     }
 
     /**
-     * Get the name of the service for this service locator.
+     * Get the name of the service group for this service locator.
      *
-     * @return the service name
+     * @return the service group name
      */
     public String getServiceGroupName() {
         return serviceGroupName;
@@ -77,9 +77,9 @@ public final class ServiceLocator<I, O> {
     }
 
     /**
-     * Get the name of the service group for this service locator.
+     * Get the name of the endpoitn for this service locator.
      *
-     * @return the service group name
+     * @return the endpoint name
      */
     public String getEndpointName() {
         return endpointName;

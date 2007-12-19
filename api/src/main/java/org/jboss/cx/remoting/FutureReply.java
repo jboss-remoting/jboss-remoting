@@ -58,19 +58,18 @@ public interface FutureReply<T> extends Future<Reply<T>> {
 
     /**
      * Waits if necessary for at most the given time for the request to complete, and then retrieves the reply, if
-     * available.
+     * available.  If no reply was available, {@code null} is returned.
      *
      * @param timeout the maximum time to wait
      * @param unit the time unit of the timeout argument
      *
-     * @return the reply
+     * @return the reply, or {@code null} if the operation timed out
      *
      * @throws CancellationException if the computation was cancelled
      * @throws RemoteExecutionException if the computation threw an exception
      * @throws InterruptedException if the current thread was interrupted while waiting
-     * @throws TimeoutException if the wait timed out
      */
-    Reply<T> get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException, TimeoutException;
+    Reply<T> get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException;
 
     /**
      * Set a notifier to be called when the request has completed.  The notifier may be called from the current thread

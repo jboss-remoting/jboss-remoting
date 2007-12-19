@@ -128,6 +128,9 @@ public final class SrpSaslClientImpl extends AbstractSrpSaslParticipant implemen
                     throw ex;
                 }
             case COMPLETE:
+                if (challenge.length == 0) {
+                    return new byte[0];
+                }
                 throw new SaslException("Received SRP challenge after negotiation was already complete");
             case FAILED:
                 throw new SaslException("SRP negotiation failed previously");

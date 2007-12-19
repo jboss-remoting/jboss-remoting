@@ -4,5 +4,5 @@ package org.jboss.cx.remoting;
  *
  */
 public interface RequestCancelHandler<O> {
-    void notifyCancel(RequestContext<O> requestContext);
+    void notifyCancel(RequestContext<O> requestContext, boolean mayInterrupt);
 }

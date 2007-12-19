@@ -3,7 +3,6 @@ package org.jboss.cx.remoting.spi.wrapper;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
-import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.ServiceLocator;
 
@@ -29,7 +28,7 @@ public class SessionWrapper implements Session {
         return delegate.getEndpointName();
     }
 
-    public <I, O> ContextSource<I, O> openService(final ServiceLocator<I, O> locator) {
+    public <I, O> ContextSource<I, O> openService(final ServiceLocator<I, O> locator) throws RemotingException {
         return delegate.openService(locator);
     }
 }
