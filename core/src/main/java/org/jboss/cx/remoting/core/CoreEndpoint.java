@@ -3,6 +3,9 @@ package org.jboss.cx.remoting.core;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Set;
+import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.EndpointLocator;
@@ -10,6 +13,7 @@ import org.jboss.cx.remoting.InterceptorDeploymentSpec;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ServiceDeploymentSpec;
 import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Resource;
 import org.jboss.cx.remoting.spi.Discovery;
@@ -45,7 +49,7 @@ public final class CoreEndpoint {
 
     private final ConcurrentMap<Object, Object> endpointMap = CollectionUtil.concurrentMap();
     private final ConcurrentMap<String, CoreProtocolRegistration> protocolMap = CollectionUtil.concurrentMap();
-    private final ConcurrentMap<String, Service> services = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<ServiceKey, CoreDeployedService<?, ?>> services = CollectionUtil.concurrentMap();
     private final Set<CoreSession> sessions = CollectionUtil.synchronizedSet(CollectionUtil.<CoreSession>weakHashSet());
 
     public ConcurrentMap<Object, Object> getAttributes() {
@@ -54,6 +58,84 @@ public final class CoreEndpoint {
 
     public Endpoint getUserEndpoint() {
         return userEndpoint;
+    }
+
+    @SuppressWarnings ({"unchecked"})
+    <I, O> CoreDeployedService<I, O> locateDeployedService(ServiceLocator<I, O> locator) {
+        final String name = locator.getServiceGroupName();
+        final String type = locator.getServiceType();
+        // first try the quick (exact) lookup
+        if (name.indexOf('*') == -1) {
+            final CoreDeployedService<I, O> service = (CoreDeployedService<I, O>) services.get(new ServiceKey(name, type));
+            if (service != null) {
+                return service;
+            } else {
+                return null;
+            }
+        }
+        final Pattern pattern = createWildcardPattern(name);
+        for (Map.Entry<ServiceKey,CoreDeployedService<?,?>> entry : services.entrySet()) {
+            final CoreEndpoint.ServiceKey key = entry.getKey();
+            final String entryName = key.getName();
+            final String entryType = key.getType();
+            if (entryType.equals(type) && pattern.matcher(entryName).matches()) {
+                return (CoreDeployedService<I, O>) entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    private static final Pattern wildcardPattern = Pattern.compile("^([^*]+|\\*)+$");
+
+    private static Pattern createWildcardPattern(final String string) {
+        final Matcher matcher = wildcardPattern.matcher(string);
+        final StringBuilder target = new StringBuilder(string.length() * 2);
+        while (matcher.find()) {
+            final String val = matcher.group(1);
+            if ("*".equals(val)) {
+                target.append(".*");
+            } else {
+                target.append(Pattern.quote(val));
+            }
+        }
+        return Pattern.compile(target.toString());
+    }
+
+    private final class ServiceKey {
+        private final String name;
+        private final String type;
+
+        private ServiceKey(final String name, final String type) {
+            this.name = name;
+            this.type = type;
+        }
+
+        private String getName() {
+            return name;
+        }
+
+        private String getType() {
+            return type;
+        }
+
+        public boolean equals(final Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            final ServiceKey that = (ServiceKey) o;
+
+            if (name != null ? !name.equals(that.name) : that.name != null) return false;
+            if (type != null ? !type.equals(that.type) : that.type != null) return false;
+
+            return true;
+        }
+
+        public int hashCode() {
+            int result;
+            result = (name != null ? name.hashCode() : 0);
+            result = 31 * result + (type != null ? type.hashCode() : 0);
+            return result;
+        }
     }
 
     public final class CoreProtocolServerContext implements ProtocolServerContext {
@@ -114,36 +196,6 @@ public final class CoreEndpoint {
         }
     }
 
-    public final class Service {
-        private final ServiceDeploymentSpec serviceDeploymentSpec;
-
-        private Service(final ServiceDeploymentSpec serviceDeploymentSpec) {
-            this.serviceDeploymentSpec = serviceDeploymentSpec;
-        }
-
-        private final Registration registration = new Registration() {
-            private final Resource resource = new Resource();
-
-            public void start() {
-                resource.doStart(null);
-            }
-
-            public void stop() {
-                resource.doStop(null, null);
-            }
-
-            public void unregister() {
-                resource.doTerminate(new Runnable() {
-                    public void run() {
-                        services.remove(serviceDeploymentSpec.getServiceName(), Service.this);
-                    }
-                });
-            }
-        };
-
-
-    }
-
     public final class UserEndpoint implements Endpoint {
 
         public ConcurrentMap<Object, Object> getAttributes() {
@@ -193,15 +245,21 @@ public final class CoreEndpoint {
             return name;
         }
 
-        public Registration deployService(final ServiceDeploymentSpec spec) throws RemotingException {
+        public <I, O> Registration deployService(final ServiceDeploymentSpec<I, O> spec) throws RemotingException {
             if (spec.getServiceName() == null) {
-                throw new IllegalArgumentException("Service name is not specified");
+                throw new NullPointerException("spec.getServiceName() is null");
             }
-            final Service service = new Service(spec);
-            if (services.putIfAbsent(spec.getServiceName(), service) != null) {
+            if (spec.getServiceType() == null) {
+                throw new NullPointerException("spec.getServiceType() is null");
+            }
+            if (spec.getRequestListener() == null) {
+                throw new NullPointerException("spec.getRequestListener() is null");
+            }
+            final CoreDeployedService<I, O> service = new CoreDeployedService<I, O>(spec.getServiceName(), spec.getServiceType(), spec.getRequestListener());
+            if (services.putIfAbsent(new ServiceKey(spec.getServiceName(), spec.getServiceType()), service) != null) {
                 throw new RemotingException("A service with the same name is already deployed");
             }
-            return service.registration;
+            return null;
         }
 
         public ProtocolRegistration registerProtocol(ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException {

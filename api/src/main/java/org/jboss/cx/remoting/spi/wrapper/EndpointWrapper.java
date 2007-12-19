@@ -37,10 +37,6 @@ public class EndpointWrapper implements Endpoint {
         return delegate.openSession(endpointLocator);
     }
 
-    public Registration deployService(final ServiceDeploymentSpec spec) throws RemotingException {
-        return delegate.deployService(spec);
-    }
-
     public Discovery discover(final String endpointName, final URI nextHop, final int cost) throws RemotingException {
         return delegate.discover(endpointName, nextHop, cost);
     }
@@ -51,6 +47,10 @@ public class EndpointWrapper implements Endpoint {
 
     public String getName() {
         return delegate.getName();
+    }
+
+    public <I, O> Registration deployService(ServiceDeploymentSpec<I, O> spec) throws RemotingException, IllegalArgumentException {
+        return delegate.deployService(spec);
     }
 
     public ProtocolRegistration registerProtocol(final ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException {

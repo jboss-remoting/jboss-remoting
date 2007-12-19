@@ -15,12 +15,13 @@ public final class CoreInboundService<I, O> {
 
     private final CoreSession coreSession;
     private final ServiceIdentifier serviceIdentifier;
-    private final RequestListener<Object, Object> requestListener;
+    private final RequestListener<I, O> requestListener;
 
-    public CoreInboundService(final CoreSession coreSession, final ServiceIdentifier serviceIdentifier, final ServiceLocator<I, O> locator) throws RemotingException {
+    public CoreInboundService(final CoreEndpoint coreEndpoint, final CoreSession coreSession, final ServiceIdentifier serviceIdentifier, final ServiceLocator<I, O> locator) throws RemotingException {
         this.coreSession = coreSession;
         this.serviceIdentifier = serviceIdentifier;
-        requestListener = null;
+        final CoreDeployedService<I, O> service = coreEndpoint.locateDeployedService(locator);
+        requestListener = service.getRequestListener();
     }
 
     public void receivedOpenedContext(final ContextIdentifier remoteContextIdentifier) {

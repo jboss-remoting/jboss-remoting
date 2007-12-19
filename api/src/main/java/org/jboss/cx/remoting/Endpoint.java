@@ -57,7 +57,7 @@ public interface Endpoint {
      * @throws RemotingException if the registration failed
      * @throws IllegalArgumentException if the specification failed validation
      */
-    Registration deployService(ServiceDeploymentSpec spec) throws RemotingException, IllegalArgumentException;
+    <I, O> Registration deployService(ServiceDeploymentSpec<I, O> spec) throws RemotingException, IllegalArgumentException;
 
     /**
      * Register a protocol specification for this endpoint.

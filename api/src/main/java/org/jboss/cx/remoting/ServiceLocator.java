@@ -39,7 +39,7 @@ public final class ServiceLocator<I, O> {
     }
 
     /**
-     * Get the request type for this service locator.  The remote service will accept this request type if the actual
+     * Get the request type for this service locator.  The remote service will match this request type if the actual
      * service accepts this type, or a superclass or superinterface thereof.
      *
      * @return the request type
@@ -49,7 +49,7 @@ public final class ServiceLocator<I, O> {
     }
 
     /**
-     * Get the reply type for this service locator.  The remote service will accept this reply type if the actual
+     * Get the reply type for this service locator.  The remote service will match this reply type if the actual
      * service returns this type, or a subtype thereof.
      *
      * @return the reply type

@@ -279,7 +279,7 @@ public final class CoreSession {
     <I, O> CoreInboundService<I, O> createServerService(final ServiceIdentifier serviceIdentifier, final ServiceLocator<I, O> locator) {
         final CoreInboundService<I, O> service;
         try {
-            service = new CoreInboundService<I, O>(this, serviceIdentifier, locator);
+            service = new CoreInboundService<I, O>(endpoint, this, serviceIdentifier, locator);
         } catch (RemotingException e) {
             try {
                 sendServiceTerminate(serviceIdentifier);

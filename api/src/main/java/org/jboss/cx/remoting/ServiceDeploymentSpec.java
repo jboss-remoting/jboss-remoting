@@ -1,6 +1,7 @@
 package org.jboss.cx.remoting;
 
 import java.util.List;
+import java.util.Collections;
 import org.jboss.cx.remoting.spi.InterceptorSpec;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 
@@ -10,15 +11,17 @@ import org.jboss.cx.remoting.core.util.CollectionUtil;
 public final class ServiceDeploymentSpec<I, O> {
     private final List<InterceptorSpec> interceptorSpecs;
     private final String serviceName;
+    private final String serviceType;
     private final Class<I> requestType;
     private final Class<O> replyType;
     private final RequestListener<I, O> requestListener;
 
-    public static final ServiceDeploymentSpec<Void, Void> DEFAULT = new ServiceDeploymentSpec<Void, Void>(null, null, Void.class, Void.class, null);
+    public static final ServiceDeploymentSpec<Void, Void> DEFAULT = new ServiceDeploymentSpec<Void, Void>(Collections.<InterceptorSpec>emptyList(), null, null, Void.class, Void.class, null);
 
-    private ServiceDeploymentSpec(final List<InterceptorSpec> interceptorSpecs, final String serviceName, final Class<I> requestType, final Class<O> replyType, final RequestListener<I, O> requestListener) {
+    private ServiceDeploymentSpec(final List<InterceptorSpec> interceptorSpecs, final String serviceName, final String serviceType, final Class<I> requestType, final Class<O> replyType, final RequestListener<I, O> requestListener) {
         this.interceptorSpecs = interceptorSpecs;
         this.serviceName = serviceName;
+        this.serviceType = serviceType;
         this.requestType = requestType;
         this.replyType = replyType;
         this.requestListener = requestListener;
@@ -30,6 +33,10 @@ public final class ServiceDeploymentSpec<I, O> {
 
     public String getServiceName() {
         return serviceName;
+    }
+
+    public String getServiceType() {
+        return serviceType;
     }
 
     public Class<I> getRequestType() {
@@ -45,32 +52,61 @@ public final class ServiceDeploymentSpec<I, O> {
     }
 
     public ServiceDeploymentSpec<I, O> setInterceptorSpecs(InterceptorSpec... specs) {
-        return new ServiceDeploymentSpec<I, O>(CollectionUtil.unmodifiableList(specs.clone()), serviceName, requestType, replyType, requestListener);
+        if (specs == null) {
+            throw new NullPointerException("specs is null");
+        }
+        return new ServiceDeploymentSpec<I, O>(CollectionUtil.unmodifiableList(specs.clone()), serviceName, serviceType, requestType, replyType, requestListener);
     }
 
     public ServiceDeploymentSpec<I, O> setServiceName(String serviceName) {
-        return new ServiceDeploymentSpec<I, O>(interceptorSpecs, serviceName, requestType, replyType, requestListener);
+        if (serviceName == null) {
+            throw new NullPointerException("serviceName is null");
+        }
+        return new ServiceDeploymentSpec<I, O>(interceptorSpecs, serviceName, serviceType, requestType, replyType, requestListener);
+    }
+
+    public ServiceDeploymentSpec<I, O> setServiceType(final String serviceType) {
+        if (serviceType == null) {
+            throw new NullPointerException("serviceType is null");
+        }
+        return new ServiceDeploymentSpec<I, O>(interceptorSpecs, serviceName, serviceType, requestType, replyType, requestListener);
     }
 
     public <T> ServiceDeploymentSpec<T, O> setRequestType(Class<T> requestType) {
-        return new ServiceDeploymentSpec<T, O>(interceptorSpecs, serviceName, requestType, replyType, null);
+        if (requestType == null) {
+            throw new NullPointerException("requestType is null");
+        }
+        return new ServiceDeploymentSpec<T, O>(interceptorSpecs, serviceName, serviceType, requestType, replyType, null);
     }
 
     public <T> ServiceDeploymentSpec<I, T> setReplyType(Class<T> replyType) {
-        return new ServiceDeploymentSpec<I, T>(interceptorSpecs, serviceName, requestType, replyType, null);
+        if (replyType == null) {
+            throw new NullPointerException("replyType is null");
+        }
+        return new ServiceDeploymentSpec<I, T>(interceptorSpecs, serviceName, serviceType, requestType, replyType, null);
     }
 
     public ServiceDeploymentSpec<I, O> setRequestListener(RequestListener<I, O> requestListener) {
-        return new ServiceDeploymentSpec<I, O>(interceptorSpecs, serviceName, requestType, replyType, requestListener);
+        if (requestListener == null) {
+            throw new NullPointerException("requestListener is null");
+        }
+        return new ServiceDeploymentSpec<I, O>(interceptorSpecs, serviceName, serviceType, requestType, replyType, requestListener);
     }
 
     public String toString() {
         StringBuilder builder = new StringBuilder();
         builder.append("Service specification for ");
-        if (serviceName == null) {
-            builder.append("unnamed service ");
+        if (serviceType == null) {
+            builder.append("untyped ");
         } else {
-            builder.append("service \"");
+            builder.append("typed (\"");
+            builder.append(serviceType);
+            builder.append("\") ");
+        }
+        if (serviceName == null) {
+            builder.append(", unnamed service ");
+        } else {
+            builder.append("service named \"");
             builder.append(serviceName);
             builder.append("\" ");
         }
