@@ -79,7 +79,9 @@ public final class LocalProtocol {
 
         public ContextIdentifier openContext(final ServiceIdentifier serviceIdentifier) throws IOException {
             log.trace("Opening context for local protocol");
-            return new SimpleContextIdentifier();
+            final SimpleContextIdentifier contextIdentifier = new SimpleContextIdentifier();
+            remoteContext.receiveOpenedContext(serviceIdentifier, contextIdentifier);
+            return contextIdentifier;
         }
 
         public RequestIdentifier openRequest(ContextIdentifier contextIdentifier) throws IOException {
