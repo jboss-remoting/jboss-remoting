@@ -1,7 +1,7 @@
 package org.apache.mina.filter.sasl;
 
-import org.apache.mina.common.IoSession;
 import java.io.IOException;
+import org.apache.mina.common.IoSession;
 
 /**
  *

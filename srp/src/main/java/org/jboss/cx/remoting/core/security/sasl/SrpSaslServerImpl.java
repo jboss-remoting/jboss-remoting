@@ -1,33 +1,32 @@
 package org.jboss.cx.remoting.core.security.sasl;
 
+import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.math.BigInteger;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.InvalidKeyException;
-import java.security.InvalidAlgorithmParameterException;
-import java.util.Set;
-import java.util.Map;
-import java.util.Collections;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Random;
-import java.io.IOException;
+import java.util.Set;
+import org.jboss.cx.remoting.core.util.Base64DecodingException;
+import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.core.util.Logger;
 
-import javax.security.sasl.SaslServer;
-import javax.security.sasl.SaslException;
-import javax.security.sasl.Sasl;
-import javax.security.sasl.AuthorizeCallback;
-import javax.security.auth.callback.NameCallback;
-import javax.security.auth.callback.PasswordCallback;
+import javax.crypto.NoSuchPaddingException;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.callback.NameCallback;
+import javax.security.auth.callback.PasswordCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
-import javax.crypto.NoSuchPaddingException;
-
-import org.jboss.cx.remoting.core.util.Logger;
-import org.jboss.cx.remoting.core.util.CollectionUtil;
-import org.jboss.cx.remoting.core.util.Base64DecodingException;
+import javax.security.sasl.AuthorizeCallback;
+import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslServer;
 
 /**
  *

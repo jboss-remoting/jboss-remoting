@@ -1,14 +1,13 @@
 package org.jboss.cx.remoting.jrpp.mina;
 
-import org.apache.mina.common.IoFilterAdapter;
-import org.apache.mina.common.IoSession;
-import org.apache.mina.common.WriteRequest;
 import org.apache.mina.common.AttributeKey;
 import org.apache.mina.common.IoBuffer;
 import org.apache.mina.common.IoBufferWrapper;
-import org.apache.mina.common.WriteRequestWrapper;
+import org.apache.mina.common.IoFilterAdapter;
 import org.apache.mina.common.IoFilterChain;
-import org.apache.mina.common.IoFilter;
+import org.apache.mina.common.IoSession;
+import org.apache.mina.common.WriteRequest;
+import org.apache.mina.common.WriteRequestWrapper;
 
 /**
  *

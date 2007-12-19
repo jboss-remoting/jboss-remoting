@@ -1,9 +1,9 @@
 package org.jboss.cx.remoting.core.util;
 
-import java.util.concurrent.ConcurrentMap;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.Collection;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  *

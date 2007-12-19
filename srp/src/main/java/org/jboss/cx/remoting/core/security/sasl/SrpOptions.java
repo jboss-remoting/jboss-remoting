@@ -1,11 +1,7 @@
 package org.jboss.cx.remoting.core.security.sasl;
 
-import java.util.Set;
 import java.util.LinkedHashSet;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.CharsetEncoder;
-import org.jboss.cx.remoting.core.util.CollectionUtil;
+import java.util.Set;
 
 import javax.security.sasl.SaslException;
 

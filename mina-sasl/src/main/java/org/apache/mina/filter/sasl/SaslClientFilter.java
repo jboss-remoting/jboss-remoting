@@ -1,14 +1,13 @@
 package org.apache.mina.filter.sasl;
 
-import org.apache.mina.common.IoSession;
+import java.io.IOException;
 import org.apache.mina.common.AttributeKey;
 import org.apache.mina.common.IoFilterChain;
+import org.apache.mina.common.IoSession;
 
-import javax.security.sasl.SaslClient;
 import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
-
-import java.io.IOException;
 
 /**
  * An {@code IoFilter} implementation for handling the client side of SASL.  The filter directly handles

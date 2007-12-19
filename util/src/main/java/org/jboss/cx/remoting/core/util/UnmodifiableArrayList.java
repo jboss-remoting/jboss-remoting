@@ -1,10 +1,10 @@
 package org.jboss.cx.remoting.core.util;
 
-import java.util.List;
+import java.util.AbstractList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
-import java.util.AbstractList;
 
 /**
  *

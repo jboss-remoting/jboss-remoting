@@ -1,11 +1,10 @@
 package org.jboss.cx.remoting.jrpp.id;
 
-import org.jboss.cx.remoting.core.util.Logger;
-import org.jboss.cx.remoting.jrpp.WritableObject;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.jboss.cx.remoting.jrpp.WritableObject;
 
 /**
  *
