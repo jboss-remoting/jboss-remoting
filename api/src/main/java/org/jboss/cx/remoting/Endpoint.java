@@ -4,8 +4,8 @@ import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.spi.Discovery;
 import org.jboss.cx.remoting.spi.Registration;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
+import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 
 import javax.security.auth.callback.CallbackHandler;
 

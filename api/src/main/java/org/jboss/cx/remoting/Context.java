@@ -1,10 +1,6 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.ConcurrentMap;
-
-import javax.transaction.xa.XAResource;
-import javax.security.auth.callback.CallbackHandler;
-
 import org.jboss.cx.remoting.spi.ContextService;
 
 /**

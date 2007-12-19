@@ -2,8 +2,8 @@ package org.jboss.cx.remoting.spi.wrapper;
 
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RequestCancelHandler;
+import org.jboss.cx.remoting.RequestContext;
 
 /**
  *

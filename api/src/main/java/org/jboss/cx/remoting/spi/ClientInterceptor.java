@@ -1,9 +1,9 @@
 package org.jboss.cx.remoting.spi;
 
-import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
-import org.jboss.cx.remoting.Request;
-import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.RemoteExecutionException;
+import org.jboss.cx.remoting.Reply;
+import org.jboss.cx.remoting.Request;
+import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**
  * An interceptor that provides an additional service to a {@code Context}.  A context service interceptor is created

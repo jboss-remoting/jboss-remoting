@@ -1,12 +1,12 @@
 package org.jboss.cx.remoting.spi.protocol;
 
-import org.jboss.cx.remoting.Reply;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import org.jboss.cx.remoting.RemoteExecutionException;
+import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.ServiceLocator;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.InputStream;
 
 /**
  *

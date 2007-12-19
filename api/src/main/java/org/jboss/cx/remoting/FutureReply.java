@@ -3,7 +3,6 @@ package org.jboss.cx.remoting;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * The result of an invocation that may or may not yet have completed.

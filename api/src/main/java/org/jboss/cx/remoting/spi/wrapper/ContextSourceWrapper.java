@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.spi.wrapper;
 
-import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.RemotingException;
 
 /**

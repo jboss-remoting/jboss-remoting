@@ -3,15 +3,15 @@ package org.jboss.cx.remoting.spi.wrapper;
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.Endpoint;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
+import org.jboss.cx.remoting.EndpointLocator;
+import org.jboss.cx.remoting.InterceptorDeploymentSpec;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ServiceDeploymentSpec;
 import org.jboss.cx.remoting.Session;
-import org.jboss.cx.remoting.InterceptorDeploymentSpec;
-import org.jboss.cx.remoting.EndpointLocator;
 import org.jboss.cx.remoting.spi.Discovery;
 import org.jboss.cx.remoting.spi.Registration;
+import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
+import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 
 import javax.security.auth.callback.CallbackHandler;
 

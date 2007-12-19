@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.service;
 
-import org.jboss.cx.remoting.spi.ContextService;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.spi.ContextService;
 
 import javax.transaction.xa.XAResource;
 

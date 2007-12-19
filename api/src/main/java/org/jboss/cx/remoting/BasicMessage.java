@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting;
 
-import java.util.concurrent.ConcurrentMap;
 import java.util.Collection;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * A message that can pass between associated sessions.
