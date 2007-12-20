@@ -110,6 +110,41 @@
 
     <target name="util" description="Build the utilities module" depends="util.compile"/>
 
+    <!-- sasl-null module -->
+
+    <target name="sasl-null.compile.depcheck">
+        <mkdir dir="sasl-null/target/main"/>
+        <uptodate property="sasl-null.compile.uptodate" targetfile="sasl-null/target/main/.lastcompile">
+            <srcfiles dir="sasl-null/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="sasl-null.compile" depends="sasl-null.compile.depcheck" unless="sasl-null.compile.uptodate">
+        <mkdir dir="sasl-null/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="sasl-null/src/main/java"
+                destdir="sasl-null/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+        <path id="sasl-null.classpath">
+            <pathelement location="sasl-null/target/main/classes"/>
+        </path>
+        <touch file="sasl-null/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="sasl-null.clean">
+        <delete dir="sasl-null/target"/>
+    </target>
+
+    <target name="sasl-null" description="Build the sasl-null module" depends="sasl-null.compile"/>
+
     <!-- srp module -->
 
     <target name="srp.compile.depcheck">
@@ -354,8 +389,8 @@
 
     <!-- Default targets -->
 
-    <target name="all" description="Build everything" depends="api,core,jrpp,samples,srp,tools,util"/>
+    <target name="all" description="Build everything" depends="api,core,jrpp,samples,sasl-null,srp,tools,util"/>
 
-    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,jrpp.clean,mina-sasl.clean,samples.clean,srp.clean,tools.clean,util.clean"/>
+    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,jrpp.clean,mina-sasl.clean,samples.clean,sasl-null.clean,srp.clean,tools.clean,util.clean"/>
 
 </project>
