@@ -18,6 +18,7 @@ import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.core.util.AtomicStateMachine;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;

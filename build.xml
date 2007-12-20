@@ -246,7 +246,6 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="mina-sasl.classpath"/>
-                <path refid="core.classpath"/>
                 <path refid="util.classpath"/>
                 <path refid="api.classpath"/>
                 <pathelement location="${lib.mina.local}"/>
@@ -263,7 +262,7 @@
         <delete dir="jrpp/target"/>
     </target>
 
-    <target name="jrpp" description="Build the jrpp module" depends="lib.mina,lib.jboss-serialization,mina-sasl,core,util,api,jrpp.compile"/>
+    <target name="jrpp" description="Build the jrpp module" depends="lib.mina,lib.jboss-serialization,mina-sasl,util,api,jrpp.compile"/>
 
     <!-- mina-sasl module -->
 
