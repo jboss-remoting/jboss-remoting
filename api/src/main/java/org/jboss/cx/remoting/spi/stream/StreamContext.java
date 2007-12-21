@@ -2,8 +2,6 @@ package org.jboss.cx.remoting.spi.stream;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.ObjectOutput;
-import org.jboss.cx.remoting.stream.MessageOutput;
 
 /**
  *

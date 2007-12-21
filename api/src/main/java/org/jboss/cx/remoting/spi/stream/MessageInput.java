@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.stream;
+package org.jboss.cx.remoting.spi.stream;
 
 import java.io.Closeable;
 import java.io.DataInput;

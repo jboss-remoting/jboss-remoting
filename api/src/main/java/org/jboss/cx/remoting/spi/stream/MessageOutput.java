@@ -1,8 +1,8 @@
-package org.jboss.cx.remoting.stream;
+package org.jboss.cx.remoting.spi.stream;
 
 import java.io.Closeable;
-import java.io.Flushable;
 import java.io.DataOutput;
+import java.io.Flushable;
 import java.io.IOException;
 import java.io.ObjectOutput;
 
