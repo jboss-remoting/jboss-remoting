@@ -1,10 +1,12 @@
 package org.jboss.cx.remoting.spi.stream;
 
+import java.io.IOException;
+
 /**
  *
  */
-public interface StreamSerializerFactory<T> {
-    StreamSerializer getLocalSide(StreamContext context, T local);
+public interface StreamSerializerFactory {
+    StreamSerializer getLocalSide(StreamContext context, Object local) throws IOException;
 
-    T getRemoteSide(StreamContext context);
+    RemoteStreamSerializer getRemoteSide(StreamContext context) throws IOException;
 }

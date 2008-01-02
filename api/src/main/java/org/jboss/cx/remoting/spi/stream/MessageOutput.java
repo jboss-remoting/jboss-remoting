@@ -9,7 +9,7 @@ import java.io.ObjectOutput;
 /**
  *
  */
-public interface MessageOutput extends Closeable, Flushable, DataOutput, ObjectOutput {
+public interface MessageOutput extends Flushable, DataOutput, ObjectOutput {
     /**
      * Terminate this message and release any underlying resources.  This method does NOT call {@code flush}.
      *

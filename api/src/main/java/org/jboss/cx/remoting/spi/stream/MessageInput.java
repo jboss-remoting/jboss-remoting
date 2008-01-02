@@ -8,4 +8,5 @@ import java.io.ObjectInput;
  *
  */
 public interface MessageInput extends Closeable, DataInput, ObjectInput {
+    int remaining();
 }

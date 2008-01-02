@@ -11,5 +11,5 @@ public interface StreamDetector {
      * @param candidate the candidate object
      * @return the {@code Class} of the stream serializer factory, or {@code null} if this object is not recognized
      */
-    Class<? extends StreamSerializerFactory<?>> detectStream(Object candidate); 
+    StreamSerializerFactory detectStream(Object candidate); 
 }

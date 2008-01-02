@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,6 +45,10 @@ public final class CollectionUtil {
 
     public static <T> Set<T> synchronizedSet(Set<T> nested) {
         return new SynchronizedSet<T>(nested);
+    }
+
+    public static <T> BlockingQueue<T> synchronizedQueue(Queue<T> nested) {
+        return new SynchronizedQueue<T>(nested);
     }
 
     public static <T> Set<T> weakHashSet() {

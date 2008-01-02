@@ -305,6 +305,14 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
+    public T waitForNotExclusive(final T state) {
+        writeLock.lock();
+        while (this.state == state) {
+            cond.awaitUninterruptibly();
+        }
+        return this.state;
+    }
+
     public T waitInterruptablyForNot(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
@@ -378,6 +386,11 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         return state;
     }
 
+    public T getStateExclusive() {
+        writeLock.lock();
+        return state;
+    }
+
     public boolean inHold(T state) {
         readLock.lock();
         boolean ok = this.state == state;
@@ -431,6 +444,22 @@ public final class AtomicStateMachine<T extends Enum<T>> {
             ok = true;
         } finally {
             if (! ok) readLock.unlock();
+        }
+    }
+
+    public void requireExclusive(T state) {
+        if (state == null) {
+            throw new NullPointerException("state is null");
+        }
+        boolean ok = false;
+        writeLock.lock();
+        try {
+            if (this.state != state) {
+                throw new IllegalStateException("Invalid state (expected " + state + ", but current state is " + this.state + ")");
+            }
+            ok = true;
+        } finally {
+            if (! ok) writeLock.unlock();
         }
     }
 

@@ -13,4 +13,11 @@ public interface StreamSerializer {
      * @throws IOException if the stream data cannot be handled
      */
     void handleData(MessageInput data) throws IOException;
+
+    /**
+     * Handle a close from the remote side.
+     *
+     * @throws IOException if an error occurs
+     */
+    void handleClose() throws IOException;
 }
