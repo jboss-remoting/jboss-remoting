@@ -115,8 +115,8 @@ public final class JrppConnection {
      */
     public JrppConnection(final IoConnector connector, final SocketAddress remoteAddress, final ProtocolContext protocolContext, final CallbackHandler clientCallbackHandler) {
         ioHandler = new IoHandlerImpl();
-        final ConnectFuture future = connector.connect(remoteAddress, new IoSessionInitializer() {
-            public void initializeSession(IoSession session) {
+        final ConnectFuture future = connector.connect(remoteAddress, new IoSessionInitializer<ConnectFuture>() {
+            public void initializeSession(final IoSession session, final ConnectFuture future) {
                 session.setAttribute(JRPP_CONNECTION, JrppConnection.this);
                 JrppConnection.this.ioSession = session;
             }
