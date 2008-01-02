@@ -1,8 +1,6 @@
 package org.jboss.cx.remoting.spi.protocol;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
@@ -47,13 +45,13 @@ public interface ProtocolContext {
 
     void closeStream(StreamIdentifier streamIdentifier);
 
-    void receiveStreamData(StreamIdentifier streamIdentifier, Object data);
+    void receiveStreamData(StreamIdentifier streamIdentifier, MessageInput data);
 
     void closeSession();
 
     /* CLIENT OR SERVER methods */
 
-    void serializeTo(Object src, OutputStream target) throws IOException;
+    MessageOutput getMessageOutput(ByteOutput target) throws IOException;
 
-    Object deserializeFrom(InputStream source) throws IOException;
+    MessageInput getMessageInput(ByteInput source) throws IOException;
 }

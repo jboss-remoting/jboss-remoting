@@ -5,6 +5,7 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.ServiceLocator;
+import org.jboss.cx.remoting.spi.protocol.MessageOutput;
 
 /**
  *
@@ -110,13 +111,15 @@ public interface ProtocolHandler {
     void closeStream(StreamIdentifier streamIdentifier) throws IOException;
 
     /**
-     * Send data over a stream.
+     * Send data over a stream.  Returns a message output buffer that the message is written into.  When the message
+     * is fully written, the {@link MessageOutput#commit()} method will be called to perform the transmission.
      *
      * @param streamIdentifier the stream to send data on
-     * @param data the data to send
+     * @return a message buffer into which the message can be written
+     *
      * @throws IOException if an error occurs
      */
-    void sendStreamData(StreamIdentifier streamIdentifier, Object data) throws IOException;
+    MessageOutput sendStreamData(StreamIdentifier streamIdentifier) throws IOException;
 
     /**
      * Close the session.

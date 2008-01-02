@@ -25,6 +25,7 @@ import org.jboss.cx.remoting.spi.protocol.SimpleRequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.SimpleServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.SimpleStreamIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
+import org.jboss.cx.remoting.spi.protocol.MessageOutput;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -153,9 +154,8 @@ public final class LocalProtocol {
             remoteContext.receiveCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
         }
 
-        public void sendStreamData(StreamIdentifier streamIdentifier, Object data) throws IOException {
-            log.trace("Sending stream data for local protocol");
-            remoteContext.receiveStreamData(streamIdentifier, data);
+        public MessageOutput sendStreamData(StreamIdentifier streamIdentifier) throws IOException {
+            throw new UnsupportedOperationException("streams");
         }
     }
 }

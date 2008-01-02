@@ -1,8 +1,6 @@
 package org.jboss.cx.remoting.core;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -26,6 +24,10 @@ import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
+import org.jboss.cx.remoting.spi.protocol.MessageOutput;
+import org.jboss.cx.remoting.spi.protocol.MessageInput;
+import org.jboss.cx.remoting.spi.protocol.ByteOutput;
+import org.jboss.cx.remoting.spi.protocol.ByteInput;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -411,11 +413,12 @@ public final class CoreSession {
             shutdown();
         }
 
-        public void serializeTo(Object src, OutputStream target) throws IOException {
+        public MessageOutput getMessageOutput(ByteOutput target) throws IOException {
+            return new MessageOutputImpl(target);
         }
 
-        public Object deserializeFrom(InputStream source) throws IOException {
-            return null;
+        public MessageInput getMessageInput(ByteInput source) throws IOException {
+            return new MessageInputImpl(source);
         }
 
         public void closeContext(ContextIdentifier remoteContextIdentifier) {
@@ -496,7 +499,7 @@ public final class CoreSession {
             context.receiveCancelRequest(requestIdentifier, mayInterrupt);
         }
 
-        public void receiveStreamData(StreamIdentifier streamIdentifier, Object data) {
+        public void receiveStreamData(StreamIdentifier streamIdentifier, MessageInput data) {
         }
 
         @SuppressWarnings ({"unchecked"})

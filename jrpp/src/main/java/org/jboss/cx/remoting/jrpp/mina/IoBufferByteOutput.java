@@ -1,0 +1,41 @@
+package org.jboss.cx.remoting.jrpp.mina;
+
+import org.apache.mina.common.IoBuffer;
+import org.apache.mina.common.IoSession;
+import org.jboss.cx.remoting.spi.protocol.ByteOutput;
+import java.io.IOException;
+
+/**
+ *
+ */
+public final class IoBufferByteOutput implements ByteOutput {
+    private final IoBuffer ioBuffer;
+    private final IoSession ioSession;
+
+    public IoBufferByteOutput(final IoBuffer ioBuffer, final IoSession ioSession) {
+        this.ioBuffer = ioBuffer;
+        this.ioSession = ioSession;
+    }
+
+    public void write(int b) throws IOException {
+        ioBuffer.put((byte)b);
+    }
+
+    public void write(byte[] b) throws IOException {
+        ioBuffer.put(b);
+    }
+
+    public void write(byte[] b, int offs, int len) throws IOException {
+        ioBuffer.put(b, offs, len);
+    }
+
+    public void commit() throws IOException {
+        ioSession.write(ioBuffer.flip().skip(4));
+    }
+
+    public void close() throws IOException {
+    }
+
+    public void flush() throws IOException {
+    }
+}

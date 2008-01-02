@@ -208,6 +208,7 @@
             <classpath>
                 <path refid="util.classpath"/>
                 <path refid="api.classpath"/>
+                <pathelement location="${lib.jboss-serialization.local}"/>
             </classpath>
         </javac>
         <path id="core.classpath">
@@ -220,7 +221,7 @@
         <delete dir="core/target"/>
     </target>
 
-    <target name="core" description="Build the core module" depends="api,util,core.compile"/>
+    <target name="core" description="Build the core module" depends="api,util,lib.jboss-serialization,core.compile"/>
 
     <!-- jrpp module -->
 
@@ -249,7 +250,6 @@
                 <path refid="util.classpath"/>
                 <path refid="api.classpath"/>
                 <pathelement location="${lib.mina.local}"/>
-                <pathelement location="${lib.jboss-serialization.local}"/>
             </classpath>
         </javac>
         <path id="jrpp.classpath">
@@ -262,7 +262,7 @@
         <delete dir="jrpp/target"/>
     </target>
 
-    <target name="jrpp" description="Build the jrpp module" depends="lib.mina,lib.jboss-serialization,mina-sasl,util,api,jrpp.compile"/>
+    <target name="jrpp" description="Build the jrpp module" depends="lib.mina,mina-sasl,util,api,jrpp.compile"/>
 
     <!-- mina-sasl module -->
 
