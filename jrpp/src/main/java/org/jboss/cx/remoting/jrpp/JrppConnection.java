@@ -233,7 +233,7 @@ public final class JrppConnection {
     }
 
     public void sendResponse(byte[] rawMsgData) throws IOException {
-        final IoBuffer buffer = IoBuffer.allocate(rawMsgData.length + 100);
+        final IoBuffer buffer = newBuffer(rawMsgData.length + 100, false);
         final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
         write(output, MessageType.SASL_RESPONSE);
         output.write(rawMsgData);
@@ -241,7 +241,7 @@ public final class JrppConnection {
     }
 
     public void sendChallenge(byte[] rawMsgData) throws IOException {
-        final IoBuffer buffer = IoBuffer.allocate(rawMsgData.length + 100);
+        final IoBuffer buffer = newBuffer(rawMsgData.length + 100, false);
         final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
         write(output, MessageType.SASL_CHALLENGE);
         output.write(rawMsgData);
@@ -488,8 +488,7 @@ public final class JrppConnection {
 
         public void messageReceived(Object message) throws Exception {
             final boolean trace = log.isTrace();
-            IoBuffer buf = (IoBuffer) message;
-            final MessageInput input = protocolContext.getMessageInput(new IoBufferByteInput(buf));
+            final MessageInput input = protocolContext.getMessageInput(new IoBufferByteInput((IoBuffer) message));
             final MessageType type = MessageType.values()[input.readByte() & 0xff];
             if (trace) {
                 log.trace("Received message of type " + type + " in state " + currentState.getState());
@@ -537,7 +536,7 @@ public final class JrppConnection {
                             if (trace) {
                                 log.trace("Recevied SASL response from client");
                             }
-                            byte[] bytes = new byte[buf.remaining()];
+                            byte[] bytes = new byte[input.remaining()];
                             input.readFully(bytes);
                             SaslServerFilter saslServerFilter = getSaslServerFilter();
                             try {
@@ -564,7 +563,7 @@ public final class JrppConnection {
                 case AWAITING_SERVER_CHALLENGE: {
                     switch (type) {
                         case SASL_CHALLENGE: {
-                            byte[] bytes = new byte[buf.remaining()];
+                            byte[] bytes = new byte[input.remaining()];
                             input.readFully(bytes);
                             SaslClientFilter saslClientFilter = getSaslClientFilter();
                             saslClientFilter.handleSaslChallenge(ioSession, bytes);
@@ -640,6 +639,9 @@ public final class JrppConnection {
                             final RequestIdentifier requestIdentifier = readReqId(input);
                             final Request<?> request = protocolContext.createRequest(input.readObject());
                             readHeaders(input, request);
+                            if (trace) {
+                                log.trace("Received request - body is " + request.getBody().toString());
+                            }
                             protocolContext.receiveRequest(contextIdentifier, requestIdentifier, request);
                             return;
                         }

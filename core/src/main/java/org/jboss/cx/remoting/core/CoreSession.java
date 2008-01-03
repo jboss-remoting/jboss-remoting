@@ -3,6 +3,8 @@ package org.jboss.cx.remoting.core;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.List;
@@ -36,6 +38,7 @@ import org.jboss.cx.remoting.spi.stream.StreamDetector;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
 import org.jboss.cx.remoting.spi.stream.StreamContext;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
+import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
 import org.jboss.serial.io.JBossObjectOutputStream;
 import org.jboss.serial.io.JBossObjectInputStream;
 
@@ -566,7 +569,7 @@ public final class CoreSession {
 
     // message output
 
-    private final class MessageOutputImpl extends JBossObjectOutputStream implements MessageOutput {
+    private final class MessageOutputImpl extends ObjectOutputStream implements MessageOutput {
         private final ByteOutput target;
         private final List<StreamDetector> streamDetectors;
 
@@ -598,6 +601,7 @@ public final class CoreSession {
         }
 
         public void commit() throws IOException {
+            close();
             target.commit();
         }
 
@@ -627,7 +631,7 @@ public final class CoreSession {
 
     // message input
 
-    private final class ObjectInputImpl extends JBossObjectInputStream {
+    private final class ObjectInputImpl extends ObjectInputStream {
 
         public ObjectInputImpl(final InputStream is) throws IOException {
             super(is);
@@ -635,16 +639,30 @@ public final class CoreSession {
         }
 
         public ObjectInputImpl(final InputStream is, final ClassLoader loader) throws IOException {
-            super(is, loader);
+//            super(is, loader);
+            super(is);
             super.enableResolveObject(true);
         }
 
         protected Object resolveObject(Object obj) throws IOException {
+            log.trace("In resolveObject");
             final Object testObject = super.resolveObject(obj);
             if (testObject instanceof StreamMarker) {
                 StreamMarker marker = (StreamMarker) testObject;
-                marker.getStreamIdentifier();
-                return null;
+                final StreamIdentifier streamIdentifier = marker.getStreamIdentifier();
+                final StreamSerializerFactory streamSerializerFactory;
+                try {
+                    streamSerializerFactory = marker.getFactoryClass().newInstance();
+                } catch (InstantiationException e) {
+                    throw new IOException("Failed to instantiate a stream: " + e);
+                } catch (IllegalAccessException e) {
+                    throw new IOException("Failed to instantiate a stream: " + e);
+                }
+                final RemoteStreamSerializer streamSerializer = streamSerializerFactory.getRemoteSide(new StreamContextImpl(streamIdentifier));
+                if (streams.putIfAbsent(streamIdentifier, streamSerializer) != null) {
+                    throw new IOException("Duplicate stream received");
+                }
+                return streamSerializer.getRemoteInstance();
             } else {
                 return testObject;
             }
@@ -652,10 +670,15 @@ public final class CoreSession {
     }
 
     private final class MessageInputImpl extends DelegatingObjectInput implements MessageInput {
-        private final ByteInput source;
+        private CoreSession.ObjectInputImpl objectInput;
+
+        private MessageInputImpl(final ObjectInputImpl objectInput) throws IOException {
+            super(objectInput);
+            this.objectInput = objectInput;
+        }
 
         private MessageInputImpl(final ByteInput source) throws IOException {
-            super(new ObjectInputImpl(new InputStream() {
+            this(new ObjectInputImpl(new InputStream() {
                 public int read(byte b[]) throws IOException {
                     return source.read(b);
                 }
@@ -676,7 +699,6 @@ public final class CoreSession {
                     return source.remaining();
                 }
             }));
-            this.source = source;
         }
 
         public Object readObject() throws ClassNotFoundException, IOException {
@@ -689,7 +711,11 @@ public final class CoreSession {
         }
 
         public int remaining() {
-            return source.remaining();
+            try {
+                return objectInput.available();
+            } catch (IOException e) {
+                throw new IllegalStateException("Available failed", e);
+            }
         }
     }
 
