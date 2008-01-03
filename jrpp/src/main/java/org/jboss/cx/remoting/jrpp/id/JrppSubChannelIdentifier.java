@@ -1,15 +1,13 @@
 package org.jboss.cx.remoting.jrpp.id;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.ObjectInput;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.jboss.cx.remoting.jrpp.WritableObject;
 
 /**
  *
  */
-public abstract class JrppSubChannelIdentifier implements WritableObject {
+public abstract class JrppSubChannelIdentifier {
     private final short id;
     private final AtomicBoolean dead = new AtomicBoolean(false);
 
@@ -17,8 +15,8 @@ public abstract class JrppSubChannelIdentifier implements WritableObject {
         this.id = id;
     }
 
-    public JrppSubChannelIdentifier(ObjectInputStream ois) throws IOException {
-        id = ois.readShort();
+    public JrppSubChannelIdentifier(ObjectInput input) throws IOException {
+        id = input.readShort();
     }
 
     public void release(IdentifierManager manager) {
@@ -32,10 +30,6 @@ public abstract class JrppSubChannelIdentifier implements WritableObject {
             throw new IllegalStateException("Read channel ID after close");
         }
         return id;
-    }
-
-    public void writeObjectData(ObjectOutputStream oos) throws IOException {
-        oos.writeShort(id);
     }
 
     public boolean equals(Object obj) {

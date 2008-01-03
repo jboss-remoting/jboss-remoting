@@ -1,11 +1,12 @@
 package org.jboss.cx.remoting.spi.protocol;
 
 import java.io.IOException;
+import java.io.ObjectOutput;
+import java.io.ObjectInput;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.ServiceLocator;
-import org.jboss.cx.remoting.spi.protocol.MessageOutput;
 
 /**
  *
@@ -109,6 +110,17 @@ public interface ProtocolHandler {
      * @throws IOException
      */
     void closeStream(StreamIdentifier streamIdentifier) throws IOException;
+
+    /**
+     * Read a stream identifier from a message.
+     *
+     * @param input
+     * @return
+     * @throws IOException
+     */
+    StreamIdentifier readStreamIdentifier(ObjectInput input) throws IOException;
+
+    void writeStreamIdentifier(ObjectOutput output, StreamIdentifier identifier) throws IOException;
 
     /**
      * Send data over a stream.  Returns a message output buffer that the message is written into.  When the message

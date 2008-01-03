@@ -3,6 +3,7 @@ package org.jboss.cx.remoting.jrpp.id;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
+import org.jboss.cx.remoting.spi.protocol.MessageInput;
 
 /**
  *
@@ -13,8 +14,8 @@ public final class JrppServiceIdentifier extends JrppSubChannelIdentifier implem
         super(id);
     }
 
-    public JrppServiceIdentifier(ObjectInputStream ois) throws IOException {
-        super(ois);
+    public JrppServiceIdentifier(MessageInput input) throws IOException {
+        super(input);
     }
 
     public boolean equals(Object obj) {

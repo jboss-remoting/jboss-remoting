@@ -10,10 +10,10 @@ import org.jboss.cx.remoting.spi.protocol.MessageOutput;
 public interface StreamContext extends Closeable {
 
     /**
-     * Write a message.  The message is sent when the returned {@code MessageOutput} instance is flushed.
+     * Write a message.  The message is sent if/when the returned {@code MessageOutput} instance is committed.
      *
-     * @return
-     * @throws IOException
+     * @return the message output instance
+     * @throws IOException if an error occurs
      */
     MessageOutput writeMessage() throws IOException;
 

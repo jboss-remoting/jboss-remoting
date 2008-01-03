@@ -1,6 +1,8 @@
 package org.jboss.cx.remoting.jrpp;
 
 import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.Collections;
@@ -110,6 +112,8 @@ public final class JrppConnection {
      * @param clientCallbackHandler
      */
     public JrppConnection(final IoConnector connector, final SocketAddress remoteAddress, final ProtocolContext protocolContext, final CallbackHandler clientCallbackHandler) {
+        // todo - this seems very iffy to me, since we're basically leaking "this" before constructor is done
+        this.protocolContext = protocolContext;
         ioHandler = new IoHandlerImpl();
         final ConnectFuture future = connector.connect(remoteAddress, new IoSessionInitializer<ConnectFuture>() {
             public void initializeSession(final IoSession session, final ConnectFuture future) {
@@ -119,7 +123,6 @@ public final class JrppConnection {
         });
         // make sure it's initialized for *this* thread as well
         ioSession = future.awaitUninterruptibly().getSession();
-        this.protocolContext = protocolContext;
 
         protocolHandler = new RemotingProtocolHandler();
         identifierManager = new IdentifierManager();
@@ -199,27 +202,27 @@ public final class JrppConnection {
         return protocolContext;
     }
 
-    private void write(MessageOutput output, MessageType messageType) throws IOException {
+    private void write(ObjectOutput output, MessageType messageType) throws IOException {
         output.writeByte(messageType.ordinal());
     }
 
-    private void write(MessageOutput output, ServiceIdentifier serviceIdentifier) throws IOException {
+    private void write(ObjectOutput output, ServiceIdentifier serviceIdentifier) throws IOException {
         output.writeShort(((JrppServiceIdentifier)serviceIdentifier).getId());
     }
 
-    private void write(MessageOutput output, ContextIdentifier contextIdentifier) throws IOException {
+    private void write(ObjectOutput output, ContextIdentifier contextIdentifier) throws IOException {
         output.writeShort(((JrppContextIdentifier)contextIdentifier).getId());
     }
 
-    private void write(MessageOutput output, StreamIdentifier streamIdentifier) throws IOException {
+    private void write(ObjectOutput output, StreamIdentifier streamIdentifier) throws IOException {
         output.writeShort(((JrppStreamIdentifier)streamIdentifier).getId());
     }
 
-    private void write(MessageOutput output, RequestIdentifier requestIdentifier) throws IOException {
+    private void write(ObjectOutput output, RequestIdentifier requestIdentifier) throws IOException {
         output.writeShort(((JrppRequestIdentifier)requestIdentifier).getId());
     }
 
-    private void write(MessageOutput output, BasicMessage<?> message) throws IOException {
+    private void write(ObjectOutput output, BasicMessage<?> message) throws IOException {
         output.writeObject(message.getBody());
         final Collection<Header> headers = message.getHeaders();
         output.writeInt(headers.size());
@@ -328,6 +331,14 @@ public final class JrppConnection {
                 write(output, streamIdentifier);
                 output.commit();
             }
+        }
+
+        public StreamIdentifier readStreamIdentifier(ObjectInput input) throws IOException {
+            return new JrppStreamIdentifier(input);
+        }
+
+        public void writeStreamIdentifier(ObjectOutput output, StreamIdentifier identifier) throws IOException {
+            write(output, identifier);
         }
 
         public void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) throws IOException {

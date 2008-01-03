@@ -1,6 +1,8 @@
 package org.jboss.cx.remoting.core;
 
 import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.Endpoint;
@@ -26,6 +28,7 @@ import org.jboss.cx.remoting.spi.protocol.SimpleServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.SimpleStreamIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 import org.jboss.cx.remoting.spi.protocol.MessageOutput;
+import org.jboss.cx.remoting.spi.protocol.MessageInput;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -114,6 +117,22 @@ public final class LocalProtocol {
 
         public void closeStream(StreamIdentifier streamIdentifier) throws IOException {
             log.trace("Closing stream for local protocol");
+        }
+
+        public StreamIdentifier readStreamIdentifier(ObjectInput input) throws IOException {
+            throw new UnsupportedOperationException("streams");
+        }
+
+        public void writeStreamIdentifier(ObjectOutput output, StreamIdentifier identifier) throws IOException {
+            throw new UnsupportedOperationException("streams");
+        }
+
+        public StreamIdentifier readStreamIdentifier(MessageInput input) throws IOException {
+            throw new UnsupportedOperationException("streams");
+        }
+
+        public void writeStreamIdentifier(MessageOutput output, StreamIdentifier identifier) throws IOException {
+            throw new UnsupportedOperationException("streams");
         }
 
         public void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) throws IOException {

@@ -1,8 +1,11 @@
 package org.jboss.cx.remoting.core;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.Map;
+import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.Endpoint;
@@ -17,6 +20,7 @@ import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
+import org.jboss.cx.remoting.core.stream.DefaultStreamDetector;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
@@ -28,6 +32,12 @@ import org.jboss.cx.remoting.spi.protocol.MessageOutput;
 import org.jboss.cx.remoting.spi.protocol.MessageInput;
 import org.jboss.cx.remoting.spi.protocol.ByteOutput;
 import org.jboss.cx.remoting.spi.protocol.ByteInput;
+import org.jboss.cx.remoting.spi.stream.StreamDetector;
+import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
+import org.jboss.cx.remoting.spi.stream.StreamContext;
+import org.jboss.cx.remoting.spi.stream.StreamSerializer;
+import org.jboss.serial.io.JBossObjectOutputStream;
+import org.jboss.serial.io.JBossObjectInputStream;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -45,6 +55,9 @@ public final class CoreSession {
     private final ProtocolContextImpl protocolContext = new ProtocolContextImpl();
     private final UserSession userSession = new UserSession();
 
+    // stream serialization detectors - immutable
+    private final List<StreamDetector> streamDetectors;
+
     // clients - weak reference, to clean up if the user leaks
     private final ConcurrentMap<ContextIdentifier, WeakReference<CoreOutboundContext>> contexts = CollectionUtil.concurrentMap();
     private final ConcurrentMap<ServiceIdentifier, WeakReference<CoreOutboundService>> services = CollectionUtil.concurrentMap();
@@ -52,6 +65,9 @@ public final class CoreSession {
     // servers - strong refereces, only clean up if we hear it from the other end
     private final ConcurrentMap<ContextIdentifier, CoreInboundContext> serverContexts = CollectionUtil.concurrentMap();
     private final ConcurrentMap<ServiceIdentifier, CoreInboundService> serverServices = CollectionUtil.concurrentMap();
+
+    // streams - strong references, only clean up if a close message is sent or received
+    private final ConcurrentMap<StreamIdentifier, StreamSerializer> streams = CollectionUtil.concurrentMap();
 
     // don't GC the endpoint while a session lives
     private final CoreEndpoint endpoint;
@@ -70,6 +86,7 @@ public final class CoreSession {
         }
         this.endpoint = endpoint;
         this.protocolHandler = protocolHandler;
+        streamDetectors = java.util.Collections.<StreamDetector>singletonList(new DefaultStreamDetector());
     }
 
     CoreSession(final CoreEndpoint endpoint, final ProtocolHandlerFactory factory, final EndpointLocator endpointLocator) throws IOException {
@@ -86,6 +103,7 @@ public final class CoreSession {
         final CallbackHandler locatorCallbackHandler = endpointLocator.getClientCallbackHandler();
         final Endpoint userEndpoint = endpoint.getUserEndpoint();
         protocolHandler = factory.createHandler(protocolContext, endpointLocator.getEndpointUri(), locatorCallbackHandler == null ? userEndpoint.getLocalCallbackHandler() : locatorCallbackHandler, userEndpoint.getRemoteCallbackHandler());
+        streamDetectors = java.util.Collections.<StreamDetector>singletonList(new DefaultStreamDetector());
     }
 
     // Outbound protocol messages
@@ -176,6 +194,26 @@ public final class CoreSession {
 
     Session getUserSession() {
         return userSession;
+    }
+
+    public ProtocolHandler getProtocolHandler() {
+        return protocolHandler;
+    }
+
+    // Thread-local instance
+
+    private static final ThreadLocal<CoreSession> instance = new ThreadLocal<CoreSession>();
+
+    static CoreSession getInstance() {
+        return instance.get();
+    }
+
+    private void setInstance() {
+        instance.set(this);
+    }
+
+    private void clearInstance() {
+        instance.remove();
     }
 
     // State mgmt
@@ -414,7 +452,7 @@ public final class CoreSession {
         }
 
         public MessageOutput getMessageOutput(ByteOutput target) throws IOException {
-            return new MessageOutputImpl(target);
+            return new MessageOutputImpl(target, streamDetectors);
         }
 
         public MessageInput getMessageInput(ByteInput source) throws IOException {
@@ -429,11 +467,11 @@ public final class CoreSession {
         }
 
         public void closeStream(StreamIdentifier streamIdentifier) {
-            
+            streams.remove(streamIdentifier);
         }
 
         public void closeService(ServiceIdentifier serviceIdentifier) {
-            
+            // todo
         }
 
         public void receiveOpenedContext(ServiceIdentifier remoteServiceIdentifier, ContextIdentifier remoteContextIdentifier) {
@@ -525,4 +563,156 @@ public final class CoreSession {
             return new RequestImpl<T>(body);
         }
     }
+
+    // message output
+
+    private final class MessageOutputImpl extends JBossObjectOutputStream implements MessageOutput {
+        private final ByteOutput target;
+        private final List<StreamDetector> streamDetectors;
+
+        private MessageOutputImpl(final ByteOutput target, final List<StreamDetector> streamDetectors) throws IOException {
+            super(new OutputStream() {
+                public void write(int b) throws IOException {
+                    target.write(b);
+                }
+
+                public void write(byte b[]) throws IOException {
+                    target.write(b);
+                }
+
+                public void write(byte b[], int off, int len) throws IOException {
+                    target.write(b, off, len);
+                }
+
+                public void flush() throws IOException {
+                    target.flush();
+                }
+
+                public void close() throws IOException {
+                    target.close();
+                }
+            });
+            enableReplaceObject(true);
+            this.target = target;
+            this.streamDetectors = streamDetectors;
+        }
+
+        public void commit() throws IOException {
+            target.commit();
+        }
+
+        protected void writeObjectOverride(Object obj) throws IOException {
+            setInstance();
+            super.writeObjectOverride(obj);
+            clearInstance();
+        }
+
+        protected Object replaceObject(Object obj) throws IOException {
+            final Object testObject = super.replaceObject(obj);
+            for (StreamDetector detector : streamDetectors) {
+                final StreamSerializerFactory factory = detector.detectStream(testObject);
+                if (factory != null) {
+                    final StreamIdentifier streamIdentifier = protocolHandler.openStream();
+                    final StreamContextImpl streamContext = new StreamContextImpl(streamIdentifier);
+                    final StreamSerializer streamSerializer = factory.getLocalSide(streamContext, testObject);
+                    if (streams.putIfAbsent(streamIdentifier, streamSerializer) != null) {
+                        throw new IOException("Duplicate stream identifier encountered: " + streamIdentifier);
+                    }
+                    return new StreamMarker(CoreSession.this, factory.getClass(), streamIdentifier);
+                }
+            }
+            return testObject;
+        }
+    }
+
+    // message input
+
+    private final class ObjectInputImpl extends JBossObjectInputStream {
+
+        public ObjectInputImpl(final InputStream is) throws IOException {
+            super(is);
+            super.enableResolveObject(true);
+        }
+
+        public ObjectInputImpl(final InputStream is, final ClassLoader loader) throws IOException {
+            super(is, loader);
+            super.enableResolveObject(true);
+        }
+
+        protected Object resolveObject(Object obj) throws IOException {
+            final Object testObject = super.resolveObject(obj);
+            if (testObject instanceof StreamMarker) {
+                StreamMarker marker = (StreamMarker) testObject;
+                marker.getStreamIdentifier();
+                return null;
+            } else {
+                return testObject;
+            }
+        }
+    }
+
+    private final class MessageInputImpl extends DelegatingObjectInput implements MessageInput {
+        private final ByteInput source;
+
+        private MessageInputImpl(final ByteInput source) throws IOException {
+            super(new ObjectInputImpl(new InputStream() {
+                public int read(byte b[]) throws IOException {
+                    return source.read(b);
+                }
+
+                public int read(byte b[], int off, int len) throws IOException {
+                    return source.read(b, off, len);
+                }
+
+                public int read() throws IOException {
+                    return source.read();
+                }
+
+                public void close() throws IOException {
+                    source.close();
+                }
+
+                public int available() throws IOException {
+                    return source.remaining();
+                }
+            }));
+            this.source = source;
+        }
+
+        public Object readObject() throws ClassNotFoundException, IOException {
+            setInstance();
+            try {
+                return super.readObject();
+            } finally {
+                clearInstance();
+            }
+        }
+
+        public int remaining() {
+            return source.remaining();
+        }
+    }
+
+    // stream context
+
+    private final class StreamContextImpl implements StreamContext {
+        private final StreamIdentifier streamIdentifier;
+
+        private StreamContextImpl(final StreamIdentifier streamIdentifier) {
+            this.streamIdentifier = streamIdentifier;
+        }
+
+        public MessageOutput writeMessage() throws IOException {
+            return protocolHandler.sendStreamData(streamIdentifier);
+        }
+
+        public void close() throws IOException {
+            try {
+                protocolHandler.closeStream(streamIdentifier);
+            } finally {
+                streams.remove(streamIdentifier);
+            }
+        }
+    }
+
 }

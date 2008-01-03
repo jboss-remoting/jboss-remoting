@@ -9,7 +9,7 @@ public interface StreamDetector {
      * return the class of the factory to use.  The factory class should have a no-arg constructor.
      *
      * @param candidate the candidate object
-     * @return the {@code Class} of the stream serializer factory, or {@code null} if this object is not recognized
+     * @return the stream serializer factory, or {@code null} if this object is not recognized
      */
     StreamSerializerFactory detectStream(Object candidate); 
 }
