@@ -1,10 +1,8 @@
 package org.jboss.cx.remoting.jrpp.id;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectInput;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
-import org.jboss.cx.remoting.spi.protocol.MessageInput;
 
 /**
  *

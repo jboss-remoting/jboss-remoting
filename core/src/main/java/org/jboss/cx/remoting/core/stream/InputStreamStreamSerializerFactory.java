@@ -1,15 +1,15 @@
 package org.jboss.cx.remoting.core.stream;
 
-import java.io.InputStream;
 import java.io.IOException;
-import java.util.Queue;
+import java.io.InputStream;
 import java.util.LinkedList;
+import java.util.Queue;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.spi.protocol.MessageInput;
+import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamContext;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
-import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
-import org.jboss.cx.remoting.spi.protocol.MessageInput;
 
 /**
  *

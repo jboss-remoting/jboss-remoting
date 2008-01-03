@@ -1,8 +1,8 @@
 package org.jboss.cx.remoting.jrpp.mina;
 
-import org.jboss.cx.remoting.spi.protocol.ByteInput;
-import org.apache.mina.common.IoBuffer;
 import java.io.IOException;
+import org.apache.mina.common.IoBuffer;
+import org.jboss.cx.remoting.spi.protocol.ByteInput;
 
 /**
  *

@@ -1,9 +1,5 @@
 package org.jboss.cx.remoting.spi.protocol;
 
-import org.jboss.cx.remoting.core.util.BufferFactory;
-
-import javax.security.auth.callback.CallbackHandler;
-
 /**
  *
  */

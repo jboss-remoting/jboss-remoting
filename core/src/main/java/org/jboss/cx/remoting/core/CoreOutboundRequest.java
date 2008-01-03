@@ -1,18 +1,18 @@
 package org.jboss.cx.remoting.core;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Collections;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
 import org.jboss.cx.remoting.FutureReply;
+import org.jboss.cx.remoting.IndeterminateOutcomeException;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.RequestCompletionHandler;
-import org.jboss.cx.remoting.IndeterminateOutcomeException;
-import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
+import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**

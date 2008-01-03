@@ -14,6 +14,8 @@ import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
+import org.jboss.cx.remoting.spi.protocol.MessageInput;
+import org.jboss.cx.remoting.spi.protocol.MessageOutput;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
@@ -27,8 +29,6 @@ import org.jboss.cx.remoting.spi.protocol.SimpleRequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.SimpleServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.SimpleStreamIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
-import org.jboss.cx.remoting.spi.protocol.MessageOutput;
-import org.jboss.cx.remoting.spi.protocol.MessageInput;
 
 import javax.security.auth.callback.CallbackHandler;
 
