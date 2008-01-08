@@ -33,6 +33,10 @@ public final class IoBufferByteOutput implements ByteOutput {
         ioSession.write(ioBuffer.flip().skip(4));
     }
 
+    public int getBytesWritten() {
+        return ioBuffer.position();
+    }
+
     public void close() throws IOException {
     }
 

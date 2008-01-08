@@ -603,6 +603,11 @@ public final class CoreSession {
             target.commit();
         }
 
+        public int getBytesWritten() throws IOException {
+            flush();
+            return target.getBytesWritten();
+        }
+
         protected void writeObjectOverride(Object obj) throws IOException {
             setInstance();
             super.writeObjectOverride(obj);
@@ -643,7 +648,6 @@ public final class CoreSession {
         }
 
         protected Object resolveObject(Object obj) throws IOException {
-            log.trace("In resolveObject");
             final Object testObject = super.resolveObject(obj);
             if (testObject instanceof StreamMarker) {
                 StreamMarker marker = (StreamMarker) testObject;

@@ -15,4 +15,6 @@ public interface ByteOutput extends Closeable, Flushable {
     void write(byte[] b, int offs, int len) throws IOException;
 
     void commit() throws IOException;
+
+    int getBytesWritten() throws IOException;
 }

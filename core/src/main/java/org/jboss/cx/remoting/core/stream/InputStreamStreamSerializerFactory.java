@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.NoSuchElementException;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.spi.protocol.MessageInput;
+import org.jboss.cx.remoting.spi.protocol.MessageOutput;
 import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamContext;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
@@ -27,55 +29,72 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
         return new RemoteStreamSerializerImpl(context);
     }
 
+    private enum Type {
+        DATA,
+        END,
+    }
+
+    private static final int BUF_LEN = 512;
+
     private final static class StreamSerializerImpl implements StreamSerializer {
         private final StreamContext context;
         private final InputStream inputStream;
 
-        public StreamSerializerImpl(final StreamContext context, final InputStream inputStream) {
+        public StreamSerializerImpl(final StreamContext context, final InputStream inputStream) throws IOException {
             this.context = context;
             this.inputStream = inputStream;
+            sendNext();
         }
 
         public void handleData(MessageInput data) throws IOException {
+            sendNext();
+        }
+
+        private void sendNext() throws IOException {
+            final MessageOutput output = context.writeMessage();
+            final byte[] bytes = new byte[BUF_LEN];
+            int i, t;
+            boolean end = false;
+            for (t = 0; t < BUF_LEN; t += i) {
+                i = inputStream.read(bytes);
+                if (i == -1) {
+                    end = true;
+                    break;
+                }
+            }
+            if (t > 0) {
+                output.write(Type.DATA.ordinal());
+                output.writeInt(t);
+                output.write(bytes, 0, t);
+            }
+            if (end) {
+                output.write(Type.END.ordinal());
+            }
+            output.commit();
         }
 
         public void handleClose() throws IOException {
-            
         }
-    }
-
-    private enum Type {
-        DATA,
-        END,
-        FAILURE,
     }
 
     private final static class RemoteStreamSerializerImpl implements RemoteStreamSerializer {
 
         private final StreamContext context;
-        private Queue<Entry> messageQueue = CollectionUtil.synchronizedQueue(new LinkedList<Entry>());
+        private LinkedList<Entry> messageQueue = new LinkedList<Entry>();
 
         private final class Entry {
             private final Type type;
-            private final MessageInput msg;
-            private final Throwable t;
+            private final byte[] msg;
+            private int i;
 
-            public Entry(final MessageInput msg) {
+            public Entry(final byte[] msg) {
                 this.msg = msg;
                 type = Type.DATA;
-                t = null;
-            }
-
-            public Entry(final Throwable t) {
-                type = Type.FAILURE;
-                this.t = t;
-                msg = null;
             }
 
             public Entry() {
                 type = Type.END;
                 msg = null;
-                t = null;
             }
         }
 
@@ -87,65 +106,70 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
             return new InputStream() {
 
                 public int read() throws IOException {
-                    synchronized(messageQueue) {
-                        Entry e = getHead();
-                        if (e.type == Type.FAILURE) {
-                            try {
-                                throw e.t;
-                            } catch (IOException ex) {
-                                throw ex;
-                            } catch (Throwable ex) {
-                                throw new RuntimeException("A remote exception was thrown: " + ex.toString(), ex);
+                    boolean intr = Thread.interrupted();
+                    try {
+                        synchronized(messageQueue) {
+                            for (;;) {
+                                if (messageQueue.size() == 0) {
+                                    context.writeMessage().commit();
+                                    do {
+                                        try {
+                                            messageQueue.wait();
+                                        } catch (InterruptedException e) {
+                                            intr = true;
+                                        }
+                                    } while (messageQueue.size() == 0);
+                                }
+                                final RemoteStreamSerializerImpl.Entry first = messageQueue.getFirst();
+                                switch (first.type) {
+                                    case DATA:
+                                        if (first.msg.length >= first.i) {
+                                            messageQueue.removeFirst();
+                                        } else {
+                                            return first.msg[first.i ++];
+                                        }
+                                    default:
+                                        return -1;
+                                }
                             }
-                        } else if (e.type == Type.END) {
-                            return -1;
                         }
-                        final int v = e.msg.read();
-                        if (v == -1) {
-                            messageQueue.remove();
-                            return read();
+                    } finally {
+                        if (intr) {
+                            Thread.currentThread().interrupt();
                         }
-                        return v;
                     }
                 }
             };
         }
 
-        // Call with messageQueue locked only!
-        private Entry getHead() {
-            RemoteStreamSerializerImpl.Entry head;
-            boolean intr = false;
-            try {
+        public void handleData(MessageInput data) throws IOException {
+            synchronized(messageQueue) {
                 for (;;) {
-                    head = messageQueue.peek();
-                    if (head != null) {
-                        return head;
+                    final int d = data.read();
+                    if (d == -1) {
+                        break;
                     }
-                    try {
-
-                        messageQueue.wait();
-                    } catch (InterruptedException e) {
-                        intr = true;
+                    Type t = Type.values()[d];
+                    switch (t) {
+                        case DATA:
+                            int l = data.readInt();
+                            byte[] bytes = new byte[l];
+                            data.read(bytes);
+                            messageQueue.add(new Entry(bytes));
+                            break;
+                        case END:
+                            messageQueue.add(new Entry());
+                            break;
                     }
                 }
-            } finally {
-                if (intr) {
-                    Thread.currentThread().interrupt();
-                }
+                messageQueue.notifyAll();
             }
         }
 
-        public void sendMoreRequest() throws IOException {
-
-        }
-
-
-        public void handleData(MessageInput data) throws IOException {
-
-        }
-
         public void handleClose() throws IOException {
+            synchronized(messageQueue) {
+                messageQueue.add(new Entry());
+            }
         }
-
     }
 }
