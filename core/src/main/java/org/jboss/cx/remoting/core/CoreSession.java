@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.Endpoint;
@@ -570,6 +571,7 @@ public final class CoreSession {
     private final class MessageOutputImpl extends ObjectOutputStream implements MessageOutput {
         private final ByteOutput target;
         private final List<StreamDetector> streamDetectors;
+        private final List<StreamSerializer> streamSerializers = new ArrayList<StreamSerializer>();
 
         private MessageOutputImpl(final ByteOutput target, final List<StreamDetector> streamDetectors) throws IOException {
             super(new OutputStream() {
@@ -601,6 +603,14 @@ public final class CoreSession {
         public void commit() throws IOException {
             close();
             target.commit();
+            for (StreamSerializer serializer : streamSerializers) {
+                try {
+                    serializer.handleOpen();
+                } catch (Exception ex) {
+                    // todo - log
+                }
+            }
+            streamSerializers.clear();
         }
 
         public int getBytesWritten() throws IOException {
@@ -625,6 +635,7 @@ public final class CoreSession {
                     if (streams.putIfAbsent(streamIdentifier, streamSerializer) != null) {
                         throw new IOException("Duplicate stream identifier encountered: " + streamIdentifier);
                     }
+                    streamSerializers.add(streamSerializer);
                     return new StreamMarker(CoreSession.this, factory.getClass(), streamIdentifier);
                 }
             }
