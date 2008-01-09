@@ -31,6 +31,9 @@ public final class ObjectSourceSerializerFactory implements StreamSerializerFact
         public StreamSerializerImpl(final StreamContext streamContext, final ObjectSource<?> objectSource) throws IOException {
             this.streamContext = streamContext;
             this.objectSource = objectSource;
+        }
+
+        public void handleOpen() throws IOException {
             transmitNext();
         }
 
@@ -152,6 +155,9 @@ public final class ObjectSourceSerializerFactory implements StreamSerializerFact
                     }
                 }
             };
+        }
+
+        public void handleOpen() throws IOException {
         }
 
         @SuppressWarnings ({"unchecked"})

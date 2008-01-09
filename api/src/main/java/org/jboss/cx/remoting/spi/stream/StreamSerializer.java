@@ -8,9 +8,16 @@ import org.jboss.cx.remoting.spi.protocol.MessageInput;
  */
 public interface StreamSerializer {
     /**
-     * Handle an incoming object from the remote side.
+     * Handle the startup of the stream.
      *
-     * @param data
+     * @throws IOException if an error occurs
+     */
+    void handleOpen() throws IOException;
+
+    /**
+     * Handle an incoming message from the remote side.
+     *
+     * @param data the message
      * @throws IOException if the stream data cannot be handled
      */
     void handleData(MessageInput data) throws IOException;

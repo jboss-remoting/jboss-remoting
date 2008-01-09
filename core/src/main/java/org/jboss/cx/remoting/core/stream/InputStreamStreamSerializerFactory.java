@@ -43,6 +43,9 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
         public StreamSerializerImpl(final StreamContext context, final InputStream inputStream) throws IOException {
             this.context = context;
             this.inputStream = inputStream;
+        }
+
+        public void handleOpen() throws IOException {
             sendNext();
         }
 
@@ -140,6 +143,9 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
                     }
                 }
             };
+        }
+
+        public void handleOpen() throws IOException {
         }
 
         public void handleData(MessageInput data) throws IOException {

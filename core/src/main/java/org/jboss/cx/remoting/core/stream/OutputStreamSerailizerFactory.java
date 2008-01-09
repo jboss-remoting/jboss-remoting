@@ -37,6 +37,9 @@ public final class OutputStreamSerailizerFactory implements StreamSerializerFact
             this.outputStream = outputStream;
         }
 
+        public void handleOpen() throws IOException {
+        }
+
         public void handleData(MessageInput data) throws IOException {
             MessageType messageType = MessageType.values()[data.read()];
             switch (messageType) {
@@ -109,6 +112,9 @@ public final class OutputStreamSerailizerFactory implements StreamSerializerFact
                     }
                 }
             };
+        }
+
+        public void handleOpen() throws IOException {
         }
 
         public void handleData(MessageInput data) throws IOException {
