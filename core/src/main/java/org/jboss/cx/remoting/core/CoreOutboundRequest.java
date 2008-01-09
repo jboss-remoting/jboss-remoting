@@ -124,7 +124,7 @@ public final class CoreOutboundRequest<I, O> {
      * @param exception the exception
      */
     void receiveException(final RemoteExecutionException exception) {
-        state.requireTransitionExclusive(State.WAITING, State.DONE);
+        state.requireTransitionExclusive(State.WAITING, State.EXCEPTION);
         this.exception = exception;
         state.releaseDowngrade();
         try {
