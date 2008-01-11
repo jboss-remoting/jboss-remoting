@@ -391,13 +391,32 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         return state;
     }
 
-    public boolean inHold(T state) {
-        readLock.lock();
-        boolean ok = this.state == state;
-        if (! ok) {
-            readLock.unlock();
+    public boolean inHoldExclusive(T... states) {
+        if (states == null) {
+            throw new NullPointerException("states is null");
         }
-        return ok;
+        writeLock.lock();
+        for (T state : states) {
+            if (this.state == state) {
+                return true;
+            }
+        }
+        writeLock.unlock();
+        return false;
+    }
+
+    public boolean inHold(T... states) {
+        if (states == null) {
+            throw new NullPointerException("states is null");
+        }
+        readLock.lock();
+        for (T state : states) {
+            if (this.state == state) {
+                return true;
+            }
+        }
+        readLock.unlock();
+        return false;
     }
 
     public boolean in(T... states) {

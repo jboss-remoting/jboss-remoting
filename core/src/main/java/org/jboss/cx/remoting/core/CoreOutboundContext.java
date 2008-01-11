@@ -1,12 +1,14 @@
 package org.jboss.cx.remoting.core;
 
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
+import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Logger;
@@ -20,6 +22,7 @@ import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 public final class CoreOutboundContext<I, O> {
     private static final Logger log = Logger.getLogger(CoreOutboundContext.class);
 
+    private final CoreEndpoint endpoint;
     private final CoreSession session;
     private final ContextIdentifier contextIdentifier;
 
@@ -31,6 +34,7 @@ public final class CoreOutboundContext<I, O> {
     public CoreOutboundContext(final CoreSession session, final ContextIdentifier contextIdentifier) {
         this.session = session;
         this.contextIdentifier = contextIdentifier;
+        endpoint = session.getEndpoint();
     }
 
     private enum State {
@@ -57,8 +61,8 @@ public final class CoreOutboundContext<I, O> {
         }
     }
 
-    void sendRequest(final RequestIdentifier requestIdentifier, final Request<I> request) throws RemotingException {
-        session.sendRequest(contextIdentifier, requestIdentifier, request);
+    void sendRequest(final RequestIdentifier requestIdentifier, final Request<I> request, final Executor streamExecutor) throws RemotingException {
+        session.sendRequest(contextIdentifier, requestIdentifier, request, streamExecutor);
     }
 
     // Inbound protocol messages
@@ -137,7 +141,26 @@ public final class CoreOutboundContext<I, O> {
         }
 
         public Reply<O> invoke(final Request<I> request) throws RemotingException, RemoteExecutionException, InterruptedException {
-            return send(request).get();
+            state.requireHold(State.UP);
+            try {
+                final RequestIdentifier requestIdentifier;
+                requestIdentifier = openRequest();
+                final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>(CoreOutboundContext.this, requestIdentifier);
+                requests.put(requestIdentifier, outboundRequest);
+                // Request must be sent *after* the identifier is registered in the map
+                final QueueExecutor queueExecutor = new QueueExecutor();
+                sendRequest(requestIdentifier, request, queueExecutor);
+                final FutureReply<O> futureReply = outboundRequest.getFutureReply();
+                futureReply.addCompletionNotifier(new RequestCompletionHandler<O>() {
+                    public void notifyComplete(final FutureReply<O> futureReply) {
+                        queueExecutor.shutdown();
+                    }
+                });
+                queueExecutor.runQueue();
+                return futureReply.get();
+            } finally {
+                state.release();
+            }
         }
 
         public FutureReply<O> send(final Request<I> request) throws RemotingException {
@@ -148,7 +171,7 @@ public final class CoreOutboundContext<I, O> {
                 final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>(CoreOutboundContext.this, requestIdentifier);
                 requests.put(requestIdentifier, outboundRequest);
                 // Request must be sent *after* the identifier is registered in the map
-                sendRequest(requestIdentifier, request);
+                sendRequest(requestIdentifier, request, endpoint.getExecutor());
                 return outboundRequest.getFutureReply();
             } finally {
                 state.release();

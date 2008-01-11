@@ -200,7 +200,7 @@ public final class CoreOutboundRequest<I, O> {
             }
         }
 
-        public FutureReply<O> setCompletionNotifier(RequestCompletionHandler<O> handler) {
+        public FutureReply<O> addCompletionNotifier(RequestCompletionHandler<O> handler) {
             final State currentState = state.getStateHold();
             try {
                 switch (currentState) {

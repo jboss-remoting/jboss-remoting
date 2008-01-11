@@ -86,7 +86,7 @@ public interface ProtocolHandler {
 
     void closeService(ServiceIdentifier serviceIdentifier) throws IOException;
 
-    void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request) throws IOException;
+    void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request, Executor streamExecutor) throws IOException;
 
     void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException;
 

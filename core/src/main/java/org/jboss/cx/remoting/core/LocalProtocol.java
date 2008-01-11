@@ -156,7 +156,7 @@ public final class LocalProtocol {
             remoteContext.receiveException(remoteContextIdentifier, requestIdentifier, exception);
         }
 
-        public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request) throws IOException {
+        public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request, final Executor streamExecutor) throws IOException {
             log.trace("Sending request for local protocol");
             remoteContext.receiveRequest(contextIdentifier, requestIdentifier, request);
         }

@@ -71,14 +71,11 @@ public interface FutureReply<T> extends Future<Reply<T>> {
     Reply<T> get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException;
 
     /**
-     * Set a notifier to be called when the request has completed.  The notifier may be called from the current thread
-     * or a different thread.  If the request has already completed, the notifier will be called immediately.  If there
-     * was a previous notifier set, it will be overwritten.  Calling this method guarantees that the supplied handler
-     * will be called, unless it is cleared or a new handler is set before the original handler is called.  The handler
-     * may be called at any time after the request has completed, though implementations should make a reasonable effort
-     * to ensure that the handler is called in a timely manner.  The handler is cleared before it is called.
-     * <p/>
-     * Setting a {@code null} value clears any notifier.
+     * Add a notifier to be called when the request has completed.  The notifier may be called from the current thread
+     * or a different thread.  If the request has already completed, the notifier will be called immediately. Calling
+     * this method guarantees that the supplied handler will be called.  The handler may be called at any time after
+     * the request has completed, though implementations should make a reasonable effort to ensure that the handler is
+     * called in a timely manner.
      * <p/>
      * This method returns {@code this} in order to facilitate method call chaining.
      *
@@ -86,5 +83,5 @@ public interface FutureReply<T> extends Future<Reply<T>> {
      *
      * @return this future reply
      */
-    FutureReply<T> setCompletionNotifier(RequestCompletionHandler<T> handler);
+    FutureReply<T> addCompletionNotifier(RequestCompletionHandler<T> handler);
 }

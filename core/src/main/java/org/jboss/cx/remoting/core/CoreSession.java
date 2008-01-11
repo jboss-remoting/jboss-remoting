@@ -109,9 +109,9 @@ public final class CoreSession {
 
     // Outbound protocol messages
 
-    void sendRequest(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Request<?> request) throws RemotingException {
+    void sendRequest(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Request<?> request, final Executor streamExecutor) throws RemotingException {
         try {
-            protocolHandler.sendRequest(contextIdentifier, requestIdentifier, request);
+            protocolHandler.sendRequest(contextIdentifier, requestIdentifier, request, streamExecutor);
         } catch (IOException e) {
             throw new RemotingException("Failed to send the request: " + e);
         }
@@ -197,7 +197,11 @@ public final class CoreSession {
         return userSession;
     }
 
-    public ProtocolHandler getProtocolHandler() {
+    CoreEndpoint getEndpoint() {
+        return endpoint;
+    }
+
+    ProtocolHandler getProtocolHandler() {
         return protocolHandler;
     }
 
@@ -225,7 +229,7 @@ public final class CoreSession {
         STOPPING,
     }
 
-    protected void shutdown() {
+    void shutdown() {
         if (state.transition(State.UP, State.STOPPING)) {
             for (Map.Entry<ContextIdentifier,WeakReference<CoreOutboundContext>> entry : contexts.entrySet()) {
                 final CoreOutboundContext context = entry.getValue().get();
