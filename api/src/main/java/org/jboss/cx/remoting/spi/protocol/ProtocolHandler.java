@@ -3,6 +3,7 @@ package org.jboss.cx.remoting.spi.protocol;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
@@ -124,14 +125,18 @@ public interface ProtocolHandler {
 
     /**
      * Send data over a stream.  Returns a message output buffer that the message is written into.  When the message
-     * is fully written, the {@link MessageOutput#commit()} method will be called to perform the transmission.
+     * is fully written, the {@link MessageOutput#commit()} method will be called to perform the transmission.  The
+     * supplied executor should be passed in to
+     * {@link org.jboss.cx.remoting.spi.protocol.ProtocolContext#getMessageOutput(ByteOutput, java.util.concurrent.Executor)},
+     * if that method is used for serialization.
      *
      * @param streamIdentifier the stream to send data on
+     * @param streamExecutor the executor that should be used to handle stream data
      * @return a message buffer into which the message can be written
      *
      * @throws IOException if an error occurs
      */
-    MessageOutput sendStreamData(StreamIdentifier streamIdentifier) throws IOException;
+    MessageOutput sendStreamData(StreamIdentifier streamIdentifier, Executor streamExecutor) throws IOException;
 
     /**
      * Close the session.

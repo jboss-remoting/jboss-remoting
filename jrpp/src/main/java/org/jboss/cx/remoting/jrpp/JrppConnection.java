@@ -7,6 +7,7 @@ import java.net.SocketAddress;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import org.apache.mina.common.AttributeKey;
 import org.apache.mina.common.ConnectFuture;
 import org.apache.mina.common.IdleStatus;
@@ -299,7 +300,7 @@ public final class JrppConnection {
 
         public void closeService(ServiceIdentifier serviceIdentifier) throws IOException {
             if (! currentState.in(State.UP)) {
-                throw new IllegalStateException("JrppConnection is not in the UP state!");
+                return;
             }
             final IoBuffer buffer = newBuffer(60, false);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
@@ -310,7 +311,7 @@ public final class JrppConnection {
 
         public void closeContext(ContextIdentifier contextIdentifier) throws IOException {
             if (! currentState.in(State.UP)) {
-                throw new IllegalStateException("JrppConnection is not in the UP state!");
+                return;
             }
             final IoBuffer buffer = newBuffer(60, false);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
@@ -321,7 +322,7 @@ public final class JrppConnection {
 
         public void closeStream(StreamIdentifier streamIdentifier) throws IOException {
             if (! currentState.in(State.UP)) {
-                throw new IllegalStateException("JrppConnection is not in the UP state!");
+                return;
             }
             if (true /* todo if close not already sent */) {
                 // todo mark as sent or remove from table
@@ -342,6 +343,12 @@ public final class JrppConnection {
         }
 
         public void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) throws IOException {
+            if (serviceIdentifier == null) {
+                throw new NullPointerException("serviceIdentifier is null");
+            }
+            if (locator == null) {
+                throw new NullPointerException("locator is null");
+            }
             if (! currentState.in(State.UP)) {
                 throw new IllegalStateException("JrppConnection is not in the UP state!");
             }
@@ -363,6 +370,9 @@ public final class JrppConnection {
         }
 
         public void sendServiceActivate(ServiceIdentifier serviceIdentifier) throws IOException {
+            if (serviceIdentifier == null) {
+                throw new NullPointerException("serviceIdentifier is null");
+            }
             final IoBuffer buffer = newBuffer(60, false);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
             write(output, MessageType.SERVICE_ACTIVATE);
@@ -371,6 +381,15 @@ public final class JrppConnection {
         }
 
         public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) throws IOException {
+            if (remoteContextIdentifier == null) {
+                throw new NullPointerException("remoteContextIdentifier is null");
+            }
+            if (requestIdentifier == null) {
+                throw new NullPointerException("requestIdentifier is null");
+            }
+            if (reply == null) {
+                throw new NullPointerException("reply is null");
+            }
             final IoBuffer buffer = newBuffer(500, true);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
             write(output, MessageType.REPLY);
@@ -381,6 +400,15 @@ public final class JrppConnection {
         }
 
         public void sendException(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) throws IOException {
+            if (remoteContextIdentifier == null) {
+                throw new NullPointerException("remoteContextIdentifier is null");
+            }
+            if (requestIdentifier == null) {
+                throw new NullPointerException("requestIdentifier is null");
+            }
+            if (exception == null) {
+                throw new NullPointerException("exception is null");
+            }
             final IoBuffer buffer = newBuffer(500, true);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
             write(output, MessageType.EXCEPTION);
@@ -391,6 +419,15 @@ public final class JrppConnection {
         }
 
         public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request) throws IOException {
+            if (contextIdentifier == null) {
+                throw new NullPointerException("contextIdentifier is null");
+            }
+            if (requestIdentifier == null) {
+                throw new NullPointerException("requestIdentifier is null");
+            }
+            if (request == null) {
+                throw new NullPointerException("request is null");
+            }
             final IoBuffer buffer = newBuffer(500, true);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
             write(output, MessageType.REQUEST);
@@ -401,6 +438,12 @@ public final class JrppConnection {
         }
 
         public void sendCancelAcknowledge(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier) throws IOException {
+            if (remoteContextIdentifier == null) {
+                throw new NullPointerException("remoteContextIdentifier is null");
+            }
+            if (requestIdentifier == null) {
+                throw new NullPointerException("requestIdentifier is null");
+            }
             final IoBuffer buffer = newBuffer(60, false);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
             write(output, MessageType.CANCEL_ACK);
@@ -410,6 +453,9 @@ public final class JrppConnection {
         }
 
         public void sendServiceTerminate(ServiceIdentifier remoteServiceIdentifier) throws IOException {
+            if (remoteServiceIdentifier == null) {
+                throw new NullPointerException("remoteServiceIdentifier is null");
+            }
             final IoBuffer buffer = newBuffer(60, false);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
             write(output, MessageType.SERVICE_TERMINATE);
@@ -418,6 +464,12 @@ public final class JrppConnection {
         }
 
         public void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException {
+            if (contextIdentifier == null) {
+                throw new NullPointerException("contextIdentifier is null");
+            }
+            if (requestIdentifier == null) {
+                throw new NullPointerException("requestIdentifier is null");
+            }
             final IoBuffer buffer = newBuffer(60, false);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
             write(output, MessageType.CANCEL_REQ);
@@ -427,9 +479,15 @@ public final class JrppConnection {
             output.commit();
         }
 
-        public MessageOutput sendStreamData(StreamIdentifier streamIdentifier) throws IOException {
+        public MessageOutput sendStreamData(StreamIdentifier streamIdentifier, Executor streamExecutor) throws IOException {
+            if (streamIdentifier == null) {
+                throw new NullPointerException("streamIdentifier is null");
+            }
+            if (streamExecutor == null) {
+                throw new NullPointerException("streamExeceutor is null");
+            }
             final IoBuffer buffer = newBuffer(500, true);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession), streamExecutor);
             write(output, MessageType.STREAM_DATA);
             write(output, streamIdentifier);
             return output;
@@ -491,7 +549,7 @@ public final class JrppConnection {
             final MessageInput input = protocolContext.getMessageInput(new IoBufferByteInput((IoBuffer) message));
             final MessageType type = MessageType.values()[input.readByte() & 0xff];
             if (trace) {
-                log.trace("Received message of type " + type + " in state " + currentState.getState());
+                log.trace("Received message of type %s in state %s", type, currentState.getState());
             }
             OUT: switch (currentState.getState()) {
                 case AWAITING_CLIENT_VERSION: {

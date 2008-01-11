@@ -1,6 +1,7 @@
 package org.jboss.cx.remoting.spi.protocol;
 
 import java.io.IOException;
+import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
@@ -52,6 +53,8 @@ public interface ProtocolContext {
     /* CLIENT OR SERVER methods */
 
     MessageOutput getMessageOutput(ByteOutput target) throws IOException;
+
+    MessageOutput getMessageOutput(ByteOutput target, Executor streamExecutor) throws IOException;
 
     MessageInput getMessageInput(ByteInput source) throws IOException;
 }

@@ -30,7 +30,8 @@ public final class IoBufferByteOutput implements ByteOutput {
     }
 
     public void commit() throws IOException {
-        ioSession.write(ioBuffer.flip().skip(4));
+        final IoBuffer buffer = ioBuffer.flip().skip(4);
+        ioSession.write(buffer);
     }
 
     public int getBytesWritten() {

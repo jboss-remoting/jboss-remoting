@@ -17,6 +17,15 @@ public final class StreamMarker implements Externalizable {
     private CoreSession coreSession;
 
     public StreamMarker(final CoreSession coreSession, final Class<? extends StreamSerializerFactory> factoryClass, final StreamIdentifier streamIdentifier) {
+        if (coreSession == null) {
+            throw new NullPointerException("coreSession is null");
+        }
+        if (factoryClass == null) {
+            throw new NullPointerException("factoryClass is null");
+        }
+        if (streamIdentifier == null) {
+            throw new NullPointerException("streamIdentifier is null");
+        }
         this.coreSession = coreSession;
         this.factoryClass = factoryClass;
         this.streamIdentifier = streamIdentifier;
@@ -42,6 +51,6 @@ public final class StreamMarker implements Externalizable {
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         coreSession = CoreSession.getInstance();
         factoryClass = (Class<? extends StreamSerializerFactory>) in.readObject();
-        coreSession.getProtocolHandler().readStreamIdentifier(in);
+        streamIdentifier = coreSession.getProtocolHandler().readStreamIdentifier(in);
     }
 }

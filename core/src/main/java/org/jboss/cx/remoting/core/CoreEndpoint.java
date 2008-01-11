@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jboss.cx.remoting.Endpoint;
@@ -43,7 +46,9 @@ public final class CoreEndpoint {
     private final Endpoint userEndpoint = new UserEndpoint();
     private CallbackHandler remoteCallbackHandler;
     private CallbackHandler localCallbackHandler;
+    private final OrderedExecutorFactory orderedExecutorFactory;
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
+    private final ExecutorService executor;
 
     private enum State {
         UP,
@@ -52,6 +57,9 @@ public final class CoreEndpoint {
 
     protected CoreEndpoint(final String name) {
         this.name = name;
+        // todo - make this configurable
+        executor = Executors.newCachedThreadPool();
+        orderedExecutorFactory = new OrderedExecutorFactory(executor);
     }
 
     private final ConcurrentMap<Object, Object> endpointMap = CollectionUtil.concurrentMap();
@@ -63,6 +71,14 @@ public final class CoreEndpoint {
 
     ConcurrentMap<Object, Object> getAttributes() {
         return endpointMap;
+    }
+
+    Executor getExecutor() {
+        return executor;
+    }
+
+    Executor getOrderedExecutor() {
+        return orderedExecutorFactory.getOrderedExecutor();
     }
 
     Endpoint getUserEndpoint() {
@@ -239,6 +255,7 @@ public final class CoreEndpoint {
                 coreSession.shutdown();
             }
             sessions.clear();
+            executor.shutdown();
         }
 
         public void addShutdownListener(EndpointShutdownListener listener) {

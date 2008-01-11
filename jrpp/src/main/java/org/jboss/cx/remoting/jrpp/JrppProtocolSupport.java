@@ -17,6 +17,8 @@ import org.apache.mina.handler.multiton.SingleSessionIoHandlerFactory;
 import org.apache.mina.transport.socket.nio.NioProcessor;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
+import org.apache.mina.filter.executor.ExecutorFilter;
+import org.apache.mina.filter.logging.LoggingFilter;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.EndpointShutdownListener;
 import org.jboss.cx.remoting.RemotingException;
@@ -63,6 +65,7 @@ public final class JrppProtocolSupport {
         ioAcceptor.setDefaultLocalAddress(address);
         ioAcceptor.setHandler(serverIoHandler);
         ioAcceptor.getFilterChain().addLast("framing filter", new FramingIoFilter());
+        ioAcceptor.getFilterChain().addLast("debug 0", new LoggingFilter());
         ioAcceptor.bind();
         ioAcceptors.add(ioAcceptor);
     }
@@ -96,6 +99,7 @@ public final class JrppProtocolSupport {
         public ProtocolHandlerFactoryImpl() {
             connector = new NioSocketConnector(threadPool, nioProcessor);
             connector.getFilterChain().addLast("framing filter", new FramingIoFilter());
+            connector.getFilterChain().addLast("debug 0", new LoggingFilter());
             connector.setHandler(new SingleSessionIoHandlerDelegate(this));
         }
 

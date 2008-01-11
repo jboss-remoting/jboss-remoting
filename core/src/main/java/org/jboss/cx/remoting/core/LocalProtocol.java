@@ -5,6 +5,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
@@ -173,7 +174,7 @@ public final class LocalProtocol {
             remoteContext.receiveCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
         }
 
-        public MessageOutput sendStreamData(StreamIdentifier streamIdentifier) throws IOException {
+        public MessageOutput sendStreamData(StreamIdentifier streamIdentifier, final Executor streamExeceutor) throws IOException {
             throw new UnsupportedOperationException("streams");
         }
     }

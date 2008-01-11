@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.EndpointLocator;
@@ -35,8 +36,6 @@ import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
-import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
-import org.jboss.cx.remoting.spi.stream.StreamContext;
 import org.jboss.cx.remoting.spi.stream.StreamDetector;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
@@ -69,7 +68,7 @@ public final class CoreSession {
     private final ConcurrentMap<ServiceIdentifier, CoreInboundService> serverServices = CollectionUtil.concurrentMap();
 
     // streams - strong references, only clean up if a close message is sent or received
-    private final ConcurrentMap<StreamIdentifier, StreamSerializer> streams = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<StreamIdentifier, CoreStream> streams = CollectionUtil.concurrentMap();
 
     // don't GC the endpoint while a session lives
     private final CoreEndpoint endpoint;
@@ -101,11 +100,11 @@ public final class CoreSession {
         if (endpointLocator == null) {
             throw new NullPointerException("endpointLocator is null");
         }
+        streamDetectors = java.util.Collections.<StreamDetector>singletonList(new DefaultStreamDetector());
         this.endpoint = endpoint;
         final CallbackHandler locatorCallbackHandler = endpointLocator.getClientCallbackHandler();
         final Endpoint userEndpoint = endpoint.getUserEndpoint();
         protocolHandler = factory.createHandler(protocolContext, endpointLocator.getEndpointUri(), locatorCallbackHandler == null ? userEndpoint.getLocalCallbackHandler() : locatorCallbackHandler, userEndpoint.getRemoteCallbackHandler());
-        streamDetectors = java.util.Collections.<StreamDetector>singletonList(new DefaultStreamDetector());
     }
 
     // Outbound protocol messages
@@ -401,6 +400,11 @@ public final class CoreSession {
         serverServices.remove(serviceIdentifier);
     }
 
+    // Stream mgmt
+
+    void removeStream(final StreamIdentifier streamIdentifier) {
+        streams.remove(streamIdentifier);
+    }
 
     // User session impl
 
@@ -454,7 +458,11 @@ public final class CoreSession {
         }
 
         public MessageOutput getMessageOutput(ByteOutput target) throws IOException {
-            return new MessageOutputImpl(target, streamDetectors);
+            return new MessageOutputImpl(target, streamDetectors, endpoint.getOrderedExecutor());
+        }
+
+        public MessageOutput getMessageOutput(ByteOutput target, Executor streamExecutor) throws IOException {
+            return new MessageOutputImpl(target, streamDetectors, streamExecutor);
         }
 
         public MessageInput getMessageInput(ByteInput source) throws IOException {
@@ -540,13 +548,19 @@ public final class CoreSession {
         }
 
         public void receiveStreamData(StreamIdentifier streamIdentifier, MessageInput data) {
+            final CoreStream coreStream = streams.get(streamIdentifier);
+            coreStream.receiveStreamData(data);
         }
 
-        @SuppressWarnings ({"unchecked"})
-        public void receiveRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Request<?> request) {
+        public void receiveRequest(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier, final Request<?> request) {
             final CoreInboundContext context = getServerContext(remoteContextIdentifier);
             if (context != null) {
-                context.receiveRequest(requestIdentifier, request);
+                endpoint.getExecutor().execute(new Runnable() {
+                    @SuppressWarnings ({"unchecked"})
+                    public void run() {
+                        context.receiveRequest(requestIdentifier, request);
+                    }
+                });
             } else {
                 log.trace("Got a request on an unknown context identifier (%s)", remoteContextIdentifier);
                 try {
@@ -572,8 +586,9 @@ public final class CoreSession {
         private final ByteOutput target;
         private final List<StreamDetector> streamDetectors;
         private final List<StreamSerializer> streamSerializers = new ArrayList<StreamSerializer>();
+        private final Executor streamExecutor;
 
-        private MessageOutputImpl(final ByteOutput target, final List<StreamDetector> streamDetectors) throws IOException {
+        private MessageOutputImpl(final ByteOutput target, final List<StreamDetector> streamDetectors, final Executor streamExecutor) throws IOException {
             super(new OutputStream() {
                 public void write(int b) throws IOException {
                     target.write(b);
@@ -595,9 +610,19 @@ public final class CoreSession {
                     target.close();
                 }
             });
+            if (target == null) {
+                throw new NullPointerException("target is null");
+            }
+            if (streamDetectors == null) {
+                throw new NullPointerException("streamDetectors is null");
+            }
+            if (streamExecutor == null) {
+                throw new NullPointerException("streamExecutor is null");
+            }
             enableReplaceObject(true);
             this.target = target;
             this.streamDetectors = streamDetectors;
+            this.streamExecutor = streamExecutor;
         }
 
         public void commit() throws IOException {
@@ -630,12 +655,11 @@ public final class CoreSession {
                 final StreamSerializerFactory factory = detector.detectStream(testObject);
                 if (factory != null) {
                     final StreamIdentifier streamIdentifier = protocolHandler.openStream();
-                    final StreamContextImpl streamContext = new StreamContextImpl(streamIdentifier);
-                    final StreamSerializer streamSerializer = factory.getLocalSide(streamContext, testObject);
-                    if (streams.putIfAbsent(streamIdentifier, streamSerializer) != null) {
+                    final CoreStream stream = new CoreStream(CoreSession.this, streamExecutor, streamIdentifier, factory, testObject);
+                    if (streams.putIfAbsent(streamIdentifier, stream) != null) {
                         throw new IOException("Duplicate stream identifier encountered: " + streamIdentifier);
                     }
-                    streamSerializers.add(streamSerializer);
+                    streamSerializers.add(stream.getStreamSerializer());
                     return new StreamMarker(CoreSession.this, factory.getClass(), streamIdentifier);
                 }
             }
@@ -652,6 +676,7 @@ public final class CoreSession {
             super.enableResolveObject(true);
         }
 
+        @SuppressWarnings ({"UnusedDeclaration"})
         public ObjectInputImpl(final InputStream is, final ClassLoader loader) throws IOException {
 //            super(is, loader);
             super(is);
@@ -663,6 +688,9 @@ public final class CoreSession {
             if (testObject instanceof StreamMarker) {
                 StreamMarker marker = (StreamMarker) testObject;
                 final StreamIdentifier streamIdentifier = marker.getStreamIdentifier();
+                if (streamIdentifier == null) {
+                    throw new NullPointerException("streamIdentifier is null");
+                }
                 final StreamSerializerFactory streamSerializerFactory;
                 try {
                     streamSerializerFactory = marker.getFactoryClass().newInstance();
@@ -671,11 +699,11 @@ public final class CoreSession {
                 } catch (IllegalAccessException e) {
                     throw new IOException("Failed to instantiate a stream: " + e);
                 }
-                final RemoteStreamSerializer streamSerializer = streamSerializerFactory.getRemoteSide(new StreamContextImpl(streamIdentifier));
-                if (streams.putIfAbsent(streamIdentifier, streamSerializer) != null) {
+                final CoreStream stream = new CoreStream(CoreSession.this, endpoint.getOrderedExecutor(), streamIdentifier, streamSerializerFactory);
+                if (streams.putIfAbsent(streamIdentifier, stream) != null) {
                     throw new IOException("Duplicate stream received");
                 }
-                return streamSerializer.getRemoteInstance();
+                return stream.getRemoteSerializer().getRemoteInstance();
             } else {
                 return testObject;
             }
@@ -731,27 +759,4 @@ public final class CoreSession {
             }
         }
     }
-
-    // stream context
-
-    private final class StreamContextImpl implements StreamContext {
-        private final StreamIdentifier streamIdentifier;
-
-        private StreamContextImpl(final StreamIdentifier streamIdentifier) {
-            this.streamIdentifier = streamIdentifier;
-        }
-
-        public MessageOutput writeMessage() throws IOException {
-            return protocolHandler.sendStreamData(streamIdentifier);
-        }
-
-        public void close() throws IOException {
-            try {
-                protocolHandler.closeStream(streamIdentifier);
-            } finally {
-                streams.remove(streamIdentifier);
-            }
-        }
-    }
-
 }

@@ -3,9 +3,7 @@ package org.jboss.cx.remoting.core.stream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedList;
-import java.util.Queue;
-import java.util.NoSuchElementException;
-import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.spi.protocol.MessageInput;
 import org.jboss.cx.remoting.spi.protocol.MessageOutput;
 import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
@@ -17,6 +15,8 @@ import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
  *
  */
 public final class InputStreamStreamSerializerFactory implements StreamSerializerFactory {
+    private static final Logger log = Logger.getLogger(InputStreamStreamSerializerFactory.class);
+
     public InputStreamStreamSerializerFactory() {
         // no-arg constructor required
     }
@@ -54,6 +54,7 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
         }
 
         private void sendNext() throws IOException {
+            log.trace("Sending next message for stream %s", this);
             final MessageOutput output = context.writeMessage();
             final byte[] bytes = new byte[BUF_LEN];
             int i, t;

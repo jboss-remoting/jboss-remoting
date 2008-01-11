@@ -48,12 +48,13 @@ public final class CoreInboundRequest<I, O> {
                     if (e instanceof RemoteExecutionException) {
                         sendException((RemoteExecutionException) e);
                     } else {
-                        sendException(new RemoteExecutionException("Execution failed: " + e.toString()));
+                        sendException(new RemoteExecutionException("Execution failed: " + e.toString(), e));
                     }
                 } catch (RemotingException e1) {
                     log.trace("Tried and failed to send an exception (%s) for a request (%s): %s", e, requestIdentifier, e1);
                 }
             }
+            log.trace(e, "Request listener %s recevied an exception for request (%s)", requestListener, requestIdentifier);
         }
     }
 
