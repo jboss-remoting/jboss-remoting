@@ -54,7 +54,6 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
         }
 
         private void sendNext() throws IOException {
-            log.trace("Sending next message for stream %s", this);
             final MessageOutput output = context.writeMessage();
             final byte[] bytes = new byte[BUF_LEN];
             int i, t;
@@ -67,11 +66,13 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
                 }
             }
             if (t > 0) {
+                log.trace("Sending DATA message, %d bytes", t);
                 output.write(Type.DATA.ordinal());
                 output.writeInt(t);
                 output.write(bytes, 0, t);
             }
             if (end) {
+                log.trace("Sending END message");
                 output.write(Type.END.ordinal());
             }
             output.commit();
@@ -127,10 +128,10 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
                                 final RemoteStreamSerializerImpl.Entry first = messageQueue.getFirst();
                                 switch (first.type) {
                                     case DATA:
-                                        if (first.msg.length >= first.i) {
+                                        if (first.msg.length <= first.i) {
                                             messageQueue.removeFirst();
                                         } else {
-                                            return first.msg[first.i ++];
+                                            return first.msg[first.i ++] & 0xff;
                                         }
                                     default:
                                         return -1;
@@ -162,9 +163,11 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
                             int l = data.readInt();
                             byte[] bytes = new byte[l];
                             data.read(bytes);
+                            log.trace("Received DATA message; %d bytes", bytes.length);
                             messageQueue.add(new Entry(bytes));
                             break;
                         case END:
+                            log.trace("Received END message");
                             messageQueue.add(new Entry());
                             break;
                     }
