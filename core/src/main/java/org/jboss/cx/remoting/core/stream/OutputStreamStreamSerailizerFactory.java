@@ -13,7 +13,7 @@ import java.io.OutputStream;
 /**
  * Stream serializer for {@link java.io.OutputStream} instances.
  */
-public final class OutputStreamSerailizerFactory implements StreamSerializerFactory {
+public final class OutputStreamStreamSerailizerFactory implements StreamSerializerFactory {
     public StreamSerializer getLocalSide(StreamContext context, Object local) throws IOException {
         return new StreamSerializerImpl((OutputStream)local);
     }

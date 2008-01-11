@@ -17,18 +17,17 @@ public final class DefaultStreamDetector implements StreamDetector {
         if (candidate instanceof InputStream) {
             return new InputStreamStreamSerializerFactory();
         } else if (candidate instanceof OutputStream) {
-
+            return new OutputStreamStreamSerailizerFactory();
         } else if (candidate instanceof ObjectSource) {
-            return new ObjectSourceSerializerFactory();
+            return new ObjectSourceStreamSerializerFactory();
         } else if (candidate instanceof ObjectSink) {
-
+            return new ObjectSinkStreamSerializerFactory();
         } else if (candidate instanceof ProgressStream) {
-
+            return new ProgressStreamStreamSerializerFactory();
         } else if (candidate instanceof Iterator) {
-
+            return new IteratorStreamSerializerFactory();
         } else {
             return null;
         }
-        return null;
     }
 }

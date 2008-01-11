@@ -15,7 +15,7 @@ import org.jboss.cx.remoting.stream.ObjectSource;
 /**
  *
  */
-public final class ObjectSourceSerializerFactory implements StreamSerializerFactory {
+public final class ObjectSourceStreamSerializerFactory implements StreamSerializerFactory {
     public StreamSerializer getLocalSide(final StreamContext context, final Object local) throws IOException {
         return new StreamSerializerImpl(context, (ObjectSource<?>) local);
     }
