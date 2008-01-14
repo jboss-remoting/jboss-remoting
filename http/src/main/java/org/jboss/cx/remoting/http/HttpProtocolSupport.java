@@ -57,6 +57,12 @@ public final class HttpProtocolSupport {
     }
 
     public final class ProtocolContextImpl implements HttpRemotingProtocolContext {
+        private final HttpTransporter transporter;
+
+        public ProtocolContextImpl(final HttpTransporter transporter) {
+            this.transporter = transporter;
+        }
+
         public HttpRemotingSessionContext locateSession(IncomingHttpRequest request) {
             return null;
         }

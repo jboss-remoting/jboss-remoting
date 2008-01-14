@@ -17,7 +17,7 @@ import com.sun.net.httpserver.BasicAuthenticator;
 
 import org.jboss.cx.remoting.http.spi.HttpRemotingSessionContext;
 import org.jboss.cx.remoting.http.spi.IncomingHttpRequest;
-import org.jboss.cx.remoting.http.spi.OutgoingHttpReply;
+import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
 import org.jboss.cx.remoting.Header;
 
 /**
@@ -104,9 +104,9 @@ public final class ServerInstance {
             });
             // todo - WAIT untit the input stream is consumed? or - just don't close the output until the input is done
             // todo - consume all of input stream
-            OutgoingHttpReply httpReply = null;
+            OutgoingHttpMessage httpReply = null;
             try {
-                httpReply = sessionContext.getNextReply(8000L);
+                httpReply = sessionContext.getNextMessage(8000L);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

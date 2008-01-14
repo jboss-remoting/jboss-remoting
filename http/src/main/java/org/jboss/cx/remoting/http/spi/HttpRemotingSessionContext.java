@@ -18,13 +18,9 @@ public interface HttpRemotingSessionContext {
      */
     void addReadyNotifier(ReadyNotifier notifier);
 
-    OutgoingHttpReply getNextReplyImmediate();
+    OutgoingHttpMessage getNextMessageImmediate();
 
-    OutgoingHttpRequest getNextRequestImmediate();
-
-    OutgoingHttpReply getNextReply(long timeoutMillis) throws InterruptedException;
-
-    OutgoingHttpRequest getNextRequest(long timeoutMillis) throws InterruptedException;
+    OutgoingHttpMessage getNextMessage(long timeoutMillis) throws InterruptedException;
 
     /**
      * Get the callback handler to use to authenticate incoming HTTP messages.
