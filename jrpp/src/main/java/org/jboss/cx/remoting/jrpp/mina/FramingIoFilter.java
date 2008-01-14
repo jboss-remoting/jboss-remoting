@@ -20,6 +20,7 @@ public final class FramingIoFilter extends IoFilterAdapter {
         private State state = State.INITIAL;
         private final IoBuffer sizeBuf = IoBuffer.allocate(4);
         private IoBuffer target;
+        private int size;
 
         public Framer(final IoSession session) {
             this.session = session;
@@ -31,8 +32,8 @@ public final class FramingIoFilter extends IoFilterAdapter {
                 switch (state) {
                     case INITIAL:
                         if (r >= 4) {
-                            target = IoBuffer.allocate(buffer.getInt());
-                            state = State.READING;
+                            size = buffer.getInt();
+                            state = State.READING_START;
                             break;
                         } else {
                             sizeBuf.clear();
@@ -49,14 +50,29 @@ public final class FramingIoFilter extends IoFilterAdapter {
                             return;
                         }
                         sizeBuf.flip();
-                        target = IoBuffer.allocate(sizeBuf.getInt());
-                        state = State.READING;
+                        size = sizeBuf.getInt();
+                        state = State.READING_START;
                         break;
+                    case READING_START:
+                        if (buffer.remaining() > size) {
+                            // full read on the first try - best case (no copying done)
+                            nextFilter.messageReceived(session, buffer.getSlice(size));
+                            state = State.INITIAL;
+                            break;
+                        } else {
+                            // partial read
+                            target = IoBuffer.allocate(size);
+                            target.put(buffer);
+                            state = State.READING;
+                            break;
+                        }
                     case READING:
                         if (target.remaining() > buffer.remaining()) {
+                            // partial read
                             target.put(buffer);
                             return;
                         } else {
+                            // full read after partial read
                             target.put(buffer.getSlice(target.remaining()));
                             nextFilter.messageReceived(session, target.flip());
                             target = null;
@@ -70,6 +86,7 @@ public final class FramingIoFilter extends IoFilterAdapter {
         private enum State {
             INITIAL,
             PART_CNT,
+            READING_START,
             READING
         }
     }
