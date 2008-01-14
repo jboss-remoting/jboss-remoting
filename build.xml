@@ -208,7 +208,6 @@
             <classpath>
                 <path refid="util.classpath"/>
                 <path refid="api.classpath"/>
-                <pathelement location="${lib.jboss-serialization.local}"/>
             </classpath>
         </javac>
         <path id="core.classpath">
@@ -221,7 +220,7 @@
         <delete dir="core/target"/>
     </target>
 
-    <target name="core" description="Build the core module" depends="api,util,lib.jboss-serialization,core.compile"/>
+    <target name="core" description="Build the core module" depends="api,util,core.compile"/>
 
     <!-- jrpp module -->
 
