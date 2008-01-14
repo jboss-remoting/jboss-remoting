@@ -61,7 +61,7 @@ public final class LocalProtocol {
             return true;
         }
 
-        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, final CallbackHandler clientCallbackHandler, final CallbackHandler serverCallbackHandler) throws IOException {
+        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, final CallbackHandler clientCallbackHandler) throws IOException {
             final String remoteName = remoteUri.getSchemeSpecificPart();
             final ProtocolServerContext serverContext = endpoints.get(remoteName);
             if (serverContext == null) {

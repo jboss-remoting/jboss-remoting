@@ -17,7 +17,6 @@ import org.apache.mina.handler.multiton.SingleSessionIoHandlerFactory;
 import org.apache.mina.transport.socket.nio.NioProcessor;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
-import org.apache.mina.filter.executor.ExecutorFilter;
 import org.apache.mina.filter.logging.LoggingFilter;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.EndpointShutdownListener;
@@ -107,7 +106,7 @@ public final class JrppProtocolSupport {
             return false;
         }
 
-        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, final CallbackHandler clientCallbackHandler, final CallbackHandler serverCallbackHandler) throws IOException {
+        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, final CallbackHandler clientCallbackHandler) throws IOException {
             // todo - add a connect timeout
             // todo - local connect addr
             final InetSocketAddress socketAddress = new InetSocketAddress(remoteUri.getHost(), remoteUri.getPort());

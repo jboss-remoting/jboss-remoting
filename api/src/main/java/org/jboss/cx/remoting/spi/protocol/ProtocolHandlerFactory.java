@@ -27,13 +27,11 @@ public interface ProtocolHandlerFactory {
      * @param context the protocol context to use for inbound data
      * @param remoteUri the URI of the remote side
      * @param clientCallbackHandler the callback handler to use to authenticate this client
-     * @param serverCallbackHandler the callback handler to use to authenticate the remote server
-     *
      * @return the protocol handler for outbound data
      *
      * @throws IOException if the handler could not be created
      */
-    ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, CallbackHandler clientCallbackHandler, CallbackHandler serverCallbackHandler) throws IOException;
+    ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, CallbackHandler clientCallbackHandler) throws IOException;
 
     /**
      * Signifies that this protocol has been unregistered from the endpoint.

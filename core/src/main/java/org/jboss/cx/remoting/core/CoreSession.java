@@ -104,7 +104,7 @@ public final class CoreSession {
         this.endpoint = endpoint;
         final CallbackHandler locatorCallbackHandler = endpointLocator.getClientCallbackHandler();
         final Endpoint userEndpoint = endpoint.getUserEndpoint();
-        protocolHandler = factory.createHandler(protocolContext, endpointLocator.getEndpointUri(), locatorCallbackHandler == null ? userEndpoint.getLocalCallbackHandler() : locatorCallbackHandler, userEndpoint.getRemoteCallbackHandler());
+        protocolHandler = factory.createHandler(protocolContext, endpointLocator.getEndpointUri(), locatorCallbackHandler == null ? userEndpoint.getLocalCallbackHandler() : locatorCallbackHandler);
     }
 
     // Outbound protocol messages
