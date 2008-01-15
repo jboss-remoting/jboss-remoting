@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.net.SocketAddress;
+import java.net.URI;
+import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
@@ -110,15 +112,15 @@ public final class JrppConnection {
      * Client side.
      *
      * @param connector
-     * @param remoteAddress
+     * @param uri
      * @param protocolContext
      * @param clientCallbackHandler
      */
-    public JrppConnection(final IoConnector connector, final SocketAddress remoteAddress, final ProtocolContext protocolContext, final CallbackHandler clientCallbackHandler) {
+    public JrppConnection(final IoConnector connector, final URI uri, final ProtocolContext protocolContext, final CallbackHandler clientCallbackHandler) {
         // todo - this seems very iffy to me, since we're basically leaking "this" before constructor is done
         this.protocolContext = protocolContext;
         ioHandler = new IoHandlerImpl();
-        final ConnectFuture future = connector.connect(remoteAddress, new IoSessionInitializer<ConnectFuture>() {
+        final ConnectFuture future = connector.connect(new InetSocketAddress(uri.getHost(), uri.getPort()), new IoSessionInitializer<ConnectFuture>() {
             public void initializeSession(final IoSession session, final ConnectFuture future) {
                 session.setAttribute(JRPP_CONNECTION, JrppConnection.this);
                 JrppConnection.this.ioSession = session;
@@ -132,7 +134,7 @@ public final class JrppConnection {
         currentState = AtomicStateMachine.start(State.AWAITING_SERVER_VERSION);
         ioSession.getFilterChain().addLast(SASL_CLIENT_FILTER_NAME, new SaslClientFilter(new SaslClientFactory(){
             public SaslClient createSaslClient(IoSession ioSession, CallbackHandler callbackHandler) throws SaslException {
-                return Sasl.createSaslClient(new String[] { "SRP" }, "authz", "JRPP", "server name", Collections.<String,Object>emptyMap(), callbackHandler);
+                return Sasl.createSaslClient(new String[] { "SRP" }, protocolContext.getLocalEndpointName(), "JRPP", uri.getHost(), Collections.<String,Object>emptyMap(), callbackHandler);
             }
         }, new SaslMessageSender() {
             public void sendSaslMessage(IoSession ioSession, byte[] rawMsgData) throws IOException {
@@ -168,7 +170,7 @@ public final class JrppConnection {
         currentState = AtomicStateMachine.start(State.AWAITING_CLIENT_VERSION);
         ioSession.getFilterChain().addLast(SASL_SERVER_FILTER_NAME, new SaslServerFilter(new SaslServerFactory(){
             public SaslServer createSaslServer(IoSession ioSession, CallbackHandler callbackHandler) throws SaslException {
-                return Sasl.createSaslServer("SRP", "JRPP", "server name", Collections.<String,Object>emptyMap(), callbackHandler);
+                return Sasl.createSaslServer("SRP", "JRPP", protocolContext.getLocalEndpointName(), Collections.<String,Object>emptyMap(), callbackHandler);
             }
         }, new SaslMessageSender(){
             public void sendSaslMessage(IoSession ioSession, byte[] rawMsgData) throws IOException {

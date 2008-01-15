@@ -1,7 +1,6 @@
 package org.jboss.cx.remoting.jrpp;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.Set;
@@ -106,11 +105,10 @@ public final class JrppProtocolSupport {
             return false;
         }
 
-        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, final CallbackHandler clientCallbackHandler) throws IOException {
+        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, CallbackHandler clientCallbackHandler) throws IOException {
             // todo - add a connect timeout
             // todo - local connect addr
-            final InetSocketAddress socketAddress = new InetSocketAddress(remoteUri.getHost(), remoteUri.getPort());
-            final JrppConnection jrppConnection = new JrppConnection(connector, socketAddress, context, clientCallbackHandler);
+            final JrppConnection jrppConnection = new JrppConnection(connector, remoteUri, context, clientCallbackHandler);
             if (jrppConnection.waitForUp()) {
                 return jrppConnection.getProtocolHandler();
             } else {
