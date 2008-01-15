@@ -1,21 +1,21 @@
 package org.jboss.cx.remoting.http;
 
+import java.io.IOException;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.http.spi.HttpTransporter;
 import org.jboss.cx.remoting.http.spi.HttpRemotingProtocolContext;
 import org.jboss.cx.remoting.http.spi.HttpRemotingSessionContext;
+import org.jboss.cx.remoting.http.spi.HttpTransporter;
 import org.jboss.cx.remoting.http.spi.IncomingHttpMessage;
+import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
+import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
+import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
+import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
-import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
-import java.net.URI;
-import java.io.IOException;
-import java.util.List;
-import java.util.ArrayList;
 
 import javax.security.auth.callback.CallbackHandler;
 

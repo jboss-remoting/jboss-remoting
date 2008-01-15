@@ -1,10 +1,10 @@
 package org.jboss.cx.remoting;
 
-import org.jboss.cx.remoting.spi.EndpointProvider;
-import org.jboss.cx.remoting.spi.wrapper.SessionWrapper;
-import org.jboss.cx.remoting.spi.wrapper.ContextSourceWrapper;
-import org.jboss.cx.remoting.core.util.Logger;
 import java.net.URI;
+import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.spi.EndpointProvider;
+import org.jboss.cx.remoting.spi.wrapper.ContextSourceWrapper;
+import org.jboss.cx.remoting.spi.wrapper.SessionWrapper;
 
 /**
  *

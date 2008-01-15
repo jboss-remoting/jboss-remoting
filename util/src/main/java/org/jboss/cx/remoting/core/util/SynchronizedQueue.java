@@ -1,8 +1,8 @@
 package org.jboss.cx.remoting.core.util;
 
-import java.util.Queue;
-import java.util.Iterator;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 

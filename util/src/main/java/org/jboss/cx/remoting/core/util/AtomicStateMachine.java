@@ -1,11 +1,11 @@
 package org.jboss.cx.remoting.core.util;
 
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.Condition;
-import java.util.Date;
 
 /**
  *

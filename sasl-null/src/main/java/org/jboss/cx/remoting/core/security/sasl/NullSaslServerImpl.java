@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.core.security.sasl;
 
-import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslServer;
 
 /**
  *

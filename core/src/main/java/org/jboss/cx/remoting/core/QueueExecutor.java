@@ -1,8 +1,8 @@
 package org.jboss.cx.remoting.core;
 
-import java.util.concurrent.Executor;
-import java.util.Queue;
 import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.core.util.Logger;
 
 /**

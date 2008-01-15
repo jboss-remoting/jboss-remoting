@@ -3,7 +3,6 @@ package org.jboss.cx.remoting.spi.protocol;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.io.ObjectStreamClass;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;

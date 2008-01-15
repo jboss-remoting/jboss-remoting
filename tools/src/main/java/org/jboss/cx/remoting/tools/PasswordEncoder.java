@@ -1,12 +1,12 @@
 package org.jboss.cx.remoting.tools;
 
 import java.io.Console;
+import java.nio.CharBuffer;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.TreeSet;
-import java.security.NoSuchAlgorithmException;
-import java.nio.CharBuffer;
 import org.jboss.cx.remoting.core.security.sasl.SrpVerifier;
 
 /**

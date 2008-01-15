@@ -2,13 +2,13 @@ package org.jboss.cx.remoting.core.security.sasl;
 
 import java.util.Map;
 
-import javax.security.sasl.SaslServerFactory;
-import javax.security.sasl.SaslServer;
-import javax.security.sasl.SaslException;
-import javax.security.sasl.Sasl;
-import javax.security.sasl.SaslClientFactory;
-import javax.security.sasl.SaslClient;
 import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslClient;
+import javax.security.sasl.SaslClientFactory;
+import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslServer;
+import javax.security.sasl.SaslServerFactory;
 
 /**
  *

@@ -1,14 +1,14 @@
 package org.jboss.cx.remoting.core.stream;
 
-import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
-import org.jboss.cx.remoting.spi.stream.StreamSerializer;
-import org.jboss.cx.remoting.spi.stream.StreamContext;
-import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
-import org.jboss.cx.remoting.spi.protocol.MessageInput;
-import org.jboss.cx.remoting.stream.Streams;
-import org.jboss.cx.remoting.stream.ObjectSource;
 import java.io.IOException;
 import java.util.Iterator;
+import org.jboss.cx.remoting.spi.protocol.MessageInput;
+import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
+import org.jboss.cx.remoting.spi.stream.StreamContext;
+import org.jboss.cx.remoting.spi.stream.StreamSerializer;
+import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
+import org.jboss.cx.remoting.stream.ObjectSource;
+import org.jboss.cx.remoting.stream.Streams;
 
 /**
  *

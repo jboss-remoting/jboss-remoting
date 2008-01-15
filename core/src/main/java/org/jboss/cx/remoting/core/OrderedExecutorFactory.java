@@ -1,10 +1,10 @@
 package org.jboss.cx.remoting.core;
 
-import java.util.concurrent.Executor;
-import java.util.Set;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Set;
+import java.util.concurrent.Executor;
 
 /**
  *
