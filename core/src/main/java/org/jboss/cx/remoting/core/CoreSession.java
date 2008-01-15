@@ -73,6 +73,7 @@ public final class CoreSession {
     // don't GC the endpoint while a session lives
     private final CoreEndpoint endpoint;
     private final ProtocolHandler protocolHandler;
+    private final String remoteEndpointName;
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
 
@@ -88,6 +89,7 @@ public final class CoreSession {
         this.endpoint = endpoint;
         this.protocolHandler = protocolHandler;
         streamDetectors = java.util.Collections.<StreamDetector>singletonList(new DefaultStreamDetector());
+        remoteEndpointName = protocolHandler.getRemoteEndpointName();
     }
 
     CoreSession(final CoreEndpoint endpoint, final ProtocolHandlerFactory factory, final EndpointLocator endpointLocator) throws IOException {
@@ -105,6 +107,7 @@ public final class CoreSession {
         final CallbackHandler locatorCallbackHandler = endpointLocator.getClientCallbackHandler();
         final Endpoint userEndpoint = endpoint.getUserEndpoint();
         protocolHandler = factory.createHandler(protocolContext, endpointLocator.getEndpointUri(), locatorCallbackHandler == null ? userEndpoint.getLocalCallbackHandler() : locatorCallbackHandler);
+        remoteEndpointName = protocolHandler.getRemoteEndpointName();
     }
 
     // Outbound protocol messages
@@ -430,8 +433,12 @@ public final class CoreSession {
             return sessionMap;
         }
 
-        public String getEndpointName() {
+        public String getLocalEndpointName() {
             return endpoint.getUserEndpoint().getName();
+        }
+
+        public String getRemoteEndpointName() {
+            return remoteEndpointName;
         }
 
         public <I, O> ContextSource<I, O> openService(ServiceLocator<I, O> locator) throws RemotingException {
@@ -471,6 +478,10 @@ public final class CoreSession {
 
         public MessageInput getMessageInput(ByteInput source) throws IOException {
             return new MessageInputImpl(source);
+        }
+
+        public String getLocalEndpointName() {
+            return endpoint.getUserEndpoint().getName();
         }
 
         public void closeContext(ContextIdentifier remoteContextIdentifier) {

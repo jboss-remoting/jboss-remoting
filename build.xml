@@ -642,6 +642,8 @@
 
     <!-- Default targets -->
 
+    <target name="all-http" description="Build all HTTP targets" depends="http,http-mina-client,http-mina-server,http-se6,http-servlet,http-urlconnection"/>
+
     <target name="all" description="Build everything" depends="api,core,http,http-mina-client,http-mina-server,http-se6,http-servlet,http-urlconnection,jrpp,samples,sasl-null,srp,tools,util"/>
 
     <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,http.clean,http-mina-client.clean,http-mina-server.clean,http-se6.clean,http-servlet.clean,http-urlconnection.clean,jrpp.clean,mina-sasl.clean,samples.clean,sasl-null.clean,srp.clean,tools.clean,util.clean"/>

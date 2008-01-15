@@ -30,7 +30,6 @@ public final class OrderedExecutorFactory {
                 if (tasks.size() == 1 && runningChildren.add(this)) {
                     parent.execute(this);
                 }
-                tasks.notify();
             }
         }
 

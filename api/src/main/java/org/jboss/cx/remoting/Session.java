@@ -24,11 +24,18 @@ public interface Session {
     ConcurrentMap<Object, Object> getAttributes();
 
     /**
-     * Get the name of the associated endpoint, if any.
+     * Get the name of the associated local endpoint, if any.
+     *
+     * @return the name, or {@code null} if the local endpoint is anonymous
+     */
+    String getLocalEndpointName();
+
+    /**
+     * Get the name of the associated remote endpoint, if any.
      *
      * @return the name, or {@code null} if the remote endpoint is anonymous
      */
-    String getEndpointName();
+    String getRemoteEndpointName();
 
     /**
      * Establish an agreement to communicate with a service on the remote side.

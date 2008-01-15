@@ -5,7 +5,7 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.http.spi.HttpTransporter;
 import org.jboss.cx.remoting.http.spi.HttpRemotingProtocolContext;
 import org.jboss.cx.remoting.http.spi.HttpRemotingSessionContext;
-import org.jboss.cx.remoting.http.spi.IncomingHttpRequest;
+import org.jboss.cx.remoting.http.spi.IncomingHttpMessage;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
@@ -63,7 +63,7 @@ public final class HttpProtocolSupport {
             this.transporter = transporter;
         }
 
-        public HttpRemotingSessionContext locateSession(IncomingHttpRequest request) {
+        public HttpRemotingSessionContext locateSession(IncomingHttpMessage message) {
             return null;
         }
     }

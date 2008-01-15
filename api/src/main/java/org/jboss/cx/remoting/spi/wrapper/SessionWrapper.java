@@ -24,8 +24,12 @@ public class SessionWrapper implements Session {
         return delegate.getAttributes();
     }
 
-    public String getEndpointName() {
-        return delegate.getEndpointName();
+    public String getLocalEndpointName() {
+        return delegate.getLocalEndpointName();
+    }
+
+    public String getRemoteEndpointName() {
+        return delegate.getRemoteEndpointName();
     }
 
     public <I, O> ContextSource<I, O> openService(final ServiceLocator<I, O> locator) throws RemotingException {

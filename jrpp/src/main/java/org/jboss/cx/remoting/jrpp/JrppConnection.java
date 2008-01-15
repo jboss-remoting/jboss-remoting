@@ -74,6 +74,8 @@ public final class JrppConnection {
     private final SingleSessionIoHandler ioHandler;
     private final IdentifierManager identifierManager;
 
+    private String remoteName;
+
     /**
      * The negotiated protocol version.  Value is set to {@code min(PROTOCOL_VERSION, remote PROTOCOL_VERSION)}.
      */
@@ -298,6 +300,10 @@ public final class JrppConnection {
             }
         }
 
+        public String getRemoteEndpointName() {
+            return remoteName;
+        }
+
         public void closeService(ServiceIdentifier serviceIdentifier) throws IOException {
             if (! currentState.in(State.UP)) {
                 return;
@@ -504,6 +510,7 @@ public final class JrppConnection {
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
             write(output, MessageType.VERSION);
             output.writeShort(PROTOCOL_VERSION);
+            output.writeUTF(protocolContext.getLocalEndpointName());
             output.commit();
         }
 
@@ -559,6 +566,8 @@ public final class JrppConnection {
                             if (trace) {
                                 log.trace("Server negotiated protocol version " + protocolVersion);
                             }
+                            final String name = input.readUTF();
+                            remoteName = name.length() > 0 ? name : null;
                             SaslServerFilter saslServerFilter = getSaslServerFilter();
                             if (saslServerFilter.sendInitialChallenge(ioSession)) {
                                 // complete (that was quick!)
@@ -582,6 +591,8 @@ public final class JrppConnection {
                             if (trace) {
                                 log.trace("Client negotiated protocol version " + protocolVersion);
                             }
+                            final String name = input.readUTF();
+                            remoteName = name.length() > 0 ? name : null;
                             currentState.requireTransition(State.AWAITING_SERVER_VERSION, State.AWAITING_SERVER_CHALLENGE);
                             return;
                         }

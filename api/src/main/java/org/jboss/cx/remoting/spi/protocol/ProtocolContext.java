@@ -57,4 +57,6 @@ public interface ProtocolContext {
     MessageOutput getMessageOutput(ByteOutput target, Executor streamExecutor) throws IOException;
 
     MessageInput getMessageInput(ByteInput source) throws IOException;
+
+    String getLocalEndpointName();
 }

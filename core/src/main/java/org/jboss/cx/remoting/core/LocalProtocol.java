@@ -108,6 +108,10 @@ public final class LocalProtocol {
             remoteContext.closeSession();
         }
 
+        public String getRemoteEndpointName() {
+            return remoteContext.getLocalEndpointName();
+        }
+
         public void closeService(ServiceIdentifier serviceIdentifier) throws IOException {
         }
 

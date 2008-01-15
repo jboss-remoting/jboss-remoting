@@ -5,8 +5,8 @@ import java.net.URI;
 import java.net.InetAddress;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.InputStream;
 import java.util.concurrent.Executor;
-import java.util.List;
 
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
@@ -16,9 +16,8 @@ import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.BasicAuthenticator;
 
 import org.jboss.cx.remoting.http.spi.HttpRemotingSessionContext;
-import org.jboss.cx.remoting.http.spi.IncomingHttpRequest;
 import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
-import org.jboss.cx.remoting.Header;
+import org.jboss.cx.remoting.http.spi.IncomingHttpMessage;
 
 /**
  *
@@ -61,45 +60,17 @@ public final class ServerInstance {
             final InetAddress remoteAddress = inetSocketAddress.getAddress();
             final int remotePort = inetSocketAddress.getPort();
             HttpRemotingSessionContext sessionContext = null; // todo locate
-            sessionContext.queueRequest(new IncomingHttpRequest() {
-                public InetAddress getRemoteAddress() {
-                    return remoteAddress;
-                }
-
-                public int getRemotePort() {
-                    return remotePort;
-                }
-
-                public List<Header> getAllHeaders() {
+            sessionContext.queueMessage(new IncomingHttpMessage() {
+                public InputStream getMessageData() {
                     return null;
                 }
 
-                public List<Header> getHeaders(String name) {
+                public InetAddress getLocalAddress() {
                     return null;
                 }
 
-                public Iterable<String> getHeaderNames() {
-                    return httpExchange.getRequestHeaders().keySet();
-                }
-
-                public String getCharacterEncoding() {
-                    return null;
-                }
-
-                public String getContentLength() {
-                    return null;
-                }
-
-                public URI getRequestUri() {
-                    return requestURI;
-                }
-
-                public String getMethod() {
-                    return httpExchange.getRequestMethod();
-                }
-
-                public String getUserName() {
-                    return null;
+                public int getLocalPort() {
+                    return 0;
                 }
             });
             // todo - WAIT untit the input stream is consumed? or - just don't close the output until the input is done

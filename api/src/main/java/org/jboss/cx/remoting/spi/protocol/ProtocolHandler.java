@@ -145,4 +145,11 @@ public interface ProtocolHandler {
      * @throws IOException
      */
     void closeSession() throws IOException;
+
+    /**
+     * Get the name of the remote endpoint.
+     *
+     * @return the remote endpoint name, or {@code null} if the remote endpoint is anonymous
+     */
+    String getRemoteEndpointName();
 }

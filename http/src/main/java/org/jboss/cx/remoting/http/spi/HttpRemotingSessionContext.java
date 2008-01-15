@@ -6,9 +6,7 @@ import javax.security.auth.callback.CallbackHandler;
  *
  */
 public interface HttpRemotingSessionContext {
-    void queueRequest(IncomingHttpRequest request);
-
-    void queueReply(IncomingHttpReply reply);
+    void queueMessage(IncomingHttpMessage message);
 
     /**
      * Add a notifier to be called if there is data ready but there are no waiters for {@code getNextRequest}/{@code getNextReply}.
