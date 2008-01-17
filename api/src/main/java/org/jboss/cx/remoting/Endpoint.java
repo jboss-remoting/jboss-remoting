@@ -6,6 +6,7 @@ import org.jboss.cx.remoting.spi.Discovery;
 import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -47,12 +48,13 @@ public interface Endpoint {
      * the service to connect to.  The path may be relative to a protocol-specific deployment path.
      *
      * @param endpointLocator the endpoint locator
+     * @param attributeMap the attribute map to use to configure this session
      * @return a new session
      *
      * @throws RemotingException if there is a problem creating the session, or if the request or reply type does not
      * match the remote service
      */
-    Session openSession(EndpointLocator endpointLocator) throws RemotingException;
+    Session openSession(EndpointLocator endpointLocator, AttributeMap attributeMap) throws RemotingException;
 
     /**
      * Get the name of this endpoint.

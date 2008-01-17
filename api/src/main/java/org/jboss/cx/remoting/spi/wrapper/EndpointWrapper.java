@@ -9,6 +9,7 @@ import org.jboss.cx.remoting.InterceptorDeploymentSpec;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ServiceDeploymentSpec;
 import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.spi.Discovery;
 import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
@@ -34,8 +35,8 @@ public class EndpointWrapper implements Endpoint {
         delegate.shutdown();
     }
 
-    public Session openSession(final EndpointLocator endpointLocator) throws RemotingException {
-        return delegate.openSession(endpointLocator);
+    public Session openSession(EndpointLocator endpointLocator, AttributeMap attributeMap) throws RemotingException {
+        return delegate.openSession(endpointLocator, attributeMap);
     }
 
     public Discovery discover(final String endpointName, final URI nextHop, final int cost) throws RemotingException {

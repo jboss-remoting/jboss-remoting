@@ -22,6 +22,7 @@ import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.spi.Discovery;
 import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
@@ -287,7 +288,7 @@ public final class CoreEndpoint {
             }
         }
 
-        public Session openSession(final EndpointLocator endpointLocator) throws RemotingException {
+        public Session openSession(final EndpointLocator endpointLocator, final AttributeMap attributeMap) throws RemotingException {
             final String scheme = endpointLocator.getEndpointUri().getScheme();
             if (scheme == null) {
                 throw new RemotingException("No scheme on remote endpoint URI");
