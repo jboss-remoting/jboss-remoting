@@ -5,7 +5,7 @@ import javax.security.auth.callback.CallbackHandler;
 /**
  *
  */
-public interface HttpRemotingSessionContext {
+public interface RemotingHttpSessionContext {
     void queueMessage(IncomingHttpMessage message);
 
     /**

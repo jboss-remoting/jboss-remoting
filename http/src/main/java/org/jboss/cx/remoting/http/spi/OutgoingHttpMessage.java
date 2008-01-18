@@ -6,6 +6,6 @@ import java.io.OutputStream;
 /**
  *
  */
-public interface OutgoingHttpMessage {
-    void writeTo(OutputStream outputStream) throws IOException;
+public interface OutgoingHttpMessage extends HttpMessage {
+    void writeMessageData(OutputStream outputStream) throws IOException;
 }

@@ -301,6 +301,7 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
+                <path refid="util.classpath"/>
             </classpath>
         </javac>
         <path id="http.classpath">
@@ -313,7 +314,7 @@
         <delete dir="http/target"/>
     </target>
 
-    <target name="http" description="Build the http module" depends="api,http.compile"/>
+    <target name="http" description="Build the http module" depends="api,util,http.compile"/>
 
     <!-- http-mina-client module -->
 
