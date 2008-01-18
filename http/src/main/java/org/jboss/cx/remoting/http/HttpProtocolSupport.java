@@ -106,7 +106,6 @@ public final class HttpProtocolSupport {
             public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) throws IOException {
                 final Object body = reply.getBody();
                 for (Header header : reply.getHeaders()) {
-                    header.
                 }
             }
 

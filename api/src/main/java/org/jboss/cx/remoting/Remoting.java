@@ -40,7 +40,7 @@ public final class Remoting {
         final Endpoint endpoint = createEndpoint(endpointName);
         boolean ok = false;
         try {
-            final Session session = new SessionWrapper(endpoint.openSession(EndpointLocator.DEFAULT.setEndpointUri(remoteUri).setClientAuthentication(userName, password))) {
+            final Session session = new SessionWrapper(endpoint.openSession(EndpointLocator.DEFAULT.setEndpointUri(remoteUri).setClientAuthentication(userName, password), null)) {
                 public void close() throws RemotingException {
                     try {
                         super.close();
