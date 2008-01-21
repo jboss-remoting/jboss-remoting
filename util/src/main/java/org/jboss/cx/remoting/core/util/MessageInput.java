@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.spi.protocol;
+package org.jboss.cx.remoting.core.util;
 
 import java.io.ObjectInput;
 

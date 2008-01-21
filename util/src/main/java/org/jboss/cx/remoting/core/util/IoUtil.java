@@ -2,6 +2,7 @@ package org.jboss.cx.remoting.core.util;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.io.OutputStream;
 
 /**
  *

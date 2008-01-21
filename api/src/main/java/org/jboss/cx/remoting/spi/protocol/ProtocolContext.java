@@ -6,6 +6,10 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.ServiceLocator;
+import org.jboss.cx.remoting.core.util.ByteInput;
+import org.jboss.cx.remoting.core.util.ByteOutput;
+import org.jboss.cx.remoting.core.util.MessageOutput;
+import org.jboss.cx.remoting.core.util.MessageInput;
 
 /**
  *

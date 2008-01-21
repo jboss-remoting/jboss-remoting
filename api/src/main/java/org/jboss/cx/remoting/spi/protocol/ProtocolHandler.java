@@ -8,6 +8,7 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.ServiceLocator;
+import org.jboss.cx.remoting.core.util.MessageOutput;
 
 /**
  *
@@ -125,9 +126,9 @@ public interface ProtocolHandler {
 
     /**
      * Send data over a stream.  Returns a message output buffer that the message is written into.  When the message
-     * is fully written, the {@link MessageOutput#commit()} method will be called to perform the transmission.  The
+     * is fully written, the {@link org.jboss.cx.remoting.core.util.MessageOutput#commit()} method will be called to perform the transmission.  The
      * supplied executor should be passed in to
-     * {@link org.jboss.cx.remoting.spi.protocol.ProtocolContext#getMessageOutput(ByteOutput, java.util.concurrent.Executor)},
+     * {@link org.jboss.cx.remoting.spi.protocol.ProtocolContext#getMessageOutput(org.jboss.cx.remoting.core.util.ByteOutput, java.util.concurrent.Executor)},
      * if that method is used for serialization.
      *
      * @param streamIdentifier the stream to send data on

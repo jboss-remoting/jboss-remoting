@@ -1,8 +1,8 @@
 package org.jboss.cx.remoting.core.stream;
 
 import java.io.IOException;
-import org.jboss.cx.remoting.spi.protocol.MessageInput;
-import org.jboss.cx.remoting.spi.protocol.MessageOutput;
+import org.jboss.cx.remoting.core.util.MessageInput;
+import org.jboss.cx.remoting.core.util.MessageOutput;
 import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamContext;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
