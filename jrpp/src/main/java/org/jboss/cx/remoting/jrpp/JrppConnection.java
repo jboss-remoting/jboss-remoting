@@ -678,7 +678,7 @@ public final class JrppConnection {
                             final RequestIdentifier requestIdentifier = readReqId(input);
                             final Object request = input.readObject();
                             if (trace) {
-                                log.trace("Received request - body is " + request.toString());
+                                log.trace("Received request - body is %s", request);
                             }
                             protocolContext.receiveRequest(contextIdentifier, requestIdentifier, request);
                             return;
