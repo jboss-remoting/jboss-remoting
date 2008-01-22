@@ -341,6 +341,7 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="http.classpath"/>
+                <path refid="util.classpath"/>
                 <pathelement location="${lib.mina.local}"/>
             </classpath>
         </javac>
@@ -354,7 +355,7 @@
         <delete dir="http-mina-client/target"/>
     </target>
 
-    <target name="http-mina-client" description="Build the http-mina-client module" depends="api,http,http-mina-client.compile"/>
+    <target name="http-mina-client" description="Build the http-mina-client module" depends="api,http,util,http-mina-client.compile"/>
 
     <!-- http-mina-server module -->
 
@@ -381,6 +382,7 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="http.classpath"/>
+                <path refid="util.classpath"/>
                 <pathelement location="${lib.mina.local}"/>
             </classpath>
         </javac>
@@ -394,7 +396,7 @@
         <delete dir="http-mina-server/target"/>
     </target>
 
-    <target name="http-mina-server" description="Build the http-mina-server module" depends="api,http,http-mina-server.compile"/>
+    <target name="http-mina-server" description="Build the http-mina-server module" depends="api,http,util,http-mina-server.compile"/>
 
     <!-- http-se6 module -->
 
@@ -427,6 +429,7 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="http.classpath"/>
+                <path refid="util.classpath"/>
             </classpath>
         </javac>
         <path id="http-se6.classpath">
@@ -439,7 +442,7 @@
         <delete dir="http-se6/target"/>
     </target>
 
-    <target name="http-se6" description="Build the http-se6 module" depends="api,http,http-se6.compile"/>
+    <target name="http-se6" description="Build the http-se6 module" depends="api,http,util,http-se6.compile"/>
 
     <!-- http-urlconnection module -->
 
@@ -466,6 +469,7 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="http.classpath"/>
+                <path refid="util.classpath"/>
             </classpath>
         </javac>
         <path id="http-urlconnection.classpath">
@@ -478,7 +482,7 @@
         <delete dir="http-urlconnection/target"/>
     </target>
 
-    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,http-urlconnection.compile"/>
+    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,util,http-urlconnection.compile"/>
 
     <!-- http-servlet module -->
 
@@ -505,6 +509,7 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="http.classpath"/>
+                <path refid="util.classpath"/>
                 <pathelement location="${lib.servlet.local}"/>
             </classpath>
         </javac>
@@ -518,7 +523,7 @@
         <delete dir="http-servlet/target"/>
     </target>
 
-    <target name="http-servlet" description="Build the http-servlet module" depends="api,http,lib.servlet,http-servlet.compile"/>
+    <target name="http-servlet" description="Build the http-servlet module" depends="api,http,util,lib.servlet,http-servlet.compile"/>
 
     <!-- mina-sasl module -->
 

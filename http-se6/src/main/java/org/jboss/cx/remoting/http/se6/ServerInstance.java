@@ -1,16 +1,17 @@
 package org.jboss.cx.remoting.http.se6;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.http.spi.RemotingHttpSessionContext;
-import org.jboss.cx.remoting.http.spi.IncomingHttpMessage;
 import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
 import org.jboss.cx.remoting.http.spi.AbstractIncomingHttpMessage;
+import org.jboss.cx.remoting.core.util.ByteInput;
+import org.jboss.cx.remoting.core.util.ByteOutput;
 
 import com.sun.net.httpserver.BasicAuthenticator;
 import com.sun.net.httpserver.Headers;
@@ -66,8 +67,29 @@ public final class ServerInstance {
             final int remotePort = inetSocketAddress.getPort();
             RemotingHttpSessionContext httpSessionContext = null; // todo locate
             httpSessionContext.queueMessage(new AbstractIncomingHttpMessage(localAddress, localPort, remoteAddress, remotePort) {
-                public InputStream getMessageData() {
-                    return httpExchange.getRequestBody();
+                public ByteInput getMessageData() {
+                    final InputStream inputStream = httpExchange.getRequestBody();
+                    return new ByteInput() {
+                        public int read() throws IOException {
+                            return inputStream.read();
+                        }
+
+                        public int read(byte[] data) throws IOException {
+                            return inputStream.read(data);
+                        }
+
+                        public int read(byte[] data, int offs, int len) throws IOException {
+                            return inputStream.read(data, offs, len);
+                        }
+
+                        public int remaining() {
+                            return -1;
+                        }
+
+                        public void close() throws IOException {
+                            inputStream.close();
+                        }
+                    };
                 }
             });
             // todo - WAIT untit the input stream is consumed? or - just don't close the output until the input is done
@@ -92,7 +114,34 @@ public final class ServerInstance {
                 }
                 httpExchange.sendResponseHeaders(200, 0); // todo - preset response size?
                 final OutputStream outputStream = httpExchange.getResponseBody();
-                httpReply.writeMessageData(outputStream);
+                httpReply.writeMessageData(new ByteOutput() {
+                    public void write(int b) throws IOException {
+                        outputStream.write(b);
+                    }
+
+                    public void write(byte[] b) throws IOException {
+                        outputStream.write(b);
+                    }
+
+                    public void write(byte[] b, int offs, int len) throws IOException {
+                        outputStream.write(b, offs, len);
+                    }
+
+                    public void commit() throws IOException {
+                    }
+
+                    public int getBytesWritten() throws IOException {
+                        return -1;
+                    }
+
+                    public void close() throws IOException {
+                        outputStream.close();
+                    }
+
+                    public void flush() throws IOException {
+                        outputStream.flush();
+                    }
+                });
             }
             httpExchange.close();
         }

@@ -1,11 +1,11 @@
 package org.jboss.cx.remoting.http.spi;
 
 import java.io.IOException;
-import java.io.OutputStream;
+import org.jboss.cx.remoting.core.util.ByteOutput;
 
 /**
  *
  */
 public interface OutgoingHttpMessage extends HttpMessage {
-    void writeMessageData(OutputStream outputStream) throws IOException;
+    void writeMessageData(ByteOutput byteOutput) throws IOException;
 }

@@ -1,14 +1,14 @@
 package org.jboss.cx.remoting.http.spi;
 
-import java.io.InputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import org.jboss.cx.remoting.core.util.ByteInput;
 
 /**
  *
  */
 public interface IncomingHttpMessage extends HttpMessage {
-    InputStream getMessageData() throws IOException;
+    ByteInput getMessageData() throws IOException;
 
     InetAddress getRemoteAddress();
 
