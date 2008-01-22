@@ -379,9 +379,6 @@ public final class JrppConnection {
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
             }
-            if (reply == null) {
-                throw new NullPointerException("reply is null");
-            }
             final IoBuffer buffer = newBuffer(500, true);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
             write(output, MessageType.REPLY);
@@ -416,9 +413,6 @@ public final class JrppConnection {
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
-            }
-            if (request == null) {
-                throw new NullPointerException("request is null");
             }
             final IoBuffer buffer = newBuffer(500, true);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession), streamExecutor);

@@ -71,9 +71,6 @@ public final class CoreInboundRequest<I, O> {
         }
 
         public void sendReply(final O reply) throws RemotingException, IllegalStateException {
-            if (reply == null) {
-                throw new NullPointerException("reply is null");
-            }
             state.requireTransition(State.UNSENT, State.SENT);
             context.sendReply(requestIdentifier, reply);
         }

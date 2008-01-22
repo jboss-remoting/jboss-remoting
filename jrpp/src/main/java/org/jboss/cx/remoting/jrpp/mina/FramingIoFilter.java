@@ -28,10 +28,9 @@ public final class FramingIoFilter extends IoFilterAdapter {
 
         public void messageReceived(NextFilter nextFilter, IoBuffer buffer) {
             while (buffer.hasRemaining()) {
-                final int r = buffer.remaining();
                 switch (state) {
                     case INITIAL:
-                        if (r >= 4) {
+                        if (buffer.remaining() >= 4) {
                             size = buffer.getInt();
                             state = State.READING_START;
                             break;
@@ -52,7 +51,7 @@ public final class FramingIoFilter extends IoFilterAdapter {
                         sizeBuf.flip();
                         size = sizeBuf.getInt();
                         state = State.READING_START;
-                        break;
+                        // fall thru...
                     case READING_START:
                         if (buffer.remaining() > size) {
                             // full read on the first try - best case (no copying done)
@@ -64,7 +63,7 @@ public final class FramingIoFilter extends IoFilterAdapter {
                             target = IoBuffer.allocate(size);
                             target.put(buffer);
                             state = State.READING;
-                            break;
+                            // fall thru...
                         }
                     case READING:
                         if (target.remaining() > buffer.remaining()) {
