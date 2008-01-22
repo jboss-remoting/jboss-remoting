@@ -1,7 +1,6 @@
 package org.jboss.cx.remoting.spi.wrapper;
 
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 
@@ -19,11 +18,7 @@ public class RequestContextWrapper<O> implements RequestContext<O> {
         return delegate.isCancelled();
     }
 
-    public Reply<O> createReply(final O body) {
-        return delegate.createReply(body);
-    }
-
-    public void sendReply(Reply<O> reply) throws RemotingException, IllegalStateException {
+    public void sendReply(O reply) throws RemotingException, IllegalStateException {
         delegate.sendReply(reply);
     }
 

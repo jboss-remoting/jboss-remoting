@@ -12,22 +12,13 @@ public interface RequestContext<O> {
     boolean isCancelled();
 
     /**
-     * Create a reply for a request.
-     *
-     * @param body the body of the reply
-     *
-     * @return the new reply
-     */
-    Reply<O> createReply(O body);
-
-    /**
      * Send a reply back to the caller.
      *
      * @param reply the reply to send
      * @throws RemotingException if the transmission failed
      * @throws IllegalStateException if a reply was already sent
      */
-    void sendReply(Reply<O> reply) throws RemotingException, IllegalStateException;
+    void sendReply(O reply) throws RemotingException, IllegalStateException;
 
     /**
      * Send a failure message back to the caller.

@@ -14,10 +14,8 @@ import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
-import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.ServiceLocator;
-import org.jboss.cx.remoting.Request;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -108,7 +106,7 @@ public final class RemotingHttpSessionImpl {
             outgoingQueue.add(msg);
         }
 
-        public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) throws IOException {
+        public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Object reply) throws IOException {
         }
 
         public void sendException(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) throws IOException {
@@ -141,7 +139,7 @@ public final class RemotingHttpSessionImpl {
         public void closeService(ServiceIdentifier serviceIdentifier) throws IOException {
         }
 
-        public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request, Executor streamExecutor) throws IOException {
+        public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object request, Executor streamExecutor) throws IOException {
         }
 
         public void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException {

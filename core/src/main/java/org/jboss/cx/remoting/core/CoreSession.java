@@ -16,8 +16,6 @@ import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.EndpointLocator;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.Session;
@@ -112,7 +110,7 @@ public final class CoreSession {
 
     // Outbound protocol messages
 
-    void sendRequest(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Request<?> request, final Executor streamExecutor) throws RemotingException {
+    void sendRequest(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Object request, final Executor streamExecutor) throws RemotingException {
         try {
             protocolHandler.sendRequest(contextIdentifier, requestIdentifier, request, streamExecutor);
         } catch (IOException e) {
@@ -146,7 +144,7 @@ public final class CoreSession {
         }
     }
 
-    void sendReply(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Reply<?> reply) throws RemotingException {
+    void sendReply(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Object reply) throws RemotingException {
         try {
             protocolHandler.sendReply(contextIdentifier, requestIdentifier, reply);
         } catch (IOException e) {
@@ -530,7 +528,7 @@ public final class CoreSession {
         }
 
         @SuppressWarnings ({"unchecked"})
-        public void receiveReply(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) {
+        public void receiveReply(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object reply) {
             final CoreOutboundContext context = getContext(contextIdentifier);
             if (context != null) {
                 context.receiveReply(requestIdentifier, reply);
@@ -567,7 +565,7 @@ public final class CoreSession {
             coreStream.receiveStreamData(data);
         }
 
-        public void receiveRequest(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier, final Request<?> request) {
+        public void receiveRequest(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier, final Object request) {
             final CoreInboundContext context = getServerContext(remoteContextIdentifier);
             if (context != null) {
                 endpoint.getExecutor().execute(new Runnable() {
@@ -586,13 +584,6 @@ public final class CoreSession {
             }
         }
 
-        public <T> Reply<T> createReply(T body) {
-            return new ReplyImpl<T>(body);
-        }
-
-        public <T> Request<T> createRequest(T body) {
-            return new RequestImpl<T>(body);
-        }
     }
 
     // message output

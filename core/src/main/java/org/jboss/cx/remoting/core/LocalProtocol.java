@@ -9,8 +9,6 @@ import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Logger;
@@ -150,7 +148,7 @@ public final class LocalProtocol {
             remoteContext.receiveServiceActivate(serviceIdentifier);
         }
 
-        public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) throws IOException {
+        public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Object reply) throws IOException {
             log.trace("Sending stream for local protocol");
             remoteContext.receiveReply(remoteContextIdentifier, requestIdentifier, reply);
         }
@@ -160,7 +158,7 @@ public final class LocalProtocol {
             remoteContext.receiveException(remoteContextIdentifier, requestIdentifier, exception);
         }
 
-        public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request, final Executor streamExecutor) throws IOException {
+        public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object request, final Executor streamExecutor) throws IOException {
             log.trace("Sending request for local protocol");
             remoteContext.receiveRequest(contextIdentifier, requestIdentifier, request);
         }

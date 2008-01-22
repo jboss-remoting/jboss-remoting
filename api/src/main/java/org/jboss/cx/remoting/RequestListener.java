@@ -18,5 +18,5 @@ public interface RequestListener<I, O> {
      * @throws RemoteExecutionException if the execution failed in some way
      * @throws InterruptedException if the thread is interrupted
      */
-    void handleRequest(RequestContext<O> context, Request<I> request) throws RemoteExecutionException, InterruptedException;
+    void handleRequest(RequestContext<O> context, I request) throws RemoteExecutionException, InterruptedException;
 }

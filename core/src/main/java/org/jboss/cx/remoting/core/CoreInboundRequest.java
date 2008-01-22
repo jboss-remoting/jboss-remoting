@@ -2,8 +2,6 @@ package org.jboss.cx.remoting.core;
 
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RequestListener;
@@ -18,14 +16,14 @@ public final class CoreInboundRequest<I, O> {
     private static final Logger log = Logger.getLogger(CoreInboundRequest.class);
 
     private final RequestIdentifier requestIdentifier;
-    private final Request<I> request;
+    private final I request;
     private final CoreInboundContext<I, O> context;
     private final RequestListener<I,O> requestListener;
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
     private final UserRequestContext userRequestContext = new UserRequestContext();
 
-    public CoreInboundRequest(final RequestIdentifier requestIdentifier, final Request<I> request, final CoreInboundContext<I, O> context, final RequestListener<I, O> requestListener) {
+    public CoreInboundRequest(final RequestIdentifier requestIdentifier, final I request, final CoreInboundContext<I, O> context, final RequestListener<I, O> requestListener) {
         this.requestIdentifier = requestIdentifier;
         this.request = request;
         this.context = context;
@@ -38,7 +36,7 @@ public final class CoreInboundRequest<I, O> {
         SENT,
     }
 
-    void receiveRequest(final Request<I> request) {
+    void receiveRequest(final I request) {
         try {
             state.requireTransition(State.INITIAL, State.UNSENT);
             requestListener.handleRequest(userRequestContext, request);
@@ -72,11 +70,7 @@ public final class CoreInboundRequest<I, O> {
             return false;
         }
 
-        public Reply<O> createReply(final O body) {
-            return new ReplyImpl<O>(body);
-        }
-
-        public void sendReply(final Reply<O> reply) throws RemotingException, IllegalStateException {
+        public void sendReply(final O reply) throws RemotingException, IllegalStateException {
             if (reply == null) {
                 throw new NullPointerException("reply is null");
             }

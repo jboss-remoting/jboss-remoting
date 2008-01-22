@@ -1,12 +1,8 @@
 package org.jboss.cx.remoting.http.spi;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Collections;
-import org.jboss.cx.remoting.Header;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 
 /**
@@ -24,49 +20,6 @@ public abstract class AbstractHttpMessage implements HttpMessage {
             headerMap.put(name, list);
         }
         list.add(value);
-    }
-
-    public Iterable<Header> getHeaders() {
-        return new Iterable<Header>() {
-            public Iterator<Header> iterator() {
-                final Iterator<Map.Entry<String, List<String>>> i = headerMap.entrySet().iterator();
-                return new Iterator<Header>() {
-                    private String name;
-                    private Iterator<String> ii;
-
-                    public boolean hasNext() {
-                        while (ii == null || ! ii.hasNext()) {
-                            if (!i.hasNext()) {
-                                return false;
-                            }
-                            final Map.Entry<String, List<String>> entry = i.next();
-                            name = entry.getKey();
-                            ii = entry.getValue().iterator();
-                        }
-                        return true;
-                    }
-
-                    public Header next() {
-                        if (! hasNext()) {
-                            throw new NoSuchElementException("next() past end");
-                        }
-                        return new Header() {
-                            public String getName() {
-                                return name;
-                            }
-
-                            public String getValue() {
-                                return ii.next();
-                            }
-                        };
-                    }
-
-                    public void remove() {
-                        ii.remove();
-                    }
-                };
-            }
-        };
     }
 
     public Iterable<String> getHeaderValues(String name) {

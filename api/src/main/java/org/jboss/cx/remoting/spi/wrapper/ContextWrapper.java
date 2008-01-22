@@ -5,8 +5,6 @@ import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.spi.ContextService;
 
 /**
@@ -23,15 +21,11 @@ public class ContextWrapper<I, O> implements Context<I, O> {
         delegate.close();
     }
 
-    public Request<I> createRequest(final I body) {
-        return delegate.createRequest(body);
-    }
-
-    public Reply<O> invoke(final Request<I> request) throws RemotingException, RemoteExecutionException, InterruptedException {
+    public O invoke(final I request) throws RemotingException, RemoteExecutionException, InterruptedException {
         return delegate.invoke(request);
     }
 
-    public FutureReply<O> send(final Request<I> request) throws RemotingException {
+    public FutureReply<O> send(final I request) throws RemotingException {
         return delegate.send(request);
     }
 

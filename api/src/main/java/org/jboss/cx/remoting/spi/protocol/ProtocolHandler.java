@@ -5,8 +5,6 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.core.util.MessageOutput;
 
@@ -26,7 +24,7 @@ public interface ProtocolHandler {
      */
     void sendServiceActivate(ServiceIdentifier remoteServiceIdentifier) throws IOException;
 
-    void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) throws IOException;
+    void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Object reply) throws IOException;
 
     void sendException(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) throws IOException;
 
@@ -87,7 +85,7 @@ public interface ProtocolHandler {
 
     void closeService(ServiceIdentifier serviceIdentifier) throws IOException;
 
-    void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request, Executor streamExecutor) throws IOException;
+    void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object request, Executor streamExecutor) throws IOException;
 
     void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException;
 

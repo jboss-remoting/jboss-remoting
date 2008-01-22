@@ -9,7 +9,6 @@ import java.util.concurrent.TimeUnit;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.IndeterminateOutcomeException;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.Reply;
 import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
 import org.jboss.cx.remoting.core.util.Logger;
@@ -29,7 +28,7 @@ public final class CoreOutboundRequest<I, O> {
     private final FutureReply<O> futureReply = new FutureReplyImpl();
 
     /* Protected by {@code state} */
-    private Reply<O> reply;
+    private O reply;
     /* Protected by {@code state} */
     private RemoteExecutionException exception;
     /* Protected by {@code state} */
@@ -107,7 +106,7 @@ public final class CoreOutboundRequest<I, O> {
      *
      * @param reply the reply
      */
-    void receiveReply(final Reply<O> reply) {
+    void receiveReply(final O reply) {
         state.requireTransitionExclusive(State.WAITING, State.DONE);
         this.reply = reply;
         state.releaseDowngrade();
@@ -159,7 +158,7 @@ public final class CoreOutboundRequest<I, O> {
             return state.in(State.DONE);
         }
 
-        public Reply<O> get() throws InterruptedException, CancellationException, RemoteExecutionException {
+        public O get() throws InterruptedException, CancellationException, RemoteExecutionException {
             final State newState = state.waitInterruptablyForNotHold(State.WAITING);
             try {
                 switch(newState) {
@@ -179,7 +178,7 @@ public final class CoreOutboundRequest<I, O> {
             }
         }
 
-        public Reply<O> get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException {
+        public O get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException {
             final State newState = state.waitInterruptablyForNotHold(State.WAITING, timeout, unit);
             try {
                 switch (newState) {

@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
  * In addition to representing the invocation results, this interface allows the user to cancel the request, or schedule
  * an asynchronous callback for when the request completes.
  */
-public interface FutureReply<T> extends Future<Reply<T>> {
+public interface FutureReply<T> extends Future<T> {
 
     /**
      * Attempts to cancel execution of this request.  This attempt will fail if the request has already completed,
@@ -53,7 +53,7 @@ public interface FutureReply<T> extends Future<Reply<T>> {
      * @throws RemoteExecutionException if the computation threw an exception
      * @throws InterruptedException if the current thread was interrupted while waiting
      */
-    Reply<T> get() throws InterruptedException, CancellationException, RemoteExecutionException;
+    T get() throws InterruptedException, CancellationException, RemoteExecutionException;
 
     /**
      * Waits if necessary for at most the given time for the request to complete, and then retrieves the reply, if
@@ -68,7 +68,7 @@ public interface FutureReply<T> extends Future<Reply<T>> {
      * @throws RemoteExecutionException if the computation threw an exception
      * @throws InterruptedException if the current thread was interrupted while waiting
      */
-    Reply<T> get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException;
+    T get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException;
 
     /**
      * Add a notifier to be called when the request has completed.  The notifier may be called from the current thread

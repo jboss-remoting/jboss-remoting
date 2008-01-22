@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.spi.ServerInterceptorFactory;
@@ -31,7 +29,7 @@ public final class CoreInboundContext<I, O> {
 
     // Outbound protocol messages
 
-    void sendReply(final RequestIdentifier requestIdentifier, final Reply<O> reply) throws RemotingException {
+    void sendReply(final RequestIdentifier requestIdentifier, final O reply) throws RemotingException {
         coreSession.sendReply(contextIdentifier, requestIdentifier, reply);
     }
 
@@ -52,7 +50,7 @@ public final class CoreInboundContext<I, O> {
         }
     }
 
-    void receiveRequest(final RequestIdentifier requestIdentifier, final Request<I> request) {
+    void receiveRequest(final RequestIdentifier requestIdentifier, final I request) {
         final CoreInboundRequest<I, O> inboundRequest = createInboundRequest(requestIdentifier, request);
         inboundRequest.receiveRequest(request);
     }
@@ -65,7 +63,7 @@ public final class CoreInboundContext<I, O> {
 
     // Request mgmt
 
-    CoreInboundRequest<I, O> createInboundRequest(final RequestIdentifier requestIdentifier, final Request<I> request) {
+    CoreInboundRequest<I, O> createInboundRequest(final RequestIdentifier requestIdentifier, final I request) {
         return new CoreInboundRequest<I, O>(requestIdentifier, request, this, requestListener);
     }
 

@@ -1,8 +1,6 @@
 package org.jboss.cx.remoting.spi;
 
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**
@@ -31,11 +29,11 @@ public abstract class AbstractServerInterceptor implements ServerInterceptor {
         next.processOutboundCancelAcknowledge(context, requestIdentifier);
     }
 
-    public void processInboundRequest(final InterceptorContext context, final RequestIdentifier requestIdentifier, final Request<?> request) {
+    public void processInboundRequest(final InterceptorContext context, final RequestIdentifier requestIdentifier, final Object request) {
         prev.processInboundRequest(context, requestIdentifier, request);
     }
 
-    public void processOutboundReply(final InterceptorContext context, final RequestIdentifier requestIdentifier, final Reply<?> reply) {
+    public void processOutboundReply(final InterceptorContext context, final RequestIdentifier requestIdentifier, final Object reply) {
         next.processOutboundReply(context, requestIdentifier, reply);
     }
 

@@ -3,8 +3,6 @@ package org.jboss.cx.remoting.spi.protocol;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.core.util.ByteInput;
 import org.jboss.cx.remoting.core.util.ByteOutput;
@@ -20,15 +18,13 @@ public interface ProtocolContext {
 
     void receiveServiceActivate(ServiceIdentifier serviceIdentifier);
 
-    void receiveReply(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply);
+    void receiveReply(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object reply);
 
     void receiveException(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception);
 
     void receiveCancelAcknowledge(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier);
 
     void receiveServiceTerminate(ServiceIdentifier serviceIdentifier);
-
-    <T> Request<T> createRequest(T body);
 
     /* SERVER methods */
 
@@ -40,11 +36,9 @@ public interface ProtocolContext {
 
     void receiveOpenedContext(ServiceIdentifier remoteServiceIdentifier, ContextIdentifier remoteContextIdentifier);
 
-    void receiveRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Request<?> request);
+    void receiveRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Object request);
 
     void receiveCancelRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt);
-
-    <T> Reply<T> createReply(T body);
 
     /* SESSION methods */
 

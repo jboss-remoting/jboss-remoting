@@ -5,7 +5,6 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -23,11 +22,7 @@ import org.apache.mina.filter.sasl.SaslMessageSender;
 import org.apache.mina.filter.sasl.SaslServerFactory;
 import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
-import org.jboss.cx.remoting.BasicMessage;
-import org.jboss.cx.remoting.Header;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
@@ -226,16 +221,6 @@ public final class JrppConnection {
         output.writeShort(((JrppRequestIdentifier)requestIdentifier).getId());
     }
 
-    private void write(ObjectOutput output, BasicMessage<?> message) throws IOException {
-        output.writeObject(message.getBody());
-        final Collection<Header> headers = message.getHeaders();
-        output.writeInt(headers.size());
-        for (Header header : headers) {
-            output.writeUTF(header.getName());
-            output.writeUTF(header.getValue());
-        }
-    }
-
     public void sendResponse(byte[] rawMsgData) throws IOException {
         final IoBuffer buffer = newBuffer(rawMsgData.length + 100, false);
         final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
@@ -387,7 +372,7 @@ public final class JrppConnection {
             output.commit();
         }
 
-        public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Reply<?> reply) throws IOException {
+        public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Object reply) throws IOException {
             if (remoteContextIdentifier == null) {
                 throw new NullPointerException("remoteContextIdentifier is null");
             }
@@ -402,7 +387,7 @@ public final class JrppConnection {
             write(output, MessageType.REPLY);
             write(output, remoteContextIdentifier);
             write(output, requestIdentifier);
-            write(output, reply);
+            output.writeObject(reply);
             output.commit();
         }
 
@@ -425,7 +410,7 @@ public final class JrppConnection {
             output.commit();
         }
 
-        public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Request<?> request, final Executor streamExecutor) throws IOException {
+        public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object request, final Executor streamExecutor) throws IOException {
             if (contextIdentifier == null) {
                 throw new NullPointerException("contextIdentifier is null");
             }
@@ -440,7 +425,7 @@ public final class JrppConnection {
             write(output, MessageType.REQUEST);
             write(output, contextIdentifier);
             write(output, requestIdentifier);
-            write(output, request);
+            output.writeObject(request);
             output.commit();
         }
 
@@ -525,15 +510,6 @@ public final class JrppConnection {
         public void exceptionCaught(Throwable throwable) {
             log.error(throwable, "Exception from JRPP connection handler");
             close();
-        }
-
-        private void readHeaders(MessageInput input, BasicMessage<?> msg) throws IOException {
-            final int cnt = input.readInt();
-            for (int i = 0; i < cnt; i ++) {
-                final String name = input.readUTF();
-                final String value = input.readUTF();
-                msg.addHeader(name, value);
-            }
         }
 
         private ContextIdentifier readCtxtId(MessageInput input) throws IOException {
@@ -699,18 +675,16 @@ public final class JrppConnection {
                         case REPLY: {
                             final ContextIdentifier contextIdentifier = readCtxtId(input);
                             final RequestIdentifier requestIdentifier = readReqId(input);
-                            final Reply<?> reply = protocolContext.createReply(input.readObject());
-                            readHeaders(input, reply);
+                            final Object reply = input.readObject();
                             protocolContext.receiveReply(contextIdentifier, requestIdentifier, reply);
                             return;
                         }
                         case REQUEST: {
                             final ContextIdentifier contextIdentifier = readCtxtId(input);
                             final RequestIdentifier requestIdentifier = readReqId(input);
-                            final Request<?> request = protocolContext.createRequest(input.readObject());
-                            readHeaders(input, request);
+                            final Object request = input.readObject();
                             if (trace) {
-                                log.trace("Received request - body is " + request.getBody().toString());
+                                log.trace("Received request - body is " + request.toString());
                             }
                             protocolContext.receiveRequest(contextIdentifier, requestIdentifier, request);
                             return;

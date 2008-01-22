@@ -12,15 +12,6 @@ public interface Context<I, O> {
     void close() throws RemotingException;
 
     /**
-     * Create a new request to send to the remote session.
-     *
-     * @param body the request body
-     *
-     * @return a new request
-     */
-    Request<I> createRequest(I body);
-
-    /**
      * Send a request and block until a reply is received.
      * <p/>
      * Uses the default invocation policy for handling remote invocations. If the remote side manipulates a stream, the
@@ -36,7 +27,7 @@ public interface Context<I, O> {
      * @throws RemoteExecutionException if the remote handler threw an exception
      * @throws InterruptedException if the request was interrupted (and thereby cancelled)
      */
-    Reply<O> invoke(Request<I> request) throws RemotingException, RemoteExecutionException, InterruptedException;
+    O invoke(I request) throws RemotingException, RemoteExecutionException, InterruptedException;
 
     /**
      * Send a request asynchronously.
@@ -52,7 +43,7 @@ public interface Context<I, O> {
      *
      * @throws RemotingException if the request could not be sent
      */
-    FutureReply<O> send(Request<I> request) throws RemotingException;
+    FutureReply<O> send(I request) throws RemotingException;
 
     /**
      * Get the context map.  This map holds metadata about the current context.

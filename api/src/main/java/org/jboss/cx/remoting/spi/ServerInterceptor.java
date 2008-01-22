@@ -1,8 +1,6 @@
 package org.jboss.cx.remoting.spi;
 
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**
@@ -48,7 +46,7 @@ public interface ServerInterceptor {
      * @param requestIdentifier the request identifier
      * @param request the inbound request
      */
-    void processInboundRequest(InterceptorContext context, RequestIdentifier requestIdentifier, Request<?> request);
+    void processInboundRequest(InterceptorContext context, RequestIdentifier requestIdentifier, Object request);
 
     /**
      * Process an outbound reply.
@@ -57,7 +55,7 @@ public interface ServerInterceptor {
      * @param requestIdentifier the request identifier
      * @param reply the outbound reply
      */
-    void processOutboundReply(InterceptorContext context, RequestIdentifier requestIdentifier, Reply<?> reply);
+    void processOutboundReply(InterceptorContext context, RequestIdentifier requestIdentifier, Object reply);
 
     /**
      * Process an outbound request exception.

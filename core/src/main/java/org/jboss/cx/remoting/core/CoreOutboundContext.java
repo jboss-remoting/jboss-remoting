@@ -6,8 +6,6 @@ import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
@@ -61,7 +59,7 @@ public final class CoreOutboundContext<I, O> {
         }
     }
 
-    void sendRequest(final RequestIdentifier requestIdentifier, final Request<I> request, final Executor streamExecutor) throws RemotingException {
+    void sendRequest(final RequestIdentifier requestIdentifier, final I request, final Executor streamExecutor) throws RemotingException {
         session.sendRequest(contextIdentifier, requestIdentifier, request, streamExecutor);
     }
 
@@ -87,7 +85,7 @@ public final class CoreOutboundContext<I, O> {
         }
     }
 
-    void receiveReply(RequestIdentifier requestIdentifier, Reply<O> reply) {
+    void receiveReply(RequestIdentifier requestIdentifier, O reply) {
         final CoreOutboundRequest<I, O> request = requests.get(requestIdentifier);
         if (request != null) {
             request.receiveReply(reply);
@@ -135,12 +133,7 @@ public final class CoreOutboundContext<I, O> {
             receiveCloseContext();
         }
 
-        public Request<I> createRequest(final I body) {
-            state.require(State.UP);
-            return new RequestImpl<I>(body);
-        }
-
-        public Reply<O> invoke(final Request<I> request) throws RemotingException, RemoteExecutionException, InterruptedException {
+        public O invoke(final I request) throws RemotingException, RemoteExecutionException, InterruptedException {
             state.requireHold(State.UP);
             try {
                 final RequestIdentifier requestIdentifier;
@@ -163,7 +156,7 @@ public final class CoreOutboundContext<I, O> {
             }
         }
 
-        public FutureReply<O> send(final Request<I> request) throws RemotingException {
+        public FutureReply<O> send(final I request) throws RemotingException {
             state.requireHold(State.UP);
             try {
                 final RequestIdentifier requestIdentifier;

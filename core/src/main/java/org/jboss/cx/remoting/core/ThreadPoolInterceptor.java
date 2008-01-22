@@ -7,8 +7,6 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.Reply;
-import org.jboss.cx.remoting.Request;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.spi.AbstractServerInterceptor;
@@ -37,7 +35,7 @@ public final class ThreadPoolInterceptor extends AbstractServerInterceptor {
         }
     }
 
-    public void processInboundRequest(final InterceptorContext context, final RequestIdentifier requestIdentifier, final Request request) {
+    public void processInboundRequest(final InterceptorContext context, final RequestIdentifier requestIdentifier, final Object request) {
         try {
             // Use FutureTask so that we get a Future<> before the task actually starts
             FutureTask<Void> task = new FutureTask<Void>(new Runnable() {
@@ -57,7 +55,7 @@ public final class ThreadPoolInterceptor extends AbstractServerInterceptor {
         super.processOutboundCancelAcknowledge(context, requestIdentifier);
     }
 
-    public void processOutboundReply(final InterceptorContext context, final RequestIdentifier requestIdentifier, final Reply reply) {
+    public void processOutboundReply(final InterceptorContext context, final RequestIdentifier requestIdentifier, final Object reply) {
         requests.remove(requestIdentifier);
         super.processOutboundReply(context, requestIdentifier, reply);
     }
