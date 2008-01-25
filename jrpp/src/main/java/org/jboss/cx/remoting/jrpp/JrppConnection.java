@@ -1,5 +1,6 @@
 package org.jboss.cx.remoting.jrpp;
 
+import static java.lang.Math.min;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -533,7 +534,7 @@ public final class JrppConnection {
                 case AWAITING_CLIENT_VERSION: {
                     switch (type) {
                         case VERSION: {
-                            protocolVersion = Math.min(input.readShort() & 0xffff, PROTOCOL_VERSION);
+                            protocolVersion = min(input.readShort() & 0xffff, PROTOCOL_VERSION);
                             if (trace) {
                                 log.trace("Server negotiated protocol version " + protocolVersion);
                             }
@@ -558,7 +559,7 @@ public final class JrppConnection {
                 case AWAITING_SERVER_VERSION: {
                     switch (type) {
                         case VERSION: {
-                            protocolVersion = Math.min(input.readShort() & 0xffff, PROTOCOL_VERSION);
+                            protocolVersion = min(input.readShort() & 0xffff, PROTOCOL_VERSION);
                             if (trace) {
                                 log.trace("Client negotiated protocol version " + protocolVersion);
                             }

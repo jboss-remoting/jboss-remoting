@@ -13,6 +13,9 @@ import org.apache.mina.common.WriteRequestWrapper;
  *
  */
 public final class FramingIoFilter extends IoFilterAdapter {
+    // todo - change to a no-copying method
+    // for example, keep a List<IoBuffer> and pass a ByteInput to upper layers rather than an IoBuffer
+
     private static final AttributeKey FRAMER_KEY = new AttributeKey(FramingIoFilter.class, "framerKey");
 
     private static final class Framer {
