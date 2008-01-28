@@ -5,10 +5,12 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.io.ObjectStreamClass;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.ContextSource;
@@ -677,14 +679,9 @@ public final class CoreSession {
 
     private final class ObjectInputImpl extends ObjectInputStream {
 
-        public ObjectInputImpl(final InputStream is) throws IOException {
-            super(is);
-            super.enableResolveObject(true);
-        }
+        private ClassLoader classLoader;
 
-        @SuppressWarnings ({"UnusedDeclaration"})
-        public ObjectInputImpl(final InputStream is, final ClassLoader loader) throws IOException {
-//            super(is, loader);
+        public ObjectInputImpl(final InputStream is) throws IOException {
             super(is);
             super.enableResolveObject(true);
         }
@@ -712,6 +709,32 @@ public final class CoreSession {
                 return stream.getRemoteSerializer().getRemoteInstance();
             } else {
                 return testObject;
+            }
+        }
+
+        protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
+            final String name = desc.getName();
+            if (classLoader != null) {
+                if (primitiveTypes.containsKey(name)) {
+                    return primitiveTypes.get(name);
+                } else {
+                    return Class.forName(name, false, classLoader);
+                }
+            } else {
+                return super.resolveClass(desc);
+            }
+        }
+
+        protected Class<?> resolveProxyClass(String[] interfaces) throws IOException, ClassNotFoundException {
+            return super.resolveProxyClass(interfaces);
+        }
+
+        public Object readObject(final ClassLoader loader) throws ClassNotFoundException, IOException {
+            classLoader = loader;
+            try {
+                return readObject();
+            } finally {
+                classLoader = null;
             }
         }
     }
@@ -751,7 +774,16 @@ public final class CoreSession {
         public Object readObject() throws ClassNotFoundException, IOException {
             setInstance();
             try {
-                return super.readObject();
+                return objectInput.readObject();
+            } finally {
+                clearInstance();
+            }
+        }
+
+        public Object readObject(ClassLoader loader) throws ClassNotFoundException, IOException {
+            setInstance();
+            try {
+                return objectInput.readObject(loader);
             } finally {
                 clearInstance();
             }
@@ -764,5 +796,23 @@ public final class CoreSession {
                 throw new IllegalStateException("Available failed", e);
             }
         }
+    }
+
+    private static final Map<String, Class<?>> primitiveTypes = new HashMap<String, Class<?>>();
+
+    private static <T> void add(Class<T> type) {
+        primitiveTypes.put(type.getName(), type);
+    }
+
+    static {
+        add(void.class);
+        add(boolean.class);
+        add(byte.class);
+        add(short.class);
+        add(int.class);
+        add(long.class);
+        add(float.class);
+        add(double.class);
+        add(char.class);
     }
 }
