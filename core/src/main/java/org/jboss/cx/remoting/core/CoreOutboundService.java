@@ -7,7 +7,7 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
-import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.ClientInterceptorFactory;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 

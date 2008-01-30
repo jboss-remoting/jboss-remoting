@@ -405,7 +405,7 @@ public final class RemotingHttpSessionImpl {
     }
 
     private void addSessionHeader(final OutgoingHttpMessage msg) {
-        msg.addHeader(HttpProtocolSupport.HEADER_SESSION_ID, sessionId);
+        msg.addHeader(Http.HEADER_SESSION_ID, sessionId);
     }
 
     private interface OutputAction {
@@ -420,6 +420,7 @@ public final class RemotingHttpSessionImpl {
             this.actions = actions;
             sequenceValue = outputSequence.getAndIncrement();
             addSessionHeader(this);
+            addHeader(Http.HEADER_SEQ, Long.toString(sequenceValue, 16));
         }
 
         public void writeMessageData(ByteOutput byteOutput) throws IOException {

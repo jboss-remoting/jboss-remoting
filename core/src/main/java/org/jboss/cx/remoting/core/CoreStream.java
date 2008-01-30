@@ -2,7 +2,7 @@ package org.jboss.cx.remoting.core;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
-import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.core.util.MessageOutput;
 import org.jboss.cx.remoting.core.util.MessageInput;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;

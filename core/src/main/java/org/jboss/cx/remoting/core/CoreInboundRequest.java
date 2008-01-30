@@ -5,8 +5,8 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RequestListener;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
-import org.jboss.cx.remoting.core.util.Logger;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**

@@ -15,7 +15,7 @@ import java.util.Random;
 import java.util.Set;
 import org.jboss.cx.remoting.core.util.Base64DecodingException;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
-import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.log.Logger;
 
 import javax.crypto.NoSuchPaddingException;
 import javax.security.auth.callback.Callback;

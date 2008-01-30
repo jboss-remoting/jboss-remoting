@@ -3,16 +3,20 @@
     <property file="build.properties.local"/>
     <property file="build.properties"/>
 
-    <!-- External library: MINA -->
+    <!-- ============================================== -->
+    <!-- LIBRARIES - Keep in alpha order by target name -->
+    <!-- ============================================== -->
 
-    <target name="lib.mina-check">
-        <available property="lib.mina.exists" file="${lib.mina.local}"/>
+    <!-- External library: JBoss Common Logging SPI -->
+
+    <target name="lib.jboss-common-logging-spi-check">
+        <available property="lib.jboss-common-logging-spi.exists" file="${lib.jboss-common-logging-spi.local}"/>
     </target>
 
-    <target name="lib.mina" depends="lib.mina-check" unless="lib.mina.exists">
-        <mkdir dir="${local.repository}/${lib.mina.dir}"/>
-        <get src="${lib.mina.remote}" dest="${lib.mina.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.mina.license}.txt" dest="${lib.mina.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    <target name="lib.jboss-common-logging-spi" depends="lib.jboss-common-logging-spi-check" unless="lib.jboss-common-logging-spi.exists">
+        <mkdir dir="${local.repository}/${lib.jboss-common-logging-spi.dir}"/>
+        <get src="${lib.jboss-common-logging-spi.remote}" dest="${lib.jboss-common-logging-spi.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jboss-common-logging-spi.license}.txt" dest="${lib.jboss-common-logging-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- External library: JBoss Serialization -->
@@ -27,16 +31,16 @@
         <get src="${remote.license.dir}/${lib.jboss-serialization.license}.txt" dest="${lib.jboss-serialization.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
-    <!-- Trove is used by JBoss Serialization -->
+    <!-- External library: MINA -->
 
-    <target name="lib.trove-check">
-        <available property="lib.trove.exists" file="${lib.trove.local}"/>
+    <target name="lib.mina-check">
+        <available property="lib.mina.exists" file="${lib.mina.local}"/>
     </target>
 
-    <target name="lib.trove" depends="lib.trove-check" unless="lib.trove.exists">
-        <mkdir dir="${local.repository}/${lib.trove.dir}"/>
-        <get src="${lib.trove.remote}" dest="${lib.trove.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.trove.license}.txt" dest="${lib.trove.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    <target name="lib.mina" depends="lib.mina-check" unless="lib.mina.exists">
+        <mkdir dir="${local.repository}/${lib.mina.dir}"/>
+        <get src="${lib.mina.remote}" dest="${lib.mina.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.mina.license}.txt" dest="${lib.mina.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- External library: Servlet API 2.4 -->
@@ -50,6 +54,22 @@
         <get src="${lib.servlet.remote}" dest="${lib.servlet.local}" usetimestamp="true" ignoreerrors="false"/>
         <get src="${remote.license.dir}/${lib.servlet.license}.txt" dest="${lib.servlet.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
+
+    <!-- Trove is used by JBoss Serialization -->
+
+    <target name="lib.trove-check">
+        <available property="lib.trove.exists" file="${lib.trove.local}"/>
+    </target>
+
+    <target name="lib.trove" depends="lib.trove-check" unless="lib.trove.exists">
+        <mkdir dir="${local.repository}/${lib.trove.dir}"/>
+        <get src="${lib.trove.remote}" dest="${lib.trove.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.trove.license}.txt" dest="${lib.trove.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <!-- ============================================== -->
+    <!-- MODULES - Keep in alpha order by target name   -->
+    <!-- ============================================== -->
 
     <!-- api module -->
 
@@ -89,114 +109,6 @@
 
     <target name="api" description="Build the API module" depends="util,api.compile"/>
 
-    <!-- Utility module -->
-
-    <target name="util.compile.depcheck">
-        <mkdir dir="util/target/main"/>
-        <uptodate property="util.compile.uptodate" targetfile="util/target/main/.lastcompile">
-            <srcfiles dir="util/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="util.compile" depends="util.compile.depcheck" unless="util.compile.uptodate">
-        <mkdir dir="util/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="util/src/main/java"
-                destdir="util/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-        </javac>
-        <path id="util.classpath">
-            <pathelement location="util/target/main/classes"/>
-        </path>
-        <touch file="util/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="util.clean">
-        <delete dir="util/target"/>
-    </target>
-
-    <target name="util" description="Build the utilities module" depends="util.compile"/>
-
-    <!-- sasl-null module -->
-
-    <target name="sasl-null.compile.depcheck">
-        <mkdir dir="sasl-null/target/main"/>
-        <uptodate property="sasl-null.compile.uptodate" targetfile="sasl-null/target/main/.lastcompile">
-            <srcfiles dir="sasl-null/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="sasl-null.compile" depends="sasl-null.compile.depcheck" unless="sasl-null.compile.uptodate">
-        <mkdir dir="sasl-null/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="sasl-null/src/main/java"
-                destdir="sasl-null/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-        </javac>
-        <path id="sasl-null.classpath">
-            <pathelement location="sasl-null/target/main/classes"/>
-        </path>
-        <touch file="sasl-null/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="sasl-null.clean">
-        <delete dir="sasl-null/target"/>
-    </target>
-
-    <target name="sasl-null" description="Build the sasl-null module" depends="sasl-null.compile"/>
-
-    <!-- srp module -->
-
-    <target name="srp.compile.depcheck">
-        <mkdir dir="srp/target/main"/>
-        <uptodate property="srp.compile.uptodate" targetfile="srp/target/main/.lastcompile">
-            <srcfiles dir="srp/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="srp.compile" depends="srp.compile.depcheck" unless="srp.compile.uptodate">
-        <mkdir dir="srp/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="srp/src/main/java"
-                destdir="srp/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="util.classpath"/>
-            </classpath>
-        </javac>
-        <path id="srp.classpath">
-            <pathelement location="srp/target/main/classes"/>
-        </path>
-        <touch file="srp/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="srp.clean">
-        <delete dir="srp/target"/>
-    </target>
-
-    <target name="srp" description="Build the SRP SASL module" depends="util,srp.compile"/>
-
     <!-- core module -->
 
     <target name="core.compile.depcheck">
@@ -220,8 +132,9 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
-                <path refid="util.classpath"/>
                 <path refid="api.classpath"/>
+                <path refid="log-jul.classpath"/>
+                <path refid="util.classpath"/>
             </classpath>
         </javac>
         <path id="core.classpath">
@@ -234,7 +147,7 @@
         <delete dir="core/target"/>
     </target>
 
-    <target name="core" description="Build the core module" depends="api,util,core.compile"/>
+    <target name="core" description="Build the core module" depends="api,log-jul,util,core.compile"/>
 
     <!-- jrpp module -->
 
@@ -259,9 +172,10 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
+                <path refid="api.classpath"/>
+                <path refid="log-jul.classpath"/>
                 <path refid="mina-sasl.classpath"/>
                 <path refid="util.classpath"/>
-                <path refid="api.classpath"/>
                 <pathelement location="${lib.mina.local}"/>
             </classpath>
         </javac>
@@ -275,7 +189,7 @@
         <delete dir="jrpp/target"/>
     </target>
 
-    <target name="jrpp" description="Build the jrpp module" depends="lib.mina,mina-sasl,util,api,jrpp.compile"/>
+    <target name="jrpp" description="Build the jrpp module" depends="lib.mina,api,log-jul,mina-sasl,util,jrpp.compile"/>
 
     <!-- http module -->
 
@@ -444,46 +358,6 @@
 
     <target name="http-se6" description="Build the http-se6 module" depends="api,http,util,http-se6.compile"/>
 
-    <!-- http-urlconnection module -->
-
-    <target name="http-urlconnection.compile.depcheck">
-        <mkdir dir="http-urlconnection/target/main"/>
-        <uptodate property="http-urlconnection.compile.uptodate" targetfile="http-urlconnection/target/main/.lastcompile">
-            <srcfiles dir="http-urlconnection/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="http-urlconnection.compile" depends="http-urlconnection.compile.depcheck" unless="http-urlconnection.compile.uptodate">
-        <mkdir dir="http-urlconnection/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="http-urlconnection/src/main/java"
-                destdir="http-urlconnection/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="http.classpath"/>
-                <path refid="util.classpath"/>
-            </classpath>
-        </javac>
-        <path id="http-urlconnection.classpath">
-            <pathelement location="http-urlconnection/target/main/classes"/>
-        </path>
-        <touch file="http-urlconnection/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="http-urlconnection.clean">
-        <delete dir="http-urlconnection/target"/>
-    </target>
-
-    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,util,http-urlconnection.compile"/>
-
     <!-- http-servlet module -->
 
     <target name="http-servlet.compile.depcheck">
@@ -524,6 +398,119 @@
     </target>
 
     <target name="http-servlet" description="Build the http-servlet module" depends="api,http,util,lib.servlet,http-servlet.compile"/>
+
+    <!-- http-urlconnection module -->
+
+    <target name="http-urlconnection.compile.depcheck">
+        <mkdir dir="http-urlconnection/target/main"/>
+        <uptodate property="http-urlconnection.compile.uptodate" targetfile="http-urlconnection/target/main/.lastcompile">
+            <srcfiles dir="http-urlconnection/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="http-urlconnection.compile" depends="http-urlconnection.compile.depcheck" unless="http-urlconnection.compile.uptodate">
+        <mkdir dir="http-urlconnection/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="http-urlconnection/src/main/java"
+                destdir="http-urlconnection/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="http.classpath"/>
+                <path refid="util.classpath"/>
+            </classpath>
+        </javac>
+        <path id="http-urlconnection.classpath">
+            <pathelement location="http-urlconnection/target/main/classes"/>
+        </path>
+        <touch file="http-urlconnection/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="http-urlconnection.clean">
+        <delete dir="http-urlconnection/target"/>
+    </target>
+
+    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,util,http-urlconnection.compile"/>
+
+    <!-- log-jboss module -->
+
+    <target name="log-jboss.compile.depcheck">
+        <mkdir dir="log-jboss/target/main"/>
+        <uptodate property="log-jboss.compile.uptodate" targetfile="log-jboss/target/main/.lastcompile">
+            <srcfiles dir="log-jboss/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="log-jboss.compile" depends="log-jboss.compile.depcheck" unless="log-jboss.compile.uptodate">
+        <mkdir dir="log-jboss/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="log-jboss/src/main/java"
+                destdir="log-jboss/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <pathelement location="${lib.jboss-common-logging-spi.local}"/>
+            </classpath>
+        </javac>
+        <path id="log-jboss.classpath">
+            <pathelement location="log-jboss/target/main/classes"/>
+        </path>
+        <touch file="log-jboss/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="log-jboss.clean">
+        <delete dir="log-jboss/target"/>
+    </target>
+
+    <target name="log-jboss" description="Build the log-jboss module" depends="lib.jboss-common-logging-spi,log-jboss.compile"/>
+
+    <!-- log-jul module -->
+
+    <target name="log-jul.compile.depcheck">
+        <mkdir dir="log-jul/target/main"/>
+        <uptodate property="log-jul.compile.uptodate" targetfile="log-jul/target/main/.lastcompile">
+            <srcfiles dir="log-jul/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="log-jul.compile" depends="log-jul.compile.depcheck" unless="log-jul.compile.uptodate">
+        <mkdir dir="log-jul/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="log-jul/src/main/java"
+                destdir="log-jul/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+        <path id="log-jul.classpath">
+            <pathelement location="log-jul/target/main/classes"/>
+        </path>
+        <touch file="log-jul/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="log-jul.clean">
+        <delete dir="log-jul/target"/>
+    </target>
+
+    <target name="log-jul" description="Build the log-jul module" depends="log-jul.compile"/>
 
     <!-- mina-sasl module -->
 
@@ -601,6 +588,121 @@
 
     <target name="samples" description="Build the samples module" depends="api,samples.compile"/>
 
+    <!-- sasl-null module -->
+
+    <target name="sasl-null.compile.depcheck">
+        <mkdir dir="sasl-null/target/main"/>
+        <uptodate property="sasl-null.compile.uptodate" targetfile="sasl-null/target/main/.lastcompile">
+            <srcfiles dir="sasl-null/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="sasl-null.compile" depends="sasl-null.compile.depcheck" unless="sasl-null.compile.uptodate">
+        <mkdir dir="sasl-null/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="sasl-null/src/main/java"
+                destdir="sasl-null/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+        <path id="sasl-null.classpath">
+            <pathelement location="sasl-null/target/main/classes"/>
+        </path>
+        <touch file="sasl-null/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="sasl-null.clean">
+        <delete dir="sasl-null/target"/>
+    </target>
+
+    <target name="sasl-null" description="Build the sasl-null module" depends="sasl-null.compile"/>
+
+    <!-- srp module -->
+
+    <target name="srp.compile.depcheck">
+        <mkdir dir="srp/target/main"/>
+        <uptodate property="srp.compile.uptodate" targetfile="srp/target/main/.lastcompile">
+            <srcfiles dir="srp/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="srp.compile" depends="srp.compile.depcheck" unless="srp.compile.uptodate">
+        <mkdir dir="srp/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="srp/src/main/java"
+                destdir="srp/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="log-jul.classpath"/>
+                <path refid="util.classpath"/>
+            </classpath>
+        </javac>
+        <path id="srp.classpath">
+            <pathelement location="srp/target/main/classes"/>
+        </path>
+        <touch file="srp/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="srp.clean">
+        <delete dir="srp/target"/>
+    </target>
+
+    <target name="srp" description="Build the SRP SASL module" depends="log-jul,util,srp.compile"/>
+
+    <!-- standalone module -->
+
+    <target name="standalone.compile.depcheck">
+        <mkdir dir="standalone/target/main"/>
+        <uptodate property="standalone.compile.uptodate" targetfile="standalone/target/main/.lastcompile">
+            <srcfiles dir="standalone/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="standalone.compile" depends="standalone.compile.depcheck" unless="standalone.compile.uptodate">
+        <mkdir dir="standalone/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="standalone/src/main/java"
+                destdir="standalone/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="core.classpath"/>
+                <path refid="log-jul.classpath"/>
+                <path refid="util.classpath"/>
+            </classpath>
+        </javac>
+        <path id="standalone.classpath">
+            <pathelement location="standalone/target/main/classes"/>
+        </path>
+        <touch file="standalone/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="standalone.clean">
+        <delete dir="standalone/target"/>
+    </target>
+
+    <target name="standalone" description="Build the standalone module" depends="api,core,log-jul,util,standalone.compile"/>
+
     <!-- tools module -->
 
     <target name="tools.compile.depcheck">
@@ -646,12 +748,72 @@
 
     <target name="tools" description="Build the tools module" depends="srp,util,tools.compile"/>
 
-    <!-- Default targets -->
+    <!-- Utility module -->
+
+    <target name="util.compile.depcheck">
+        <mkdir dir="util/target/main"/>
+        <uptodate property="util.compile.uptodate" targetfile="util/target/main/.lastcompile">
+            <srcfiles dir="util/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="util.compile" depends="util.compile.depcheck" unless="util.compile.uptodate">
+        <mkdir dir="util/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="util/src/main/java"
+                destdir="util/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+        <path id="util.classpath">
+            <pathelement location="util/target/main/classes"/>
+        </path>
+        <touch file="util/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="util.clean">
+        <delete dir="util/target"/>
+    </target>
+
+    <target name="util" description="Build the utilities module" depends="util.compile"/>
+
+    <!-- Default targets - keep depends in alpha order by category name -->
+    <!-- These targets should explicitly list all modules, even if they will be built by other modules -->
+
+    <!-- core -->
+
+    <target name="all-core" description="Build all core targets" depends="api,core,samples,standalone,tools,util"/>
+
+    <target name="clean-core" description="Clean all core targets" depends="api.clean,core.clean,samples.clean,standalone.clean,tools.clean,util.clean"/>
+
+    <!-- http -->
 
     <target name="all-http" description="Build all HTTP targets" depends="http,http-mina-client,http-mina-server,http-se6,http-servlet,http-urlconnection"/>
 
-    <target name="all" description="Build everything" depends="api,core,http,http-mina-client,http-mina-server,http-se6,http-servlet,http-urlconnection,jrpp,samples,sasl-null,srp,tools,util"/>
+    <target name="clean-http" description="Clean all HTTP targets" depends="http.clean,http-mina-client.clean,http-mina-server.clean,http-se6.clean,http-servlet.clean,http-urlconnection.clean"/>
 
-    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,http.clean,http-mina-client.clean,http-mina-server.clean,http-se6.clean,http-servlet.clean,http-urlconnection.clean,jrpp.clean,mina-sasl.clean,samples.clean,sasl-null.clean,srp.clean,tools.clean,util.clean"/>
+    <!-- jrpp -->
+
+    <target name="all-jrpp" description="Build all JRPP targets" depends="jrpp,mina-sasl,sasl-null,srp"/>
+
+    <target name="clean-jrpp" description="Clean all JRPP targets" depends="jrpp.clean,mina-sasl.clean,sasl-null.clean,srp.clean"/>
+
+    <!-- log -->
+
+    <target name="all-log" description="Build all log targets" depends="log-jboss,log-jul"/>
+
+    <target name="clean-log" description="Clean all log targets" depends="log-jboss.clean,log-jul.clean"/>
+
+    <!-- all: These should be the last targets in the file -->
+
+    <target name="all" description="Build everything" depends="all-core,all-http,all-jrpp,all-log"/>
+
+    <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,clean-jrpp,clean-log"/>
 
 </project>

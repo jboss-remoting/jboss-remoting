@@ -1,7 +1,8 @@
 package org.jboss.cx.remoting;
 
 import java.net.URI;
-import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.log.Logger;
+import org.jboss.cx.remoting.core.CoreEndpointProvider;
 import org.jboss.cx.remoting.spi.EndpointProvider;
 import org.jboss.cx.remoting.spi.wrapper.ContextSourceWrapper;
 import org.jboss.cx.remoting.spi.wrapper.SessionWrapper;
@@ -13,23 +14,7 @@ public final class Remoting {
     private static final Logger log = Logger.getLogger(Remoting.class);
 
     private static final class EndpointProviderHolder {
-        private static final EndpointProvider provider;
-
-        static {
-            provider = load();
-        }
-
-        private static EndpointProvider load() {
-            return load("org.jboss.cx.remoting.core.CoreEndpointProvider");
-        }
-
-        private static EndpointProvider load(String name) {
-            try {
-                return (EndpointProvider) Class.forName(name).newInstance();
-            } catch (Exception ex) {
-                throw new IllegalArgumentException("Failed to instantiate Remoting endpoint provider: " + ex.getMessage(), ex);
-            }
-        }
+        private static final EndpointProvider provider = new CoreEndpointProvider();
     }
 
     public static Endpoint createEndpoint(String name) {

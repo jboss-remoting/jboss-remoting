@@ -3,7 +3,7 @@ package org.jboss.cx.remoting.core;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.ServiceLocator;
-import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 

@@ -8,7 +8,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
-import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.AbstractServerInterceptor;
 import org.jboss.cx.remoting.spi.InterceptorContext;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;

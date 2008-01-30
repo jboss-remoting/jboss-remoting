@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.core.util;
+package org.jboss.cx.remoting.log;
 
 import java.util.logging.LogRecord;
 
@@ -13,7 +13,6 @@ public final class Logger {
         }
     }
 
-    public static final Level VERBOSE = new Level("VERBOSE", 300);
     public static final Level TRACE = new Level("TRACE", 400);
     public static final Level DEBUG = new Level("DEBUG", 500);
     public static final Level INFO = new Level("INFO", 800);
@@ -35,10 +34,6 @@ public final class Logger {
 
     public static Logger getLogger(final Class claxx) {
         return new Logger(claxx.getName());
-    }
-
-    public boolean isVerbose() {
-        return logger.isLoggable(VERBOSE);
     }
 
     public boolean isTrace() {
@@ -121,17 +116,4 @@ public final class Logger {
     public void trace(String msg, Object... params) {
         doLog(TRACE, msg, null, params);
     }
-
-    public void verbose(String msg) {
-        doLog(VERBOSE, msg, null, null);
-    }
-
-    public void verbose(Throwable ex, String msg, Object... params) {
-        doLog(VERBOSE, msg, ex, params);
-    }
-
-    public void verbose(String msg, Object... params) {
-        doLog(VERBOSE, msg, null, params);
-    }
-
 }

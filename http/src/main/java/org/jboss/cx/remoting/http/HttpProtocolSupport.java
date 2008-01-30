@@ -33,8 +33,6 @@ public final class HttpProtocolSupport {
     // todo - need secure random?
     private final Random random = new Random();
 
-    public static final String HEADER_SESSION_ID = "JBoss-Remoting-Session-ID";
-
     private final ConcurrentMap<String, RemotingHttpSessionContext> sessions = CollectionUtil.concurrentMap();
 
     public HttpProtocolSupport(final Endpoint endpoint) throws RemotingException {
@@ -51,7 +49,7 @@ public final class HttpProtocolSupport {
     public RemotingHttpServerContext addServer() {
         return new RemotingHttpServerContext() {
             public RemotingHttpSessionContext locateSession(IncomingHttpMessage message) {
-                final String sessionId = message.getFirstHeaderValue(HEADER_SESSION_ID);
+                final String sessionId = message.getFirstHeaderValue(Http.HEADER_SESSION_ID);
                 return sessionId == null ? null : sessions.get(sessionId);
             }
         };

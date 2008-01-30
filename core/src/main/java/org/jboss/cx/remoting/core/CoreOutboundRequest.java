@@ -11,7 +11,7 @@ import org.jboss.cx.remoting.IndeterminateOutcomeException;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
-import org.jboss.cx.remoting.core.util.Logger;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**

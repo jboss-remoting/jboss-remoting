@@ -9,7 +9,24 @@ import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.core.util.MessageOutput;
 
 /**
+ * A protocol handler.
  *
+ *
+ *
+ *
+ * <b>Packet Ordering</b>
+ *
+ * <p>The following ordering constraints apply:</p>
+ *
+ * <ul>
+ * <li>All stream data must be in order per-stream</li>
+ * <li>Service activate -> Service terminate</li>
+ * <li>Service request -> Service close</li>
+ * <li>receive opened context -> request</li>
+ * <li>Service activate -> reply</li>
+ * <li>request -> cancel</li>
+ * <li>* -> close session</li>
+ * </ul>
  */
 public interface ProtocolHandler {
 
