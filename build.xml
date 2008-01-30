@@ -7,6 +7,18 @@
     <!-- LIBRARIES - Keep in alpha order by target name -->
     <!-- ============================================== -->
 
+    <!-- External library: JBoss Common Core -->
+
+    <target name="lib.jboss-common-core-check">
+        <available property="lib.jboss-common-core.exists" file="${lib.jboss-common-core.local}"/>
+    </target>
+
+    <target name="lib.jboss-common-core" depends="lib.jboss-common-core-check" unless="lib.jboss-common-core.exists">
+        <mkdir dir="${local.repository}/${lib.jboss-common-core.local-dir}"/>
+        <get src="${lib.jboss-common-core.remote}" dest="${lib.jboss-common-core.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jboss-common-core.license}.txt" dest="${lib.jboss-common-core.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
     <!-- External library: JBoss Common Logging SPI -->
 
     <target name="lib.jboss-common-logging-spi-check">
@@ -14,21 +26,81 @@
     </target>
 
     <target name="lib.jboss-common-logging-spi" depends="lib.jboss-common-logging-spi-check" unless="lib.jboss-common-logging-spi.exists">
-        <mkdir dir="${local.repository}/${lib.jboss-common-logging-spi.dir}"/>
+        <mkdir dir="${local.repository}/${lib.jboss-common-logging-spi.local-dir}"/>
         <get src="${lib.jboss-common-logging-spi.remote}" dest="${lib.jboss-common-logging-spi.local}" usetimestamp="true" ignoreerrors="false"/>
         <get src="${remote.license.dir}/${lib.jboss-common-logging-spi.license}.txt" dest="${lib.jboss-common-logging-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
-    <!-- External library: JBoss Serialization -->
+    <!-- External library: JBoss Microcontainer deployers SPI -->
 
-    <target name="lib.jboss-serialization-check">
-        <available property="lib.jboss-serialization.exists" file="${lib.jboss-serialization.local}"/>
+    <target name="lib.jbossmc-deployers-spi-check">
+        <available property="lib.jbossmc-deployers-spi.exists" file="${lib.jbossmc-deployers-spi.local}"/>
     </target>
 
-    <target name="lib.jboss-serialization" depends="lib.trove,lib.jboss-serialization-check" unless="lib.jboss-serialization.exists">
-        <mkdir dir="${local.repository}/${lib.jboss-serialization.dir}"/>
-        <get src="${lib.jboss-serialization.remote}" dest="${lib.jboss-serialization.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.jboss-serialization.license}.txt" dest="${lib.jboss-serialization.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    <target name="lib.jbossmc-deployers-spi" depends="lib.jbossmc-deployers-spi-check" unless="lib.jbossmc-deployers-spi.exists">
+        <mkdir dir="${local.repository}/${lib.jbossmc.local-dir}"/>
+        <get src="${lib.jbossmc-deployers-spi.remote}" dest="${lib.jbossmc-deployers-spi.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jbossmc-deployers-spi.license}.txt" dest="${lib.jbossmc-deployers-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <!-- External library: JBoss Microcontainer deployers structure SPI -->
+
+    <target name="lib.jbossmc-deployers-structure-spi-check">
+        <available property="lib.jbossmc-deployers-structure-spi.exists" file="${lib.jbossmc-deployers-structure-spi.local}"/>
+    </target>
+
+    <target name="lib.jbossmc-deployers-structure-spi" depends="lib.jbossmc-deployers-structure-spi-check" unless="lib.jbossmc-deployers-structure-spi.exists">
+        <mkdir dir="${local.repository}/${lib.jbossmc.local-dir}"/>
+        <get src="${lib.jbossmc-deployers-structure-spi.remote}" dest="${lib.jbossmc-deployers-structure-spi.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jbossmc-deployers-structure-spi.license}.txt" dest="${lib.jbossmc-deployers-structure-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <!-- External library: JBoss Microcontainer deployers core SPI -->
+
+    <target name="lib.jbossmc-deployers-core-spi-check">
+        <available property="lib.jbossmc-deployers-core-spi.exists" file="${lib.jbossmc-deployers-core-spi.local}"/>
+    </target>
+
+    <target name="lib.jbossmc-deployers-core-spi" depends="lib.jbossmc-deployers-core-spi-check" unless="lib.jbossmc-deployers-core-spi.exists">
+        <mkdir dir="${local.repository}/${lib.jbossmc.local-dir}"/>
+        <get src="${lib.jbossmc-deployers-core-spi.remote}" dest="${lib.jbossmc-deployers-core-spi.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jbossmc-deployers-core-spi.license}.txt" dest="${lib.jbossmc-deployers-core-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <!-- External library: JBoss Microcontainer kernel -->
+
+    <target name="lib.jbossmc-kernel-check">
+        <available property="lib.jbossmc-kernel.exists" file="${lib.jbossmc-kernel.local}"/>
+    </target>
+
+    <target name="lib.jbossmc-kernel" depends="lib.jbossmc-kernel-check" unless="lib.jbossmc-kernel.exists">
+        <mkdir dir="${local.repository}/${lib.jbossmc.local-dir}"/>
+        <get src="${lib.jbossmc-kernel.remote}" dest="${lib.jbossmc-kernel.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jbossmc-kernel.license}.txt" dest="${lib.jbossmc-kernel.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <!-- External library: JBoss Microcontainer managed -->
+
+    <target name="lib.jbossmc-managed-check">
+        <available property="lib.jbossmc-managed.exists" file="${lib.jbossmc-managed.local}"/>
+    </target>
+
+    <target name="lib.jbossmc-managed" depends="lib.jbossmc-managed-check" unless="lib.jbossmc-managed.exists">
+        <mkdir dir="${local.repository}/${lib.jbossmc.local-dir}"/>
+        <get src="${lib.jbossmc-managed.remote}" dest="${lib.jbossmc-managed.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jbossmc-managed.license}.txt" dest="${lib.jbossmc-managed.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <!-- External library: JBossXB -->
+
+    <target name="lib.jbossxb-check">
+        <available property="lib.jbossxb.exists" file="${lib.jbossxb.local}"/>
+    </target>
+
+    <target name="lib.jbossxb" depends="lib.jbossxb-check" unless="lib.jbossxb.exists">
+        <mkdir dir="${local.repository}/${lib.jbossxb.dir}"/>
+        <get src="${lib.jbossxb.remote}" dest="${lib.jbossxb.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jbossxb.license}.txt" dest="${lib.jbossxb.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- External library: MINA -->
@@ -53,18 +125,6 @@
         <mkdir dir="${local.repository}/${lib.servlet.dir}"/>
         <get src="${lib.servlet.remote}" dest="${lib.servlet.local}" usetimestamp="true" ignoreerrors="false"/>
         <get src="${remote.license.dir}/${lib.servlet.license}.txt" dest="${lib.servlet.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
-    </target>
-
-    <!-- Trove is used by JBoss Serialization -->
-
-    <target name="lib.trove-check">
-        <available property="lib.trove.exists" file="${lib.trove.local}"/>
-    </target>
-
-    <target name="lib.trove" depends="lib.trove-check" unless="lib.trove.exists">
-        <mkdir dir="${local.repository}/${lib.trove.dir}"/>
-        <get src="${lib.trove.remote}" dest="${lib.trove.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.trove.license}.txt" dest="${lib.trove.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- ============================================== -->
@@ -512,6 +572,55 @@
 
     <target name="log-jul" description="Build the log-jul module" depends="log-jul.compile"/>
 
+    <!-- mc-deployers module -->
+
+    <target name="mc-deployers.compile.depcheck">
+        <mkdir dir="mc-deployers/target/main"/>
+        <uptodate property="mc-deployers.compile.uptodate" targetfile="mc-deployers/target/main/.lastcompile">
+            <srcfiles dir="mc-deployers/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="mc-deployers.compile" depends="mc-deployers.compile.depcheck" unless="mc-deployers.compile.uptodate">
+        <mkdir dir="mc-deployers/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="mc-deployers/src/main/java"
+                destdir="mc-deployers/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="core.classpath"/>
+                <path refid="log-jboss.classpath"/>
+                <path refid="util.classpath"/>
+                <pathelement location="${lib.jboss-common-logging-spi.local}"/>
+                <pathelement location="${lib.jboss-common-core.local}"/>
+                <pathelement location="${lib.jbossmc-deployers-core-spi.local}"/>
+                <pathelement location="${lib.jbossmc-deployers-spi.local}"/>
+                <pathelement location="${lib.jbossmc-deployers-structure-spi.local}"/>
+                <pathelement location="${lib.jbossmc-kernel.local}"/>
+                <pathelement location="${lib.jbossmc-managed.local}"/>
+                <pathelement location="${lib.jbossxb.local}"/>
+            </classpath>
+        </javac>
+        <path id="mc-deployers.classpath">
+            <pathelement location="mc-deployers/target/main/classes"/>
+        </path>
+        <touch file="mc-deployers/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="mc-deployers.clean">
+        <delete dir="mc-deployers/target"/>
+    </target>
+
+    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jbossmc-deployers-core-spi,lib.jbossmc-deployers-spi,lib.jbossmc-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-managed,lib.jbossxb,api,core,log-jboss,util,mc-deployers.compile"/>
+
     <!-- mina-sasl module -->
 
     <target name="mina-sasl.compile.depcheck">
@@ -788,9 +897,9 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,core,samples,standalone,tools,util"/>
+    <target name="all-core" description="Build all core targets" depends="api,core,mc-deployers,samples,standalone,tools,util"/>
 
-    <target name="clean-core" description="Clean all core targets" depends="api.clean,core.clean,samples.clean,standalone.clean,tools.clean,util.clean"/>
+    <target name="clean-core" description="Clean all core targets" depends="api.clean,core.clean,mc-deployers.clean,samples.clean,standalone.clean,tools.clean,util.clean"/>
 
     <!-- http -->
 
@@ -809,6 +918,10 @@
     <target name="all-log" description="Build all log targets" depends="log-jboss,log-jul"/>
 
     <target name="clean-log" description="Clean all log targets" depends="log-jboss.clean,log-jul.clean"/>
+
+    <!-- fetch: These should be the second-to-last targes in the file -->
+
+    <target name="all-fetch" description="Fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jbossmc-deployers-core-spi,lib.jbossmc-deployers-spi,lib.jbossmc-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-managed,lib.jbossxb,lib.mina,lib.servlet"/>
 
     <!-- all: These should be the last targets in the file -->
 
