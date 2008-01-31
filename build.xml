@@ -7,6 +7,18 @@
     <!-- LIBRARIES - Keep in alpha order by target name -->
     <!-- ============================================== -->
 
+    <!-- External library: JAXB API -->
+
+    <target name="lib.jaxb-api-check">
+        <available property="lib.jaxb-api.exists" file="${lib.jaxb-api.local}"/>
+    </target>
+
+    <target name="lib.jaxb-api" depends="lib.jaxb-api-check" unless="lib.jaxb-api.exists">
+        <mkdir dir="${local.repository}/${lib.jaxb-api.dir}"/>
+        <get src="${lib.jaxb-api.remote}" dest="${lib.jaxb-api.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jaxb-api.license}.txt" dest="${lib.jaxb-api.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
     <!-- External library: JBoss Common Core -->
 
     <target name="lib.jboss-common-core-check">
@@ -157,9 +169,6 @@
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
-        <path id="api.classpath">
-            <pathelement location="api/target/main/classes"/>
-        </path>
         <touch file="api/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -167,7 +176,11 @@
         <delete dir="api/target"/>
     </target>
 
-    <target name="api" description="Build the API module" depends="util,api.compile"/>
+    <target name="api" description="Build the API module" depends="util,api.compile">
+        <path id="api.classpath">
+            <pathelement location="api/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- core module -->
 
@@ -197,9 +210,6 @@
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
-        <path id="core.classpath">
-            <pathelement location="core/target/main/classes"/>
-        </path>
         <touch file="core/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -207,7 +217,11 @@
         <delete dir="core/target"/>
     </target>
 
-    <target name="core" description="Build the core module" depends="api,log-jul,util,core.compile"/>
+    <target name="core" description="Build the core module" depends="api,log-jul,util,core.compile">
+        <path id="core.classpath">
+            <pathelement location="core/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- jrpp module -->
 
@@ -239,9 +253,6 @@
                 <pathelement location="${lib.mina.local}"/>
             </classpath>
         </javac>
-        <path id="jrpp.classpath">
-            <pathelement location="jrpp/target/main/classes"/>
-        </path>
         <touch file="jrpp/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -249,7 +260,11 @@
         <delete dir="jrpp/target"/>
     </target>
 
-    <target name="jrpp" description="Build the jrpp module" depends="lib.mina,api,log-jul,mina-sasl,util,jrpp.compile"/>
+    <target name="jrpp" description="Build the jrpp module" depends="lib.mina,api,log-jul,mina-sasl,util,jrpp.compile">
+        <path id="jrpp.classpath">
+            <pathelement location="jrpp/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- http module -->
 
@@ -278,9 +293,6 @@
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
-        <path id="http.classpath">
-            <pathelement location="http/target/main/classes"/>
-        </path>
         <touch file="http/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -288,7 +300,11 @@
         <delete dir="http/target"/>
     </target>
 
-    <target name="http" description="Build the http module" depends="api,util,http.compile"/>
+    <target name="http" description="Build the http module" depends="api,util,http.compile">
+        <path id="http.classpath">
+            <pathelement location="http/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- http-mina-client module -->
 
@@ -319,9 +335,6 @@
                 <pathelement location="${lib.mina.local}"/>
             </classpath>
         </javac>
-        <path id="http-mina-client.classpath">
-            <pathelement location="http-mina-client/target/main/classes"/>
-        </path>
         <touch file="http-mina-client/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -329,7 +342,11 @@
         <delete dir="http-mina-client/target"/>
     </target>
 
-    <target name="http-mina-client" description="Build the http-mina-client module" depends="api,http,util,http-mina-client.compile"/>
+    <target name="http-mina-client" description="Build the http-mina-client module" depends="api,http,util,http-mina-client.compile">
+        <path id="http-mina-client.classpath">
+            <pathelement location="http-mina-client/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- http-mina-server module -->
 
@@ -360,9 +377,6 @@
                 <pathelement location="${lib.mina.local}"/>
             </classpath>
         </javac>
-        <path id="http-mina-server.classpath">
-            <pathelement location="http-mina-server/target/main/classes"/>
-        </path>
         <touch file="http-mina-server/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -370,7 +384,11 @@
         <delete dir="http-mina-server/target"/>
     </target>
 
-    <target name="http-mina-server" description="Build the http-mina-server module" depends="api,http,util,http-mina-server.compile"/>
+    <target name="http-mina-server" description="Build the http-mina-server module" depends="api,http,util,http-mina-server.compile">
+        <path id="http-mina-server.classpath">
+            <pathelement location="http-mina-server/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- http-se6 module -->
 
@@ -406,9 +424,6 @@
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
-        <path id="http-se6.classpath">
-            <pathelement location="http-se6/target/main/classes"/>
-        </path>
         <touch file="http-se6/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -416,7 +431,11 @@
         <delete dir="http-se6/target"/>
     </target>
 
-    <target name="http-se6" description="Build the http-se6 module" depends="api,http,util,http-se6.compile"/>
+    <target name="http-se6" description="Build the http-se6 module" depends="api,http,util,http-se6.compile">
+        <path id="http-se6.classpath">
+            <pathelement location="http-se6/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- http-servlet module -->
 
@@ -447,9 +466,6 @@
                 <pathelement location="${lib.servlet.local}"/>
             </classpath>
         </javac>
-        <path id="http-servlet.classpath">
-            <pathelement location="http-servlet/target/main/classes"/>
-        </path>
         <touch file="http-servlet/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -457,7 +473,11 @@
         <delete dir="http-servlet/target"/>
     </target>
 
-    <target name="http-servlet" description="Build the http-servlet module" depends="api,http,util,lib.servlet,http-servlet.compile"/>
+    <target name="http-servlet" description="Build the http-servlet module" depends="api,http,util,lib.servlet,http-servlet.compile">
+        <path id="http-servlet.classpath">
+            <pathelement location="http-servlet/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- http-urlconnection module -->
 
@@ -487,9 +507,6 @@
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
-        <path id="http-urlconnection.classpath">
-            <pathelement location="http-urlconnection/target/main/classes"/>
-        </path>
         <touch file="http-urlconnection/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -497,7 +514,11 @@
         <delete dir="http-urlconnection/target"/>
     </target>
 
-    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,util,http-urlconnection.compile"/>
+    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,util,http-urlconnection.compile">
+        <path id="http-urlconnection.classpath">
+            <pathelement location="http-urlconnection/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- log-jboss module -->
 
@@ -525,9 +546,6 @@
                 <pathelement location="${lib.jboss-common-logging-spi.local}"/>
             </classpath>
         </javac>
-        <path id="log-jboss.classpath">
-            <pathelement location="log-jboss/target/main/classes"/>
-        </path>
         <touch file="log-jboss/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -535,7 +553,11 @@
         <delete dir="log-jboss/target"/>
     </target>
 
-    <target name="log-jboss" description="Build the log-jboss module" depends="lib.jboss-common-logging-spi,log-jboss.compile"/>
+    <target name="log-jboss" description="Build the log-jboss module" depends="lib.jboss-common-logging-spi,log-jboss.compile">
+        <path id="log-jboss.classpath">
+            <pathelement location="log-jboss/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- log-jul module -->
 
@@ -560,9 +582,6 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
         </javac>
-        <path id="log-jul.classpath">
-            <pathelement location="log-jul/target/main/classes"/>
-        </path>
         <touch file="log-jul/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -570,7 +589,11 @@
         <delete dir="log-jul/target"/>
     </target>
 
-    <target name="log-jul" description="Build the log-jul module" depends="log-jul.compile"/>
+    <target name="log-jul" description="Build the log-jul module" depends="log-jul.compile">
+        <path id="log-jul.classpath">
+            <pathelement location="log-jul/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- mc-deployers module -->
 
@@ -599,6 +622,7 @@
                 <path refid="core.classpath"/>
                 <path refid="log-jboss.classpath"/>
                 <path refid="util.classpath"/>
+                <pathelement location="${lib.jaxb-api.local}"/>
                 <pathelement location="${lib.jboss-common-logging-spi.local}"/>
                 <pathelement location="${lib.jboss-common-core.local}"/>
                 <pathelement location="${lib.jbossmc-deployers-core-spi.local}"/>
@@ -609,9 +633,6 @@
                 <pathelement location="${lib.jbossxb.local}"/>
             </classpath>
         </javac>
-        <path id="mc-deployers.classpath">
-            <pathelement location="mc-deployers/target/main/classes"/>
-        </path>
         <touch file="mc-deployers/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -619,7 +640,11 @@
         <delete dir="mc-deployers/target"/>
     </target>
 
-    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jbossmc-deployers-core-spi,lib.jbossmc-deployers-spi,lib.jbossmc-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-managed,lib.jbossxb,api,core,log-jboss,util,mc-deployers.compile"/>
+    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jaxb-api,lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jbossmc-deployers-core-spi,lib.jbossmc-deployers-spi,lib.jbossmc-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-managed,lib.jbossxb,api,core,log-jboss,util,mc-deployers.compile">
+        <path id="mc-deployers.classpath">
+            <pathelement location="mc-deployers/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- mina-sasl module -->
 
@@ -647,9 +672,6 @@
                 <pathelement location="${lib.mina.local}"/>
             </classpath>
         </javac>
-        <path id="mina-sasl.classpath">
-            <pathelement location="mina-sasl/target/main/classes"/>
-        </path>
         <touch file="mina-sasl/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -657,7 +679,11 @@
         <delete dir="mina-sasl/target"/>
     </target>
 
-    <target name="mina-sasl" description="Build the mina-sasl module" depends="lib.mina,mina-sasl.compile"/>
+    <target name="mina-sasl" description="Build the mina-sasl module" depends="lib.mina,mina-sasl.compile">
+        <path id="mina-sasl.classpath">
+            <pathelement location="mina-sasl/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- remote-classloader module -->
 
@@ -685,9 +711,6 @@
                 <path refid="api.classpath"/>
             </classpath>
         </javac>
-        <path id="remote-classloader.classpath">
-            <pathelement location="remote-classloader/target/main/classes"/>
-        </path>
         <touch file="remote-classloader/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -695,7 +718,11 @@
         <delete dir="remote-classloader/target"/>
     </target>
 
-    <target name="remote-classloader" description="Build the remote-classloader module" depends="api,remote-classloader.compile"/>
+    <target name="remote-classloader" description="Build the remote-classloader module" depends="api,remote-classloader.compile">
+        <path id="remote-classloader.classpath">
+            <pathelement location="remote-classloader/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- samples module -->
 
@@ -723,9 +750,6 @@
                 <path refid="api.classpath"/>
             </classpath>
         </javac>
-        <path id="samples.classpath">
-            <pathelement location="samples/target/main/classes"/>
-        </path>
         <touch file="samples/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -733,7 +757,11 @@
         <delete dir="samples/target"/>
     </target>
 
-    <target name="samples" description="Build the samples module" depends="api,samples.compile"/>
+    <target name="samples" description="Build the samples module" depends="api,samples.compile">
+        <path id="samples.classpath">
+            <pathelement location="samples/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- sasl-null module -->
 
@@ -758,9 +786,6 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
         </javac>
-        <path id="sasl-null.classpath">
-            <pathelement location="sasl-null/target/main/classes"/>
-        </path>
         <touch file="sasl-null/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -768,7 +793,11 @@
         <delete dir="sasl-null/target"/>
     </target>
 
-    <target name="sasl-null" description="Build the sasl-null module" depends="sasl-null.compile"/>
+    <target name="sasl-null" description="Build the sasl-null module" depends="sasl-null.compile">
+        <path id="sasl-null.classpath">
+            <pathelement location="sasl-null/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- srp module -->
 
@@ -797,9 +826,6 @@
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
-        <path id="srp.classpath">
-            <pathelement location="srp/target/main/classes"/>
-        </path>
         <touch file="srp/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -807,7 +833,11 @@
         <delete dir="srp/target"/>
     </target>
 
-    <target name="srp" description="Build the SRP SASL module" depends="log-jul,util,srp.compile"/>
+    <target name="srp" description="Build the SRP SASL module" depends="log-jul,util,srp.compile">
+        <path id="srp.classpath">
+            <pathelement location="srp/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- standalone module -->
 
@@ -838,9 +868,6 @@
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
-        <path id="standalone.classpath">
-            <pathelement location="standalone/target/main/classes"/>
-        </path>
         <touch file="standalone/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -848,7 +875,11 @@
         <delete dir="standalone/target"/>
     </target>
 
-    <target name="standalone" description="Build the standalone module" depends="api,core,log-jul,util,standalone.compile"/>
+    <target name="standalone" description="Build the standalone module" depends="api,core,log-jul,util,standalone.compile">
+        <path id="standalone.classpath">
+            <pathelement location="standalone/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- tools module -->
 
@@ -883,9 +914,6 @@
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
-        <path id="tools.classpath">
-            <pathelement location="tools/target/main/classes"/>
-        </path>
         <touch file="tools/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -893,7 +921,11 @@
         <delete dir="tools/target"/>
     </target>
 
-    <target name="tools" description="Build the tools module" depends="srp,util,tools.compile"/>
+    <target name="tools" description="Build the tools module" depends="srp,util,tools.compile">
+        <path id="tools.classpath">
+            <pathelement location="tools/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- transaction module -->
 
@@ -921,9 +953,6 @@
                 <path refid="api.classpath"/>
             </classpath>
         </javac>
-        <path id="transaction.classpath">
-            <pathelement location="transaction/target/main/classes"/>
-        </path>
         <touch file="transaction/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -931,7 +960,11 @@
         <delete dir="transaction/target"/>
     </target>
 
-    <target name="transaction" description="Build the transaction module" depends="api,transaction.compile"/>
+    <target name="transaction" description="Build the transaction module" depends="api,transaction.compile">
+        <path id="transaction.classpath">
+            <pathelement location="transaction/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- Utility module -->
 
@@ -956,9 +989,6 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
         </javac>
-        <path id="util.classpath">
-            <pathelement location="util/target/main/classes"/>
-        </path>
         <touch file="util/target/main/.lastcompile" verbose="false"/>
     </target>
 
@@ -966,7 +996,11 @@
         <delete dir="util/target"/>
     </target>
 
-    <target name="util" description="Build the utilities module" depends="util.compile"/>
+    <target name="util" description="Build the utilities module" depends="util.compile">
+        <path id="util.classpath">
+            <pathelement location="util/target/main/classes"/>
+        </path>
+    </target>
 
     <!-- Default targets - keep depends in alpha order by category name -->
     <!-- These targets should explicitly list all modules, even if they will be built by other modules -->
