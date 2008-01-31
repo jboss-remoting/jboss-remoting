@@ -401,7 +401,7 @@
                 <exclude name="**/.*"/>
             </srcfiles>
         </uptodate>
-        <condition property="http-se6.compiler.newenough" else="false">
+        <condition property="http-se6.compiler.newenough">
             <or>
                 <contains string="${java.version}" substring="1.6."/>
                 <contains string="${java.version}" substring="1.7."/>
@@ -892,7 +892,7 @@
                 <exclude name="**/.*"/>
             </srcfiles>
         </uptodate>
-        <condition property="tools.compiler.newenough" else="false">
+        <condition property="tools.compiler.newenough">
             <or>
                 <contains string="${java.version}" substring="1.6."/>
                 <contains string="${java.version}" substring="1.7."/>
