@@ -659,6 +659,44 @@
 
     <target name="mina-sasl" description="Build the mina-sasl module" depends="lib.mina,mina-sasl.compile"/>
 
+    <!-- remote-classloader module -->
+
+    <target name="remote-classloader.compile.depcheck">
+        <mkdir dir="remote-classloader/target/main"/>
+        <uptodate property="remote-classloader.compile.uptodate" targetfile="remote-classloader/target/main/.lastcompile">
+            <srcfiles dir="remote-classloader/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="remote-classloader.compile" depends="remote-classloader.compile.depcheck" unless="remote-classloader.compile.uptodate">
+        <mkdir dir="remote-classloader/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="remote-classloader/src/main/java"
+                destdir="remote-classloader/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+            </classpath>
+        </javac>
+        <path id="remote-classloader.classpath">
+            <pathelement location="remote-classloader/target/main/classes"/>
+        </path>
+        <touch file="remote-classloader/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="remote-classloader.clean">
+        <delete dir="remote-classloader/target"/>
+    </target>
+
+    <target name="remote-classloader" description="Build the remote-classloader module" depends="api,remote-classloader.compile"/>
+
     <!-- samples module -->
 
     <target name="samples.compile.depcheck">
@@ -857,6 +895,44 @@
 
     <target name="tools" description="Build the tools module" depends="srp,util,tools.compile"/>
 
+    <!-- transaction module -->
+
+    <target name="transaction.compile.depcheck">
+        <mkdir dir="transaction/target/main"/>
+        <uptodate property="transaction.compile.uptodate" targetfile="transaction/target/main/.lastcompile">
+            <srcfiles dir="transaction/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="transaction.compile" depends="transaction.compile.depcheck" unless="transaction.compile.uptodate">
+        <mkdir dir="transaction/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="transaction/src/main/java"
+                destdir="transaction/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+            </classpath>
+        </javac>
+        <path id="transaction.classpath">
+            <pathelement location="transaction/target/main/classes"/>
+        </path>
+        <touch file="transaction/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="transaction.clean">
+        <delete dir="transaction/target"/>
+    </target>
+
+    <target name="transaction" description="Build the transaction module" depends="api,transaction.compile"/>
+
     <!-- Utility module -->
 
     <target name="util.compile.depcheck">
@@ -907,6 +983,12 @@
 
     <target name="clean-http" description="Clean all HTTP targets" depends="http.clean,http-mina-client.clean,http-mina-server.clean,http-se6.clean,http-servlet.clean,http-urlconnection.clean"/>
 
+    <!-- interceptors -->
+
+    <target name="all-interceptors" description="Build all interceptor targets" depends="remote-classloader,transaction"/>
+
+    <target name="clean-interceptors" description="Clean all interceptor targets" depends="remote-classloader.clean,transaction.clean"/>
+
     <!-- jrpp -->
 
     <target name="all-jrpp" description="Build all JRPP targets" depends="jrpp,mina-sasl,sasl-null,srp"/>
@@ -921,12 +1003,12 @@
 
     <!-- fetch: These should be the second-to-last targes in the file -->
 
-    <target name="all-fetch" description="Fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jbossmc-deployers-core-spi,lib.jbossmc-deployers-spi,lib.jbossmc-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-managed,lib.jbossxb,lib.mina,lib.servlet"/>
+    <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jbossmc-deployers-core-spi,lib.jbossmc-deployers-spi,lib.jbossmc-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-managed,lib.jbossxb,lib.mina,lib.servlet"/>
 
     <!-- all: These should be the last targets in the file -->
 
-    <target name="all" description="Build everything" depends="all-core,all-http,all-jrpp,all-log"/>
+    <target name="all" description="Build everything" depends="all-core,all-http,all-interceptors,all-jrpp,all-log"/>
 
-    <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,clean-jrpp,clean-log"/>
+    <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,clean-interceptors,clean-jrpp,clean-log"/>
 
 </project>
