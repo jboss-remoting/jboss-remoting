@@ -401,15 +401,12 @@
                 <exclude name="**/.*"/>
             </srcfiles>
         </uptodate>
-        <condition property="http-se6.compiler.newenough">
-            <or>
-                <contains string="${java.version}" substring="1.6."/>
-                <contains string="${java.version}" substring="1.7."/>
-            </or>
+        <condition property="http-se6.supported">
+            <available classname="com.sun.net.httpserver.HttpServer"/>
         </condition>
     </target>
 
-    <target name="http-se6.compile" depends="http-se6.compile.depcheck" unless="http-se6.compile.uptodate" if="http-se6.compiler.newenough">
+    <target name="http-se6.compile" depends="http-se6.compile.depcheck" unless="http-se6.compile.uptodate" if="http-se6.supported">
         <mkdir dir="http-se6/target/main/classes"/>
         <javac
                 source="${javac.source}"
