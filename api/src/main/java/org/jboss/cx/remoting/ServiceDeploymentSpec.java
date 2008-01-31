@@ -58,7 +58,7 @@ public final class ServiceDeploymentSpec<I, O> {
         return new ServiceDeploymentSpec<I, O>(CollectionUtil.unmodifiableList(specs.clone()), serviceName, serviceType, requestType, replyType, requestListener);
     }
 
-    public ServiceDeploymentSpec<I, O> setServiceName(String serviceName) {
+    public ServiceDeploymentSpec<I, O> setServiceGroupName(String serviceName) {
         if (serviceName == null) {
             throw new NullPointerException("serviceName is null");
         }
