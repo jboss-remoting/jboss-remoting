@@ -1032,7 +1032,7 @@
 
     <target name="clean-log" description="Clean all log targets" depends="log-jboss.clean,log-jul.clean"/>
 
-    <!-- fetch: These should be the second-to-last targes in the file -->
+    <!-- fetch: These should be the second-to-last targets in the file -->
 
     <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jbossmc-deployers-core-spi,lib.jbossmc-deployers-spi,lib.jbossmc-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-managed,lib.jbossxb,lib.mina,lib.servlet"/>
 
