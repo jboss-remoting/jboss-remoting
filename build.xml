@@ -182,6 +182,45 @@
         </path>
     </target>
 
+    <!-- compat module -->
+
+    <target name="compat.compile.depcheck">
+        <mkdir dir="compat/target/main"/>
+        <uptodate property="compat.compile.uptodate" targetfile="compat/target/main/.lastcompile">
+            <srcfiles dir="compat/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="compat.compile" depends="compat.compile.depcheck" unless="compat.compile.uptodate">
+        <mkdir dir="compat/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="compat/src/main/java"
+                destdir="compat/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="util.classpath"/>
+            </classpath>
+        </javac>
+        <path id="compat.classpath">
+            <pathelement location="compat/target/main/classes"/>
+        </path>
+        <touch file="compat/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="compat.clean">
+        <delete dir="compat/target"/>
+    </target>
+
+    <target name="compat" description="Build the compat module" depends="api,util,compat.compile"/>
+
     <!-- core module -->
 
     <target name="core.compile.depcheck">
@@ -1004,9 +1043,9 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,core,mc-deployers,samples,standalone,tools,util"/>
+    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,samples,standalone,tools,util"/>
 
-    <target name="clean-core" description="Clean all core targets" depends="api.clean,core.clean,mc-deployers.clean,samples.clean,standalone.clean,tools.clean,util.clean"/>
+    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,samples.clean,standalone.clean,tools.clean,util.clean"/>
 
     <!-- http -->
 
