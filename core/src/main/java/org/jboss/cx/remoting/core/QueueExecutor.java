@@ -6,7 +6,10 @@ import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.log.Logger;
 
 /**
- *
+ * An executor designed to run all submitted tasks in the current thread.  The queue is run continuously
+ * until the {@code shutdown()} method is invoked.  Jobs may be submitted to the queue from any thread.
+ * Only one thread should invoke the {@code runQueue()} method, which will run until the executor is
+ * shut down.
  */
 public final class QueueExecutor implements Executor {
     private static final Logger log = Logger.getLogger(QueueExecutor.class);
