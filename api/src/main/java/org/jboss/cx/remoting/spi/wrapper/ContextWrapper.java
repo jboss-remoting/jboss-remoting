@@ -5,7 +5,6 @@ import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.spi.ContextService;
 
 /**
  *
@@ -33,11 +32,11 @@ public class ContextWrapper<I, O> implements Context<I, O> {
         return delegate.getAttributes();
     }
 
-    public <T extends ContextService> T getService(Class<T> serviceType) throws RemotingException {
+    public <T> T getService(Class<T> serviceType) throws RemotingException {
         return delegate.getService(serviceType);
     }
 
-    public <T extends ContextService> boolean hasService(Class<T> serviceType) {
+    public <T> boolean hasService(Class<T> serviceType) {
         return delegate.hasService(serviceType);
     }
 }

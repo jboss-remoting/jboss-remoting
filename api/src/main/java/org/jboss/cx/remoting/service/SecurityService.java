@@ -1,14 +1,13 @@
 package org.jboss.cx.remoting.service;
 
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.spi.ContextService;
 
 import javax.security.auth.callback.CallbackHandler;
 
 /**
  *
  */
-public interface SecurityService extends ContextService {
+public interface SecurityService {
 
     /**
      * @param userName

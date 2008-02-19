@@ -10,7 +10,6 @@ import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
-import org.jboss.cx.remoting.spi.ContextService;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
@@ -175,12 +174,12 @@ public final class CoreOutboundContext<I, O> {
             return contextMap;
         }
 
-        public <T extends ContextService> T getService(final Class<T> serviceType) throws RemotingException {
+        public <T> T getService(final Class<T> serviceType) throws RemotingException {
             // todo interceptors
             return null;
         }
 
-        public <T extends ContextService> boolean hasService(final Class<T> serviceType) {
+        public <T> boolean hasService(final Class<T> serviceType) {
             // todo interceptors
             return false;
         }

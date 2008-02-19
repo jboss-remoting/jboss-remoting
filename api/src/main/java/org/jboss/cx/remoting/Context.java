@@ -1,7 +1,6 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.ConcurrentMap;
-import org.jboss.cx.remoting.spi.ContextService;
 
 /**
  * A communications context.  The context may be associated with a security/authentication state and a transactional
@@ -60,7 +59,7 @@ public interface Context<I, O> {
      * @return an instance of the given interface
      * @throws RemotingException if the service is not valid or is not available
      */
-    <T extends ContextService> T getService(Class<T> serviceType) throws RemotingException;
+    <T> T getService(Class<T> serviceType) throws RemotingException;
 
     /**
      * Determine whether this context supports a service with the given client interface.
@@ -68,5 +67,5 @@ public interface Context<I, O> {
      * @param serviceType the service interface type
      * @return {@code true} if the given service type is supported
      */
-    <T extends ContextService> boolean hasService(Class<T> serviceType);
+    <T> boolean hasService(Class<T> serviceType);
 }
