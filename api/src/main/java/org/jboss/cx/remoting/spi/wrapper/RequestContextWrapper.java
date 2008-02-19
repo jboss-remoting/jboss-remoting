@@ -30,8 +30,8 @@ public class RequestContextWrapper<O> implements RequestContext<O> {
         delegate.sendCancelled();
     }
 
-    public void setCancelHandler(final RequestCancelHandler<O> requestCancelHandler) {
-        delegate.setCancelHandler(requestCancelHandler);
+    public void addCancelHandler(final RequestCancelHandler<O> requestCancelHandler) {
+        delegate.addCancelHandler(requestCancelHandler);
     }
 
 }

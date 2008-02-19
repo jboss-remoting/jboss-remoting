@@ -87,7 +87,7 @@ public final class CoreInboundRequest<I, O> {
             context.sendCancelAcknowledge(requestIdentifier);
         }
 
-        public void setCancelHandler(final RequestCancelHandler<O> requestCancelHandler) {
+        public void addCancelHandler(final RequestCancelHandler<O> requestCancelHandler) {
             // todo - should be a list
         }
     }

@@ -40,18 +40,10 @@ public interface RequestContext<O> {
     void sendCancelled() throws RemotingException, IllegalStateException;
 
     /**
-     * Set a notifier to be called if a cancel request is received.  The notifier may be called from the current thread
-     * or a different thread.  If the request has already been cancelled, the notifier will be called immediately.  If there
-     * was a previous notifier set, it will be overwritten.  Calling this method guarantees that the supplied handler
-     * will be called, unless it is cleared or a new handler is set before the original handler is called.  The handler
-     * may be called at any time after the cancel request is recevied, though implementations should make a reasonable effort
-     * to ensure that the handler is called in a timely manner.  The handler is cleared before it is called.
-     * <p/>
-     * Setting a {@code null} value clears any notifier.
-     * <p/>
-     * This method returns {@code this} in order to facilitate method call chaining.
+     * Add a notifier to be called if a cancel request is received.  The notifier may be called from the current thread
+     * or a different thread.  If the request has already been cancelled, the notifier will be called immediately.
      *
      * @param handler
      */
-    void setCancelHandler(RequestCancelHandler<O> handler);
+    void addCancelHandler(RequestCancelHandler<O> handler);
 }
