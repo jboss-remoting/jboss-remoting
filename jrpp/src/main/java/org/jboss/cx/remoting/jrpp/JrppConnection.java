@@ -125,6 +125,7 @@ public final class JrppConnection {
         try {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
+            this.protocolContext = protocolContext;
         } finally {
             state.releaseExclusive();
         }
@@ -312,13 +313,31 @@ public final class JrppConnection {
         output.commit();
     }
 
-    public void sendVersionMessage() throws IOException {
+    private void sendVersionMessage() throws IOException {
         // send version info
         final IoBuffer buffer = newBuffer(60, false);
         final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
         write(output, MessageType.VERSION);
         output.writeShort(PROTOCOL_VERSION);
         output.writeUTF(protocolContext.getLocalEndpointName());
+        output.commit();
+    }
+
+    private void sendAuthRequest() throws IOException {
+        final CallbackHandler callbackHandler = getClientCallbackHandler(attributeMap);
+        final Map<String, ?> saslProps = getSaslProperties(attributeMap);
+        final String[] clientMechs = getClientMechanisms(attributeMap, saslProps);
+        final String authorizationId = getAuthorizationId(attributeMap, protocolContext);
+        final SaslClient saslClient = Sasl.createSaslClient(clientMechs, authorizationId, "jrpp", remoteName, saslProps, callbackHandler);
+        final SaslClientFilter saslClientFilter = getSaslClientFilter();
+        saslClientFilter.setSaslClient(ioSession, saslClient);
+        final IoBuffer buffer = newBuffer(600, true);
+        MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+        write(output, MessageType.AUTH_REQUEST);
+        output.writeInt(clientMechs.length);
+        for (String mech : clientMechs) {
+            output.writeUTF(mech);
+        }
         output.commit();
     }
 
@@ -633,22 +652,30 @@ public final class JrppConnection {
                             for (int i = 0; i < mechCount; i ++) {
                                 clientMechs[i] = input.readUTF();
                             }
-                            final CallbackHandler callbackHandler = getServerCallbackHandler(attributeMap);
-                            final Map<String, ?> saslProps = getSaslProperties(attributeMap);
-                            final Set<String> serverMechs = getServerMechanisms(attributeMap, saslProps);
-                            final String negotiatedMechanism = getNegotiatedMechanism(clientMechs, serverMechs);
-                            final SaslServer saslServer = Sasl.createSaslServer(negotiatedMechanism, "jrpp", protocolContext.getLocalEndpointName(), saslProps, callbackHandler);
-                            final SaslServerFilter saslServerFilter = getSaslServerFilter();
-                            saslServerFilter.setSaslServer(ioSession, saslServer);
-                            if (saslServerFilter.sendInitialChallenge(ioSession)) {
-                                // complete (that was quick!)
-                                final IoBuffer buffer = newBuffer(60, false);
+                            try {
+                                final CallbackHandler callbackHandler = getServerCallbackHandler(attributeMap);
+                                final Map<String, ?> saslProps = getSaslProperties(attributeMap);
+                                final Set<String> serverMechs = getServerMechanisms(attributeMap, saslProps);
+                                final String negotiatedMechanism = getNegotiatedMechanism(clientMechs, serverMechs);
+                                final SaslServer saslServer = Sasl.createSaslServer(negotiatedMechanism, "jrpp", protocolContext.getLocalEndpointName(), saslProps, callbackHandler);
+                                final SaslServerFilter saslServerFilter = getSaslServerFilter();
+                                saslServerFilter.setSaslServer(ioSession, saslServer);
+                                if (saslServerFilter.sendInitialChallenge(ioSession)) {
+                                    // complete (that was quick!)
+                                    final IoBuffer buffer = newBuffer(60, false);
+                                    final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+                                    write(output, MessageType.AUTH_SUCCESS);
+                                    output.commit();
+                                    state.requireTransition(State.AWAITING_CLIENT_VERSION, State.UP);
+                                } else {
+                                    state.requireTransition(State.AWAITING_CLIENT_VERSION, State.AWAITING_CLIENT_RESPONSE);
+                                }
+                            } catch (SaslException ex) {
+                                final IoBuffer buffer = newBuffer(100, true);
                                 final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
-                                write(output, MessageType.AUTH_SUCCESS);
+                                write(output, MessageType.AUTH_FAILED);
+                                output.writeUTF("Unable to initiate SASL authentication: " + ex.getMessage());
                                 output.commit();
-                                state.requireTransition(State.AWAITING_CLIENT_VERSION, State.UP);
-                            } else {
-                                state.requireTransition(State.AWAITING_CLIENT_VERSION, State.AWAITING_CLIENT_RESPONSE);
                             }
                             return;
                         }
@@ -664,13 +691,7 @@ public final class JrppConnection {
                             }
                             final String name = input.readUTF();
                             remoteName = name.length() > 0 ? name : null;
-                            final CallbackHandler callbackHandler = getClientCallbackHandler(attributeMap);
-                            final Map<String, ?> saslProps = getSaslProperties(attributeMap);
-                            final String[] clientMechs = getClientMechanisms(attributeMap, saslProps);
-                            final String authorizationId = getAuthorizationId(attributeMap, protocolContext);
-                            final SaslClient saslClient = Sasl.createSaslClient(clientMechs, authorizationId, "jrpp", remoteName, saslProps, callbackHandler);
-                            final SaslClientFilter saslClientFilter = getSaslClientFilter();
-                            saslClientFilter.setSaslClient(ioSession, saslClient);
+                            sendAuthRequest();
                             state.requireTransition(State.AWAITING_SERVER_VERSION, State.AWAITING_SERVER_CHALLENGE);
                             return;
                         }
@@ -696,9 +717,10 @@ public final class JrppConnection {
                                     state.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.UP);
                                 }
                             } catch (SaslException ex) {
-                                final IoBuffer buffer = newBuffer(60, false);
+                                final IoBuffer buffer = newBuffer(100, true);
                                 final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
                                 write(output, MessageType.AUTH_FAILED);
+                                output.writeUTF("Authentication failed: " + ex.getMessage());
                                 output.commit();
                                 log.info("Client authentication failed (" + ex.getMessage() + ")");
                                 // todo - retry counter - JBREM-907
@@ -725,7 +747,8 @@ public final class JrppConnection {
                             return;
                         }
                         case AUTH_FAILED: {
-                            log.info("JRPP client rejected authentication");
+                            String reason = input.readUTF();
+                            log.info("JRPP client failed to authenticate: %s", reason);
                             final SaslClientFilter oldClientFilter = getSaslClientFilter();
                             oldClientFilter.destroy();
                             final CallbackHandler callbackHandler = getClientCallbackHandler(attributeMap);
@@ -735,6 +758,8 @@ public final class JrppConnection {
                             final SaslClient saslClient = Sasl.createSaslClient(clientMechs, authorizationId, "jrpp", remoteName, saslProps, callbackHandler);
                             final SaslClientFilter saslClientFilter = getSaslClientFilter();
                             saslClientFilter.setSaslClient(ioSession, saslClient);
+                            // todo - retry counter - JBREM-907
+                            sendAuthRequest();
                             return;
                         }
                         default: break OUT;
