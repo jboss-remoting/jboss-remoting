@@ -150,6 +150,7 @@ public final class JrppProtocolSupport {
                 }
             });
             future.awaitUninterruptibly();
+            jrppConnection.waitForUp();
             return jrppConnection.getProtocolHandler();
         }
 

@@ -81,6 +81,19 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
+    public boolean transitionExclusive(final T state) {
+        if (state == null) {
+            throw new NullPointerException("state is null");
+        }
+        writeLock.lock();
+        if (this.state == state) {
+            return false;
+        }
+        this.state = state;
+        cond.signalAll();
+        return true;
+    }
+
     /**
      * Release a held state.  Must be called from the same thread that is holding the state.
      */

@@ -77,6 +77,7 @@ public final class JrppConnection {
     private IoSession ioSession;
     private String remoteName;
     private ProtocolContext protocolContext;
+    private IOException failureReason;
 
     /**
      * The negotiated protocol version.  Value is set to {@code min(PROTOCOL_VERSION, remote PROTOCOL_VERSION)}.
@@ -106,6 +107,8 @@ public final class JrppConnection {
         UP,
         /** Session is shutting down or closed */
         CLOSED,
+        /** Session failed to connect */
+        FAILED,
     }
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.NEW);
@@ -336,17 +339,26 @@ public final class JrppConnection {
         output.commit();
     }
 
-    public boolean waitForUp() throws IOException {
-        while (! state.in(State.UP, State.CLOSED)) {
+    public void waitForUp() throws IOException {
+        while (! state.in(State.UP, State.FAILED)) {
             state.waitForAny();
         }
-        return state.in(State.UP);
+        if (state.in(State.FAILED)) {
+            throw failureReason;
+        }
     }
 
     private void close() {
         state.transition(State.CLOSED);
         ioSession.close();
         protocolContext.closeSession();
+    }
+
+    private void fail(IOException reason) {
+        if (state.transitionExclusive(State.FAILED)) {
+            failureReason = reason;
+            state.releaseExclusive();
+        }
     }
 
     private static IoBuffer newBuffer(final int initialSize, final boolean autoexpand) {
@@ -589,7 +601,24 @@ public final class JrppConnection {
         }
 
         public void sessionClosed() {
-            close();
+            State current = state.getStateExclusive();
+            try {
+                switch (current) {
+                    case AWAITING_CLIENT_AUTH_REQUEST:
+                    case AWAITING_CLIENT_RESPONSE:
+                    case AWAITING_CLIENT_VERSION:
+                    case AWAITING_SERVER_CHALLENGE:
+                    case AWAITING_SERVER_VERSION:
+                    case NEW:
+                        fail(new IOException("Unexpected session close"));
+                        return;
+                    default:
+                        close();
+                        return;
+                }
+            } finally {
+                state.releaseExclusive();
+            }
         }
 
         public void sessionIdle(IdleStatus idleStatus) {
@@ -597,7 +626,11 @@ public final class JrppConnection {
 
         public void exceptionCaught(Throwable throwable) {
             log.error(throwable, "Exception from JRPP connection handler");
-            close();
+            if (throwable instanceof IOException) {
+                fail((IOException)throwable);
+            } else {
+                fail(new IOException("Unexpected exception from handler: " + throwable.toString()));
+            }
         }
 
         private ContextIdentifier readCtxtId(MessageInput input) throws IOException {
@@ -656,6 +689,7 @@ public final class JrppConnection {
                                     output.commit();
                                     saslServerFilter.startEncryption(ioSession);
                                     state.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.UP);
+                                    protocolContext.openSession(remoteName);
                                 }
                             } catch (SaslException ex) {
                                 final IoBuffer buffer = newBuffer(100, true);
@@ -699,6 +733,7 @@ public final class JrppConnection {
                                     write(output, MessageType.AUTH_SUCCESS);
                                     output.commit();
                                     state.requireTransition(State.UP);
+                                    protocolContext.openSession(remoteName);
                                 } else {
                                     state.requireTransition(State.AWAITING_CLIENT_RESPONSE);
                                 }
@@ -749,6 +784,7 @@ public final class JrppConnection {
                             SaslClientFilter saslClientFilter = getSaslClientFilter();
                             saslClientFilter.startEncryption(ioSession);
                             state.requireTransition(State.AWAITING_SERVER_CHALLENGE, State.UP);
+                            protocolContext.openSession(remoteName);
                             return;
                         }
                         case AUTH_FAILED: {
