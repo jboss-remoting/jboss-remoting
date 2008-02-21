@@ -1080,6 +1080,81 @@
     <!-- JARS - Keep in alpha order by jar name         -->
     <!-- ============================================== -->
 
+    <target name="api-jar" description="Build the API JAR" depends="api,util,version">
+        <delete file="jboss-remoting-api.jar"/>
+        <jar jarfile="jboss-remoting-api.jar">
+            <manifest>
+                <attribute name="Created-By" value="${java.vm.version} (${java.vm.vendor})"/>
+                <attribute name="Specification-Title" value="JBoss Remoting"/>
+                <attribute name="Specification-Version" value="${version}"/>
+                <attribute name="Specification-Vendor" value="JBoss (http://www.jboss.org/)"/>
+                <attribute name="Implementation-Title" value="JBoss Remoting (API)"/>
+                <attribute name="Implementation-URL" value="http://labs.jboss.org/jbossremoting/"/>
+                <attribute name="Implementation-Version" value="${version}"/>
+                <attribute name="Implementation-Vendor" value="JBoss, a division of Red Hat, Inc."/>
+                <attribute name="Implementation-Vendor-Id" value="http://www.jboss.org"/>
+            </manifest>
+            <zipfileset dir="api/target/main/classes">
+                <include name="**/*.class"/>
+            </zipfileset>
+            <zipfileset dir="util/target/main/classes">
+                <include name="**/*.class"/>
+            </zipfileset>
+        </jar>
+    </target>
+
+    <target name="core-jar" description="Build the Core JAR" depends="core,log-jboss,version">
+        <delete file="jboss-remoting-core.jar"/>
+        <jar jarfile="jboss-remoting-core.jar">
+            <manifest>
+                <attribute name="Created-By" value="${java.vm.version} (${java.vm.vendor})"/>
+                <attribute name="Specification-Title" value="JBoss Remoting"/>
+                <attribute name="Specification-Version" value="${version}"/>
+                <attribute name="Specification-Vendor" value="JBoss (http://www.jboss.org/)"/>
+                <attribute name="Implementation-Title" value="JBoss Remoting (Core)"/>
+                <attribute name="Implementation-URL" value="http://labs.jboss.org/jbossremoting/"/>
+                <attribute name="Implementation-Version" value="${version}"/>
+                <attribute name="Implementation-Vendor" value="JBoss, a division of Red Hat, Inc."/>
+                <attribute name="Implementation-Vendor-Id" value="http://www.jboss.org"/>
+            </manifest>
+            <zipfileset dir="core/target/main/classes">
+                <include name="**/*.class"/>
+            </zipfileset>
+            <zipfileset dir="log-jboss/target/main/classes">
+                <include name="**/*.class"/>
+            </zipfileset>
+            <zipfileset dir="version/target/main/classes">
+                <include name="**/*.class"/>
+            </zipfileset>
+        </jar>
+    </target>
+
+    <target name="jrpp-jar" description="Build the JRPP JAR" depends="jrpp,mina-sasl,srp,version">
+        <delete file="jboss-remoting-jrpp.jar"/>
+        <jar jarfile="jboss-remoting-jrpp.jar">
+            <manifest>
+                <attribute name="Created-By" value="${java.vm.version} (${java.vm.vendor})"/>
+                <attribute name="Specification-Title" value="JBoss Remoting"/>
+                <attribute name="Specification-Version" value="${version}"/>
+                <attribute name="Specification-Vendor" value="JBoss (http://www.jboss.org/)"/>
+                <attribute name="Implementation-Title" value="JBoss Remoting (JRPP)"/>
+                <attribute name="Implementation-URL" value="http://labs.jboss.org/jbossremoting/"/>
+                <attribute name="Implementation-Version" value="${version}"/>
+                <attribute name="Implementation-Vendor" value="JBoss, a division of Red Hat, Inc."/>
+                <attribute name="Implementation-Vendor-Id" value="http://www.jboss.org"/>
+            </manifest>
+            <zipfileset dir="jrpp/target/main/classes">
+                <include name="**/*.class"/>
+            </zipfileset>
+            <zipfileset dir="mina-sasl/target/main/classes">
+                <include name="**/*.class"/>
+            </zipfileset>
+            <zipfileset dir="srp/target/main/classes">
+                <include name="**/*.class"/>
+            </zipfileset>
+        </jar>
+    </target>
+
     <target name="standalone-jar" description="Build the standalone JAR" depends="api,core,jrpp,log-jul,srp,standalone,util,version">
         <delete file="jboss-remoting-standalone.jar"/>
         <jar jarfile="jboss-remoting-standalone.jar">
@@ -1151,13 +1226,17 @@
 
     <target name="clean-log" description="Clean all log targets" depends="log-jboss.clean,log-jul.clean"/>
 
+    <!-- JARs: These should be the third-to-last targets in the file -->
+
+    <target name="all-jars" description="Build all the JARs" depends="api-jar,core-jar,jrpp-jar,standalone-jar"/>
+
     <!-- fetch: These should be the second-to-last targets in the file -->
 
     <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jbossmc-deployers-core-spi,lib.jbossmc-deployers-spi,lib.jbossmc-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-managed,lib.jbossxb,lib.mina,lib.servlet"/>
 
     <!-- all: These should be the last targets in the file -->
 
-    <target name="all" description="Build everything" depends="all-core,all-http,all-interceptors,all-jrpp,all-log"/>
+    <target name="all" description="Build everything" depends="all-core,all-http,all-interceptors,all-jrpp,all-log,all-jars"/>
 
     <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,clean-interceptors,clean-jrpp,clean-log"/>
 
