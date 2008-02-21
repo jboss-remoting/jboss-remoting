@@ -19,6 +19,8 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ServiceDeploymentSpec;
 import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.version.Version;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
 import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
@@ -47,6 +49,10 @@ public final class CoreEndpoint {
     private final OrderedExecutorFactory orderedExecutorFactory;
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
     private final ExecutorService executor;
+
+    static {
+        Logger.getLogger("org.jboss.cx.remoting").info("JBoss Remoting version %s", Version.VERSION);
+    }
 
     private enum State {
         UP,
