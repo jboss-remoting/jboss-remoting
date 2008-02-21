@@ -1,14 +1,12 @@
 package org.jboss.cx.remoting;
 
-import org.jboss.cx.remoting.core.util.AttributeKey;
-
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.List;
+import org.jboss.cx.remoting.core.util.AttributeKey;
+import static org.jboss.cx.remoting.core.util.AttributeKey.key;
 
 import javax.security.auth.callback.CallbackHandler;
-
-import static org.jboss.cx.remoting.core.util.AttributeKey.key;
 
 /**
  * A set of attribute keys that are common across various protocols.

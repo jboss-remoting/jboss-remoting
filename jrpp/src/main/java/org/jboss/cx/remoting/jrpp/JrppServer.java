@@ -1,22 +1,22 @@
 package org.jboss.cx.remoting.jrpp;
 
+import java.io.IOException;
 import java.net.SocketAddress;
 import java.util.concurrent.Executor;
-import java.io.IOException;
-import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.apache.mina.common.IoAcceptor;
 import org.apache.mina.common.IoHandler;
-import org.apache.mina.common.IoSession;
 import org.apache.mina.common.IoProcessor;
+import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.logging.LoggingFilter;
-import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.filter.sasl.SaslMessageSender;
-import org.apache.mina.handler.multiton.SingleSessionIoHandlerFactory;
+import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
 import org.apache.mina.handler.multiton.SingleSessionIoHandlerDelegate;
+import org.apache.mina.handler.multiton.SingleSessionIoHandlerFactory;
+import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.jrpp.mina.FramingIoFilter;
 import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
-import org.jboss.cx.remoting.core.util.AttributeMap;
 
 /**
  *

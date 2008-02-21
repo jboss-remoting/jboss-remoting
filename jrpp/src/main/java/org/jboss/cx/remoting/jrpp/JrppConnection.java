@@ -1,17 +1,15 @@
 package org.jboss.cx.remoting.jrpp;
 
-import static java.lang.Math.min;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.util.Set;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.List;
+import static java.lang.Math.min;
 import java.util.Enumeration;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import org.apache.mina.common.AttributeKey;
 import org.apache.mina.common.IdleStatus;
@@ -20,15 +18,14 @@ import org.apache.mina.common.IoSession;
 import org.apache.mina.filter.sasl.SaslClientFilter;
 import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
+import org.jboss.cx.remoting.CommonKeys;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.ServiceLocator;
-import org.jboss.cx.remoting.CommonKeys;
-import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.MessageInput;
 import org.jboss.cx.remoting.core.util.MessageOutput;
-import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.jrpp.id.IdentifierManager;
 import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
@@ -36,6 +33,7 @@ import org.jboss.cx.remoting.jrpp.id.JrppServiceIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppStreamIdentifier;
 import org.jboss.cx.remoting.jrpp.mina.IoBufferByteInput;
 import org.jboss.cx.remoting.jrpp.mina.IoBufferByteOutput;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
@@ -44,18 +42,18 @@ import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 
-import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.PasswordCallback;
-import javax.security.sasl.Sasl;
-import javax.security.sasl.SaslException;
-import javax.security.sasl.SaslClient;
-import javax.security.sasl.SaslServer;
-import javax.security.sasl.RealmCallback;
-import javax.security.sasl.SaslServerFactory;
+import javax.security.auth.callback.UnsupportedCallbackException;
 import javax.security.sasl.AuthorizeCallback;
+import javax.security.sasl.RealmCallback;
+import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslClient;
+import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslServer;
+import javax.security.sasl.SaslServerFactory;
 
 /**
  *
@@ -177,7 +175,7 @@ public final class JrppConnection {
         return mechanisms;
     }
 
-    private String[] getClientMechanisms(final AttributeMap attributeMap, final Map<String, ?> saslProps) {
+    private String[] getClientMechanisms(final AttributeMap attributeMap) {
         final List<String> list = attributeMap.get(CommonKeys.SASL_CLIENT_MECHANISMS);
         if (list != null) {
             return list.toArray(new String[list.size()]);
@@ -321,7 +319,7 @@ public final class JrppConnection {
     private void sendAuthRequest() throws IOException {
         final CallbackHandler callbackHandler = getClientCallbackHandler(attributeMap);
         final Map<String, ?> saslProps = getSaslProperties(attributeMap);
-        final String[] clientMechs = getClientMechanisms(attributeMap, saslProps);
+        final String[] clientMechs = getClientMechanisms(attributeMap);
         final String authorizationId = getAuthorizationId(attributeMap, protocolContext);
         final SaslClient saslClient = Sasl.createSaslClient(clientMechs, authorizationId, "jrpp", remoteName, saslProps, callbackHandler);
         final SaslClientFilter saslClientFilter = getSaslClientFilter();
@@ -758,7 +756,7 @@ public final class JrppConnection {
                             oldClientFilter.destroy();
                             final CallbackHandler callbackHandler = getClientCallbackHandler(attributeMap);
                             final Map<String, ?> saslProps = getSaslProperties(attributeMap);
-                            final String[] clientMechs = getClientMechanisms(attributeMap, saslProps);
+                            final String[] clientMechs = getClientMechanisms(attributeMap);
                             final String authorizationId = getAuthorizationId(attributeMap, protocolContext);
                             final SaslClient saslClient = Sasl.createSaslClient(clientMechs, authorizationId, "jrpp", remoteName, saslProps, callbackHandler);
                             final SaslClientFilter saslClientFilter = getSaslClientFilter();

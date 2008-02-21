@@ -2,11 +2,11 @@ package org.jboss.cx.remoting;
 
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.spi.Discovery;
 import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
-import org.jboss.cx.remoting.core.util.AttributeMap;
 
 /**
  * A potential participant in a JBoss Remoting communications relationship.

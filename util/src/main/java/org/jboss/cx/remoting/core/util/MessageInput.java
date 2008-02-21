@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.core.util;
 
-import java.io.ObjectInput;
 import java.io.IOException;
+import java.io.ObjectInput;
 
 /**
  *

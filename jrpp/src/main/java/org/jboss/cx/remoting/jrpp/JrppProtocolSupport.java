@@ -1,15 +1,15 @@
 package org.jboss.cx.remoting.jrpp;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
-import java.net.InetSocketAddress;
 import java.util.concurrent.Executor;
-import org.apache.mina.common.IoConnector;
-import org.apache.mina.common.IoSession;
 import org.apache.mina.common.ConnectFuture;
-import org.apache.mina.common.IoSessionInitializer;
+import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoProcessor;
+import org.apache.mina.common.IoSession;
+import org.apache.mina.common.IoSessionInitializer;
 import org.apache.mina.filter.logging.LoggingFilter;
 import org.apache.mina.filter.sasl.SaslClientFilter;
 import org.apache.mina.filter.sasl.SaslMessageSender;

@@ -1,20 +1,20 @@
 package org.jboss.cx.remoting;
 
-import java.net.URI;
 import java.io.IOException;
-import org.jboss.cx.remoting.log.Logger;
+import java.net.URI;
 import org.jboss.cx.remoting.core.CoreEndpointProvider;
-import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.core.util.AttributeHashMap;
+import org.jboss.cx.remoting.core.util.AttributeMap;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.EndpointProvider;
 import org.jboss.cx.remoting.spi.wrapper.ContextSourceWrapper;
 import org.jboss.cx.remoting.spi.wrapper.SessionWrapper;
 
-import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.PasswordCallback;
+import javax.security.auth.callback.UnsupportedCallbackException;
 
 /**
  *
