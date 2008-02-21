@@ -46,6 +46,8 @@ public interface ProtocolContext {
 
     void receiveStreamData(StreamIdentifier streamIdentifier, MessageInput data);
 
+    void openSession(String remoteEndpointName);
+
     void closeSession();
 
     /* CLIENT OR SERVER methods */

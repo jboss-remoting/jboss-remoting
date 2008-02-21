@@ -7,6 +7,7 @@ import java.util.Random;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.http.spi.RemotingHttpServerContext;
 import org.jboss.cx.remoting.http.spi.RemotingHttpSessionContext;
 import org.jboss.cx.remoting.http.spi.HttpTransporter;
@@ -17,8 +18,6 @@ import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
-
-import javax.security.auth.callback.CallbackHandler;
 
 /**
  *
@@ -68,11 +67,11 @@ public final class HttpProtocolSupport {
             return false;
         }
 
-        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, CallbackHandler clientCallbackHandler) throws IOException {
+        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, final AttributeMap attributeMap) throws IOException {
             if (httpTransporter == null) {
                 throw new IOException("No ability to initiate an HTTP connection (no transporter available)");
             }
-            return new RemotingHttpSessionImpl(HttpProtocolSupport.this, context, clientCallbackHandler).getProtocolHandler();
+            return new RemotingHttpSessionImpl(HttpProtocolSupport.this, context).getProtocolHandler();
         }
 
         public void close() {

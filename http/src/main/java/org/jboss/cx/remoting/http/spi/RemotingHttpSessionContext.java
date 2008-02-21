@@ -20,10 +20,4 @@ public interface RemotingHttpSessionContext {
 
     OutgoingHttpMessage getNextMessage(long timeoutMillis) throws InterruptedException;
 
-    /**
-     * Get the callback handler to use to authenticate incoming HTTP messages.
-     *
-     * @return the callback handler
-     */
-    CallbackHandler getCallbackHandler();
 }

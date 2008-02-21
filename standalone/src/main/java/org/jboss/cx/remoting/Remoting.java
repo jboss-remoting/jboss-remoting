@@ -1,11 +1,20 @@
 package org.jboss.cx.remoting;
 
 import java.net.URI;
+import java.io.IOException;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.core.CoreEndpointProvider;
+import org.jboss.cx.remoting.core.util.AttributeMap;
+import org.jboss.cx.remoting.core.util.AttributeHashMap;
 import org.jboss.cx.remoting.spi.EndpointProvider;
 import org.jboss.cx.remoting.spi.wrapper.ContextSourceWrapper;
 import org.jboss.cx.remoting.spi.wrapper.SessionWrapper;
+
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.security.auth.callback.NameCallback;
+import javax.security.auth.callback.PasswordCallback;
 
 /**
  *
@@ -21,11 +30,26 @@ public final class Remoting {
         return EndpointProviderHolder.provider.createEndpoint(name);
     }
 
-    public static Session createEndpointAndSession(String endpointName, URI remoteUri, String userName, char[] password) throws RemotingException {
+    public static Session createEndpointAndSession(String endpointName, URI remoteUri, final String userName, final char[] password) throws RemotingException {
         final Endpoint endpoint = createEndpoint(endpointName);
         boolean ok = false;
+        final CallbackHandler callbackHandler = new CallbackHandler() {
+            public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+                for (Callback callback : callbacks) {
+                    if (callback instanceof NameCallback) {
+                        ((NameCallback)callback).setName(userName);
+                    } else if (callback instanceof PasswordCallback) {
+                        ((PasswordCallback)callback).setPassword(password);
+                    } else {
+                        throw new UnsupportedCallbackException(callback);
+                    }
+                }
+            }
+        };
+        final AttributeMap attributeMap = new AttributeHashMap();
+        attributeMap.put(CommonKeys.AUTH_CALLBACK_HANDLER, callbackHandler);
         try {
-            final Session session = new SessionWrapper(endpoint.openSession(EndpointLocator.DEFAULT.setEndpointUri(remoteUri).setClientAuthentication(userName, password), null)) {
+            final Session session = new SessionWrapper(endpoint.openSession(remoteUri, attributeMap)) {
                 public void close() throws RemotingException {
                     try {
                         super.close();

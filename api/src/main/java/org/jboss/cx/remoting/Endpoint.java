@@ -8,8 +8,6 @@ import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 import org.jboss.cx.remoting.core.util.AttributeMap;
 
-import javax.security.auth.callback.CallbackHandler;
-
 /**
  * A potential participant in a JBoss Remoting communications relationship.
  */
@@ -47,14 +45,14 @@ public interface Endpoint {
      * authority is used to locate the server (the exact interpretation is dependent upon the protocol). The URI path is
      * the service to connect to.  The path may be relative to a protocol-specific deployment path.
      *
-     * @param endpointLocator the endpoint locator
+     * @param remoteUri the URI of the server to connect to
      * @param attributeMap the attribute map to use to configure this session
      * @return a new session
      *
      * @throws RemotingException if there is a problem creating the session, or if the request or reply type does not
      * match the remote service
      */
-    Session openSession(EndpointLocator endpointLocator, AttributeMap attributeMap) throws RemotingException;
+    Session openSession(URI remoteUri, AttributeMap attributeMap) throws RemotingException;
 
     /**
      * Get the name of this endpoint.
@@ -116,32 +114,4 @@ public interface Endpoint {
      * @throws RemotingException if there is a problem with the discovery parameters
      */
     Discovery discover(String endpointName, URI nextHop, int cost) throws RemotingException;
-
-    /**
-     * Get the callback handler used to authenticate a remote endpoint by default.
-     *
-     * @return the callback handler
-     */
-    CallbackHandler getRemoteCallbackHandler();
-
-    /**
-     * Change the callback handler used to authenticate a remote endpoint by default.
-     *
-     * @param callbackHandler the callback handler
-     */
-    void setRemoteCallbackHandler(CallbackHandler callbackHandler);
-
-    /**
-     * Get the callback handler used to authenticate this endpoint to a remote endpoint by default.
-     *
-     * @return the callback handler
-     */
-    CallbackHandler getLocalCallbackHandler();
-
-    /**
-     * Change the callback handler used to authenticate this endpoint to a remote endpoint by default.
-     *
-     * @param callbackHandler the callback handler
-     */
-    void setLocalCallbackHandler(CallbackHandler callbackHandler);
 }

@@ -13,7 +13,6 @@ import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jboss.cx.remoting.Endpoint;
-import org.jboss.cx.remoting.EndpointLocator;
 import org.jboss.cx.remoting.EndpointShutdownListener;
 import org.jboss.cx.remoting.InterceptorDeploymentSpec;
 import org.jboss.cx.remoting.RemotingException;
@@ -45,8 +44,6 @@ public final class CoreEndpoint {
 
     private final String name;
     private final Endpoint userEndpoint = new UserEndpoint();
-    private CallbackHandler remoteCallbackHandler;
-    private CallbackHandler localCallbackHandler;
     private final OrderedExecutorFactory orderedExecutorFactory;
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
     private final ExecutorService executor;
@@ -179,7 +176,10 @@ public final class CoreEndpoint {
         }
 
         public ProtocolContext establishSession(ProtocolHandler handler) {
-            final CoreSession session = new CoreSession(CoreEndpoint.this, handler);
+            final CoreSession session = new CoreSession(CoreEndpoint.this);
+            session.initializeServer(handler);
+
+            //, handler);
             return session.getProtocolContext();
         }
     }
@@ -288,8 +288,8 @@ public final class CoreEndpoint {
             }
         }
 
-        public Session openSession(final EndpointLocator endpointLocator, final AttributeMap attributeMap) throws RemotingException {
-            final String scheme = endpointLocator.getEndpointUri().getScheme();
+        public Session openSession(final URI uri, final AttributeMap attributeMap) throws RemotingException {
+            final String scheme = uri.getScheme();
             if (scheme == null) {
                 throw new RemotingException("No scheme on remote endpoint URI");
             }
@@ -301,7 +301,8 @@ public final class CoreEndpoint {
                 }
                 final ProtocolHandlerFactory factory = registration.getProtocolHandlerFactory();
                 try {
-                    final CoreSession session = new CoreSession(CoreEndpoint.this, factory, endpointLocator);
+                    final CoreSession session = new CoreSession(CoreEndpoint.this);
+                    session.initializeClient(factory, uri, attributeMap);
                     sessions.add(session);
                     return session.getUserSession();
                 } catch (IOException e) {
@@ -366,30 +367,6 @@ public final class CoreEndpoint {
         public Discovery discover(String endpointName, URI nextHop, int cost) throws RemotingException {
             // todo - implement
             return null;
-        }
-
-        public CallbackHandler getRemoteCallbackHandler() {
-            synchronized(this) {
-                return remoteCallbackHandler;
-            }
-        }
-
-        public CallbackHandler getLocalCallbackHandler() {
-            synchronized(this) {
-                return localCallbackHandler;
-            }
-        }
-
-        public void setRemoteCallbackHandler(final CallbackHandler remoteCallbackHandler) {
-            synchronized(this) {
-                CoreEndpoint.this.remoteCallbackHandler = remoteCallbackHandler;
-            }
-        }
-
-        public void setLocalCallbackHandler(final CallbackHandler localCallbackHandler) {
-            synchronized(this) {
-                CoreEndpoint.this.localCallbackHandler = localCallbackHandler;
-            }
         }
     }
 }

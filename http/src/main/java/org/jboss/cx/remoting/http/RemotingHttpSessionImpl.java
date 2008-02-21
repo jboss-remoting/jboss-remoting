@@ -17,8 +17,6 @@ import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.ServiceLocator;
 
-import javax.security.auth.callback.CallbackHandler;
-
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.HashSet;
@@ -43,15 +41,13 @@ public final class RemotingHttpSessionImpl {
     private final BlockingQueue<IncomingHttpMessage> incomingQueue = CollectionUtil.synchronizedQueue(new LinkedList<IncomingHttpMessage>());
     private final BlockingQueue<OutputAction> outgoingQueue = CollectionUtil.synchronizedQueue(new LinkedList<OutputAction>());
     private final String sessionId;
-    private final CallbackHandler callbackHandler;
     private final AtomicLong outputSequence = new AtomicLong(0L);
     private final AtomicLong inputSequence = new AtomicLong(0L);
 
     private static final int PROTOCOL_VERSION = 0;
 
-    public RemotingHttpSessionImpl(final HttpProtocolSupport protocolSupport, final ProtocolContext protocolContext, final CallbackHandler callbackHandler) {
+    public RemotingHttpSessionImpl(final HttpProtocolSupport protocolSupport, final ProtocolContext protocolContext) {
         this.protocolContext = protocolContext;
-        this.callbackHandler = callbackHandler;
         String sessionId;
         do {
             sessionId = protocolSupport.generateSessionId();
@@ -108,10 +104,6 @@ public final class RemotingHttpSessionImpl {
                     return null;
                 }
             }
-        }
-
-        public CallbackHandler getCallbackHandler() {
-            return callbackHandler;
         }
     }
 

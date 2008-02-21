@@ -3,7 +3,6 @@ package org.jboss.cx.remoting.spi.wrapper;
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.Endpoint;
-import org.jboss.cx.remoting.EndpointLocator;
 import org.jboss.cx.remoting.EndpointShutdownListener;
 import org.jboss.cx.remoting.InterceptorDeploymentSpec;
 import org.jboss.cx.remoting.RemotingException;
@@ -14,8 +13,6 @@ import org.jboss.cx.remoting.spi.Discovery;
 import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
-
-import javax.security.auth.callback.CallbackHandler;
 
 /**
  *
@@ -35,8 +32,8 @@ public class EndpointWrapper implements Endpoint {
         delegate.shutdown();
     }
 
-    public Session openSession(EndpointLocator endpointLocator, AttributeMap attributeMap) throws RemotingException {
-        return delegate.openSession(endpointLocator, attributeMap);
+    public Session openSession(final URI remoteUri, AttributeMap attributeMap) throws RemotingException {
+        return delegate.openSession(remoteUri, attributeMap);
     }
 
     public Discovery discover(final String endpointName, final URI nextHop, final int cost) throws RemotingException {
@@ -57,22 +54,6 @@ public class EndpointWrapper implements Endpoint {
 
     public ProtocolRegistration registerProtocol(final ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException {
         return delegate.registerProtocol(spec);
-    }
-
-    public CallbackHandler getLocalCallbackHandler() {
-        return delegate.getLocalCallbackHandler();
-    }
-
-    public CallbackHandler getRemoteCallbackHandler() {
-        return delegate.getRemoteCallbackHandler();
-    }
-
-    public void setRemoteCallbackHandler(final CallbackHandler callbackHandler) {
-        delegate.setRemoteCallbackHandler(callbackHandler);
-    }
-
-    public void setLocalCallbackHandler(final CallbackHandler callbackHandler) {
-        delegate.setLocalCallbackHandler(callbackHandler);
     }
 
     public void addShutdownListener(final EndpointShutdownListener listener) {

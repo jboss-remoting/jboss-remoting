@@ -4,32 +4,30 @@ import static java.lang.Math.min;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.util.Collections;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Enumeration;
+import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.concurrent.Executor;
 import org.apache.mina.common.AttributeKey;
-import org.apache.mina.common.ConnectFuture;
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoBuffer;
-import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoSession;
-import org.apache.mina.common.IoSessionInitializer;
-import org.apache.mina.filter.sasl.CallbackHandlerFactory;
-import org.apache.mina.filter.sasl.SaslClientFactory;
 import org.apache.mina.filter.sasl.SaslClientFilter;
-import org.apache.mina.filter.sasl.SaslMessageSender;
-import org.apache.mina.filter.sasl.SaslServerFactory;
 import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.ServiceLocator;
+import org.jboss.cx.remoting.CommonKeys;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.core.util.AtomicStateMachine;
 import org.jboss.cx.remoting.core.util.CollectionUtil;
 import org.jboss.cx.remoting.core.util.MessageInput;
 import org.jboss.cx.remoting.core.util.MessageOutput;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.jrpp.id.IdentifierManager;
 import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
@@ -46,10 +44,17 @@ import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 
 import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.security.auth.callback.NameCallback;
+import javax.security.auth.callback.PasswordCallback;
 import javax.security.sasl.Sasl;
-import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslServer;
+import javax.security.sasl.RealmCallback;
+import javax.security.sasl.SaslServerFactory;
+import javax.security.sasl.AuthorizeCallback;
 
 /**
  *
@@ -62,16 +67,17 @@ public final class JrppConnection {
 
     private static final AttributeKey JRPP_CONNECTION = new AttributeKey(JrppConnection.class, "jrppConnection");
 
-    private static final String SASL_CLIENT_FILTER_NAME = "SASL client filter";
-    private static final String SASL_SERVER_FILTER_NAME = "SASL server filter";
+    public static final String SASL_CLIENT_FILTER_NAME = "SASL client filter";
+    public static final String SASL_SERVER_FILTER_NAME = "SASL server filter";
 
-    private IoSession ioSession;
     private final ProtocolHandler protocolHandler;
-    private final ProtocolContext protocolContext;
     private final SingleSessionIoHandler ioHandler;
     private final IdentifierManager identifierManager;
+    private final AttributeMap attributeMap;
 
+    private IoSession ioSession;
     private String remoteName;
+    private ProtocolContext protocolContext;
 
     /**
      * The negotiated protocol version.  Value is set to {@code min(PROTOCOL_VERSION, remote PROTOCOL_VERSION)}.
@@ -85,10 +91,14 @@ public final class JrppConnection {
     }
 
     private enum State {
+        /** Initial state - unconnected */
+        NEW,
         /** Client side, waiting to receive protocol version info */
         AWAITING_SERVER_VERSION,
         /** Server side, waiting to receive protocol version info */
         AWAITING_CLIENT_VERSION,
+        /** Server side, waiting to receive authentication request */
+        AWAITING_CLIENT_AUTH_REQUEST,
         /** Client side, auth phase */
         AWAITING_SERVER_CHALLENGE,
         /** Server side, auth phase */
@@ -99,91 +109,155 @@ public final class JrppConnection {
         CLOSED,
     }
 
-    private AtomicStateMachine<State> currentState;
+    private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.NEW);
 
     private static final Logger log = Logger.getLogger(JrppConnection.class);
 
-    /**
-     * Client side.
-     *
-     * @param connector
-     * @param uri
-     * @param protocolContext
-     * @param clientCallbackHandler
-     */
-    public JrppConnection(final IoConnector connector, final URI uri, final ProtocolContext protocolContext, final CallbackHandler clientCallbackHandler) {
-        // todo - this seems very iffy to me, since we're basically leaking "this" before constructor is done
-        this.protocolContext = protocolContext;
+    public JrppConnection(final AttributeMap attributeMap) {
+        this.attributeMap = attributeMap;
         ioHandler = new IoHandlerImpl();
-        final ConnectFuture future = connector.connect(new InetSocketAddress(uri.getHost(), uri.getPort()), new IoSessionInitializer<ConnectFuture>() {
-            public void initializeSession(final IoSession session, final ConnectFuture future) {
-                session.setAttribute(JRPP_CONNECTION, JrppConnection.this);
-                JrppConnection.this.ioSession = session;
-            }
-        });
-        // make sure it's initialized for *this* thread as well
-        ioSession = future.awaitUninterruptibly().getSession();
-
-        protocolHandler = new RemotingProtocolHandler();
         identifierManager = new IdentifierManager();
-        currentState = AtomicStateMachine.start(State.AWAITING_SERVER_VERSION);
-        ioSession.getFilterChain().addLast(SASL_CLIENT_FILTER_NAME, new SaslClientFilter(new SaslClientFactory(){
-            public SaslClient createSaslClient(IoSession ioSession, CallbackHandler callbackHandler) throws SaslException {
-                return Sasl.createSaslClient(new String[] { "SRP" }, protocolContext.getLocalEndpointName(), "JRPP", uri.getHost(), Collections.<String,Object>emptyMap(), callbackHandler);
-            }
-        }, new SaslMessageSender() {
-            public void sendSaslMessage(IoSession ioSession, byte[] rawMsgData) throws IOException {
-                final IoBuffer buffer = newBuffer(rawMsgData.length + 30, false);
-                final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
-                write(output, MessageType.SASL_RESPONSE);
-                output.write(rawMsgData);
-                output.commit();
-            }
-        }, new CallbackHandlerFactory() {
-            public CallbackHandler getCallbackHandler() {
-                return clientCallbackHandler;
-            }
-        }));
+        protocolHandler = new RemotingProtocolHandler();
     }
 
-    /**
-     * Server side.
-     *
-     * @param ioSession
-     * @param serverContext
-     * @throws java.io.IOException
-     */
-    public JrppConnection(final IoSession ioSession, final ProtocolServerContext serverContext, final CallbackHandler serverCallbackHandler) throws IOException {
-        ioSession.setAttribute(JRPP_CONNECTION, this);
-        this.ioSession = ioSession;
+    public void initializeClient(final IoSession ioSession, final ProtocolContext protocolContext) {
+        state.transitionExclusive(State.NEW, State.AWAITING_SERVER_VERSION);
+        try {
+            ioSession.setAttribute(JRPP_CONNECTION, this);
+            this.ioSession = ioSession;
+        } finally {
+            state.releaseExclusive();
+        }
+    }
 
-        protocolHandler = new RemotingProtocolHandler();
-        ioHandler = new IoHandlerImpl();
+    public void initializeServer(final IoSession ioSession, final ProtocolServerContext protocolServerContext) {
+        state.transitionExclusive(State.NEW, State.AWAITING_CLIENT_VERSION);
+        try {
+            ioSession.setAttribute(JRPP_CONNECTION, this);
+            this.ioSession = ioSession;
+            final ProtocolContext protocolContext = protocolServerContext.establishSession(protocolHandler);
+            this.protocolContext = protocolContext;
+        } finally {
+            state.releaseExclusive();
+        }
+    }
 
-        protocolContext = serverContext.establishSession(protocolHandler);
-        identifierManager = new IdentifierManager();
-        currentState = AtomicStateMachine.start(State.AWAITING_CLIENT_VERSION);
-        ioSession.getFilterChain().addLast(SASL_SERVER_FILTER_NAME, new SaslServerFilter(new SaslServerFactory(){
-            public SaslServer createSaslServer(IoSession ioSession, CallbackHandler callbackHandler) throws SaslException {
-                return Sasl.createSaslServer("SRP", "JRPP", protocolContext.getLocalEndpointName(), Collections.<String,Object>emptyMap(), callbackHandler);
+    private String getNegotiatedMechanism(final String[] clientMechs, final Set<String> serverMechs) throws SaslException {
+        for (String name : clientMechs) {
+            if (serverMechs.contains(name)) {
+                return name;
             }
-        }, new SaslMessageSender(){
-            public void sendSaslMessage(IoSession ioSession, byte[] rawMsgData) throws IOException {
-                final IoBuffer buffer = newBuffer(rawMsgData.length + 30, false);
-                final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
-                write(output, MessageType.SASL_CHALLENGE);
-                output.write(rawMsgData);
-                output.commit();
+        }
+        throw new SaslException("No acceptable mechanisms found");
+    }
+
+    private String getAuthorizationId(final AttributeMap attributeMap, final ProtocolContext protocolContext) {
+        final String authorizationId = attributeMap.get(CommonKeys.AUTHORIZATION_ID);
+        if (authorizationId != null) {
+            return authorizationId;
+        }
+        return protocolContext.getLocalEndpointName();
+    }
+
+    private Set<String> getServerMechanisms(final AttributeMap attributeMap, final Map<String, ?> saslProps) {
+        final Set<String> set = attributeMap.get(CommonKeys.SASL_SERVER_MECHANISMS);
+        if (set != null) {
+            return set;
+        }
+        final Set<String> mechanisms = new HashSet<String>();
+        final Enumeration<SaslServerFactory> e = Sasl.getSaslServerFactories();
+        while (e.hasMoreElements()) {
+            final SaslServerFactory serverFactory = e.nextElement();
+            for (String name : serverFactory.getMechanismNames(saslProps)) {
+                mechanisms.add(name);
             }
-        }, new CallbackHandlerFactory(){
-            public CallbackHandler getCallbackHandler() {
-                return serverCallbackHandler;
+        }
+        return mechanisms;
+    }
+
+    private String[] getClientMechanisms(final AttributeMap attributeMap, final Map<String, ?> saslProps) {
+        final List<String> list = attributeMap.get(CommonKeys.SASL_CLIENT_MECHANISMS);
+        if (list != null) {
+            return list.toArray(new String[list.size()]);
+        }
+        final Set<String> mechanisms = new LinkedHashSet<String>();
+        final Enumeration<javax.security.sasl.SaslClientFactory> e = Sasl.getSaslClientFactories();
+        while (e.hasMoreElements()) {
+            final javax.security.sasl.SaslClientFactory clientFactory = e.nextElement();
+            for (String name : clientFactory.getMechanismNames(saslProps)) {
+                mechanisms.add(name);
             }
-        }));
+        }
+        return mechanisms.toArray(new String[mechanisms.size()]);
+    }
+
+    private Map<String, ?> getSaslProperties(final AttributeMap attributeMap) {
+        final Map<String, ?> props = attributeMap.get(CommonKeys.SASL_PROPERTIES);
+        if (props != null) {
+            return props;
+        }
+        final Map<String, Object> defaultProps = new HashMap<String, Object>();
+        defaultProps.put(Sasl.POLICY_NOPLAINTEXT, "true");
+        defaultProps.put(Sasl.POLICY_NOANONYMOUS, "true");
+        defaultProps.put(Sasl.POLICY_NODICTIONARY, "true");
+        defaultProps.put(Sasl.POLICY_NOACTIVE, "true");
+        defaultProps.put(Sasl.QOP, "auth-conf");
+        return defaultProps;
+    }
+
+    private CallbackHandler getServerCallbackHandler(final AttributeMap attributeMap) {
+        final CallbackHandler callbackHandler = attributeMap.get(CommonKeys.AUTH_CALLBACK_HANDLER);
+        if (callbackHandler != null) {
+            return callbackHandler;
+        }
+        return new CallbackHandler() {
+            public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+                for (Callback callback : callbacks) {
+                    if (callback instanceof NameCallback) {
+                        ((NameCallback)callback).setName("anonymous");
+                    } else if (callback instanceof PasswordCallback) {
+                        ((PasswordCallback)callback).setPassword(new char[0]);
+                    } else if (callback instanceof RealmCallback) {
+                        continue;
+                    } else if (callback instanceof AuthorizeCallback) {
+                        ((AuthorizeCallback)callback).setAuthorized(true);
+                    }
+                    throw new UnsupportedCallbackException(callback, "Default anonymous server callback handler cannot support this callback type");
+                }
+            }
+        };
+    }
+
+    private CallbackHandler getClientCallbackHandler(final AttributeMap attributeMap) {
+        final CallbackHandler callbackHandler = attributeMap.get(CommonKeys.AUTH_CALLBACK_HANDLER);
+        if (callbackHandler != null) {
+            return callbackHandler;
+        }
+        return new CallbackHandler() {
+            public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+                for (Callback callback : callbacks) {
+                    if (callback instanceof NameCallback) {
+                        ((NameCallback)callback).setName("anonymous");
+                    } else if (callback instanceof PasswordCallback) {
+                        ((PasswordCallback)callback).setPassword(new char[0]);
+                    } else {
+                        throw new UnsupportedCallbackException(callback, "Default anonymous client callback handler cannot support this callback type");
+                    }
+                }
+            }
+        };
     }
 
     public static JrppConnection getConnection(IoSession ioSession) {
         return (JrppConnection) ioSession.getAttribute(JRPP_CONNECTION);
+    }
+
+    private SaslClientFilter getSaslClientFilter() {
+        return (SaslClientFilter) ioSession.getFilterChain().get(SASL_CLIENT_FILTER_NAME);
+    }
+
+    private SaslServerFilter getSaslServerFilter() {
+        return (SaslServerFilter) ioSession.getFilterChain().get(SASL_SERVER_FILTER_NAME);
     }
 
     public IoSession getIoSession() {
@@ -238,15 +312,25 @@ public final class JrppConnection {
         output.commit();
     }
 
+    public void sendVersionMessage() throws IOException {
+        // send version info
+        final IoBuffer buffer = newBuffer(60, false);
+        final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+        write(output, MessageType.VERSION);
+        output.writeShort(PROTOCOL_VERSION);
+        output.writeUTF(protocolContext.getLocalEndpointName());
+        output.commit();
+    }
+
     public boolean waitForUp() throws IOException {
-        while (! currentState.in(State.UP, State.CLOSED)) {
-            currentState.waitForAny();
+        while (! state.in(State.UP, State.CLOSED)) {
+            state.waitForAny();
         }
-        return currentState.in(State.UP);
+        return state.in(State.UP);
     }
 
     private void close() {
-        currentState.transition(State.CLOSED);
+        state.transition(State.CLOSED);
         ioSession.close().awaitUninterruptibly();
         protocolContext.closeSession();
     }
@@ -281,7 +365,7 @@ public final class JrppConnection {
         }
 
         public void closeSession() throws IOException {
-            if (currentState.transition(State.CLOSED)) {
+            if (state.transition(State.CLOSED)) {
                 // todo - maybe we don't need to wait?
                 ioSession.close().awaitUninterruptibly();
             }
@@ -292,7 +376,7 @@ public final class JrppConnection {
         }
 
         public void closeService(ServiceIdentifier serviceIdentifier) throws IOException {
-            if (! currentState.in(State.UP)) {
+            if (! state.in(State.UP)) {
                 return;
             }
             final IoBuffer buffer = newBuffer(60, false);
@@ -303,7 +387,7 @@ public final class JrppConnection {
         }
 
         public void closeContext(ContextIdentifier contextIdentifier) throws IOException {
-            if (! currentState.in(State.UP)) {
+            if (! state.in(State.UP)) {
                 return;
             }
             final IoBuffer buffer = newBuffer(60, false);
@@ -314,7 +398,7 @@ public final class JrppConnection {
         }
 
         public void closeStream(StreamIdentifier streamIdentifier) throws IOException {
-            if (! currentState.in(State.UP)) {
+            if (! state.in(State.UP)) {
                 return;
             }
             if (true /* todo if close not already sent */) {
@@ -342,7 +426,7 @@ public final class JrppConnection {
             if (locator == null) {
                 throw new NullPointerException("locator is null");
             }
-            if (! currentState.in(State.UP)) {
+            if (! state.in(State.UP)) {
                 throw new IllegalStateException("JrppConnection is not in the UP state!");
             }
             final IoBuffer buffer = newBuffer(500, true);
@@ -486,13 +570,8 @@ public final class JrppConnection {
         }
 
         public void sessionOpened() throws IOException {
-            // send version info
-            final IoBuffer buffer = newBuffer(60, false);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
-            write(output, MessageType.VERSION);
-            output.writeShort(PROTOCOL_VERSION);
-            output.writeUTF(protocolContext.getLocalEndpointName());
-            output.commit();
+            // TODO - there may be a mina bug where this method is not guaranteed to be called before any messages can be received! DIRMINA-535
+            sendVersionMessage();
         }
 
         public void sessionClosed() {
@@ -528,9 +607,9 @@ public final class JrppConnection {
             final MessageInput input = protocolContext.getMessageInput(new IoBufferByteInput((IoBuffer) message));
             final MessageType type = MessageType.values()[input.readByte() & 0xff];
             if (trace) {
-                log.trace("Received message of type %s in state %s", type, currentState.getState());
+                log.trace("Received message of type %s in state %s", type, state.getState());
             }
-            OUT: switch (currentState.getState()) {
+            OUT: switch (state.getState()) {
                 case AWAITING_CLIENT_VERSION: {
                     switch (type) {
                         case VERSION: {
@@ -540,16 +619,36 @@ public final class JrppConnection {
                             }
                             final String name = input.readUTF();
                             remoteName = name.length() > 0 ? name : null;
-                            SaslServerFilter saslServerFilter = getSaslServerFilter();
+                            state.requireTransition(State.AWAITING_CLIENT_AUTH_REQUEST);
+                            return;
+                        }
+                        default: break OUT;
+                    }
+                }
+                case AWAITING_CLIENT_AUTH_REQUEST: {
+                    switch (type) {
+                        case AUTH_REQUEST: {
+                            final int mechCount = input.readInt();
+                            final String[] clientMechs = new String[mechCount];
+                            for (int i = 0; i < mechCount; i ++) {
+                                clientMechs[i] = input.readUTF();
+                            }
+                            final CallbackHandler callbackHandler = getServerCallbackHandler(attributeMap);
+                            final Map<String, ?> saslProps = getSaslProperties(attributeMap);
+                            final Set<String> serverMechs = getServerMechanisms(attributeMap, saslProps);
+                            final String negotiatedMechanism = getNegotiatedMechanism(clientMechs, serverMechs);
+                            final SaslServer saslServer = Sasl.createSaslServer(negotiatedMechanism, "jrpp", protocolContext.getLocalEndpointName(), saslProps, callbackHandler);
+                            final SaslServerFilter saslServerFilter = getSaslServerFilter();
+                            saslServerFilter.setSaslServer(ioSession, saslServer);
                             if (saslServerFilter.sendInitialChallenge(ioSession)) {
                                 // complete (that was quick!)
                                 final IoBuffer buffer = newBuffer(60, false);
                                 final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
                                 write(output, MessageType.AUTH_SUCCESS);
                                 output.commit();
-                                currentState.requireTransition(State.AWAITING_CLIENT_VERSION, State.UP);
+                                state.requireTransition(State.AWAITING_CLIENT_VERSION, State.UP);
                             } else {
-                                currentState.requireTransition(State.AWAITING_CLIENT_VERSION, State.AWAITING_CLIENT_RESPONSE);
+                                state.requireTransition(State.AWAITING_CLIENT_VERSION, State.AWAITING_CLIENT_RESPONSE);
                             }
                             return;
                         }
@@ -565,7 +664,14 @@ public final class JrppConnection {
                             }
                             final String name = input.readUTF();
                             remoteName = name.length() > 0 ? name : null;
-                            currentState.requireTransition(State.AWAITING_SERVER_VERSION, State.AWAITING_SERVER_CHALLENGE);
+                            final CallbackHandler callbackHandler = getClientCallbackHandler(attributeMap);
+                            final Map<String, ?> saslProps = getSaslProperties(attributeMap);
+                            final String[] clientMechs = getClientMechanisms(attributeMap, saslProps);
+                            final String authorizationId = getAuthorizationId(attributeMap, protocolContext);
+                            final SaslClient saslClient = Sasl.createSaslClient(clientMechs, authorizationId, "jrpp", remoteName, saslProps, callbackHandler);
+                            final SaslClientFilter saslClientFilter = getSaslClientFilter();
+                            saslClientFilter.setSaslClient(ioSession, saslClient);
+                            state.requireTransition(State.AWAITING_SERVER_VERSION, State.AWAITING_SERVER_CHALLENGE);
                             return;
                         }
                         default: break OUT;
@@ -587,7 +693,7 @@ public final class JrppConnection {
                                     write(output, MessageType.AUTH_SUCCESS);
                                     output.commit();
                                     saslServerFilter.startEncryption(ioSession);
-                                    currentState.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.UP);
+                                    state.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.UP);
                                 }
                             } catch (SaslException ex) {
                                 final IoBuffer buffer = newBuffer(60, false);
@@ -595,6 +701,8 @@ public final class JrppConnection {
                                 write(output, MessageType.AUTH_FAILED);
                                 output.commit();
                                 log.info("Client authentication failed (" + ex.getMessage() + ")");
+                                // todo - retry counter - JBREM-907
+                                state.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.AWAITING_CLIENT_AUTH_REQUEST);
                             }
                             return;
                         }
@@ -613,12 +721,20 @@ public final class JrppConnection {
                         case AUTH_SUCCESS: {
                             SaslClientFilter saslClientFilter = getSaslClientFilter();
                             saslClientFilter.startEncryption(ioSession);
-                            currentState.requireTransition(State.AWAITING_SERVER_CHALLENGE, State.UP);
+                            state.requireTransition(State.AWAITING_SERVER_CHALLENGE, State.UP);
                             return;
                         }
                         case AUTH_FAILED: {
                             log.info("JRPP client rejected authentication");
-                            close();
+                            final SaslClientFilter oldClientFilter = getSaslClientFilter();
+                            oldClientFilter.destroy();
+                            final CallbackHandler callbackHandler = getClientCallbackHandler(attributeMap);
+                            final Map<String, ?> saslProps = getSaslProperties(attributeMap);
+                            final String[] clientMechs = getClientMechanisms(attributeMap, saslProps);
+                            final String authorizationId = getAuthorizationId(attributeMap, protocolContext);
+                            final SaslClient saslClient = Sasl.createSaslClient(clientMechs, authorizationId, "jrpp", remoteName, saslProps, callbackHandler);
+                            final SaslClientFilter saslClientFilter = getSaslClientFilter();
+                            saslClientFilter.setSaslClient(ioSession, saslClient);
                             return;
                         }
                         default: break OUT;
@@ -723,15 +839,7 @@ public final class JrppConnection {
                     }
                 }
             }
-            throw new IllegalStateException("Got message " + type + " during " + currentState);
-        }
-
-        private SaslClientFilter getSaslClientFilter() {
-            return (SaslClientFilter) ioSession.getFilterChain().get(SASL_CLIENT_FILTER_NAME);
-        }
-
-        private SaslServerFilter getSaslServerFilter() {
-            return (SaslServerFilter) ioSession.getFilterChain().get(SASL_SERVER_FILTER_NAME);
+            throw new IllegalStateException("Got message " + type + " during " + state);
         }
 
         public void messageSent(Object object) {
@@ -743,6 +851,7 @@ public final class JrppConnection {
      */
     private enum MessageType {
         VERSION,
+        AUTH_REQUEST,
         SASL_CHALLENGE,
         SASL_RESPONSE,
         AUTH_SUCCESS,

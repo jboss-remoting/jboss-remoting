@@ -2,8 +2,7 @@ package org.jboss.cx.remoting.spi.protocol;
 
 import java.io.IOException;
 import java.net.URI;
-
-import javax.security.auth.callback.CallbackHandler;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 
 /**
  *
@@ -26,12 +25,12 @@ public interface ProtocolHandlerFactory {
      *
      * @param context the protocol context to use for inbound data
      * @param remoteUri the URI of the remote side
-     * @param clientCallbackHandler the callback handler to use to authenticate this client
+     * @param attributeMap
      * @return the protocol handler for outbound data
      *
      * @throws IOException if the handler could not be created
      */
-    ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, CallbackHandler clientCallbackHandler) throws IOException;
+    ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, AttributeMap attributeMap) throws IOException;
 
     /**
      * Signifies that this protocol has been unregistered from the endpoint.

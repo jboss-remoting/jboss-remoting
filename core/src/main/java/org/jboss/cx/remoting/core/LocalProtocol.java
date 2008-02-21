@@ -15,6 +15,7 @@ import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.core.util.MessageOutput;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.core.util.MessageInput;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
@@ -28,8 +29,6 @@ import org.jboss.cx.remoting.spi.protocol.SimpleRequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.SimpleServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.SimpleStreamIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
-
-import javax.security.auth.callback.CallbackHandler;
 
 /**
  *
@@ -59,7 +58,7 @@ public final class LocalProtocol {
             return true;
         }
 
-        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, final CallbackHandler clientCallbackHandler) throws IOException {
+        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, final AttributeMap attributeMap) throws IOException {
             final String remoteName = remoteUri.getSchemeSpecificPart();
             final ProtocolServerContext serverContext = endpoints.get(remoteName);
             if (serverContext == null) {

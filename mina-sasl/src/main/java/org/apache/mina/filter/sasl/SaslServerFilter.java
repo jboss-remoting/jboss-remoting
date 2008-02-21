@@ -2,7 +2,6 @@ package org.apache.mina.filter.sasl;
 
 import java.io.IOException;
 import org.apache.mina.common.AttributeKey;
-import org.apache.mina.common.IoFilterChain;
 import org.apache.mina.common.IoSession;
 
 import javax.security.sasl.Sasl;
@@ -28,19 +27,13 @@ import javax.security.sasl.SaslServer;
 public final class SaslServerFilter extends AbstractSaslFilter {
     private static final AttributeKey SASL_SERVER_KEY = new AttributeKey(SaslServerFilter.class, "saslServer");
 
-    private final SaslServerFactory saslServerFactory;
-    private final CallbackHandlerFactory callbackHandlerFactory;
-
     /**
      * Construct a new SASL server filter.
      *
-     * @param saslServerFactory a factory which may be used to create a new SASL server instance for an {@code IoSession}.
      * @param messageSender the message sender, used to send challenge messages
      */
-    public SaslServerFilter(final SaslServerFactory saslServerFactory, final SaslMessageSender messageSender, final CallbackHandlerFactory callbackHandlerFactory) {
+    public SaslServerFilter(final SaslMessageSender messageSender) {
         super(messageSender);
-        this.saslServerFactory = saslServerFactory;
-        this.callbackHandlerFactory = callbackHandlerFactory;
     }
 
     /**
@@ -49,8 +42,18 @@ public final class SaslServerFilter extends AbstractSaslFilter {
      * @param ioSession the session
      * @return the SASL server instance
      */
-    protected SaslServer getSaslServer(IoSession ioSession) {
+    public SaslServer getSaslServer(IoSession ioSession) {
         return (SaslServer) ioSession.getAttribute(SASL_SERVER_KEY);
+    }
+
+    /**
+     * Set the {@code SaslServer} instance for the given session.
+     *
+     * @param ioSession the session
+     * @param saslServer the SASL server instance
+     */
+    public void setSaslServer(IoSession ioSession, SaslServer saslServer) {
+        ioSession.setAttribute(SASL_SERVER_KEY, saslServer);
     }
 
     /**
@@ -112,23 +115,6 @@ public final class SaslServerFilter extends AbstractSaslFilter {
      */
     protected String getQop(final IoSession ioSession) {
         return (String) getSaslServer(ioSession).getNegotiatedProperty(Sasl.QOP);
-    }
-
-    public void onPreAdd(IoFilterChain ioFilterChain, String string, NextFilter nextFilter) throws Exception {
-        final IoSession ioSession = ioFilterChain.getSession();
-        final SaslServer saslServer = saslServerFactory.createSaslServer(ioSession, callbackHandlerFactory.getCallbackHandler());
-        if (saslServer == null) {
-            throw new NullPointerException("saslServer is null");
-        }
-        ioSession.setAttribute(SASL_SERVER_KEY, saslServer);
-    }
-
-    public void onPostRemove(IoFilterChain ioFilterChain, String string, NextFilter nextFilter) throws Exception {
-        final IoSession ioSession = ioFilterChain.getSession();
-        final SaslServer server = getSaslServer(ioSession);
-        if (server != null) {
-            server.dispose();
-        }
     }
 
     protected byte[] wrap(IoSession ioSession, byte[] data, int offs, int len) throws SaslException {

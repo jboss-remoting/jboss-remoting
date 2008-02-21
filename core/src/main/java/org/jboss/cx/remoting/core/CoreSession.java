@@ -13,9 +13,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import java.net.URI;
 import org.jboss.cx.remoting.ContextSource;
-import org.jboss.cx.remoting.Endpoint;
-import org.jboss.cx.remoting.EndpointLocator;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
@@ -30,6 +29,7 @@ import org.jboss.cx.remoting.core.util.ByteInput;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.core.util.MessageInput;
 import org.jboss.cx.remoting.core.util.MessageOutput;
+import org.jboss.cx.remoting.core.util.AttributeMap;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
@@ -39,8 +39,6 @@ import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 import org.jboss.cx.remoting.spi.stream.StreamDetector;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
-
-import javax.security.auth.callback.CallbackHandler;
 
 
 /**
@@ -56,7 +54,7 @@ public final class CoreSession {
     private final ProtocolContextImpl protocolContext = new ProtocolContextImpl();
     private final UserSession userSession = new UserSession();
 
-    // stream serialization detectors - immutable
+    // stream serialization detectors - immutable (for now?)
     private final List<StreamDetector> streamDetectors;
 
     // clients - weak reference, to clean up if the user leaks
@@ -72,42 +70,46 @@ public final class CoreSession {
 
     // don't GC the endpoint while a session lives
     private final CoreEndpoint endpoint;
-    private final ProtocolHandler protocolHandler;
-    private final String remoteEndpointName;
 
-    private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
+    /** The protocol handler.  Set on NEW -> CONNECTING */
+    private ProtocolHandler protocolHandler;
+    /** The remote endpoint name.  Set on CONNECTING -> UP */
+    private String remoteEndpointName;
+
+    private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.NEW);
 
     // Constructors
 
-    CoreSession(final CoreEndpoint endpoint, final ProtocolHandler protocolHandler) {
+    CoreSession(final CoreEndpoint endpoint) {
         if (endpoint == null) {
             throw new NullPointerException("endpoint is null");
         }
+        this.endpoint = endpoint;
+        // todo - make stream detectors pluggable
+        streamDetectors = java.util.Collections.<StreamDetector>singletonList(new DefaultStreamDetector());
+    }
+
+    // Initializers
+
+    void initializeServer(final ProtocolHandler protocolHandler) {
         if (protocolHandler == null) {
             throw new NullPointerException("protocolHandler is null");
         }
-        this.endpoint = endpoint;
+        state.requireTransitionExclusive(State.NEW, State.CONNECTING);
         this.protocolHandler = protocolHandler;
-        streamDetectors = java.util.Collections.<StreamDetector>singletonList(new DefaultStreamDetector());
-        remoteEndpointName = protocolHandler.getRemoteEndpointName();
+        state.releaseExclusive();
     }
 
-    CoreSession(final CoreEndpoint endpoint, final ProtocolHandlerFactory factory, final EndpointLocator endpointLocator) throws IOException {
-        if (endpoint == null) {
-            throw new NullPointerException("endpoint is null");
+    void initializeClient(final ProtocolHandlerFactory protocolHandlerFactory, final URI remoteUri, final AttributeMap attributeMap) throws IOException {
+        if (protocolHandlerFactory == null) {
+            throw new NullPointerException("protocolHandlerFactory is null");
         }
-        if (factory == null) {
-            throw new NullPointerException("factory is null");
+        state.requireTransitionExclusive(State.NEW, State.CONNECTING);
+        try {
+            protocolHandlerFactory.createHandler(protocolContext, remoteUri, attributeMap);
+        } finally {
+            state.releaseExclusive();
         }
-        if (endpointLocator == null) {
-            throw new NullPointerException("endpointLocator is null");
-        }
-        streamDetectors = java.util.Collections.<StreamDetector>singletonList(new DefaultStreamDetector());
-        this.endpoint = endpoint;
-        final CallbackHandler locatorCallbackHandler = endpointLocator.getClientCallbackHandler();
-        final Endpoint userEndpoint = endpoint.getUserEndpoint();
-        protocolHandler = factory.createHandler(protocolContext, endpointLocator.getEndpointUri(), locatorCallbackHandler == null ? userEndpoint.getLocalCallbackHandler() : locatorCallbackHandler);
-        remoteEndpointName = protocolHandler.getRemoteEndpointName();
     }
 
     // Outbound protocol messages
@@ -227,9 +229,11 @@ public final class CoreSession {
     // State mgmt
 
     private enum State {
-        DOWN,
+        NEW,
+        CONNECTING,
         UP,
         STOPPING,
+        DOWN,
     }
 
     void shutdown() {
@@ -448,8 +452,9 @@ public final class CoreSession {
             if (locator.getServiceType() == null) {
                 throw new NullPointerException("locator.getServiceType() is null");
             }
-            state.requireHold(State.UP);
+            state.waitForNotHold(State.CONNECTING);
             try {
+                state.require(State.UP);
                 final CoreOutboundService<I, O> service = createService(locator);
                 service.sendServiceRequest();
                 service.await();
@@ -565,6 +570,16 @@ public final class CoreSession {
         public void receiveStreamData(StreamIdentifier streamIdentifier, MessageInput data) {
             final CoreStream coreStream = streams.get(streamIdentifier);
             coreStream.receiveStreamData(data);
+        }
+
+        public void openSession(String remoteEndpointName) {
+            state.waitForNotExclusive(State.NEW);
+            try {
+                state.requireTransition(State.CONNECTING, State.UP);
+                CoreSession.this.remoteEndpointName = remoteEndpointName;
+            } finally {
+                state.releaseExclusive();
+            }
         }
 
         public void receiveRequest(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier, final Object request) {
