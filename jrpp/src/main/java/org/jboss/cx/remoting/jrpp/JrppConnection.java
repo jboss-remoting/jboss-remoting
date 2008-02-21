@@ -194,6 +194,7 @@ public final class JrppConnection {
         defaultProps.put(Sasl.POLICY_NODICTIONARY, "true");
         defaultProps.put(Sasl.POLICY_NOACTIVE, "true");
         defaultProps.put(Sasl.QOP, "auth-conf");
+        defaultProps.put("org.jboss.cx.remoting.sasl.srp.verifier", "password");
         return defaultProps;
     }
 
@@ -208,13 +209,14 @@ public final class JrppConnection {
                     if (callback instanceof NameCallback) {
                         ((NameCallback)callback).setName("anonymous");
                     } else if (callback instanceof PasswordCallback) {
-                        ((PasswordCallback)callback).setPassword(new char[0]);
+                        ((PasswordCallback)callback).setPassword("password".toCharArray());
                     } else if (callback instanceof RealmCallback) {
                         continue;
                     } else if (callback instanceof AuthorizeCallback) {
                         ((AuthorizeCallback)callback).setAuthorized(true);
+                    } else {
+                        throw new UnsupportedCallbackException(callback, "Default anonymous server callback handler cannot support this callback type: " + callback.getClass().getName());
                     }
-                    throw new UnsupportedCallbackException(callback, "Default anonymous server callback handler cannot support this callback type");
                 }
             }
         };
@@ -231,11 +233,11 @@ public final class JrppConnection {
                     if (callback instanceof NameCallback) {
                         ((NameCallback)callback).setName("anonymous");
                     } else if (callback instanceof PasswordCallback) {
-                        ((PasswordCallback)callback).setPassword(new char[0]);
+                        ((PasswordCallback)callback).setPassword("password".toCharArray());
                     } else if (callback instanceof RealmCallback) {
                         ((RealmCallback)callback).setText("default");
                     } else {
-                        throw new UnsupportedCallbackException(callback, "Default anonymous client callback handler cannot support this callback type");
+                        throw new UnsupportedCallbackException(callback, "Default anonymous client callback handler cannot support this callback type: " + callback.getClass().getName());
                     }
                 }
             }

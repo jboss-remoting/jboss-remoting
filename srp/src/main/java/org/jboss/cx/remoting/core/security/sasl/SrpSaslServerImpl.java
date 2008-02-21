@@ -227,13 +227,13 @@ public final class SrpSaslServerImpl extends AbstractSrpSaslParticipant implemen
             // Catch this first, because SaslException extends IOException
             throw e;
         } catch (IOException e) {
-            throw new SaslException("Failed to handle callbacks for SRP", e);
+            throw new SaslException("Authentication failed (I/O exception: " + e.getMessage() + ")", e);
         } catch (UnsupportedCallbackException e) {
-            throw new SaslException("Failed to handle callbacks for SRP (unsupported callback type)", e);
+            throw new SaslException("Authentication failed (callback unsupported: " + e.getMessage() + ")", e);
         } catch (NoSuchAlgorithmException e) {
-            throw new SaslException("Failed to handle callbacks for SRP (no such algorithm)", e);
+            throw new SaslException("Authentication failed (no such algorithm: " + e.getMessage() + ")", e);
         } catch (Base64DecodingException e) {
-            throw new SaslException("Failed to handle callbacks for SRP (Base64 decode failed)", e);
+            throw new SaslException("Authentication failed (Base64 decode failed: " + e.getMessage() + ")", e);
         }
 
         final BigInteger N = verifier.getSafePrime();
@@ -372,9 +372,9 @@ public final class SrpSaslServerImpl extends AbstractSrpSaslParticipant implemen
         } catch (SaslException e) {
             throw e;
         } catch (IOException e) {
-            throw new SaslException("Authorization failed (I/O exception)", e);
+            throw new SaslException("Authorization failed (I/O exception: " + e.getMessage() + ")", e);
         } catch (UnsupportedCallbackException e) {
-            throw new SaslException("Authorization failed (callback unsupported)", e);
+            throw new SaslException("Authorization failed (callback unsupported: " + e.getMessage() + ")", e);
         }
         authorizationId = authorizeCallback.getAuthorizedID();
         if (authorizationId == null || ! authorizeCallback.isAuthorized()) {

@@ -155,7 +155,7 @@ public final class SrpSaslClientImpl extends AbstractSrpSaslParticipant implemen
                 throw new SaslException("Callback handler provided an empty value for SRP password");
             }
         } catch (Exception e) {
-            throw new SaslException("Failed to handle callbacks for SRP", e);
+            throw new SaslException("Failed to handle callbacks for SRP: " + e.getMessage(), e);
         }
         if (authorizationId == null) {
             authorizationId = "";
