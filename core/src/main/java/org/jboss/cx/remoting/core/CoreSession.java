@@ -106,7 +106,7 @@ public final class CoreSession {
         }
         state.requireTransitionExclusive(State.NEW, State.CONNECTING);
         try {
-            protocolHandlerFactory.createHandler(protocolContext, remoteUri, attributeMap);
+            protocolHandler = protocolHandlerFactory.createHandler(protocolContext, remoteUri, attributeMap);
         } finally {
             state.releaseExclusive();
         }
