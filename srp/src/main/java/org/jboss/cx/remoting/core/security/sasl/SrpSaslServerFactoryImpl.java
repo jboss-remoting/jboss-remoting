@@ -16,6 +16,6 @@ public final class SrpSaslServerFactoryImpl implements SaslServerFactory {
     }
 
     public String[] getMechanismNames(Map<String, ?> props) {
-        return new String[0];
+        return new String[] { "SRP" };
     }
 }

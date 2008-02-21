@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Enumeration;
 import java.util.LinkedHashSet;
 import java.util.HashSet;
+import java.util.Collections;
 import java.util.concurrent.Executor;
 import org.apache.mina.common.AttributeKey;
 import org.apache.mina.common.IdleStatus;
@@ -181,15 +182,7 @@ public final class JrppConnection {
         if (list != null) {
             return list.toArray(new String[list.size()]);
         }
-        final Set<String> mechanisms = new LinkedHashSet<String>();
-        final Enumeration<javax.security.sasl.SaslClientFactory> e = Sasl.getSaslClientFactories();
-        while (e.hasMoreElements()) {
-            final javax.security.sasl.SaslClientFactory clientFactory = e.nextElement();
-            for (String name : clientFactory.getMechanismNames(saslProps)) {
-                mechanisms.add(name);
-            }
-        }
-        return mechanisms.toArray(new String[mechanisms.size()]);
+        return new String[] { "SRP" };
     }
 
     private Map<String, ?> getSaslProperties(final AttributeMap attributeMap) {
@@ -746,7 +739,7 @@ public final class JrppConnection {
                             try {
                                 saslClientFilter.handleSaslChallenge(ioSession, bytes);
                             } catch (SaslException ex) {
-                                log.debug("Failed to handle challenge from server; reset and try again");
+                                log.debug("Failed to handle challenge from server (%s).  Sending new auth request.", ex.getMessage());
                                 // todo - retry counter - JBREM-907
                                 sendAuthRequest();
                             }
