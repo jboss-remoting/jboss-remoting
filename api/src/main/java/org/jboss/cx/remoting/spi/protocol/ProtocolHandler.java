@@ -85,7 +85,7 @@ public interface ProtocolHandler {
     /**
      * Get a new service identifier that will be used to request a service from the remote side.
      *
-     * @return
+     * @return the new service identifier
      * @throws IOException
      */
     ServiceIdentifier openService() throws IOException;
@@ -132,7 +132,7 @@ public interface ProtocolHandler {
      * Read a stream identifier from a message.
      *
      * @param input
-     * @return
+     * @return the new stream identifier
      * @throws IOException
      */
     StreamIdentifier readStreamIdentifier(ObjectInput input) throws IOException;
