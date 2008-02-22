@@ -37,14 +37,37 @@ public interface ProtocolHandler {
      * the protocol handler on the remote side.
      *
      * @param remoteServiceIdentifier the remote service identifier
-     * @throws IOException if an error occurs
+     * @throws IOException if an I/O error occurs
      */
     void sendServiceActivate(ServiceIdentifier remoteServiceIdentifier) throws IOException;
 
+    /**
+     * Send the reply to a request.
+     *
+     * @param remoteContextIdentifier the context that the request was received under
+     * @param requestIdentifier the request identifier
+     * @param reply the reply to send
+     * @throws IOException if an I/O error occurs
+     */
     void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Object reply) throws IOException;
 
+    /**
+     * Send an exception reply to a request.
+     *
+     * @param remoteContextIdentifier the context that the request was received under
+     * @param requestIdentifier the request identifier
+     * @param exception the exception to send
+     * @throws IOException if an I/O error occurs
+     */
     void sendException(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) throws IOException;
 
+    /**
+     * Send a notification to the client that a request was cancelled.
+     *
+     * @param remoteContextIdentifier the context that the request was received under
+     * @param requestIdentifier the request identifier
+     * @throws IOException if an I/O error occurs
+     */
     void sendCancelAcknowledge(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier) throws IOException;
 
     /**
@@ -52,7 +75,7 @@ public interface ProtocolHandler {
      * if it is undeployed, the session is being shut down, or if the activation request was not accepted.
      *
      * @param remoteServiceIdentifier the remote service identifier
-     * @throws IOException if an error occurs
+     * @throws IOException if an I/O error occurs
      */
     void sendServiceTerminate(ServiceIdentifier remoteServiceIdentifier) throws IOException;
 
@@ -66,7 +89,7 @@ public interface ProtocolHandler {
      *
      * @param serviceIdentifier the service identifier
      * @return a context identifier associated with the given service identifier
-     * @throws IOException if an error occurs
+     * @throws IOException if an I/O error occurs
      */
     ContextIdentifier openContext(ServiceIdentifier serviceIdentifier) throws IOException;
 
@@ -76,17 +99,24 @@ public interface ProtocolHandler {
      * on the remote side for this context identifier.
      *
      * @param contextIdentifier
-     * @throws IOException
+     * @throws IOException if an I/O error occurs
      */
     void closeContext(ContextIdentifier contextIdentifier) throws IOException;
 
+    /**
+     * Acquire a new request identifier that will be used to send a request.
+     *
+     * @param contextIdentifier the context identifier
+     * @return the new request identifier
+     * @throws IOException if an I/O error occurs
+     */
     RequestIdentifier openRequest(ContextIdentifier contextIdentifier) throws IOException;
 
     /**
      * Get a new service identifier that will be used to request a service from the remote side.
      *
      * @return the new service identifier
-     * @throws IOException
+     * @throws IOException if an I/O error occurs
      */
     ServiceIdentifier openService() throws IOException;
 
@@ -96,14 +126,37 @@ public interface ProtocolHandler {
      *
      * @param serviceIdentifier the service identifier
      * @param locator the locator for the new service
-     * @throws IOException if an error occurs
+     * @throws IOException if an I/O error occurs
      */
     void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) throws IOException;
 
+    /**
+     * Send a notification that the client is no longer using the given service.
+     *
+     * @param serviceIdentifier the service identifier
+     * @throws IOException if an I/O error occurs
+     */
     void closeService(ServiceIdentifier serviceIdentifier) throws IOException;
 
+    /**
+     * Send a request to the remote side.
+     *
+     * @param contextIdentifier the context identifier
+     * @param requestIdentifier the request identifier
+     * @param request the request body
+     * @param streamExecutor the executor to use for stream callbacks
+     * @throws IOException if an I/O error occurs
+     */
     void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object request, Executor streamExecutor) throws IOException;
 
+    /**
+     * Send a request to cancel a previously sent request.
+     *
+     * @param contextIdentifier the context identifier
+     * @param requestIdentifier the request identifier to cancel
+     * @param mayInterrupt {@code true} if processing may be interrupted
+     * @throws IOException if an I/O error occurs
+     */
     void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException;
 
     /* SESSION methods */
@@ -114,7 +167,7 @@ public interface ProtocolHandler {
      * the same time.
      *
      * @return the identifier of a stream
-     * @throws IOException
+     * @throws IOException if an I/O error occurs
      */
     StreamIdentifier openStream() throws IOException;
 
@@ -124,7 +177,7 @@ public interface ProtocolHandler {
      * be released and possibly reused.
      *
      * @param streamIdentifier
-     * @throws IOException
+     * @throws IOException if an I/O error occurs
      */
     void closeStream(StreamIdentifier streamIdentifier) throws IOException;
 
@@ -133,10 +186,17 @@ public interface ProtocolHandler {
      *
      * @param input
      * @return the new stream identifier
-     * @throws IOException
+     * @throws IOException if an I/O error occurs
      */
     StreamIdentifier readStreamIdentifier(ObjectInput input) throws IOException;
 
+    /**
+     * Write a stream identifier to an object output stream.
+     *
+     * @param output the output to write to
+     * @param identifier the identifier to write
+     * @throws IOException if an I/O error occurs
+     */
     void writeStreamIdentifier(ObjectOutput output, StreamIdentifier identifier) throws IOException;
 
     /**
@@ -150,14 +210,14 @@ public interface ProtocolHandler {
      * @param streamExecutor the executor that should be used to handle stream data
      * @return a message buffer into which the message can be written
      *
-     * @throws IOException if an error occurs
+     * @throws IOException if an I/O error occurs
      */
     MessageOutput sendStreamData(StreamIdentifier streamIdentifier, Executor streamExecutor) throws IOException;
 
     /**
      * Close the session.
      *
-     * @throws IOException
+     * @throws IOException if an I/O error occurs
      */
     void closeSession() throws IOException;
 
