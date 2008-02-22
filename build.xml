@@ -1197,16 +1197,20 @@
     <!-- JAVADOCS                                       -->
     <!-- ============================================== -->
 
-    <target name="api-javadoc" depends="api,util">
+    <target name="api-javadoc" depends="api,core,log-jul,standalone,util">
         <delete dir="api/target/main/docs"/>
         <mkdir dir="api/target/main/docs"/>
         <javadoc destdir="api/target/main/docs" author="false" version="false" use="false" windowtitle="JBoss Remoting API">
             <packageset dir="api/src/main/java"/>
             <packageset dir="util/src/main/java"/>
+            <packageset dir="standalone/src/main/java"/>
             <doctitle><![CDATA[<h1>JBoss Remoting 3</h1>]]></doctitle>
             <bottom><![CDATA[<i>Copyright &#169; 2008 JBoss, a division of Red Hat, Inc.</i>]]></bottom>
             <link href="http://java.sun.com/j2se/1.5.0/docs/api/"/>
-            <classpath location="util/target/main/classes"/>
+            <classpath>
+                <path refid="log-jul.classpath"/>
+                <path refid="core.classpath"/>
+            </classpath>
         </javadoc>
     </target>
 
