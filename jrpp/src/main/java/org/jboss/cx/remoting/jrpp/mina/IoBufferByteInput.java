@@ -2,7 +2,7 @@ package org.jboss.cx.remoting.jrpp.mina;
 
 import java.io.IOException;
 import org.apache.mina.common.IoBuffer;
-import org.jboss.cx.remoting.core.util.ByteInput;
+import org.jboss.cx.remoting.util.ByteInput;
 
 /**
  *

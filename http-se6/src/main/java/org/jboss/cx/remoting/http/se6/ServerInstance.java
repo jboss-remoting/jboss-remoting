@@ -10,8 +10,8 @@ import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.http.spi.RemotingHttpSessionContext;
 import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
 import org.jboss.cx.remoting.http.spi.AbstractIncomingHttpMessage;
-import org.jboss.cx.remoting.core.util.ByteInput;
-import org.jboss.cx.remoting.core.util.ByteOutput;
+import org.jboss.cx.remoting.util.ByteInput;
+import org.jboss.cx.remoting.util.ByteOutput;
 
 import com.sun.net.httpserver.BasicAuthenticator;
 import com.sun.net.httpserver.Headers;

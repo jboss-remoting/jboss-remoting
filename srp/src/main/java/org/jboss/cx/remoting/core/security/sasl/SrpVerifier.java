@@ -10,8 +10,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 import java.util.Set;
-import org.jboss.cx.remoting.core.util.Base64DecodingException;
-import org.jboss.cx.remoting.core.util.IoUtil;
+import org.jboss.cx.remoting.util.Base64DecodingException;
+import org.jboss.cx.remoting.util.IoUtil;
 
 /**
  *

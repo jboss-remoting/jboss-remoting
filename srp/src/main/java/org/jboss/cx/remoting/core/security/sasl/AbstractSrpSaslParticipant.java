@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import org.jboss.cx.remoting.core.security.sasl.BufferFactory;
-import org.jboss.cx.remoting.core.util.IoUtil;
+import org.jboss.cx.remoting.util.IoUtil;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;

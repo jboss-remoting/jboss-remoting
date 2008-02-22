@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.log.Logger;
 
 import javax.crypto.NoSuchPaddingException;

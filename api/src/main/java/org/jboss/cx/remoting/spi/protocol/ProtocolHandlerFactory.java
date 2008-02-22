@@ -2,7 +2,7 @@ package org.jboss.cx.remoting.spi.protocol;
 
 import java.io.IOException;
 import java.net.URI;
-import org.jboss.cx.remoting.core.util.AttributeMap;
+import org.jboss.cx.remoting.util.AttributeMap;
 
 /**
  *

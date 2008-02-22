@@ -2,7 +2,7 @@ package org.jboss.cx.remoting.http.spi;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import org.jboss.cx.remoting.core.util.ByteInput;
+import org.jboss.cx.remoting.util.ByteInput;
 
 /**
  *

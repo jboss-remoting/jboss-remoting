@@ -3,7 +3,7 @@ package org.jboss.cx.remoting.http.spi;
 import java.util.List;
 import java.util.Map;
 import java.util.Collections;
-import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.util.CollectionUtil;
 
 /**
  *

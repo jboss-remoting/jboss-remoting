@@ -3,8 +3,8 @@ package org.jboss.cx.remoting;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.jboss.cx.remoting.core.util.AttributeKey;
-import static org.jboss.cx.remoting.core.util.AttributeKey.key;
+import org.jboss.cx.remoting.util.AttributeKey;
+import static org.jboss.cx.remoting.util.AttributeKey.key;
 
 import javax.security.auth.callback.CallbackHandler;
 

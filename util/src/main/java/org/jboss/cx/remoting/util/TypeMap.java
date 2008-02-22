@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.core.util;
+package org.jboss.cx.remoting.util;
 
 import java.util.Collection;
 import java.util.Map;

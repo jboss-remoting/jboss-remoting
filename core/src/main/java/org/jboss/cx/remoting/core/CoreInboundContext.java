@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
-import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.spi.ServerInterceptorFactory;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;

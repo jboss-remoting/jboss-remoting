@@ -14,7 +14,7 @@ import org.apache.mina.handler.multiton.SingleSessionIoHandler;
 import org.apache.mina.handler.multiton.SingleSessionIoHandlerDelegate;
 import org.apache.mina.handler.multiton.SingleSessionIoHandlerFactory;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
-import org.jboss.cx.remoting.core.util.AttributeMap;
+import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.jrpp.mina.FramingIoFilter;
 import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
 

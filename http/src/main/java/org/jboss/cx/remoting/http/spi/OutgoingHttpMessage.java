@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.http.spi;
 
 import java.io.IOException;
-import org.jboss.cx.remoting.core.util.ByteOutput;
+import org.jboss.cx.remoting.util.ByteOutput;
 
 /**
  *

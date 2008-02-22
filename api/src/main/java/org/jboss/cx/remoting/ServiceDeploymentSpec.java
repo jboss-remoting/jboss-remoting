@@ -2,7 +2,7 @@ package org.jboss.cx.remoting;
 
 import java.util.Collections;
 import java.util.List;
-import org.jboss.cx.remoting.core.util.CollectionUtil;
+import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.spi.InterceptorSpec;
 
 /**
