@@ -207,7 +207,7 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
 
-    public void waitInterruptablyFor(final T state) throws InterruptedException {
+    public void waitInterruptiblyFor(final T state) throws InterruptedException {
         writeLock.lockInterruptibly();
         try {
             while (this.state != state) {
@@ -250,7 +250,7 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
-    public boolean waitInterruptablyFor(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+    public boolean waitInterruptiblyFor(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
@@ -268,7 +268,7 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
-    public T waitInterruptablyForNot(final T state) throws InterruptedException {
+    public T waitInterruptiblyForNot(final T state) throws InterruptedException {
         writeLock.lockInterruptibly();
         try {
             while (this.state == state) {
@@ -280,7 +280,7 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
-    public T waitInterruptablyForNotHold(final T state) throws InterruptedException {
+    public T waitInterruptiblyForNotHold(final T state) throws InterruptedException {
         writeLock.lockInterruptibly();
         try {
             while (this.state == state) {
@@ -326,7 +326,7 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         return this.state;
     }
 
-    public T waitInterruptablyForNot(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+    public T waitInterruptiblyForNot(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
@@ -343,20 +343,56 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
 
-    public T waitInterruptablyForNotHold(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+    public T waitInterruptiblyForNotHold(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
         final Date deadLine = new Date(endTime);
+        boolean waiting = true;
         writeLock.lockInterruptibly();
         try {
             while (this.state == state) {
-                cond.awaitUntil(deadLine);
+                if (waiting) {
+                    waiting = cond.awaitUntil(deadLine);
+                } else {
+                    break;
+                }
             }
             readLock.lockInterruptibly();
             return this.state;
         } finally {
             writeLock.unlock();
+        }
+    }
+
+    public T waitForNotHold(final T state, final long timeout, final TimeUnit timeUnit) {
+        final long timeoutMillis = timeUnit.toMillis(timeout);
+        final long startTime = System.currentTimeMillis();
+        final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
+        final Date deadLine = new Date(endTime);
+        boolean intr = false;
+        try {
+            boolean waiting = true;
+            writeLock.lock();
+            try {
+                while (this.state == state) {
+                    if (waiting) {
+                        try {
+                            waiting = cond.awaitUntil(deadLine);
+                        } catch (InterruptedException e) {
+                            intr = Thread.currentThread().isInterrupted();
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                readLock.lock();
+                return this.state;
+            } finally {
+                writeLock.unlock();
+            }
+        } finally {
+            if (intr) Thread.currentThread().interrupt();
         }
     }
 

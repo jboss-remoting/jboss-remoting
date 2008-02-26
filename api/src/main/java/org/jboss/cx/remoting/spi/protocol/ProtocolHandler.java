@@ -88,10 +88,10 @@ public interface ProtocolHandler {
     ContextIdentifier getRemoteRootContextIdentifier();
 
     /**
-     * Get a new context identifier that will be used to send requests to the remote side.  The service identifier
-     * was received from the remote side.  Should send a message to the remote side such that the
+     * Get a new context identifier.  The service identifier was received from the remote side.  Should send a message
+     * to the remote side such that the
      * {@link ProtocolContext#receiveOpenedContext(ServiceIdentifier, ContextIdentifier)} method is called with
-     * the new service and context identifiers.
+     * the service and context identifiers.
      *
      * @param serviceIdentifier the service identifier
      * @return a context identifier associated with the given service identifier
@@ -107,7 +107,7 @@ public interface ProtocolHandler {
      * @param contextIdentifier
      * @throws IOException if an I/O error occurs
      */
-    void closeContext(ContextIdentifier contextIdentifier) throws IOException;
+    void sendContextClose(ContextIdentifier contextIdentifier) throws IOException;
 
     /**
      * Acquire a new request identifier that will be used to send a request.
@@ -117,14 +117,6 @@ public interface ProtocolHandler {
      * @throws IOException if an I/O error occurs
      */
     RequestIdentifier openRequest(ContextIdentifier contextIdentifier) throws IOException;
-
-    /**
-     * Get a new service identifier that may be transmitted to the remote side.
-     *
-     * @return the new service identifier
-     * @throws IOException if an I/O error occurs
-     */
-    ServiceIdentifier openService() throws IOException;
 
     /**
      * Send a notification that the client is no longer using the given service.
@@ -164,6 +156,14 @@ public interface ProtocolHandler {
      * @throws IOException if an I/O error occurs
      */
     ContextIdentifier openContext() throws IOException;
+
+    /**
+     * Get a new service identifier that may be transmitted to the remote side.
+     *
+     * @return the new service identifier
+     * @throws IOException if an I/O error occurs
+     */
+    ServiceIdentifier openService() throws IOException;
 
     /**
      * Open a stream on this session.  Since either side may open a stream, it is important that the client and

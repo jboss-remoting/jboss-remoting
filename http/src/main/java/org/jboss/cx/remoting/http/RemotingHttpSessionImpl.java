@@ -206,7 +206,7 @@ public final class RemotingHttpSessionImpl {
             return contextIdentifier;
         }
 
-        public void closeContext(final ContextIdentifier contextIdentifier) throws IOException {
+        public void sendContextClose(final ContextIdentifier contextIdentifier) throws IOException {
             outgoingQueue.add(new OutputAction() {
                 public void run(ByteOutput target) throws IOException {
                     final MessageOutput msgOutput = protocolContext.getMessageOutput(target);

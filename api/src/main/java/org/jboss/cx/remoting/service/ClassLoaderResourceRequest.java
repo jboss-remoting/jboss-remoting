@@ -5,12 +5,16 @@ import java.io.Serializable;
 /**
  *
  */
-public final class ClassRequest implements Serializable {
+public final class ClassLoaderResourceRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String name;
 
-    public ClassRequest() {
+    public ClassLoaderResourceRequest() {
+    }
+
+    public ClassLoaderResourceRequest(final String name) {
+        this.name = name;
     }
 
     public String getName() {

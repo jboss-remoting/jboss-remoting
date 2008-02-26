@@ -459,7 +459,7 @@ public final class JrppConnection {
             output.commit();
         }
 
-        public void closeContext(ContextIdentifier contextIdentifier) throws IOException {
+        public void sendContextClose(ContextIdentifier contextIdentifier) throws IOException {
             if (! state.in(State.UP)) {
                 return;
             }

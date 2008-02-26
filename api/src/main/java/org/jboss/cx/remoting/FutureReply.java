@@ -51,9 +51,33 @@ public interface FutureReply<T> extends Future<T> {
      *
      * @throws CancellationException if the computation was cancelled
      * @throws RemoteExecutionException if the computation threw an exception
+     */
+    T get() throws CancellationException, RemoteExecutionException;
+
+    /**
+     * Waits if necessary for the request to complete, and then retrieves its reply.
+     *
+     * @return the reply
+     *
+     * @throws CancellationException if the computation was cancelled
+     * @throws RemoteExecutionException if the computation threw an exception
      * @throws InterruptedException if the current thread was interrupted while waiting
      */
-    T get() throws InterruptedException, CancellationException, RemoteExecutionException;
+    T getInterruptibly() throws InterruptedException, CancellationException, RemoteExecutionException;
+
+    /**
+     * Waits if necessary for at most the given time for the request to complete, and then retrieves the reply, if
+     * available.  If no reply was available, {@code null} is returned.
+     *
+     * @param timeout the maximum time to wait
+     * @param unit the time unit of the timeout argument
+     *
+     * @return the reply, or {@code null} if the operation timed out
+     *
+     * @throws CancellationException if the computation was cancelled
+     * @throws RemoteExecutionException if the computation threw an exception
+     */
+    T get(long timeout, TimeUnit unit) throws CancellationException, RemoteExecutionException;
 
     /**
      * Waits if necessary for at most the given time for the request to complete, and then retrieves the reply, if
@@ -68,7 +92,7 @@ public interface FutureReply<T> extends Future<T> {
      * @throws RemoteExecutionException if the computation threw an exception
      * @throws InterruptedException if the current thread was interrupted while waiting
      */
-    T get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException;
+    T getInterruptibly(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException;
 
     /**
      * Add a notifier to be called when the request has completed.  The notifier may be called from the current thread

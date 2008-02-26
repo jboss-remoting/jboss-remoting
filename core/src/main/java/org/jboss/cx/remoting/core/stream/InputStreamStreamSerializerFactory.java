@@ -22,6 +22,7 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
     }
 
     public StreamSerializer getLocalSide(StreamContext context, Object local) throws IOException {
+
         return new StreamSerializerImpl(context, (InputStream)local);
     }
 

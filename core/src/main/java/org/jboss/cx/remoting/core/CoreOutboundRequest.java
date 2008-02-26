@@ -158,8 +158,8 @@ public final class CoreOutboundRequest<I, O> {
             return state.in(State.DONE);
         }
 
-        public O get() throws InterruptedException, CancellationException, RemoteExecutionException {
-            final State newState = state.waitInterruptablyForNotHold(State.WAITING);
+        public O get() throws CancellationException, RemoteExecutionException {
+            final State newState = state.waitForNotHold(State.WAITING);
             try {
                 switch(newState) {
                     case CANCELLED:
@@ -178,8 +178,28 @@ public final class CoreOutboundRequest<I, O> {
             }
         }
 
-        public O get(long timeout, TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException {
-            final State newState = state.waitInterruptablyForNotHold(State.WAITING, timeout, unit);
+        public O getInterruptibly() throws InterruptedException, CancellationException, RemoteExecutionException {
+            final State newState = state.waitInterruptiblyForNotHold(State.WAITING);
+            try {
+                switch(newState) {
+                    case CANCELLED:
+                        throw new CancellationException("Request was cancelled");
+                    case EXCEPTION:
+                        throw exception;
+                    case DONE:
+                        return reply;
+                    case TERMINATED:
+                        throw new IndeterminateOutcomeException("Request terminated abruptly; outcome unknown");
+                    default:
+                        throw new IllegalStateException("Wrong state");
+                }
+            } finally {
+                state.release();
+            }
+        }
+
+        public O get(long timeout, TimeUnit unit) throws CancellationException, RemoteExecutionException {
+            final State newState = state.waitForNotHold(State.WAITING, timeout, unit);
             try {
                 switch (newState) {
                     case CANCELLED:
@@ -197,6 +217,10 @@ public final class CoreOutboundRequest<I, O> {
             } finally {
                 state.release();
             }
+        }
+
+        public O getInterruptibly(final long timeout, final TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException {
+            return null;
         }
 
         public FutureReply<O> addCompletionNotifier(RequestCompletionHandler<O> handler) {

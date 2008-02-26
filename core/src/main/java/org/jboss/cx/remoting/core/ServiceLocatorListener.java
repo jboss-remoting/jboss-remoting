@@ -11,11 +11,21 @@ import org.jboss.cx.remoting.service.ServiceRequest;
 import org.jboss.cx.remoting.service.ServiceReply;
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
+import java.util.SortedMap;
 
 /**
  *
  */
 public final class ServiceLocatorListener<I, O> implements RequestListener<ServiceRequest<I, O>, ServiceReply<I, O>> {
+
+    private interface Service {
+        String getGroupName();
+
+        String getType();
+
+        // todo - add in whatever negotation to the request object (security?)
+        <X, Y> Context<Void, ServiceReply<X, Y>> getServiceChannel();
+    }
 
     private interface Peer {
         String getName();
@@ -23,6 +33,10 @@ public final class ServiceLocatorListener<I, O> implements RequestListener<Servi
         int getCost();
 
         <X, Y> Context<ServiceRequest<X, Y>, ServiceReply<X, Y>> getLocatorContext();
+
+        SortedMap<String, Service> getServicesByGroupName();
+
+        SortedMap<String, Service> getServicesByType();
     }
 
     private static <K, V> ConcurrentMap<K, V> syncMap() {
@@ -40,4 +54,6 @@ public final class ServiceLocatorListener<I, O> implements RequestListener<Servi
 
         
     }
+
+    
 }

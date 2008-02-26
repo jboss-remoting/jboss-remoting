@@ -722,45 +722,6 @@
         </path>
     </target>
 
-    <!-- remote-classloader module -->
-
-    <target name="remote-classloader.compile.depcheck">
-        <mkdir dir="remote-classloader/target/main"/>
-        <uptodate property="remote-classloader.compile.uptodate" targetfile="remote-classloader/target/main/.lastcompile">
-            <srcfiles dir="remote-classloader/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="remote-classloader.compile" depends="remote-classloader.compile.depcheck" unless="remote-classloader.compile.uptodate">
-        <mkdir dir="remote-classloader/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="remote-classloader/src/main/java"
-                destdir="remote-classloader/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-            </classpath>
-        </javac>
-        <touch file="remote-classloader/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="remote-classloader.clean">
-        <delete dir="remote-classloader/target"/>
-    </target>
-
-    <target name="remote-classloader" description="Build the remote-classloader module" depends="api,remote-classloader.compile">
-        <path id="remote-classloader.classpath">
-            <pathelement location="remote-classloader/target/main/classes"/>
-        </path>
-    </target>
-
     <!-- samples module -->
 
     <target name="samples.compile.depcheck">
@@ -1074,6 +1035,7 @@
             <pathelement location="version/target/main/classes"/>
         </path>
         <java classpathref="version.classpath" classname="org.jboss.cx.remoting.version.Version" outputproperty="version"/>
+        <property name="version" value="UNKNOWN"/>
     </target>
 
     <!-- ============================================== -->
@@ -1229,12 +1191,6 @@
 
     <target name="clean-http" description="Clean all HTTP targets" depends="http.clean,http-mina-client.clean,http-mina-server.clean,http-se6.clean,http-servlet.clean,http-urlconnection.clean"/>
 
-    <!-- interceptors -->
-
-    <target name="all-interceptors" description="Build all interceptor targets" depends="remote-classloader,transaction"/>
-
-    <target name="clean-interceptors" description="Clean all interceptor targets" depends="remote-classloader.clean,transaction.clean"/>
-
     <!-- jrpp -->
 
     <target name="all-jrpp" description="Build all JRPP targets" depends="jrpp,mina-sasl,sasl-null,srp"/>
@@ -1257,8 +1213,8 @@
 
     <!-- all: These should be the last targets in the file -->
 
-    <target name="all" description="Build everything" depends="all-core,all-http,all-interceptors,all-jrpp,all-log,all-jars"/>
+    <target name="all" description="Build everything" depends="all-core,all-http,all-jrpp,all-log,all-jars"/>
 
-    <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,clean-interceptors,clean-jrpp,clean-log"/>
+    <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,clean-jrpp,clean-log"/>
 
 </project>

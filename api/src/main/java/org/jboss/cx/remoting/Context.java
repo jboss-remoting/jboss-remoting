@@ -26,7 +26,24 @@ public interface Context<I, O> extends Closeable<Context<I, O>> {
      * @throws RemoteExecutionException if the remote handler threw an exception
      * @throws InterruptedException if the request was interrupted (and thereby cancelled)
      */
-    O invoke(I request) throws RemotingException, RemoteExecutionException, InterruptedException;
+    O invokeInterruptibly(I request) throws RemotingException, RemoteExecutionException, InterruptedException;
+
+    /**
+     * Send a request and block until a reply is received.
+     * <p/>
+     * Uses the default invocation policy for handling remote invocations. If the remote side manipulates a stream, the
+     * current thread MAY be used to handle it.
+     * <p/>
+     * If the remote session cannot handle the request, a {@code RemotingException} will be thrown.
+     *
+     * @param request the request to send
+     *
+     * @return the result of the request
+     *
+     * @throws RemotingException if the request could not be sent
+     * @throws RemoteExecutionException if the remote handler threw an exception
+     */
+    O invoke(I request) throws RemotingException, RemoteExecutionException;
 
     /**
      * Send a request asynchronously.

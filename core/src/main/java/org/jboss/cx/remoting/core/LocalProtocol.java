@@ -1,8 +1,6 @@
 package org.jboss.cx.remoting.core;
 
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
@@ -12,7 +10,6 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.util.MessageOutput;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.util.CollectionUtil;
-import org.jboss.cx.remoting.util.MessageInput;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
@@ -111,7 +108,7 @@ public final class LocalProtocol {
         public void closeService(ServiceIdentifier serviceIdentifier) throws IOException {
         }
 
-        public void closeContext(ContextIdentifier contextIdentifier) throws IOException {
+        public void sendContextClose(ContextIdentifier contextIdentifier) throws IOException {
             log.trace("Closing context for local protocol");
             remoteContext.closeContext(contextIdentifier);
         }

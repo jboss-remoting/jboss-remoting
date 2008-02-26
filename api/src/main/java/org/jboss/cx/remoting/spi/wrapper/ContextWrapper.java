@@ -29,7 +29,11 @@ public class ContextWrapper<I, O> implements Context<I, O> {
         });
     }
 
-    public O invoke(final I request) throws RemotingException, RemoteExecutionException, InterruptedException {
+    public O invokeInterruptibly(final I request) throws RemotingException, RemoteExecutionException, InterruptedException {
+        return delegate.invokeInterruptibly(request);
+    }
+
+    public O invoke(final I request) throws RemotingException, RemoteExecutionException {
         return delegate.invoke(request);
     }
 

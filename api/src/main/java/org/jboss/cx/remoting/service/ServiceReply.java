@@ -11,7 +11,7 @@ public final class ServiceReply<I, O> implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private ContextSource<I, O> serviceContextSource;
-    private Context<ClassRequest, ClassReply> classLoadingContext;
+    private Context<ClassLoaderResourceRequest, ClassLoaderResourceReply> classLoadingContext;
 
     public ServiceReply() {
     }
@@ -24,11 +24,11 @@ public final class ServiceReply<I, O> implements Serializable {
         this.serviceContextSource = serviceContextSource;
     }
 
-    public Context<ClassRequest, ClassReply> getClassLoadingContext() {
+    public Context<ClassLoaderResourceRequest, ClassLoaderResourceReply> getClassLoadingContext() {
         return classLoadingContext;
     }
 
-    public void setClassLoadingContext(final Context<ClassRequest, ClassReply> classLoadingContext) {
+    public void setClassLoadingContext(final Context<ClassLoaderResourceRequest, ClassLoaderResourceReply> classLoadingContext) {
         this.classLoadingContext = classLoadingContext;
     }
 }

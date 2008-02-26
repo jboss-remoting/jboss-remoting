@@ -137,22 +137,40 @@ public final class CoreOutboundContext<I, O> {
             // todo ...
         }
 
-        public O invoke(final I request) throws RemotingException, RemoteExecutionException, InterruptedException {
+        private FutureReply<O> doSend(final I request, final QueueExecutor queueExecutor) throws RemotingException {
+            final RequestIdentifier requestIdentifier;
+            requestIdentifier = openRequest();
+            final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>(CoreOutboundContext.this, requestIdentifier);
+            requests.put(requestIdentifier, outboundRequest);
+            // Request must be sent *after* the identifier is registered in the map
+            sendRequest(requestIdentifier, request, queueExecutor);
+            final FutureReply<O> futureReply = outboundRequest.getFutureReply();
+            futureReply.addCompletionNotifier(new RequestCompletionHandler<O>() {
+                public void notifyComplete(final FutureReply<O> futureReply) {
+                    queueExecutor.shutdown();
+                }
+            });
+            return futureReply;
+        }
+
+        public O invokeInterruptibly(final I request) throws RemotingException, RemoteExecutionException, InterruptedException {
             state.requireHold(State.UP);
             try {
-                final RequestIdentifier requestIdentifier;
-                requestIdentifier = openRequest();
-                final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>(CoreOutboundContext.this, requestIdentifier);
-                requests.put(requestIdentifier, outboundRequest);
-                // Request must be sent *after* the identifier is registered in the map
                 final QueueExecutor queueExecutor = new QueueExecutor();
-                sendRequest(requestIdentifier, request, queueExecutor);
-                final FutureReply<O> futureReply = outboundRequest.getFutureReply();
-                futureReply.addCompletionNotifier(new RequestCompletionHandler<O>() {
-                    public void notifyComplete(final FutureReply<O> futureReply) {
-                        queueExecutor.shutdown();
-                    }
-                });
+                final FutureReply<O> futureReply = doSend(request, queueExecutor);
+                // todo - find a safe way to make this interruptable
+                queueExecutor.runQueue();
+                return futureReply.getInterruptibly();
+            } finally {
+                state.release();
+            }
+        }
+
+        public O invoke(final I request) throws RemotingException, RemoteExecutionException {
+            state.requireHold(State.UP);
+            try {
+                final QueueExecutor queueExecutor = new QueueExecutor();
+                final FutureReply<O> futureReply = doSend(request, queueExecutor);
                 queueExecutor.runQueue();
                 return futureReply.get();
             } finally {
