@@ -1,7 +1,6 @@
 package org.jboss.cx.remoting.jrpp;
 
 import java.io.IOException;
-import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import static java.lang.Math.min;
 import java.util.Enumeration;
@@ -11,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.mina.common.AttributeKey;
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoBuffer;
@@ -20,13 +20,12 @@ import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
 import org.jboss.cx.remoting.CommonKeys;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.util.MessageOutput;
 import org.jboss.cx.remoting.util.MessageInput;
 import org.jboss.cx.remoting.util.CollectionUtil;
-import org.jboss.cx.remoting.jrpp.id.IdentifierManager;
+import org.jboss.cx.remoting.util.WeakHashSet;
 import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppServiceIdentifier;
@@ -71,13 +70,24 @@ public final class JrppConnection {
 
     private final ProtocolHandler protocolHandler;
     private final SingleSessionIoHandler ioHandler;
-    private final IdentifierManager identifierManager;
     private final AttributeMap attributeMap;
 
     private IoSession ioSession;
     private String remoteName;
     private ProtocolContext protocolContext;
     private IOException failureReason;
+
+    private boolean client;
+
+    private final AtomicInteger streamIdSequence = new AtomicInteger(0);
+    private final AtomicInteger contextIdSequence = new AtomicInteger(1);
+    private final AtomicInteger serviceIdSequence = new AtomicInteger(0);
+    private final AtomicInteger requestIdSequence = new AtomicInteger(0);
+
+    private final Set<StreamIdentifier> liveStreamSet = CollectionUtil.synchronizedSet(new WeakHashSet<StreamIdentifier>());
+    private final Set<ContextIdentifier> liveContextSet = CollectionUtil.synchronizedSet(new WeakHashSet<ContextIdentifier>());
+    private final Set<RequestIdentifier> liveRequestSet = CollectionUtil.synchronizedSet(new WeakHashSet<RequestIdentifier>());
+    private final Set<ServiceIdentifier> liveServiceSet = CollectionUtil.synchronizedSet(new WeakHashSet<ServiceIdentifier>());
 
     /**
      * The negotiated protocol version.  Value is set to {@code min(PROTOCOL_VERSION, remote PROTOCOL_VERSION)}.
@@ -118,7 +128,6 @@ public final class JrppConnection {
     public JrppConnection(final AttributeMap attributeMap) {
         this.attributeMap = attributeMap;
         ioHandler = new IoHandlerImpl();
-        identifierManager = new IdentifierManager();
         protocolHandler = new RemotingProtocolHandler();
     }
 
@@ -128,6 +137,7 @@ public final class JrppConnection {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
             this.protocolContext = protocolContext;
+            client = true;
         } finally {
             state.releaseExclusive();
         }
@@ -140,6 +150,7 @@ public final class JrppConnection {
             this.ioSession = ioSession;
             final ProtocolContext protocolContext = protocolServerContext.establishSession(protocolHandler);
             this.protocolContext = protocolContext;
+            client = false;
         } finally {
             state.releaseExclusive();
         }
@@ -361,6 +372,42 @@ public final class JrppConnection {
         }
     }
 
+    private JrppContextIdentifier getNewContextIdentifier() {
+        for (;;) {
+            final JrppContextIdentifier contextIdentifier = new JrppContextIdentifier(client, contextIdSequence.getAndIncrement());
+            if (liveContextSet.add(contextIdentifier)) {
+                return contextIdentifier;
+            }
+        }
+    }
+
+    private JrppRequestIdentifier getNewRequestIdentifier() {
+        for (;;) {
+            final JrppRequestIdentifier requestIdentifier = new JrppRequestIdentifier(client, requestIdSequence.getAndIncrement());
+            if (liveRequestSet.add(requestIdentifier)) {
+                return requestIdentifier;
+            }
+        }
+    }
+
+    private JrppStreamIdentifier getNewStreamIdentifier() {
+        for (;;) {
+            final JrppStreamIdentifier streamIdentifier = new JrppStreamIdentifier(client, streamIdSequence.getAndIncrement());
+            if (liveStreamSet.add(streamIdentifier)) {
+                return streamIdentifier;
+            }
+        }
+    }
+
+    private JrppServiceIdentifier getNewServiceIdentifier() {
+        for (;;) {
+            final JrppServiceIdentifier serviceIdentifier = new JrppServiceIdentifier(client, serviceIdSequence.getAndIncrement());
+            if (liveServiceSet.add(serviceIdentifier)) {
+                return serviceIdentifier;
+            }
+        }
+    }
+
     private static IoBuffer newBuffer(final int initialSize, final boolean autoexpand) {
         return IoBuffer.allocate(initialSize + 4).setAutoExpand(autoexpand).skip(4);
     }
@@ -368,7 +415,7 @@ public final class JrppConnection {
     public final class RemotingProtocolHandler implements ProtocolHandler {
 
         public ContextIdentifier openContext(ServiceIdentifier serviceIdentifier) throws IOException {
-            final ContextIdentifier contextIdentifier = new JrppContextIdentifier(identifierManager.getIdentifier());
+            final ContextIdentifier contextIdentifier = getNewContextIdentifier();
             final IoBuffer buffer = newBuffer(60, false);
             final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
             write(output, MessageType.OPEN_CONTEXT);
@@ -379,15 +426,15 @@ public final class JrppConnection {
         }
 
         public RequestIdentifier openRequest(ContextIdentifier contextIdentifier) throws IOException {
-            return new JrppRequestIdentifier(identifierManager.getIdentifier());
+            return getNewRequestIdentifier();
         }
 
         public StreamIdentifier openStream() throws IOException {
-            return new JrppStreamIdentifier(identifierManager.getIdentifier());
+            return getNewStreamIdentifier();
         }
 
         public ServiceIdentifier openService() throws IOException {
-            return new JrppServiceIdentifier(identifierManager.getIdentifier());
+            return getNewServiceIdentifier();
         }
 
         public void closeSession() throws IOException {
@@ -435,52 +482,6 @@ public final class JrppConnection {
                 write(output, streamIdentifier);
                 output.commit();
             }
-        }
-
-        public StreamIdentifier readStreamIdentifier(ObjectInput input) throws IOException {
-            return new JrppStreamIdentifier(input);
-        }
-
-        public void writeStreamIdentifier(ObjectOutput output, StreamIdentifier identifier) throws IOException {
-            write(output, identifier);
-        }
-
-        public void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) throws IOException {
-            if (serviceIdentifier == null) {
-                throw new NullPointerException("serviceIdentifier is null");
-            }
-            if (locator == null) {
-                throw new NullPointerException("locator is null");
-            }
-            if (! state.in(State.UP)) {
-                throw new IllegalStateException("JrppConnection is not in the UP state!");
-            }
-            final IoBuffer buffer = newBuffer(500, true);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
-            write(output, MessageType.SERVICE_REQUEST);
-            write(output, serviceIdentifier);
-            output.writeObject(locator.getRequestType());
-            output.writeObject(locator.getReplyType());
-            output.writeUTF(locator.getServiceType());
-            output.writeUTF(locator.getServiceGroupName());
-            final Set<String> interceptors = locator.getAvailableInterceptors();
-            final int cnt = interceptors.size();
-            output.writeInt(cnt);
-            for (String name : interceptors) {
-                output.writeUTF(name);
-            }
-            output.commit();
-        }
-
-        public void sendServiceActivate(ServiceIdentifier serviceIdentifier) throws IOException {
-            if (serviceIdentifier == null) {
-                throw new NullPointerException("serviceIdentifier is null");
-            }
-            final IoBuffer buffer = newBuffer(60, false);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
-            write(output, MessageType.SERVICE_ACTIVATE);
-            write(output, serviceIdentifier);
-            output.commit();
         }
 
         public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Object reply) throws IOException {
@@ -560,6 +561,14 @@ public final class JrppConnection {
             output.commit();
         }
 
+        public ContextIdentifier getLocalRootContextIdentifier() {
+            return null;
+        }
+
+        public ContextIdentifier getRemoteRootContextIdentifier() {
+            return null;
+        }
+
         public void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException {
             if (contextIdentifier == null) {
                 throw new NullPointerException("contextIdentifier is null");
@@ -574,6 +583,10 @@ public final class JrppConnection {
             write(output, requestIdentifier);
             output.writeBoolean(mayInterrupt);
             output.commit();
+        }
+
+        public ContextIdentifier openContext() throws IOException {
+            return null;
         }
 
         public MessageOutput sendStreamData(StreamIdentifier streamIdentifier, Executor streamExecutor) throws IOException {
@@ -631,22 +644,6 @@ public final class JrppConnection {
             } else {
                 fail(new IOException("Unexpected exception from handler: " + throwable.toString()));
             }
-        }
-
-        private ContextIdentifier readCtxtId(MessageInput input) throws IOException {
-            return new JrppContextIdentifier(input.readShort());
-        }
-
-        private ServiceIdentifier readSvcId(MessageInput input) throws IOException {
-            return new JrppServiceIdentifier(input.readShort());
-        }
-
-        private StreamIdentifier readStrId(MessageInput input) throws IOException {
-            return new JrppStreamIdentifier(input.readShort());
-        }
-
-        private RequestIdentifier readReqId(MessageInput input) throws IOException {
-            return new JrppRequestIdentifier(input.readShort());
         }
 
         public void messageReceived(Object message) throws Exception {
@@ -809,56 +806,56 @@ public final class JrppConnection {
                 case UP: {
                     switch (type) {
                         case OPEN_CONTEXT: {
-                            final ServiceIdentifier serviceIdentifier = readSvcId(input);
-                            final ContextIdentifier contextIdentifier = readCtxtId(input);
+                            final ServiceIdentifier serviceIdentifier = (ServiceIdentifier) input.readObject();
+                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
                             protocolContext.receiveOpenedContext(serviceIdentifier, contextIdentifier);
                             return;
                         }
                         case CANCEL_ACK: {
-                            final ContextIdentifier contextIdentifier = readCtxtId(input);
-                            final RequestIdentifier requestIdentifier = readReqId(input);
+                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
+                            final RequestIdentifier requestIdentifier = (RequestIdentifier) input.readObject();
                             protocolContext.receiveCancelAcknowledge(contextIdentifier, requestIdentifier);
                             return;
                         }
                         case CANCEL_REQ: {
-                            final ContextIdentifier contextIdentifier = readCtxtId(input);
-                            final RequestIdentifier requestIdentifier = readReqId(input);
+                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
+                            final RequestIdentifier requestIdentifier = (RequestIdentifier) input.readObject();
                             final boolean mayInterrupt = input.readBoolean();
                             protocolContext.receiveCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
                             return;
                         }
                         case CLOSE_CONTEXT: {
-                            final ContextIdentifier contextIdentifier = readCtxtId(input);
+                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
                             protocolContext.closeContext(contextIdentifier);
                             return;
                         }
                         case CLOSE_SERVICE: {
-                            final ServiceIdentifier serviceIdentifier = readSvcId(input);
+                            final ServiceIdentifier serviceIdentifier = (ServiceIdentifier) input.readObject();
                             protocolContext.closeService(serviceIdentifier);
                             return;
                         }
                         case CLOSE_STREAM: {
-                            final StreamIdentifier streamIdentifier = readStrId(input);
+                            final StreamIdentifier streamIdentifier = (StreamIdentifier) input.readObject();
                             protocolContext.closeStream(streamIdentifier);
                             return;
                         }
                         case EXCEPTION: {
-                            final ContextIdentifier contextIdentifier = readCtxtId(input);
-                            final RequestIdentifier requestIdentifier = readReqId(input);
+                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
+                            final RequestIdentifier requestIdentifier = (RequestIdentifier) input.readObject();
                             final RemoteExecutionException exception = (RemoteExecutionException) input.readObject();
                             protocolContext.receiveException(contextIdentifier, requestIdentifier, exception);
                             return;
                         }
                         case REPLY: {
-                            final ContextIdentifier contextIdentifier = readCtxtId(input);
-                            final RequestIdentifier requestIdentifier = readReqId(input);
+                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
+                            final RequestIdentifier requestIdentifier = (RequestIdentifier) input.readObject();
                             final Object reply = input.readObject();
                             protocolContext.receiveReply(contextIdentifier, requestIdentifier, reply);
                             return;
                         }
                         case REQUEST: {
-                            final ContextIdentifier contextIdentifier = readCtxtId(input);
-                            final RequestIdentifier requestIdentifier = readReqId(input);
+                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
+                            final RequestIdentifier requestIdentifier = (RequestIdentifier) input.readObject();
                             final Object request = input.readObject();
                             if (trace) {
                                 log.trace("Received request - body is %s", request);
@@ -866,38 +863,13 @@ public final class JrppConnection {
                             protocolContext.receiveRequest(contextIdentifier, requestIdentifier, request);
                             return;
                         }
-                        case SERVICE_ACTIVATE: {
-                            final ServiceIdentifier serviceIdentifier = readSvcId(input);
-                            protocolContext.receiveServiceActivate(serviceIdentifier);
-                            return;
-                        }
-                        case SERVICE_REQUEST: {
-                            final ServiceIdentifier serviceIdentifier = readSvcId(input);
-                            final Class<?> requestType = (Class<?>) input.readObject();
-                            final Class<?> replyType = (Class<?>) input.readObject();
-                            final String serviceType = input.readUTF();
-                            final String serviceGroupName = input.readUTF();
-                            final Set<String> interceptors = CollectionUtil.hashSet();
-                            int c = input.readInt();
-                            for (int i = 0; i < c; i ++) {
-                                interceptors.add(input.readUTF());
-                            }
-                            final ServiceLocator<?, ?> locator = ServiceLocator.DEFAULT
-                                    .setRequestType(requestType)
-                                    .setReplyType(replyType)
-                                    .setServiceType(serviceType)
-                                    .setServiceGroupName(serviceGroupName)
-                                    .setAvailableInterceptors(interceptors);
-                            protocolContext.receiveServiceRequest(serviceIdentifier, locator);
-                            return;
-                        }
-                        case SERVICE_TERMINATE: {
-                            final ServiceIdentifier serviceIdentifier = readSvcId(input);
+                       case SERVICE_TERMINATE: {
+                            final ServiceIdentifier serviceIdentifier = (ServiceIdentifier) input.readObject();
                             protocolContext.receiveServiceTerminate(serviceIdentifier);
                             return;
                         }
                         case STREAM_DATA: {
-                            final StreamIdentifier streamIdentifier = readStrId(input);
+                            final StreamIdentifier streamIdentifier = (StreamIdentifier) input.readObject();
                             protocolContext.receiveStreamData(streamIdentifier, input);
                             return;
                         }
@@ -931,8 +903,6 @@ public final class JrppConnection {
         EXCEPTION,
         REPLY,
         REQUEST,
-        SERVICE_ACTIVATE,
-        SERVICE_REQUEST,
         SERVICE_TERMINATE,
         STREAM_DATA,
     }

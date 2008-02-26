@@ -1,9 +1,11 @@
 package org.jboss.cx.remoting;
 
+import java.io.IOException;
+
 /**
  *
  */
-public class RemotingException extends Exception {
+public class RemotingException extends IOException {
     public RemotingException() {
     }
 

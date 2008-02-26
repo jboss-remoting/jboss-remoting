@@ -25,7 +25,7 @@ public interface ProtocolHandlerFactory {
      *
      * @param context the protocol context to use for inbound data
      * @param remoteUri the URI of the remote side
-     * @param attributeMap
+     * @param attributeMap the attributes for the underlying protocol to apply
      * @return the protocol handler for outbound data
      *
      * @throws IOException if the handler could not be created

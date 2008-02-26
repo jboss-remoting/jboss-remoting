@@ -3,8 +3,6 @@ package org.jboss.cx.remoting;
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.util.AttributeMap;
-import org.jboss.cx.remoting.spi.Discovery;
-import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 
@@ -21,29 +19,10 @@ public interface Endpoint {
     ConcurrentMap<Object, Object> getAttributes();
 
     /**
-     * Shut down this endpoint.  Cancel any outstanding requests, tear down thread pools.
-     */
-    void shutdown();
-
-    /**
-     * Add a shutdown listener.  This listener will be called after shutdown has been initiated.
-     *
-     * @param listener the listener
-     */
-    void addShutdownListener(EndpointShutdownListener listener);
-
-    /**
-     * Remove a previously added shutdown listener.
-     *
-     * @param listener the listener
-     */
-    void removeShutdownListener(EndpointShutdownListener listener);
-
-    /**
      * Open a session with another endpoint.  The protocol used is determined by the URI scheme.  The URI user-info part
      * must be {@code null} unless the specific protocol has an additional authentication scheme (e.g. HTTP BASIC).  The
-     * authority is used to locate the server (the exact interpretation is dependent upon the protocol). The URI path is
-     * the service to connect to.  The path may be relative to a protocol-specific deployment path.
+     * authority is used to locate the server (the exact interpretation is dependent upon the protocol). The path may be
+     * relative to a protocol-specific deployment path.
      *
      * @param remoteUri the URI of the server to connect to
      * @param attributeMap the attribute map to use to configure this session
@@ -62,18 +41,6 @@ public interface Endpoint {
     String getName();
 
     /**
-     * Deploy a service into this endpoint.
-     *
-     * @param spec the specification for this service deployment
-     *
-     * @return a registration that may be used to control this deployment
-     *
-     * @throws RemotingException if the registration failed
-     * @throws IllegalArgumentException if the specification failed validation
-     */
-    <I, O> Registration deployService(ServiceDeploymentSpec<I, O> spec) throws RemotingException, IllegalArgumentException;
-
-    /**
      * Register a protocol specification for this endpoint.
      *
      * @param spec the protocol specification
@@ -86,32 +53,21 @@ public interface Endpoint {
     ProtocolRegistration registerProtocol(ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException;
 
     /**
-     * Deploy a context interceptor type into this endpoint.  Subsequent sessions may negotiate to use this context
-     * service.
+     * Create a context that can be used to invoke a request listener on this endpoint.  The context may be passed to a
+     * remote endpoint as part of a request or a reply, or it may be used locally.
      *
-     * @param spec the deployment specification
-     *
-     * @return a registration that may be used to control this deployment
-     *
-     * @throws RemotingException if the registration failed
-     * @throws IllegalArgumentException if the specification failed validation
+     * @param requestListener the request listener
+     * @return the context
      */
-    Registration deployInterceptorType(InterceptorDeploymentSpec spec) throws RemotingException, IllegalArgumentException;
+    <I, O> Context<I, O> createContext(RequestListener<I, O> requestListener);
 
     /**
-     * Discover a remote endpoint.  Adds the host to the internal routing table of the endpoint.  Higher cost indicates
-     * a less desirable route.
-     * <p/>
-     * The next hop URI should also include a path component, if the target endpoint is deployed relative to a base path
-     * (e.g. a servlet).
+     * Create a context source that can be used to acquire contexts associated with a request listener on this endpoint.
+     * The context source may be passed to a remote endpoint as part of a request or a reply, or it may be used locally.
+     * The objects that are produced by this method may be used to mass-produce {@code Context} instances.
      *
-     * @param endpointName the name of the discovered endpoint
-     * @param nextHop the URI of the means to connect to the next "hop" towards the named endpoint
-     * @param cost the "cost" associated with traversing this route
-     *
-     * @return an obejct representing the discovery
-     *
-     * @throws RemotingException if there is a problem with the discovery parameters
+     * @param requestListener the request listener
+     * @return the context source
      */
-    Discovery discover(String endpointName, URI nextHop, int cost) throws RemotingException;
+    <I, O> ContextSource<I, O> createService(RequestListener<I, O> requestListener);
 }

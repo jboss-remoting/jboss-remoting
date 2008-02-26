@@ -2,43 +2,48 @@ package org.jboss.cx.remoting.jrpp.id;
 
 import java.io.IOException;
 import java.io.ObjectInput;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.io.Externalizable;
+import java.io.ObjectOutput;
 
 /**
  *
  */
-public abstract class JrppSubChannelIdentifier {
-    private final short id;
-    private final AtomicBoolean dead = new AtomicBoolean(false);
+public abstract class JrppSubChannelIdentifier implements Externalizable {
+    private /*final*/ boolean client;
+    private /*final*/ int id;
 
-    public JrppSubChannelIdentifier(short id) throws IOException {
+    protected JrppSubChannelIdentifier() {
+    }
+
+    protected JrppSubChannelIdentifier(final boolean client, final int id) {
+        if (id < 0) {
+            throw new IllegalArgumentException("id must be >= 0");
+        }
+        this.client = client;
         this.id = id;
     }
 
-    public JrppSubChannelIdentifier(ObjectInput input) throws IOException {
-        id = input.readShort();
+    public final void writeExternal(ObjectOutput out) throws IOException {
+        out.writeInt(id << 1 | (client ? 0 : 1));
     }
 
-    public void release(IdentifierManager manager) {
-        if (!dead.getAndSet(true)) {
-            manager.freeIdentifier(id);
-        }
+    public final void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+        int i = in.readInt();
+        id = i >>> 1;
+        client = (i & 1) == 0;
     }
 
-    public short getId() {
-        if (dead.get()) {
-            throw new IllegalStateException("Read channel ID after close");
-        }
+    public int getId() {
         return id;
     }
 
     public boolean equals(Object obj) {
         if (!(obj instanceof JrppSubChannelIdentifier)) return false;
         JrppSubChannelIdentifier other = (JrppSubChannelIdentifier) obj;
-        return !(dead.get() || other.dead.get()) && other.id == id;
+        return other.id == id && other.client == client;
     }
 
     public int hashCode() {
-        return id;
+        return id << 1 | (client ? 0 : 1);
     }
 }

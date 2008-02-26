@@ -9,7 +9,6 @@ import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.util.MessageOutput;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.util.CollectionUtil;
@@ -121,32 +120,6 @@ public final class LocalProtocol {
             log.trace("Closing stream for local protocol");
         }
 
-        public StreamIdentifier readStreamIdentifier(ObjectInput input) throws IOException {
-            throw new UnsupportedOperationException("streams");
-        }
-
-        public void writeStreamIdentifier(ObjectOutput output, StreamIdentifier identifier) throws IOException {
-            throw new UnsupportedOperationException("streams");
-        }
-
-        public StreamIdentifier readStreamIdentifier(MessageInput input) throws IOException {
-            throw new UnsupportedOperationException("streams");
-        }
-
-        public void writeStreamIdentifier(MessageOutput output, StreamIdentifier identifier) throws IOException {
-            throw new UnsupportedOperationException("streams");
-        }
-
-        public void sendServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) throws IOException {
-            log.trace("Sending service request for local protocol");
-            remoteContext.receiveServiceRequest(serviceIdentifier, locator);
-        }
-
-        public void sendServiceActivate(ServiceIdentifier serviceIdentifier) throws IOException {
-            log.trace("Sending service activation for local protocol");
-            remoteContext.receiveServiceActivate(serviceIdentifier);
-        }
-
         public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Object reply) throws IOException {
             log.trace("Sending stream for local protocol");
             remoteContext.receiveReply(remoteContextIdentifier, requestIdentifier, reply);
@@ -170,9 +143,21 @@ public final class LocalProtocol {
         public void sendServiceTerminate(ServiceIdentifier remoteServiceIdentifier) throws IOException {
         }
 
+        public ContextIdentifier getLocalRootContextIdentifier() {
+            return null;
+        }
+
+        public ContextIdentifier getRemoteRootContextIdentifier() {
+            return null;
+        }
+
         public void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException {
             log.trace("Sending cancel request for local protocol");
             remoteContext.receiveCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
+        }
+
+        public ContextIdentifier openContext() throws IOException {
+            return null;
         }
 
         public MessageOutput sendStreamData(StreamIdentifier streamIdentifier, final Executor streamExeceutor) throws IOException {

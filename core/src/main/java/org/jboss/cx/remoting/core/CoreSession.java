@@ -14,12 +14,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
-import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.core.stream.DefaultStreamDetector;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.AttributeMap;
@@ -39,6 +38,7 @@ import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 import org.jboss.cx.remoting.spi.stream.StreamDetector;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
+import org.jboss.cx.remoting.spi.wrapper.ContextWrapper;
 
 
 /**
@@ -75,6 +75,8 @@ public final class CoreSession {
     private ProtocolHandler protocolHandler;
     /** The remote endpoint name.  Set on CONNECTING -> UP */
     private String remoteEndpointName;
+    /** The root client context.  Set on CONNECTING -> UP */
+    private Context<?, ?> rootContext;
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.NEW);
 
@@ -91,15 +93,25 @@ public final class CoreSession {
 
     // Initializers
 
+    @SuppressWarnings ({"unchecked"})
     void initializeServer(final ProtocolHandler protocolHandler) {
         if (protocolHandler == null) {
             throw new NullPointerException("protocolHandler is null");
         }
         state.requireTransitionExclusive(State.NEW, State.CONNECTING);
-        this.protocolHandler = protocolHandler;
-        state.releaseExclusive();
+        try {
+            this.protocolHandler = protocolHandler;
+            final RequestListener<?, ?> listener = endpoint.getRootRequestListener();
+            if (listener != null) {
+                final ContextIdentifier contextIdentifier = protocolHandler.getRemoteRootContextIdentifier();
+                serverContexts.put(contextIdentifier, new CoreInboundContext(contextIdentifier, this, listener));
+            }
+        } finally {
+            state.releaseExclusive();
+        }
     }
 
+    @SuppressWarnings ({"unchecked"})
     void initializeClient(final ProtocolHandlerFactory protocolHandlerFactory, final URI remoteUri, final AttributeMap attributeMap) throws IOException {
         if (protocolHandlerFactory == null) {
             throw new NullPointerException("protocolHandlerFactory is null");
@@ -107,6 +119,11 @@ public final class CoreSession {
         state.requireTransitionExclusive(State.NEW, State.CONNECTING);
         try {
             protocolHandler = protocolHandlerFactory.createHandler(protocolContext, remoteUri, attributeMap);
+            final RequestListener<?, ?> listener = endpoint.getRootRequestListener();
+            if (listener != null) {
+                final ContextIdentifier contextIdentifier = protocolHandler.getRemoteRootContextIdentifier();
+                serverContexts.put(contextIdentifier, new CoreInboundContext(contextIdentifier, this, listener));
+            }
         } finally {
             state.releaseExclusive();
         }
@@ -130,22 +147,6 @@ public final class CoreSession {
             return false;
         }
         return true;
-    }
-
-    void sendServiceRequest(final ServiceIdentifier serviceIdentifier, final ServiceLocator<?,?> locator) throws RemotingException {
-        try {
-            protocolHandler.sendServiceRequest(serviceIdentifier, locator);
-        } catch (IOException e) {
-            throw new RemotingException("Failed to send a service request: " + e);
-        }
-    }
-
-    void sendServiceActivate(final ServiceIdentifier serviceIdentifier) throws RemotingException {
-        try {
-            protocolHandler.sendServiceActivate(serviceIdentifier);
-        } catch (IOException e) {
-            throw new RemotingException("Failed to send a service activate: " + e);
-        }
     }
 
     void sendReply(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Object reply) throws RemotingException {
@@ -208,6 +209,10 @@ public final class CoreSession {
 
     ProtocolHandler getProtocolHandler() {
         return protocolHandler;
+    }
+
+    Executor getExecutor() {
+        return endpoint.getExecutor();
     }
 
     // Thread-local instance
@@ -285,7 +290,7 @@ public final class CoreSession {
         }
         state.requireHold(State.UP);
         try {
-            final CoreInboundContext<I, O> context = new CoreInboundContext<I, O>(remoteContextIdentifier, this, requestListener, null);
+            final CoreInboundContext<I, O> context = new CoreInboundContext<I, O>(remoteContextIdentifier, this, requestListener);
             log.trace("Adding new server (inbound) context, ID = %s", remoteContextIdentifier);
             serverContexts.put(remoteContextIdentifier, context);
             return context;
@@ -325,69 +330,6 @@ public final class CoreSession {
     }
 
     // Service mgmt
-
-    <I, O> CoreOutboundService<I, O> createService(final ServiceLocator<I, O> locator) throws RemotingException {
-        if (locator == null) {
-            throw new NullPointerException("locator is null");
-        }
-        state.requireHold(State.UP);
-        try {
-            final ServiceIdentifier serviceIdentifier;
-            try {
-                serviceIdentifier = protocolHandler.openService();
-            } catch (IOException e) {
-                throw new RemotingException("Failed to open service: " + e.toString());
-            }
-            final CoreOutboundService<I, O> service = new CoreOutboundService<I, O>(this, serviceIdentifier, locator);
-            log.trace("Adding new client service, ID = %s", serviceIdentifier);
-            services.put(serviceIdentifier, new WeakReference<CoreOutboundService>(service));
-            return service;
-        } finally {
-            state.release();
-        }
-    }
-
-    <I, O> CoreInboundService<I, O> createServerService(final ServiceIdentifier serviceIdentifier, final ServiceLocator<I, O> locator) {
-        if (serviceIdentifier == null) {
-            throw new NullPointerException("serviceIdentifier is null");
-        }
-        if (locator == null) {
-            throw new NullPointerException("locator is null");
-        }
-        state.requireHold(State.UP);
-        try {
-            final CoreInboundService<I, O> service;
-            try {
-                service = new CoreInboundService<I, O>(endpoint, this, serviceIdentifier, locator);
-            } catch (RemotingException e) {
-                try {
-                    sendServiceTerminate(serviceIdentifier);
-                } catch (RemotingException e1) {
-                    log.trace("Failed to notify client of service termination: %s", e);
-                }
-                return null;
-            }
-            try {
-                sendServiceActivate(serviceIdentifier);
-            } catch (RemotingException e) {
-                log.trace("Failed to notify client of service activation: %s", e);
-                return null;
-            }
-            log.trace("Adding new server service, ID = %s", serviceIdentifier);
-            serverServices.put(serviceIdentifier, service);
-            return service;
-        } finally {
-            state.release();
-        }
-    }
-
-    private void sendServiceTerminate(final ServiceIdentifier serviceIdentifier) throws RemotingException {
-        try {
-            protocolHandler.sendServiceTerminate(serviceIdentifier);
-        } catch (IOException e) {
-            throw new RemotingException("Failed to send service terminate: " + e.toString());
-        }
-    }
 
     CoreOutboundService getService(final ServiceIdentifier serviceIdentifier) {
         if (serviceIdentifier == null) {
@@ -445,23 +387,9 @@ public final class CoreSession {
             return remoteEndpointName;
         }
 
-        public <I, O> ContextSource<I, O> openService(ServiceLocator<I, O> locator) throws RemotingException {
-            if (locator == null) {
-                throw new NullPointerException("locator is null");
-            }
-            if (locator.getServiceType() == null) {
-                throw new NullPointerException("locator.getServiceType() is null");
-            }
-            state.waitForNotHold(State.CONNECTING);
-            try {
-                state.require(State.UP);
-                final CoreOutboundService<I, O> service = createService(locator);
-                service.sendServiceRequest();
-                service.await();
-                return service.getUserContextSource();
-            } finally {
-                state.release();
-            }
+        @SuppressWarnings ({"unchecked"})
+        public <I, O> Context<I, O> getRootContext() {
+            return (Context<I, O>) rootContext;
         }
     }
 
@@ -508,20 +436,6 @@ public final class CoreSession {
             final CoreInboundService service = getServerService(remoteServiceIdentifier);
             if (service != null) {
                 service.receivedOpenedContext(remoteContextIdentifier);
-            }
-        }
-
-        @SuppressWarnings({"unchecked"})
-        public void receiveServiceRequest(ServiceIdentifier serviceIdentifier, ServiceLocator<?, ?> locator) {
-            createServerService(serviceIdentifier, locator);
-        }
-
-        public void receiveServiceActivate(ServiceIdentifier serviceIdentifier) {
-            final CoreOutboundService service = getService(serviceIdentifier);
-            if (service != null) {
-                service.receiveServiceActivate();
-            } else {
-                log.trace("Got service activate for an unknown service (%s)", serviceIdentifier);
             }
         }
 
@@ -572,11 +486,20 @@ public final class CoreSession {
             coreStream.receiveStreamData(data);
         }
 
+        @SuppressWarnings ({"unchecked"})
         public void openSession(String remoteEndpointName) {
             state.waitForNotExclusive(State.NEW);
             try {
                 state.requireTransition(State.CONNECTING, State.UP);
                 CoreSession.this.remoteEndpointName = remoteEndpointName;
+                final ContextIdentifier rootContextIdentifier = protocolHandler.getLocalRootContextIdentifier();
+                final CoreOutboundContext outboundContext = new CoreOutboundContext(CoreSession.this, rootContextIdentifier);
+                rootContext = new ContextWrapper(outboundContext.getUserContext()) {
+                    public void close() throws RemotingException {
+                        throw new RemotingException("close() not allowed on root context");
+                    }
+                };
+                contexts.put(rootContextIdentifier, new WeakReference<CoreOutboundContext>(outboundContext));
             } finally {
                 state.releaseExclusive();
             }

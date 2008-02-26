@@ -9,12 +9,11 @@ import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
  */
 @SuppressWarnings ({"EqualsAndHashcode"})
 public final class JrppStreamIdentifier extends JrppSubChannelIdentifier implements StreamIdentifier {
-    public JrppStreamIdentifier(short id) throws IOException {
-        super(id);
+    public JrppStreamIdentifier() {
     }
 
-    public JrppStreamIdentifier(ObjectInput input) throws IOException {
-        super(input);
+    public JrppStreamIdentifier(final boolean client, final int id) {
+        super(client, id);
     }
 
     public boolean equals(Object obj) {

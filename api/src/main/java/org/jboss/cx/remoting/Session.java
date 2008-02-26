@@ -1,6 +1,7 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.ConcurrentMap;
+import java.io.Closeable;
 
 /**
  * Represents a point-to-point relationship with another endpoint.
@@ -9,7 +10,7 @@ import java.util.concurrent.ConcurrentMap;
  * <p/>
  * A session may be shared safely among multiple threads.
  */
-public interface Session {
+public interface Session extends Closeable {
     /**
      * Close this session.  Any associated connection(s) will be closed.  Calling this method multiple times has no
      * effect.
@@ -38,10 +39,9 @@ public interface Session {
     String getRemoteEndpointName();
 
     /**
-     * Establish an agreement to communicate with a service on the remote side.
+     * Get the root context for this session.
      *
-     * @param locator the locator for the service
-     * @return a context source which may be used to create communication contexts
+     * @return the root context
      */
-    <I, O> ContextSource<I, O> openService(ServiceLocator<I, O> locator) throws RemotingException;
+    <I, O> Context<I, O> getRootContext();
 }

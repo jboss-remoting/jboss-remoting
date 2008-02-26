@@ -2,30 +2,23 @@ package org.jboss.cx.remoting.core;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.EndpointShutdownListener;
-import org.jboss.cx.remoting.InterceptorDeploymentSpec;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.ServiceDeploymentSpec;
-import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.RequestListener;
+import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.version.Version;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.AttributeMap;
-import org.jboss.cx.remoting.spi.Discovery;
-import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
@@ -48,7 +41,8 @@ public final class CoreEndpoint {
     private final Endpoint userEndpoint = new UserEndpoint();
     private final OrderedExecutorFactory orderedExecutorFactory;
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
-    private final ExecutorService executor;
+    private final Executor executor;
+    private final RequestListener<?, ?> rootRequestListener;
 
     static {
         Logger.getLogger("org.jboss.cx.remoting").info("JBoss Remoting version %s", Version.VERSION);
@@ -59,16 +53,16 @@ public final class CoreEndpoint {
         DOWN,
     }
 
-    protected CoreEndpoint(final String name) {
+    protected CoreEndpoint(final String name, final RequestListener<?, ?> rootRequestListener) {
         this.name = name;
         // todo - make this configurable
         executor = Executors.newCachedThreadPool();
         orderedExecutorFactory = new OrderedExecutorFactory(executor);
+        this.rootRequestListener = rootRequestListener;
     }
 
     private final ConcurrentMap<Object, Object> endpointMap = CollectionUtil.concurrentMap();
     private final ConcurrentMap<String, CoreProtocolRegistration> protocolMap = CollectionUtil.concurrentMap();
-    private final ConcurrentMap<ServiceKey, CoreDeployedService<?, ?>> services = CollectionUtil.concurrentMap();
     private final Set<CoreSession> sessions = CollectionUtil.synchronizedSet(CollectionUtil.<CoreSession>hashSet());
     // accesses protected by {@code shutdownListeners} - always lock AFTER {@code state}
     private final List<EndpointShutdownListener> shutdownListeners = CollectionUtil.arrayList();
@@ -94,87 +88,8 @@ public final class CoreEndpoint {
         sessions.notifyAll();
     }
 
-    @SuppressWarnings ({"unchecked"})
-    <I, O> CoreDeployedService<I, O> locateDeployedService(ServiceLocator<I, O> locator) {
-        state.requireHold(State.UP);
-        try {
-            final String name = locator.getServiceGroupName();
-            final String type = locator.getServiceType();
-            // first try the quick (exact) lookup
-            if (name.indexOf('*') == -1) {
-                final CoreDeployedService<I, O> service = (CoreDeployedService<I, O>) services.get(new ServiceKey(name, type));
-                if (service != null) {
-                    return service;
-                } else {
-                    return null;
-                }
-            }
-            final Pattern pattern = createWildcardPattern(name);
-            for (Map.Entry<ServiceKey,CoreDeployedService<?,?>> entry : services.entrySet()) {
-                final CoreEndpoint.ServiceKey key = entry.getKey();
-                final String entryName = key.getName();
-                final String entryType = key.getType();
-                if (entryType.equals(type) && pattern.matcher(entryName).matches()) {
-                    return (CoreDeployedService<I, O>) entry.getValue();
-                }
-            }
-            return null;
-        } finally {
-            state.release();
-        }
-    }
-
-    private static final Pattern wildcardPattern = Pattern.compile("^([^*]+|\\*)+$");
-
-    private static Pattern createWildcardPattern(final String string) {
-        final Matcher matcher = wildcardPattern.matcher(string);
-        final StringBuilder target = new StringBuilder(string.length() * 2);
-        while (matcher.find()) {
-            final String val = matcher.group(1);
-            if ("*".equals(val)) {
-                target.append(".*");
-            } else {
-                target.append(Pattern.quote(val));
-            }
-        }
-        return Pattern.compile(target.toString());
-    }
-
-    private final class ServiceKey {
-        private final String name;
-        private final String type;
-
-        private ServiceKey(final String name, final String type) {
-            this.name = name;
-            this.type = type;
-        }
-
-        private String getName() {
-            return name;
-        }
-
-        private String getType() {
-            return type;
-        }
-
-        public boolean equals(final Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            final ServiceKey that = (ServiceKey) o;
-
-            if (name != null ? !name.equals(that.name) : that.name != null) return false;
-            if (type != null ? !type.equals(that.type) : that.type != null) return false;
-
-            return true;
-        }
-
-        public int hashCode() {
-            int result;
-            result = (name != null ? name.hashCode() : 0);
-            result = 31 * result + (type != null ? type.hashCode() : 0);
-            return result;
-        }
+    RequestListener<?, ?> getRootRequestListener() {
+        return rootRequestListener;
     }
 
     public final class CoreProtocolServerContext implements ProtocolServerContext {
@@ -184,8 +99,6 @@ public final class CoreEndpoint {
         public ProtocolContext establishSession(ProtocolHandler handler) {
             final CoreSession session = new CoreSession(CoreEndpoint.this);
             session.initializeServer(handler);
-
-            //, handler);
             return session.getProtocolContext();
         }
     }
@@ -262,36 +175,6 @@ public final class CoreEndpoint {
                 coreSession.shutdown();
             }
             sessions.clear();
-            executor.shutdown();
-        }
-
-        public void addShutdownListener(EndpointShutdownListener listener) {
-            final State currentState = state.getStateHold();
-            try {
-                switch (currentState) {
-                    case UP:
-                        synchronized(shutdownListeners) {
-                            shutdownListeners.add(listener);
-                            return;
-                        }
-                    default:
-                        // must be shut down!
-                        listener.handleShutdown(this);
-                }
-            } finally {
-                state.release();
-            }
-        }
-
-        public void removeShutdownListener(EndpointShutdownListener listener) {
-            synchronized(shutdownListeners) {
-                final Iterator<EndpointShutdownListener> i = shutdownListeners.iterator();
-                while (i.hasNext()) {
-                    if (i.next() == listener) {
-                        i.remove();
-                    }
-                }
-            }
         }
 
         public Session openSession(final URI uri, final AttributeMap attributeMap) throws RemotingException {
@@ -325,29 +208,6 @@ public final class CoreEndpoint {
             return name;
         }
 
-        public <I, O> Registration deployService(final ServiceDeploymentSpec<I, O> spec) throws RemotingException {
-            if (spec.getServiceName() == null) {
-                throw new NullPointerException("spec.getServiceName() is null");
-            }
-            if (spec.getServiceType() == null) {
-                throw new NullPointerException("spec.getServiceType() is null");
-            }
-            if (spec.getRequestListener() == null) {
-                throw new NullPointerException("spec.getRequestListener() is null");
-            }
-            state.requireHold(State.UP);
-            try {
-                final CoreDeployedService<I, O> service = new CoreDeployedService<I, O>(spec.getServiceName(), spec.getServiceType(), spec.getRequestListener());
-                if (services.putIfAbsent(new ServiceKey(spec.getServiceName(), spec.getServiceType()), service) != null) {
-                    throw new RemotingException("A service with the same name is already deployed");
-                }
-                // todo - return a registration instance
-                return null;
-            } finally {
-                state.release();
-            }
-        }
-
         public ProtocolRegistration registerProtocol(ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException {
             if (spec.getScheme() == null) {
                 throw new NullPointerException("spec.getScheme() is null");
@@ -365,14 +225,13 @@ public final class CoreEndpoint {
             }
         }
 
-        public Registration deployInterceptorType(final InterceptorDeploymentSpec spec) throws RemotingException {
-            // todo - interceptors
+        public <I, O> Context<I, O> createContext(RequestListener<I, O> requestListener) {
             return null;
         }
 
-        public Discovery discover(String endpointName, URI nextHop, int cost) throws RemotingException {
-            // todo - implement
+        public <I, O> ContextSource<I, O> createService(RequestListener<I, O> requestListener) {
             return null;
         }
+
     }
 }

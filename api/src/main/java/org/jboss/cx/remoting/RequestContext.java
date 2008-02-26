@@ -1,9 +1,11 @@
 package org.jboss.cx.remoting;
 
+import java.util.concurrent.Executor;
+
 /**
  * The context of a single request.
  */
-public interface RequestContext<O> {
+public interface RequestContext<O> extends Executor {
     /**
      * Determine whether the current request was cancelled.
      *
@@ -46,4 +48,12 @@ public interface RequestContext<O> {
      * @param handler
      */
     void addCancelHandler(RequestCancelHandler<O> handler);
+
+    /**
+     * Execute a task in the context of this request.  This method can be used to continue execution of a request.  Any
+     * tasks submitted to this executor will be interruptable in the event of cancellation.
+     *
+     * @param command the task to execute
+     */
+    void execute(Runnable command);
 }

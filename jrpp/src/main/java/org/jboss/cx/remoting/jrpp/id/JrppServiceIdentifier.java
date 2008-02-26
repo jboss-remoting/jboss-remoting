@@ -9,12 +9,11 @@ import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
  */
 @SuppressWarnings ({"EqualsAndHashcode"})
 public final class JrppServiceIdentifier extends JrppSubChannelIdentifier implements ServiceIdentifier {
-    public JrppServiceIdentifier(short id) throws IOException {
-        super(id);
+    public JrppServiceIdentifier() {
     }
 
-    public JrppServiceIdentifier(MessageInput input) throws IOException {
-        super(input);
+    public JrppServiceIdentifier(final boolean client, final int id) {
+        super(client, id);
     }
 
     public boolean equals(Object obj) {

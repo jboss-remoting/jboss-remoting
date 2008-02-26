@@ -1,14 +1,10 @@
 package org.jboss.cx.remoting.core;
 
-import java.util.List;
 import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
-import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.log.Logger;
-import org.jboss.cx.remoting.spi.ClientInterceptorFactory;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 
 /**
@@ -21,8 +17,6 @@ public final class CoreOutboundService<I, O> {
     private CoreSession coreSession;
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.WAITING_FOR_REPLY);
     private final ContextSource<I, O> userContextSource = new UserContextSource();
-    private final List<ClientInterceptorFactory> interceptorFactories = CollectionUtil.arrayList();
-    private final ServiceLocator<I,O> locator;
 
     private enum State {
         WAITING_FOR_REPLY,
@@ -31,10 +25,9 @@ public final class CoreOutboundService<I, O> {
         DOWN
     }
 
-    protected CoreOutboundService(final CoreSession coreSession, final ServiceIdentifier serviceIdentifier, final ServiceLocator<I, O> locator) {
+    protected CoreOutboundService(final CoreSession coreSession, final ServiceIdentifier serviceIdentifier) {
         this.coreSession = coreSession;
         this.serviceIdentifier = serviceIdentifier;
-        this.locator = locator;
     }
 
     // State mgmt
@@ -48,7 +41,6 @@ public final class CoreOutboundService<I, O> {
     // Outbound protocol messages
 
     void sendServiceRequest() throws RemotingException {
-        coreSession.sendServiceRequest(serviceIdentifier, locator);
     }
 
     // Inbound protocol messages

@@ -34,4 +34,7 @@ public class RequestContextWrapper<O> implements RequestContext<O> {
         delegate.addCancelHandler(requestCancelHandler);
     }
 
+    public void execute(final Runnable command) {
+        delegate.execute(command);
+    }
 }

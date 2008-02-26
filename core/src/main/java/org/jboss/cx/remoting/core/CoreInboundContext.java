@@ -1,12 +1,10 @@
 package org.jboss.cx.remoting.core;
 
-import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.util.CollectionUtil;
-import org.jboss.cx.remoting.spi.ServerInterceptorFactory;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
@@ -21,7 +19,7 @@ public final class CoreInboundContext<I, O> {
 
     private final ConcurrentMap<RequestIdentifier,CoreInboundRequest<I, O>> requests = CollectionUtil.concurrentMap();
 
-    public CoreInboundContext(final ContextIdentifier contextIdentifier, final CoreSession coreSession, final RequestListener<I, O> requestListener, final List<ServerInterceptorFactory> factoryList) {
+    public CoreInboundContext(final ContextIdentifier contextIdentifier, final CoreSession coreSession, final RequestListener<I, O> requestListener) {
         this.contextIdentifier = contextIdentifier;
         this.coreSession = coreSession;
         this.requestListener = requestListener;
@@ -64,7 +62,7 @@ public final class CoreInboundContext<I, O> {
     // Request mgmt
 
     CoreInboundRequest<I, O> createInboundRequest(final RequestIdentifier requestIdentifier, final I request) {
-        return new CoreInboundRequest<I, O>(requestIdentifier, request, this, requestListener);
+        return new CoreInboundRequest<I, O>(requestIdentifier, this, requestListener, coreSession.getExecutor());
     }
 
     CoreInboundRequest<I, O> getInboundRequest(RequestIdentifier requestIdentifier) {

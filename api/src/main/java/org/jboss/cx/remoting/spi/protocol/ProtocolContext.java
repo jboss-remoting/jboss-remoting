@@ -3,7 +3,6 @@ package org.jboss.cx.remoting.spi.protocol;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.ServiceLocator;
 import org.jboss.cx.remoting.util.ByteInput;
 import org.jboss.cx.remoting.util.ByteOutput;
 import org.jboss.cx.remoting.util.MessageInput;
@@ -16,8 +15,6 @@ public interface ProtocolContext {
 
     /* CLIENT methods */
 
-    void receiveServiceActivate(ServiceIdentifier serviceIdentifier);
-
     void receiveReply(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object reply);
 
     void receiveException(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception);
@@ -29,8 +26,6 @@ public interface ProtocolContext {
     /* SERVER methods */
 
     void closeContext(ContextIdentifier remoteContextIdentifier);
-
-    void receiveServiceRequest(ServiceIdentifier remoteServiceIdentifier, ServiceLocator<?, ?> locator);
 
     void closeService(ServiceIdentifier remoteServiceIdentifier);
 

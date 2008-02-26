@@ -9,12 +9,11 @@ import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
  */
 @SuppressWarnings ({"EqualsAndHashcode"})
 public final class JrppContextIdentifier extends JrppSubChannelIdentifier implements ContextIdentifier {
-    public JrppContextIdentifier(short id) throws IOException {
-        super(id);
+    public JrppContextIdentifier() {
     }
 
-    public JrppContextIdentifier(ObjectInputStream ois) throws IOException {
-        super(ois);
+    public JrppContextIdentifier(final boolean client, final int id) {
+        super(client, id);
     }
 
     public boolean equals(Object obj) {

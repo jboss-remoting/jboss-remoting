@@ -44,13 +44,13 @@ public final class StreamMarker implements Externalizable {
 
     public void writeExternal(ObjectOutput out) throws IOException {
         out.writeObject(factoryClass);
-        coreSession.getProtocolHandler().writeStreamIdentifier(out, streamIdentifier);
+        out.writeObject(streamIdentifier);
     }
 
     @SuppressWarnings ({"unchecked"})
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
         coreSession = CoreSession.getInstance();
         factoryClass = (Class<? extends StreamSerializerFactory>) in.readObject();
-        streamIdentifier = coreSession.getProtocolHandler().readStreamIdentifier(in);
+        streamIdentifier = (StreamIdentifier) in.readObject();
     }
 }

@@ -15,7 +15,6 @@ import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.ServiceLocator;
 
 import java.util.LinkedList;
 import java.util.Set;
@@ -185,6 +184,14 @@ public final class RemotingHttpSessionImpl {
             });
         }
 
+        public ContextIdentifier getLocalRootContextIdentifier() {
+            return null;
+        }
+
+        public ContextIdentifier getRemoteRootContextIdentifier() {
+            return null;
+        }
+
         public ContextIdentifier openContext(final ServiceIdentifier serviceIdentifier) throws IOException {
             final ContextIdentifier contextIdentifier = null;
             outgoingQueue.add(new OutputAction() {
@@ -216,26 +223,6 @@ public final class RemotingHttpSessionImpl {
 
         public ServiceIdentifier openService() throws IOException {
             return null;
-        }
-
-        public void sendServiceRequest(final ServiceIdentifier serviceIdentifier, final ServiceLocator<?, ?> locator) throws IOException {
-            outgoingQueue.add(new OutputAction() {
-                public void run(ByteOutput target) throws IOException {
-                    final MessageOutput msgOutput = protocolContext.getMessageOutput(target);
-                    write(msgOutput, MsgType.SERVICE_REQUEST);
-                    write(msgOutput, serviceIdentifier);
-                    msgOutput.writeObject(locator.getRequestType());
-                    msgOutput.writeObject(locator.getReplyType());
-                    msgOutput.writeUTF(locator.getServiceType());
-                    msgOutput.writeUTF(locator.getServiceGroupName());
-                    final Set<String> interceptors = locator.getAvailableInterceptors();
-                    msgOutput.writeInt(interceptors.size());
-                    for (String name : interceptors) {
-                        msgOutput.writeUTF(name);
-                    }
-                    msgOutput.commit();
-                }
-            });
         }
 
         public void closeService(final ServiceIdentifier serviceIdentifier) throws IOException {
@@ -271,6 +258,10 @@ public final class RemotingHttpSessionImpl {
                     msgOutput.commit();
                 }
             });
+        }
+
+        public ContextIdentifier openContext() throws IOException {
+            return null;
         }
 
         public StreamIdentifier openStream() throws IOException {
