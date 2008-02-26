@@ -44,4 +44,13 @@ public final class CommonKeys {
     public static final AttributeKey<String> AUTHORIZATION_ID = key("AUTHORIZATION_ID");
 
     // TODO: add keys for SSL/TLS
+
+    // Protocol keys
+
+    /**
+     * The keepalive interval.  For protocols that are represented by a connection of some sort, this property indicates
+     * that a "keepalive" message should be sent at regular intervals to prevent an idle connection from being
+     * automatically closed by a firewall (for example).
+     */
+    public static final AttributeKey<Integer> KEEPALIVE_INTERVAL = key("KEEPALIVE_INTERVAL");
 }

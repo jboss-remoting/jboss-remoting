@@ -666,6 +666,9 @@ public final class JrppConnection {
                             state.requireTransition(State.AWAITING_CLIENT_AUTH_REQUEST);
                             return;
                         }
+                        case PING: {
+                            return;
+                        }
                         default: break OUT;
                     }
                 }
@@ -703,6 +706,9 @@ public final class JrppConnection {
                         case AUTH_REQUEST: {
                             state.transition(State.AWAITING_CLIENT_AUTH_REQUEST);
                             break; // fall thru to AWAITING_CLIENT_AUTH_REQUEST/AUTH_REQUEST
+                        }
+                        case PING: {
+                            return;
                         }
                         default: break OUT;
                     }
@@ -743,6 +749,9 @@ public final class JrppConnection {
                             }
                             return;
                         }
+                        case PING: {
+                            return;
+                        }
                         default: break OUT;
                     }
                 }
@@ -757,6 +766,9 @@ public final class JrppConnection {
                             remoteName = name.length() > 0 ? name : null;
                             sendAuthRequest();
                             state.requireTransition(State.AWAITING_SERVER_CHALLENGE);
+                            return;
+                        }
+                        case PING: {
                             return;
                         }
                         default: break OUT;
@@ -798,6 +810,9 @@ public final class JrppConnection {
                             saslClientFilter.setSaslClient(ioSession, saslClient);
                             // todo - retry counter - JBREM-907
                             sendAuthRequest();
+                            return;
+                        }
+                        case PING: {
                             return;
                         }
                         default: break OUT;
@@ -873,6 +888,9 @@ public final class JrppConnection {
                             protocolContext.receiveStreamData(streamIdentifier, input);
                             return;
                         }
+                        case PING: {
+                            return;
+                        }
                         default: break OUT;
                     }
                 }
@@ -905,5 +923,6 @@ public final class JrppConnection {
         REQUEST,
         SERVICE_TERMINATE,
         STREAM_DATA,
+        PING,
     }
 }
