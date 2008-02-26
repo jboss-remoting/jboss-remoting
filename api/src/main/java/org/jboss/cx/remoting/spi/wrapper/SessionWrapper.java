@@ -4,6 +4,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.CloseHandler;
 
 /**
  *
@@ -17,6 +18,14 @@ public class SessionWrapper implements Session {
 
     public void close() throws RemotingException {
         delegate.close();
+    }
+
+    public void addCloseHandler(final CloseHandler<Session> closeHandler) {
+        delegate.addCloseHandler(new CloseHandler<Session>() {
+            public void handleClose(final Session closed) {
+                closeHandler.handleClose(SessionWrapper.this);
+            }
+        });
     }
 
     public ConcurrentMap<Object, Object> getAttributes() {

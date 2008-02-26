@@ -1,13 +1,12 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.ConcurrentMap;
-import java.io.Closeable;
 
 /**
  * A communications context.  The context may be associated with a security/authentication state and a transactional
  * state, as well as other state maintained by the remote side.
  */
-public interface Context<I, O> extends Closeable {
+public interface Context<I, O> extends Closeable<Context<I, O>> {
 
     void close() throws RemotingException;
 

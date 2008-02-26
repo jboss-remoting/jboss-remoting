@@ -12,6 +12,7 @@ public final class ServiceRequest<I, O> implements Serializable {
     private URI uri;
     private Class<I> requestType;
     private Class<O> replyType;
+    private int ttl;
 
     public ServiceRequest() {
     }
@@ -46,5 +47,13 @@ public final class ServiceRequest<I, O> implements Serializable {
 
     public void setReplyType(final Class<O> replyType) {
         this.replyType = replyType;
+    }
+
+    public int getTtl() {
+        return ttl;
+    }
+
+    public void setTtl(final int ttl) {
+        this.ttl = ttl;
     }
 }

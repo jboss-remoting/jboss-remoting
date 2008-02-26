@@ -5,6 +5,7 @@ import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.CloseHandler;
 
 /**
  *
@@ -18,6 +19,14 @@ public class ContextWrapper<I, O> implements Context<I, O> {
 
     public void close() throws RemotingException {
         delegate.close();
+    }
+
+    public void addCloseHandler(final CloseHandler<Context<I, O>> closeHandler) {
+        delegate.addCloseHandler(new CloseHandler<Context<I, O>>() {
+            public void handleClose(final Context<I, O> closed) {
+                closeHandler.handleClose(ContextWrapper.this);
+            }
+        });
     }
 
     public O invoke(final I request) throws RemotingException, RemoteExecutionException, InterruptedException {

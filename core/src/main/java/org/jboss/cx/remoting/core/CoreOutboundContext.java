@@ -7,6 +7,7 @@ import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestCompletionHandler;
+import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.log.Logger;
@@ -130,6 +131,10 @@ public final class CoreOutboundContext<I, O> {
 
         public void close() throws RemotingException {
             receiveCloseContext();
+        }
+
+        public void addCloseHandler(final CloseHandler<Context<I, O>> closeHandler) {
+            // todo ...
         }
 
         public O invoke(final I request) throws RemotingException, RemoteExecutionException, InterruptedException {

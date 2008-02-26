@@ -8,6 +8,7 @@ import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.ContextSource;
+import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
@@ -44,5 +45,17 @@ public class EndpointWrapper implements Endpoint {
 
     public <I, O> ContextSource<I, O> createService(final RequestListener<I, O> requestListener) {
         return delegate.createService(requestListener);
+    }
+
+    public void close() throws RemotingException {
+        delegate.close();
+    }
+
+    public void addCloseHandler(final CloseHandler<Endpoint> closeHandler) {
+        delegate.addCloseHandler(new CloseHandler<Endpoint>() {
+            public void handleClose(final Endpoint closed) {
+                closeHandler.handleClose(EndpointWrapper.this);
+            }
+        });
     }
 }

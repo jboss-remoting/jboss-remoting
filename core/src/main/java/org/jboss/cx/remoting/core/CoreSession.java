@@ -19,6 +19,7 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.core.stream.DefaultStreamDetector;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.AttributeMap;
@@ -373,6 +374,10 @@ public final class CoreSession {
             } catch (IOException e) {
                 throw new RemotingException("Unable to close session: " + e.toString());
             }
+        }
+
+        public void addCloseHandler(final CloseHandler<Session> closeHandler) {
+            // todo ...
         }
 
         public ConcurrentMap<Object, Object> getAttributes() {

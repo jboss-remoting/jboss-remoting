@@ -14,6 +14,7 @@ import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.ContextSource;
+import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.version.Version;
 import org.jboss.cx.remoting.log.Logger;
@@ -233,5 +234,12 @@ public final class CoreEndpoint {
             return null;
         }
 
+        public void close() throws RemotingException {
+            // todo ...
+        }
+
+        public void addCloseHandler(final CloseHandler<Endpoint> closeHandler) {
+            // todo ...
+        }
     }
 }

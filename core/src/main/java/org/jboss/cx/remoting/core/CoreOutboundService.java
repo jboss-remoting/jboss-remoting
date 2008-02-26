@@ -3,6 +3,7 @@ package org.jboss.cx.remoting.core;
 import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
@@ -77,6 +78,10 @@ public final class CoreOutboundService<I, O> {
 
         public void close() {
             receiveServiceTerminate();
+        }
+
+        public void addCloseHandler(final CloseHandler<ContextSource<I, O>> closeHandler) {
+            // todo ...
         }
 
         public Context<I, O> createContext() throws RemotingException {

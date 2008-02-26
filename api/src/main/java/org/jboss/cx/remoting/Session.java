@@ -1,7 +1,6 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.ConcurrentMap;
-import java.io.Closeable;
 
 /**
  * Represents a point-to-point relationship with another endpoint.
@@ -10,7 +9,7 @@ import java.io.Closeable;
  * <p/>
  * A session may be shared safely among multiple threads.
  */
-public interface Session extends Closeable {
+public interface Session extends Closeable<Session> {
     /**
      * Close this session.  Any associated connection(s) will be closed.  Calling this method multiple times has no
      * effect.
