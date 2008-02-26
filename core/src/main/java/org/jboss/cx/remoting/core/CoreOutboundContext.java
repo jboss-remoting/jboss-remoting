@@ -158,7 +158,7 @@ public final class CoreOutboundContext<I, O> {
             try {
                 final QueueExecutor queueExecutor = new QueueExecutor();
                 final FutureReply<O> futureReply = doSend(request, queueExecutor);
-                // todo - find a safe way to make this interruptable
+                // todo - find a safe way to make this interruptible
                 queueExecutor.runQueue();
                 return futureReply.getInterruptibly();
             } finally {

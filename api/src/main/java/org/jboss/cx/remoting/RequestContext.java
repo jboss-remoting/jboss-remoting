@@ -51,7 +51,7 @@ public interface RequestContext<O> extends Executor {
 
     /**
      * Execute a task in the context of this request.  This method can be used to continue execution of a request.  Any
-     * tasks submitted to this executor will be interruptable in the event of cancellation.
+     * tasks submitted to this executor will be interruptible in the event of cancellation.
      *
      * @param command the task to execute
      */
