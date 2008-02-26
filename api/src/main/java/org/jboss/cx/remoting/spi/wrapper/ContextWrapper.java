@@ -45,11 +45,4 @@ public class ContextWrapper<I, O> implements Context<I, O> {
         return delegate.getAttributes();
     }
 
-    public <T> T getService(Class<T> serviceType) throws RemotingException {
-        return delegate.getService(serviceType);
-    }
-
-    public <T> boolean hasService(Class<T> serviceType) {
-        return delegate.hasService(serviceType);
-    }
 }

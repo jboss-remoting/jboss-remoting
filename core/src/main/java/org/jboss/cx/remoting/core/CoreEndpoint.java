@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import org.jboss.cx.remoting.Endpoint;
-import org.jboss.cx.remoting.EndpointShutdownListener;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.Context;
@@ -66,7 +65,7 @@ public final class CoreEndpoint {
     private final ConcurrentMap<String, CoreProtocolRegistration> protocolMap = CollectionUtil.concurrentMap();
     private final Set<CoreSession> sessions = CollectionUtil.synchronizedSet(CollectionUtil.<CoreSession>hashSet());
     // accesses protected by {@code shutdownListeners} - always lock AFTER {@code state}
-    private final List<EndpointShutdownListener> shutdownListeners = CollectionUtil.arrayList();
+    private final List<CloseHandler<Endpoint>> closeHandlers = CollectionUtil.arrayList();
 
     ConcurrentMap<Object, Object> getAttributes() {
         return endpointMap;
@@ -156,26 +155,6 @@ public final class CoreEndpoint {
 
         public ConcurrentMap<Object, Object> getAttributes() {
             return endpointMap;
-        }
-
-        public void shutdown() {
-            final List<EndpointShutdownListener> listeners;
-            synchronized(state) {
-                if (!state.transition(State.UP, State.DOWN)) {
-                    return;
-                }
-                synchronized(shutdownListeners) {
-                    listeners = CollectionUtil.arrayList(shutdownListeners);
-                    shutdownListeners.clear();
-                }
-            }
-            for (EndpointShutdownListener listener : listeners) {
-                listener.handleShutdown(this);
-            }
-            for (CoreSession coreSession : sessions) {
-                coreSession.shutdown();
-            }
-            sessions.clear();
         }
 
         public Session openSession(final URI uri, final AttributeMap attributeMap) throws RemotingException {

@@ -196,16 +196,6 @@ public final class CoreOutboundContext<I, O> {
         public ConcurrentMap<Object, Object> getAttributes() {
             return contextMap;
         }
-
-        public <T> T getService(final Class<T> serviceType) throws RemotingException {
-            // todo interceptors
-            return null;
-        }
-
-        public <T> boolean hasService(final Class<T> serviceType) {
-            // todo interceptors
-            return false;
-        }
     }
 
     private static final CoreOutboundRequest[] empty = new CoreOutboundRequest[0];

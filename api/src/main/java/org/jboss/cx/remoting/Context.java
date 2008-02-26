@@ -68,21 +68,4 @@ public interface Context<I, O> extends Closeable<Context<I, O>> {
      */
     ConcurrentMap<Object, Object> getAttributes();
 
-    /**
-     * Get a service client interface.  The context must support the service with the given
-     * client interface.
-     *
-     * @param serviceType the service interface type
-     * @return an instance of the given interface
-     * @throws RemotingException if the service is not valid or is not available
-     */
-    <T> T getService(Class<T> serviceType) throws RemotingException;
-
-    /**
-     * Determine whether this context supports a service with the given client interface.
-     *
-     * @param serviceType the service interface type
-     * @return {@code true} if the given service type is supported
-     */
-    <T> boolean hasService(Class<T> serviceType);
 }
