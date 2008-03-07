@@ -208,6 +208,9 @@ public final class AtomicStateMachine<T extends Enum<T>> {
 
 
     public void waitInterruptiblyFor(final T state) throws InterruptedException {
+        if (in(state)) {
+            return;
+        }
         writeLock.lockInterruptibly();
         try {
             while (this.state != state) {
@@ -219,6 +222,9 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public void waitFor(final T state) {
+        if (in(state)) {
+            return;
+        }
         writeLock.lock();
         try {
             while (this.state != state) {
@@ -230,6 +236,9 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public void waitForHold(final T state) {
+        if (inHold(state)) {
+            return;
+        }
         writeLock.lock();
         try {
             while (this.state != state) {
@@ -251,6 +260,9 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public boolean waitInterruptiblyFor(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+        if (in(state)) {
+            return true;
+        }
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
@@ -269,6 +281,10 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public T waitInterruptiblyForNot(final T state) throws InterruptedException {
+        final T current = getState();
+        if (current != state) {
+            return current;
+        }
         writeLock.lockInterruptibly();
         try {
             while (this.state == state) {
@@ -281,6 +297,11 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public T waitInterruptiblyForNotHold(final T state) throws InterruptedException {
+        final T current = getStateHold();
+        if (current != state) {
+            return current;
+        }
+        release();
         writeLock.lockInterruptibly();
         try {
             while (this.state == state) {
@@ -294,6 +315,10 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public T waitForNot(final T state) {
+        final T current = getState();
+        if (current != state) {
+            return current;
+        }
         writeLock.lock();
         try {
             while (this.state == state) {
@@ -306,6 +331,11 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public T waitForNotHold(final T state) {
+        final T current = getStateHold();
+        if (current != state) {
+            return current;
+        }
+        release();
         writeLock.lock();
         try {
             while (this.state == state) {
@@ -327,6 +357,10 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public T waitInterruptiblyForNot(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+        final T current = getState();
+        if (current != state) {
+            return current;
+        }
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
@@ -344,6 +378,11 @@ public final class AtomicStateMachine<T extends Enum<T>> {
 
 
     public T waitInterruptiblyForNotHold(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
+        final T current = getStateHold();
+        if (current != state) {
+            return current;
+        }
+        release();
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
@@ -366,6 +405,11 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public T waitForNotHold(final T state, final long timeout, final TimeUnit timeUnit) {
+        final T current = getStateHold();
+        if (current != state) {
+            return current;
+        }
+        release();
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
@@ -397,6 +441,10 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public T waitForNot(final T state, final long timeout, final TimeUnit timeUnit) {
+        final T current = getState();
+        if (current != state) {
+            return current;
+        }
         final long timeoutMillis = timeUnit.toMillis(timeout);
         final long startTime = System.currentTimeMillis();
         final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
