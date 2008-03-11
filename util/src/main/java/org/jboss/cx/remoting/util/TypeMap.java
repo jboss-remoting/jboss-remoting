@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- *
+ * A map with classes for keys.
  */
 public interface TypeMap<B> {
     void clear();

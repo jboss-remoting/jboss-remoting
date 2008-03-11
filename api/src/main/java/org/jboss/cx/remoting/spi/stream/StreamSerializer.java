@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.spi.stream;
 
 import java.io.IOException;
-import org.jboss.cx.remoting.util.MessageInput;
+import org.jboss.cx.remoting.spi.ObjectMessageInput;
 
 /**
  *
@@ -20,7 +20,7 @@ public interface StreamSerializer {
      * @param data the message
      * @throws IOException if the stream data cannot be handled
      */
-    void handleData(MessageInput data) throws IOException;
+    void handleData(ObjectMessageInput data) throws IOException;
 
     /**
      * Handle a close from the remote side.

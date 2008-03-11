@@ -3,7 +3,7 @@ package org.jboss.cx.remoting.spi.protocol;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.util.MessageOutput;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 
 /**
  * A protocol handler.
@@ -59,13 +59,22 @@ public interface ProtocolHandler {
     void sendCancelAcknowledge(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier) throws IOException;
 
     /**
-     * Notify the client side that the service has been abruptly terminated on the server.  A service may be terminated
-     * if it is undeployed, the session is being shut down, or if the activation request was not accepted.
+     * Notify the client side that the service has been terminated on the server.  A service may be terminated
+     * if it is undeployed, the session is being shut down, or if the client side requested the service to close.
      *
      * @param remoteServiceIdentifier the remote service identifier
      * @throws IOException if an I/O error occurs
      */
-    void sendServiceTerminate(ServiceIdentifier remoteServiceIdentifier) throws IOException;
+    void sendServiceClosing(ServiceIdentifier remoteServiceIdentifier) throws IOException;
+
+    /**
+     * Notify the client side that a context is closing and is no longer available for new requests.
+     *
+     * @param remoteContextIdentifier the remote context identifier
+     * @param done {@code true} if the context is closed and no more replies will arrive for it
+     * @throws IOException if an I/O error occurs
+     */
+    void sendContextClosing(ContextIdentifier remoteContextIdentifier, boolean done) throws IOException;
 
     /* CLIENT methods */
 
@@ -101,13 +110,16 @@ public interface ProtocolHandler {
 
     /**
      * Close a previously opened context.  The protocol handler should cause the
-     * {@link org.jboss.cx.remoting.spi.protocol.ProtocolContext#closeContext(ContextIdentifier)} method to be called
+     * {@link ProtocolContext#receiveContextClose(ContextIdentifier,boolean,boolean,boolean)} method to be called
      * on the remote side for this context identifier.
      *
-     * @param contextIdentifier
+     * @param contextIdentifier the context identifier
+     * @param immediate {@code true} to immediately shut down the context and throw out any executing requests (implies {@code cancel} and {@code interrupt})
+     * @param cancel {@code true} to cancel any outstanding requests
+     * @param interrupt {@code true} to interrupt tasks that are cancelled (ignored unless {@code immediate} or {@code cancel} are {@code true})
      * @throws IOException if an I/O error occurs
      */
-    void sendContextClose(ContextIdentifier contextIdentifier) throws IOException;
+    void sendContextClose(ContextIdentifier contextIdentifier, boolean immediate, boolean cancel, boolean interrupt) throws IOException;
 
     /**
      * Acquire a new request identifier that will be used to send a request.
@@ -124,7 +136,7 @@ public interface ProtocolHandler {
      * @param serviceIdentifier the service identifier
      * @throws IOException if an I/O error occurs
      */
-    void closeService(ServiceIdentifier serviceIdentifier) throws IOException;
+    void sendServiceClose(ServiceIdentifier serviceIdentifier) throws IOException;
 
     /**
      * Send a request to the remote side.
@@ -187,9 +199,9 @@ public interface ProtocolHandler {
 
     /**
      * Send data over a stream.  Returns a message output buffer that the message is written into.  When the message
-     * is fully written, the {@link org.jboss.cx.remoting.util.MessageOutput#commit()} method will be called to perform
+     * is fully written, the {@link org.jboss.cx.remoting.spi.ObjectMessageOutput#commit()} method will be called to perform
      * the transmission.  The supplied executor should be passed in to
-     * {@link org.jboss.cx.remoting.spi.protocol.ProtocolContext#getMessageOutput(org.jboss.cx.remoting.util.ByteOutput, java.util.concurrent.Executor)},
+     * {@link org.jboss.cx.remoting.spi.protocol.ProtocolContext#getMessageOutput(org.jboss.cx.remoting.spi.ByteMessageOutput , java.util.concurrent.Executor)},
      * if that method is used for serialization.
      *
      * @param streamIdentifier the stream to send data on
@@ -198,7 +210,7 @@ public interface ProtocolHandler {
      *
      * @throws IOException if an I/O error occurs
      */
-    MessageOutput sendStreamData(StreamIdentifier streamIdentifier, Executor streamExecutor) throws IOException;
+    ObjectMessageOutput sendStreamData(StreamIdentifier streamIdentifier, Executor streamExecutor) throws IOException;
 
     /**
      * Close the session.

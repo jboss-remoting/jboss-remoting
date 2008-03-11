@@ -26,6 +26,11 @@ public final class RemoteClassLoader extends ClassLoader {
 
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         try {
+            return super.findClass(name);
+        } catch (ClassNotFoundException e) {
+            // continue on...
+        }
+        try {
             final ClassLoaderResourceReply reply = loaderContext.invoke(new ClassLoaderResourceRequest(name + ".class"));
             final ObjectSource<RemoteResource> source = reply.getResources();
             try {
@@ -56,9 +61,16 @@ public final class RemoteClassLoader extends ClassLoader {
         } catch (RemotingException e) {
             throw new ClassNotFoundException("Cannot load class " + name + " due to an invocation failure", e);
         } catch (RemoteExecutionException e) {
-            throw new ClassNotFoundException("Cannot load class " + name + " due to a remote invocation failure", e.getCause());
+            final Throwable cause = e.getCause();
+            if (cause instanceof ClassNotFoundException) {
+                throw (ClassNotFoundException)cause;
+            }
+            throw new ClassNotFoundException("Cannot load class " + name + " due to a remote invocation failure", cause);
         } catch (IOException e) {
-            throw new ClassNotFoundException("Cannot load class " + name + " due to an input/output error", e);
+            throw new ClassNotFoundException("Cannot load class " + name + " due to an I/O error", e);
         }
     }
+
+    // todo - support arbitrary resources
+    // todo - cache fetched resources locally for forwarding
 }

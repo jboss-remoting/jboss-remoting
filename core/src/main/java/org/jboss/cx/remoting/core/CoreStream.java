@@ -2,8 +2,8 @@ package org.jboss.cx.remoting.core;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
-import org.jboss.cx.remoting.util.MessageInput;
-import org.jboss.cx.remoting.util.MessageOutput;
+import org.jboss.cx.remoting.spi.ObjectMessageInput;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
@@ -62,7 +62,7 @@ public final class CoreStream {
         streamSerializer = streamSerializerFactory.getRemoteSide(streamContext);
     }
 
-    public void receiveStreamData(final MessageInput data) {
+    public void receiveStreamData(final ObjectMessageInput data) {
         executor.execute(new Runnable() {
             public void run() {
                 try {
@@ -89,7 +89,7 @@ public final class CoreStream {
         private StreamContextImpl() {
         }
 
-        public MessageOutput writeMessage() throws IOException {
+        public ObjectMessageOutput writeMessage() throws IOException {
             return protocolHandler.sendStreamData(streamIdentifier, executor);
         }
 
@@ -97,7 +97,8 @@ public final class CoreStream {
             try {
                 protocolHandler.closeStream(streamIdentifier);
             } finally {
-                coreSession.removeStream(streamIdentifier);
+                // todo clean up stream
+//                coreSession.removeStream(streamIdentifier);
             }
         }
     }

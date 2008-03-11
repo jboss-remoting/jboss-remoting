@@ -2,7 +2,7 @@ package org.jboss.cx.remoting.spi.stream;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.jboss.cx.remoting.util.MessageOutput;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 
 /**
  *
@@ -15,7 +15,7 @@ public interface StreamContext extends Closeable {
      * @return the message output instance
      * @throws IOException if an error occurs
      */
-    MessageOutput writeMessage() throws IOException;
+    ObjectMessageOutput writeMessage() throws IOException;
 
     /**
      * Indicate that this stream is exhausted.

@@ -6,9 +6,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- *
+ * A delegating map implementation that accepts a standard {@code Map}, but conforms to the contract
+ * for {@code ConcurrentMap}.  No synchronization is done on the delegate.
  */
-public final class AtomicMap<K, V> implements ConcurrentMap<K, V> {
+public class AtomicMap<K, V> implements ConcurrentMap<K, V> {
     private final Map<K, V> delegate;
 
     public AtomicMap(final Map<K, V> delegate) {

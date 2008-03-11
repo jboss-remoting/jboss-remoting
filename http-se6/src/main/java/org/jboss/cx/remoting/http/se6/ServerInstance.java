@@ -10,8 +10,8 @@ import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.http.spi.RemotingHttpSessionContext;
 import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
 import org.jboss.cx.remoting.http.spi.AbstractIncomingHttpMessage;
-import org.jboss.cx.remoting.util.ByteInput;
-import org.jboss.cx.remoting.util.ByteOutput;
+import org.jboss.cx.remoting.spi.ByteMessageInput;
+import org.jboss.cx.remoting.spi.ByteMessageOutput;
 
 import com.sun.net.httpserver.BasicAuthenticator;
 import com.sun.net.httpserver.Headers;
@@ -67,9 +67,9 @@ public final class ServerInstance {
             final int remotePort = inetSocketAddress.getPort();
             RemotingHttpSessionContext httpSessionContext = null; // todo locate
             httpSessionContext.queueMessage(new AbstractIncomingHttpMessage(localAddress, localPort, remoteAddress, remotePort) {
-                public ByteInput getMessageData() {
+                public ByteMessageInput getMessageData() {
                     final InputStream inputStream = httpExchange.getRequestBody();
-                    return new ByteInput() {
+                    return new ByteMessageInput() {
                         public int read() throws IOException {
                             return inputStream.read();
                         }
@@ -114,7 +114,7 @@ public final class ServerInstance {
                 }
                 httpExchange.sendResponseHeaders(200, 0); // todo - preset response size?
                 final OutputStream outputStream = httpExchange.getResponseBody();
-                httpReply.writeMessageData(new ByteOutput() {
+                httpReply.writeMessageData(new ByteMessageOutput() {
                     public void write(int b) throws IOException {
                         outputStream.write(b);
                     }

@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 import java.util.Queue;
-import org.jboss.cx.remoting.util.MessageInput;
-import org.jboss.cx.remoting.util.MessageOutput;
+import org.jboss.cx.remoting.spi.ObjectMessageInput;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamContext;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
@@ -37,7 +37,7 @@ public final class ObjectSourceStreamSerializerFactory implements StreamSerializ
             transmitNext();
         }
 
-        public void handleData(MessageInput data) throws IOException {
+        public void handleData(ObjectMessageInput data) throws IOException {
             transmitNext();
         }
 
@@ -46,7 +46,7 @@ public final class ObjectSourceStreamSerializerFactory implements StreamSerializ
         }
 
         private void transmitNext() throws IOException {
-            final MessageOutput msg = streamContext.writeMessage();
+            final ObjectMessageOutput msg = streamContext.writeMessage();
             final boolean hasNext = objectSource.hasNext();
             msg.writeBoolean(hasNext);
             if (hasNext) {
@@ -121,7 +121,7 @@ public final class ObjectSourceStreamSerializerFactory implements StreamSerializ
                                 }
                             }
                             final Message msg = messageQueue.remove();
-                            final MessageOutput omsg;
+                            final ObjectMessageOutput omsg;
                             switch (msg.type) {
                                 case ITEM:
                                     omsg = context.writeMessage();
@@ -161,7 +161,7 @@ public final class ObjectSourceStreamSerializerFactory implements StreamSerializ
         }
 
         @SuppressWarnings ({"unchecked"})
-        public void handleData(MessageInput data) throws IOException {
+        public void handleData(ObjectMessageInput data) throws IOException {
             synchronized(messageQueue) {
                 if (! data.readBoolean()) {
                     messageQueue.add(new Message(Type.END, null));

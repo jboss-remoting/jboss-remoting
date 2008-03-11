@@ -12,21 +12,18 @@ import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
  */
 public final class StreamMarker implements Externalizable {
 
+    private static final long serialVersionUID = 1L;
+
     private Class<? extends StreamSerializerFactory> factoryClass;
     private StreamIdentifier streamIdentifier;
-    private CoreSession coreSession;
 
-    public StreamMarker(final CoreSession coreSession, final Class<? extends StreamSerializerFactory> factoryClass, final StreamIdentifier streamIdentifier) {
-        if (coreSession == null) {
-            throw new NullPointerException("coreSession is null");
-        }
+    public StreamMarker(final Class<? extends StreamSerializerFactory> factoryClass, final StreamIdentifier streamIdentifier) {
         if (factoryClass == null) {
             throw new NullPointerException("factoryClass is null");
         }
         if (streamIdentifier == null) {
             throw new NullPointerException("streamIdentifier is null");
         }
-        this.coreSession = coreSession;
         this.factoryClass = factoryClass;
         this.streamIdentifier = streamIdentifier;
     }
@@ -49,7 +46,6 @@ public final class StreamMarker implements Externalizable {
 
     @SuppressWarnings ({"unchecked"})
     public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-        coreSession = CoreSession.getInstance();
         factoryClass = (Class<? extends StreamSerializerFactory>) in.readObject();
         streamIdentifier = (StreamIdentifier) in.readObject();
     }

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Enumeration;
 
 /**
  *
@@ -19,6 +20,10 @@ public final class Streams {
 
     public static <T> ObjectSource<T> getIteratorObjectSource(Iterator<T> iterator) {
         return new IteratorObjectSource<T>(iterator);
+    }
+
+    public static <T> ObjectSource<T> getEnumerationObjectSource(Enumeration<T> enumeration) {
+        return new EnumerationObjectSource<T>(enumeration);
     }
 
     private static final class CollectionObjectSink<T> implements ObjectSink<T> {
@@ -62,6 +67,32 @@ public final class Streams {
 
         public void close() throws IOException {
             //empty
+        }
+    }
+
+    private static final class EnumerationObjectSource<T> implements ObjectSource<T> {
+        private final Enumeration<T> src;
+
+        public EnumerationObjectSource(final Enumeration<T> src) {
+            this.src = src;
+        }
+
+        public boolean hasNext() throws IOException {
+            return src.hasMoreElements();
+        }
+
+        public T next() throws IOException {
+            try {
+                return src.nextElement();
+            } catch (NoSuchElementException ex) {
+                EOFException eex = new EOFException("Read past end of enumeration");
+                eex.setStackTrace(ex.getStackTrace());
+                throw eex;
+            }
+        }
+
+        public void close() throws IOException {
+            // empty
         }
     }
 }

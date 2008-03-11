@@ -20,6 +20,10 @@ public class SessionWrapper implements Session {
         delegate.close();
     }
 
+    public void closeImmediate() throws RemotingException {
+        delegate.closeImmediate();
+    }
+
     public void addCloseHandler(final CloseHandler<Session> closeHandler) {
         delegate.addCloseHandler(new CloseHandler<Session>() {
             public void handleClose(final Session closed) {

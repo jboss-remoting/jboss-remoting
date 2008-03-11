@@ -7,7 +7,6 @@ import org.jboss.cx.remoting.spi.stream.StreamDetector;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
 import org.jboss.cx.remoting.stream.ObjectSink;
 import org.jboss.cx.remoting.stream.ObjectSource;
-import org.jboss.cx.remoting.stream.ProgressStream;
 
 /**
  *
@@ -22,8 +21,6 @@ public final class DefaultStreamDetector implements StreamDetector {
             return new ObjectSourceStreamSerializerFactory();
         } else if (candidate instanceof ObjectSink) {
             return new ObjectSinkStreamSerializerFactory();
-        } else if (candidate instanceof ProgressStream) {
-            return new ProgressStreamStreamSerializerFactory();
         } else if (candidate instanceof Iterator) {
             return new IteratorStreamSerializerFactory();
         } else {

@@ -2,8 +2,8 @@ package org.jboss.cx.remoting.core.stream;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import org.jboss.cx.remoting.util.MessageInput;
-import org.jboss.cx.remoting.util.MessageOutput;
+import org.jboss.cx.remoting.spi.ObjectMessageInput;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamContext;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
@@ -39,7 +39,7 @@ public final class OutputStreamStreamSerailizerFactory implements StreamSerializ
         public void handleOpen() throws IOException {
         }
 
-        public void handleData(MessageInput data) throws IOException {
+        public void handleData(ObjectMessageInput data) throws IOException {
             MessageType messageType = MessageType.values()[data.read()];
             switch (messageType) {
                 case DATA:
@@ -64,7 +64,7 @@ public final class OutputStreamStreamSerailizerFactory implements StreamSerializ
     private static final class RemoteStreamSerializerImpl implements RemoteStreamSerializer {
         private final StreamContext context;
         private final Object monitor = new Object();
-        private MessageOutput current;
+        private ObjectMessageOutput current;
 
         public RemoteStreamSerializerImpl(final StreamContext context) {
             this.context = context;
@@ -116,7 +116,7 @@ public final class OutputStreamStreamSerailizerFactory implements StreamSerializ
         public void handleOpen() throws IOException {
         }
 
-        public void handleData(MessageInput data) throws IOException {
+        public void handleData(ObjectMessageInput data) throws IOException {
             // ignore
         }
 

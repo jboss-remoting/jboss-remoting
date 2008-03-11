@@ -26,12 +26,13 @@ public interface Endpoint extends Closeable<Endpoint> {
      *
      * @param remoteUri the URI of the server to connect to
      * @param attributeMap the attribute map to use to configure this session
+     * @param rootContext the root context for the new session
      * @return a new session
      *
      * @throws RemotingException if there is a problem creating the session, or if the request or reply type does not
      * match the remote service
      */
-    Session openSession(URI remoteUri, AttributeMap attributeMap) throws RemotingException;
+    <I, O> Session openSession(URI remoteUri, AttributeMap attributeMap, Context<I, O> rootContext) throws RemotingException;
 
     /**
      * Get the name of this endpoint.

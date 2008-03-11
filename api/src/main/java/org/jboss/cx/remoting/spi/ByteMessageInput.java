@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.util;
+package org.jboss.cx.remoting.spi;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -6,7 +6,7 @@ import java.io.IOException;
 /**
  * A readable source of byte data.
  */
-public interface ByteInput extends Closeable {
+public interface ByteMessageInput extends Closeable {
     /**
      * Read one byte.
      *

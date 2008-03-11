@@ -10,9 +10,9 @@ import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.IndeterminateOutcomeException;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RequestCompletionHandler;
+import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.log.Logger;
-import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**
  *
@@ -21,9 +21,9 @@ public final class CoreOutboundRequest<I, O> {
 
     private static final Logger log = Logger.getLogger(CoreOutboundRequest.class);
 
-    private final CoreOutboundContext<I, O> context;
-    private final RequestIdentifier requestIdentifier;
+    private RequestServer<I> requestServer;
 
+    private final RequestClient<O> requestClient = new RequestClientImpl();
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.WAITING);
     private final FutureReply<O> futureReply = new FutureReplyImpl();
 
@@ -34,13 +34,23 @@ public final class CoreOutboundRequest<I, O> {
     /* Protected by {@code state} */
     private List<RequestCompletionHandler<O>> handlers = Collections.synchronizedList(new LinkedList<RequestCompletionHandler<O>>());
 
-    public CoreOutboundRequest(final CoreOutboundContext<I, O> context, final RequestIdentifier requestIdentifier) {
-        this.context = context;
-        this.requestIdentifier = requestIdentifier;
+    public CoreOutboundRequest() {
+    }
+
+    public RequestServer<I> getRequester() {
+        return requestServer;
+    }
+
+    public void setRequester(final RequestServer<I> requestServer) {
+        this.requestServer = requestServer;
     }
 
     public FutureReply<O> getFutureReply() {
         return futureReply;
+    }
+
+    public RequestClient<O> getReplier() {
+        return requestClient;
     }
 
     private enum State {
@@ -55,7 +65,6 @@ public final class CoreOutboundRequest<I, O> {
      * Complete the request.  Call only with the monitor held, not in WAITING state.
      */
     private void complete() {
-        drop();
         final List<RequestCompletionHandler<O>> handlers = this.handlers;
         if (handlers != null) {
             this.handlers = null;
@@ -72,64 +81,39 @@ public final class CoreOutboundRequest<I, O> {
         }
     }
 
-    private void drop() {
-        context.dropRequest(requestIdentifier, this);
-    }
-
-    // Incoming protocol messages
-
-    /**
-     * Request was possibly abruptly terminated.
-     */
-    void receiveClose() {
-        if (state.transitionHold(State.WAITING, State.TERMINATED)) try {
-            drop();
-        } finally {
-            state.release();
+    public final class RequestClientImpl implements RequestClient<O> {
+        public void handleCancelAcknowledge() {
+            if (state.transitionHold(State.WAITING, State.CANCELLED)) try {
+                complete();
+            } finally {
+                state.release();
+            }
         }
-    }
 
-    /**
-     * Receive a cancel acknowledge for this request.
-     */
-    void receiveCancelAcknowledge() {
-        state.requireTransitionHold(State.WAITING, State.CANCELLED);
-        try {
-            complete();
-        } finally {
-            state.release();
+        public void handleReply(final O reply) {
+            if (state.transitionExclusive(State.WAITING, State.DONE)) try {
+                CoreOutboundRequest.this.reply = reply;
+            } finally {
+                state.releaseDowngrade();
+                try {
+                    complete();
+                } finally {
+                    state.release();
+                }
+            }
         }
-    }
 
-    /**
-     * Receive a reply for this request.
-     *
-     * @param reply the reply
-     */
-    void receiveReply(final O reply) {
-        state.requireTransitionExclusive(State.WAITING, State.DONE);
-        this.reply = reply;
-        state.releaseDowngrade();
-        try {
-            complete();
-        } finally {
-            state.release();
-        }
-    }
-
-    /**
-     * Receive an exception for this request.
-     *
-     * @param exception the exception
-     */
-    void receiveException(final RemoteExecutionException exception) {
-        state.requireTransitionExclusive(State.WAITING, State.EXCEPTION);
-        this.exception = exception;
-        state.releaseDowngrade();
-        try {
-            complete();
-        } finally {
-            state.release();
+        public void handleException(final RemoteExecutionException exception) {
+            if (state.transitionExclusive(State.WAITING, State.DONE)) try {
+                CoreOutboundRequest.this.exception = exception;
+            } finally {
+                state.releaseDowngrade();
+                try {
+                    complete();
+                } finally {
+                    state.release();
+                }
+            }
         }
     }
 
@@ -140,14 +124,28 @@ public final class CoreOutboundRequest<I, O> {
 
         public boolean cancel(final boolean mayInterruptIfRunning) {
             if (state.inHold(State.WAITING)) try {
-                if (! context.sendCancelRequest(requestIdentifier, mayInterruptIfRunning)) {
-                    // the cancel request could not be sent at all
+                try {
+                    requestServer.handleCancelRequest(mayInterruptIfRunning);
+                } catch (RemotingException e) {
                     return false;
                 }
             } finally {
                 state.release();
             }
             return state.waitForNot(State.WAITING) == State.CANCELLED;
+        }
+
+        public FutureReply<O> sendCancel(final boolean mayInterruptIfRunning) {
+            if (state.inHold(State.WAITING)) try {
+                try {
+                    requestServer.handleCancelRequest(mayInterruptIfRunning);
+                } catch (RemotingException e) {
+                    // do nothing
+                }
+            } finally {
+                state.release();
+            }
+            return this;
         }
 
         public boolean isCancelled() {
@@ -220,7 +218,24 @@ public final class CoreOutboundRequest<I, O> {
         }
 
         public O getInterruptibly(final long timeout, final TimeUnit unit) throws InterruptedException, CancellationException, RemoteExecutionException {
-            return null;
+            final State newState = state.waitInterruptiblyForNotHold(State.WAITING, timeout, unit);
+            try {
+                switch (newState) {
+                    case CANCELLED:
+                        throw new CancellationException("Request was cancelled");
+                    case EXCEPTION:
+                        throw exception;
+                    case DONE:
+                        return reply;
+                    case WAITING:
+                        return null;
+                    case TERMINATED:
+                        throw new IndeterminateOutcomeException("Request terminated abruptly; outcome unknown");
+                }
+                throw new IllegalStateException("Wrong state");
+            } finally {
+                state.release();
+            }
         }
 
         public FutureReply<O> addCompletionNotifier(RequestCompletionHandler<O> handler) {

@@ -3,16 +3,16 @@ package org.jboss.cx.remoting.jrpp.mina;
 import java.io.IOException;
 import org.apache.mina.common.IoBuffer;
 import org.apache.mina.common.IoSession;
-import org.jboss.cx.remoting.util.ByteOutput;
+import org.jboss.cx.remoting.spi.ByteMessageOutput;
 
 /**
  *
  */
-public final class IoBufferByteOutput implements ByteOutput {
+public final class IoBufferByteMessageOutput implements ByteMessageOutput {
     private final IoBuffer ioBuffer;
     private final IoSession ioSession;
 
-    public IoBufferByteOutput(final IoBuffer ioBuffer, final IoSession ioSession) {
+    public IoBufferByteMessageOutput(final IoBuffer ioBuffer, final IoSession ioSession) {
         this.ioBuffer = ioBuffer;
         this.ioSession = ioSession;
     }

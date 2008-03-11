@@ -6,8 +6,8 @@ import org.jboss.cx.remoting.http.spi.ReadyNotifier;
 import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
 import org.jboss.cx.remoting.http.spi.AbstractOutgoingHttpMessage;
 import org.jboss.cx.remoting.util.CollectionUtil;
-import org.jboss.cx.remoting.util.MessageOutput;
-import org.jboss.cx.remoting.util.ByteOutput;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
+import org.jboss.cx.remoting.spi.ByteMessageOutput;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
@@ -130,8 +130,8 @@ public final class RemotingHttpSessionImpl {
 
         public void sendServiceActivate(final ServiceIdentifier remoteServiceIdentifier) throws IOException {
             outgoingQueue.add(new OutputAction() {
-                public void run(ByteOutput target) throws IOException {
-                    final MessageOutput msgOutput = protocolContext.getMessageOutput(target);
+                public void run(ByteMessageOutput target) throws IOException {
+                    final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(target);
                     write(msgOutput, MsgType.SERVICE_ACTIVATE);
                     write(msgOutput, remoteServiceIdentifier);
                     msgOutput.commit();
@@ -141,8 +141,8 @@ public final class RemotingHttpSessionImpl {
 
         public void sendReply(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier, final Object reply) throws IOException {
             // we have to buffer because reply might be mutable!
-            final BufferedByteOutput output = new BufferedByteOutput(256);
-            final MessageOutput msgOutput = protocolContext.getMessageOutput(output);
+            final BufferedByteMessageOutput output = new BufferedByteMessageOutput(256);
+            final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(output);
             write(msgOutput, MsgType.REPLY);
             write(msgOutput, remoteContextIdentifier);
             write(msgOutput, requestIdentifier);
@@ -152,8 +152,8 @@ public final class RemotingHttpSessionImpl {
 
         public void sendException(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier, final RemoteExecutionException exception) throws IOException {
             // we have to buffer because exception might contain mutable elements
-            final BufferedByteOutput output = new BufferedByteOutput(256);
-            final MessageOutput msgOutput = protocolContext.getMessageOutput(output);
+            final BufferedByteMessageOutput output = new BufferedByteMessageOutput(256);
+            final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(output);
             write(msgOutput, MsgType.EXCEPTION);
             write(msgOutput, remoteContextIdentifier);
             write(msgOutput, requestIdentifier);
@@ -163,8 +163,8 @@ public final class RemotingHttpSessionImpl {
 
         public void sendCancelAcknowledge(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier) throws IOException {
             outgoingQueue.add(new OutputAction() {
-                public void run(ByteOutput target) throws IOException {
-                    final MessageOutput msgOutput = protocolContext.getMessageOutput(target);
+                public void run(ByteMessageOutput target) throws IOException {
+                    final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(target);
                     write(msgOutput, MsgType.CANCEL_ACK);
                     write(msgOutput, remoteContextIdentifier);
                     write(msgOutput, requestIdentifier);
@@ -173,15 +173,18 @@ public final class RemotingHttpSessionImpl {
             });
         }
 
-        public void sendServiceTerminate(final ServiceIdentifier remoteServiceIdentifier) throws IOException {
+        public void sendServiceClosing(final ServiceIdentifier remoteServiceIdentifier) throws IOException {
             outgoingQueue.add(new OutputAction() {
-                public void run(ByteOutput target) throws IOException {
-                    final MessageOutput msgOutput = protocolContext.getMessageOutput(target);
+                public void run(ByteMessageOutput target) throws IOException {
+                    final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(target);
                     write(msgOutput, MsgType.SERVICE_TERMINATE);
                     write(msgOutput, remoteServiceIdentifier);
                     msgOutput.commit();
                 }
             });
+        }
+
+        public void sendContextClosing(final ContextIdentifier remoteContextIdentifier, final boolean done) throws IOException {
         }
 
         public ContextIdentifier getLocalRootContextIdentifier() {
@@ -195,8 +198,8 @@ public final class RemotingHttpSessionImpl {
         public ContextIdentifier openContext(final ServiceIdentifier serviceIdentifier) throws IOException {
             final ContextIdentifier contextIdentifier = null;
             outgoingQueue.add(new OutputAction() {
-                public void run(ByteOutput target) throws IOException {
-                    final MessageOutput msgOutput = protocolContext.getMessageOutput(target);
+                public void run(ByteMessageOutput target) throws IOException {
+                    final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(target);
                     write(msgOutput, MsgType.CONTEXT_OPENED);
                     write(msgOutput, serviceIdentifier);
                     write(msgOutput, contextIdentifier);
@@ -206,10 +209,10 @@ public final class RemotingHttpSessionImpl {
             return contextIdentifier;
         }
 
-        public void sendContextClose(final ContextIdentifier contextIdentifier) throws IOException {
+        public void sendContextClose(final ContextIdentifier contextIdentifier, final boolean immediate, final boolean cancel, final boolean interrupt) throws IOException {
             outgoingQueue.add(new OutputAction() {
-                public void run(ByteOutput target) throws IOException {
-                    final MessageOutput msgOutput = protocolContext.getMessageOutput(target);
+                public void run(ByteMessageOutput target) throws IOException {
+                    final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(target);
                     write(msgOutput, MsgType.CLOSE_CONTEXT);
                     write(msgOutput, contextIdentifier);
                     msgOutput.commit();
@@ -225,10 +228,10 @@ public final class RemotingHttpSessionImpl {
             return null;
         }
 
-        public void closeService(final ServiceIdentifier serviceIdentifier) throws IOException {
+        public void sendServiceClose(final ServiceIdentifier serviceIdentifier) throws IOException {
             outgoingQueue.add(new OutputAction() {
-                public void run(ByteOutput target) throws IOException {
-                    final MessageOutput msgOutput = protocolContext.getMessageOutput(target);
+                public void run(ByteMessageOutput target) throws IOException {
+                    final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(target);
                     write(msgOutput, MsgType.CLOSE_SERVICE);
                     write(msgOutput, serviceIdentifier);
                     msgOutput.commit();
@@ -238,8 +241,8 @@ public final class RemotingHttpSessionImpl {
 
         public void sendRequest(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Object request, final Executor streamExecutor) throws IOException {
             // we have to buffer because request might be mutable!
-            final BufferedByteOutput output = new BufferedByteOutput(256);
-            final MessageOutput msgOutput = protocolContext.getMessageOutput(output, streamExecutor);
+            final BufferedByteMessageOutput output = new BufferedByteMessageOutput(256);
+            final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(output, streamExecutor);
             write(msgOutput, MsgType.REQUEST);
             write(msgOutput, contextIdentifier);
             write(msgOutput, requestIdentifier);
@@ -249,8 +252,8 @@ public final class RemotingHttpSessionImpl {
 
         public void sendCancelRequest(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final boolean mayInterrupt) throws IOException {
             outgoingQueue.add(new OutputAction() {
-                public void run(ByteOutput target) throws IOException {
-                    final MessageOutput msgOutput = protocolContext.getMessageOutput(target);
+                public void run(ByteMessageOutput target) throws IOException {
+                    final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(target);
                     write(msgOutput, MsgType.CANCEL_REQUEST);
                     write(msgOutput, contextIdentifier);
                     write(msgOutput, requestIdentifier);
@@ -270,8 +273,8 @@ public final class RemotingHttpSessionImpl {
 
         public void closeStream(final StreamIdentifier streamIdentifier) throws IOException {
             outgoingQueue.add(new OutputAction() {
-                public void run(ByteOutput target) throws IOException {
-                    final MessageOutput msgOutput = protocolContext.getMessageOutput(target);
+                public void run(ByteMessageOutput target) throws IOException {
+                    final ObjectMessageOutput msgOutput = protocolContext.getMessageOutput(target);
                     write(msgOutput, MsgType.CLOSE_STREAM);
                     write(msgOutput, streamIdentifier);
                     msgOutput.commit();
@@ -287,8 +290,8 @@ public final class RemotingHttpSessionImpl {
             write(output, identifier);
         }
 
-        public MessageOutput sendStreamData(StreamIdentifier streamIdentifier, Executor streamExecutor) throws IOException {
-            return protocolContext.getMessageOutput(new BufferedByteOutput(256), streamExecutor);
+        public ObjectMessageOutput sendStreamData(StreamIdentifier streamIdentifier, Executor streamExecutor) throws IOException {
+            return protocolContext.getMessageOutput(new BufferedByteMessageOutput(256), streamExecutor);
         }
 
         public void closeSession() throws IOException {
@@ -299,12 +302,12 @@ public final class RemotingHttpSessionImpl {
         }
     }
 
-    public class BufferedByteOutput implements ByteOutput, OutputAction {
+    public class BufferedByteMessageOutput implements ByteMessageOutput, OutputAction {
         private final int bufsize;
         private final List<byte[]> bufferList = new ArrayList<byte[]>();
         private int sizeOfLast;
 
-        public BufferedByteOutput(final int bufsize) {
+        public BufferedByteMessageOutput(final int bufsize) {
             this.bufsize = bufsize;
         }
 
@@ -370,7 +373,7 @@ public final class RemotingHttpSessionImpl {
         public void flush() throws IOException {
         }
 
-        public void run(ByteOutput output) throws IOException {
+        public void run(ByteMessageOutput output) throws IOException {
             final Iterator<byte[]> iterator = bufferList.iterator();
             if (! iterator.hasNext()) {
                 return;
@@ -392,7 +395,7 @@ public final class RemotingHttpSessionImpl {
     }
 
     private interface OutputAction {
-        void run(ByteOutput target) throws IOException;
+        void run(ByteMessageOutput target) throws IOException;
     }
 
     private final class OutgoingActionHttpMessage extends AbstractOutgoingHttpMessage {
@@ -406,8 +409,8 @@ public final class RemotingHttpSessionImpl {
             addHeader(Http.HEADER_SEQ, Long.toString(sequenceValue, 16));
         }
 
-        public void writeMessageData(ByteOutput byteOutput) throws IOException {
-            final MessageOutput msgOut = protocolContext.getMessageOutput(byteOutput);
+        public void writeMessageData(ByteMessageOutput byteOutput) throws IOException {
+            final ObjectMessageOutput msgOut = protocolContext.getMessageOutput(byteOutput);
             msgOut.writeInt(PROTOCOL_VERSION);
             write(msgOut, MsgType.DATA_START);
             msgOut.writeLong(sequenceValue);

@@ -2,15 +2,15 @@ package org.jboss.cx.remoting.jrpp.mina;
 
 import java.io.IOException;
 import org.apache.mina.common.IoBuffer;
-import org.jboss.cx.remoting.util.ByteInput;
+import org.jboss.cx.remoting.spi.ByteMessageInput;
 
 /**
  *
  */
-public final class IoBufferByteInput implements ByteInput {
+public final class IoBufferByteMessageInput implements ByteMessageInput {
     private final IoBuffer ioBuffer;
 
-    public IoBufferByteInput(final IoBuffer ioBuffer) {
+    public IoBufferByteMessageInput(final IoBuffer ioBuffer) {
         this.ioBuffer = ioBuffer;
     }
 

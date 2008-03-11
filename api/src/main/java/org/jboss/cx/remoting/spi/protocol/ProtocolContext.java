@@ -3,10 +3,10 @@ package org.jboss.cx.remoting.spi.protocol;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.util.ByteInput;
-import org.jboss.cx.remoting.util.ByteOutput;
-import org.jboss.cx.remoting.util.MessageInput;
-import org.jboss.cx.remoting.util.MessageOutput;
+import org.jboss.cx.remoting.spi.ByteMessageInput;
+import org.jboss.cx.remoting.spi.ByteMessageOutput;
+import org.jboss.cx.remoting.spi.ObjectMessageInput;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 
 /**
  *
@@ -21,13 +21,15 @@ public interface ProtocolContext {
 
     void receiveCancelAcknowledge(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier);
 
-    void receiveServiceTerminate(ServiceIdentifier serviceIdentifier);
+    void receiveServiceClosing(ServiceIdentifier serviceIdentifier);
+
+    void receiveContextClosing(ContextIdentifier contextIdentifier, boolean done);
 
     /* SERVER methods */
 
-    void closeContext(ContextIdentifier remoteContextIdentifier);
+    void receiveServiceClose(ServiceIdentifier remoteServiceIdentifier);
 
-    void closeService(ServiceIdentifier remoteServiceIdentifier);
+    void receiveContextClose(ContextIdentifier remoteContextIdentifier, boolean immediate, boolean cancel, boolean interrupt);
 
     void receiveOpenedContext(ServiceIdentifier remoteServiceIdentifier, ContextIdentifier remoteContextIdentifier);
 
@@ -39,7 +41,7 @@ public interface ProtocolContext {
 
     void closeStream(StreamIdentifier streamIdentifier);
 
-    void receiveStreamData(StreamIdentifier streamIdentifier, MessageInput data);
+    void receiveStreamData(StreamIdentifier streamIdentifier, ObjectMessageInput data);
 
     void openSession(String remoteEndpointName);
 
@@ -47,11 +49,11 @@ public interface ProtocolContext {
 
     /* CLIENT OR SERVER methods */
 
-    MessageOutput getMessageOutput(ByteOutput target) throws IOException;
+    ObjectMessageOutput getMessageOutput(ByteMessageOutput target) throws IOException;
 
-    MessageOutput getMessageOutput(ByteOutput target, Executor streamExecutor) throws IOException;
+    ObjectMessageOutput getMessageOutput(ByteMessageOutput target, Executor streamExecutor) throws IOException;
 
-    MessageInput getMessageInput(ByteInput source) throws IOException;
+    ObjectMessageInput getMessageInput(ByteMessageInput source) throws IOException;
 
     String getLocalEndpointName();
 }

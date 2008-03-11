@@ -27,8 +27,8 @@ public class EndpointWrapper implements Endpoint {
         return delegate.getAttributes();
     }
 
-    public Session openSession(final URI remoteUri, final AttributeMap attributeMap) throws RemotingException {
-        return delegate.openSession(remoteUri, attributeMap);
+    public <I, O> Session openSession(final URI remoteUri, final AttributeMap attributeMap, final Context<I, O> rootContext) throws RemotingException {
+        return delegate.openSession(remoteUri, attributeMap, rootContext);
     }
 
     public String getName() {
@@ -49,6 +49,10 @@ public class EndpointWrapper implements Endpoint {
 
     public void close() throws RemotingException {
         delegate.close();
+    }
+
+    public void closeImmediate() throws RemotingException {
+        delegate.closeImmediate();
     }
 
     public void addCloseHandler(final CloseHandler<Endpoint> closeHandler) {

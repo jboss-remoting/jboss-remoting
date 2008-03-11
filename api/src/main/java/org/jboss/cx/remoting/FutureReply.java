@@ -28,6 +28,14 @@ public interface FutureReply<T> extends Future<T> {
     boolean cancel(boolean mayInterruptIfRunning);
 
     /**
+     * Asynchronously send a request to cancel this request.  Does not block the current method.  Use the
+     * {@link #addCompletionNotifier(RequestCompletionHandler)} method to add a notifier to be called upon completion.
+     *
+     * @param mayInterruptIfRunning
+     */
+    FutureReply<T> sendCancel(boolean mayInterruptIfRunning);
+
+    /**
      * Returns {@code true} if this task was cancelled before it completed normally.
      *
      * @return {@code true} if task was cancelled before it completed

@@ -1,71 +1,92 @@
 package org.jboss.cx.remoting.core;
 
-import java.util.concurrent.ConcurrentMap;
-import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.RemotingException;
+import java.util.concurrent.Executor;
+import java.util.Set;
 import org.jboss.cx.remoting.RequestListener;
-import org.jboss.cx.remoting.util.CollectionUtil;
-import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
-import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
+import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.log.Logger;
+import org.jboss.cx.remoting.util.AtomicStateMachine;
+
+import static org.jboss.cx.remoting.util.CollectionUtil.synchronizedHashSet;
+import static org.jboss.cx.remoting.util.AtomicStateMachine.start;
 
 /**
  *
  */
 public final class CoreInboundContext<I, O> {
+    private static final Logger log = Logger.getLogger(CoreInboundContext.class);
 
-    private final ContextIdentifier contextIdentifier;
-    private final CoreSession coreSession;
     private final RequestListener<I, O> requestListener;
+    private final Executor executor;
+    private final Set<CoreInboundRequest<I, O>> requests = synchronizedHashSet();
+    private final AtomicStateMachine<State> state = start(State.NEW);
 
-    private final ConcurrentMap<RequestIdentifier,CoreInboundRequest<I, O>> requests = CollectionUtil.concurrentMap();
+    private ContextClient contextClient;
 
-    public CoreInboundContext(final ContextIdentifier contextIdentifier, final CoreSession coreSession, final RequestListener<I, O> requestListener) {
-        this.contextIdentifier = contextIdentifier;
-        this.coreSession = coreSession;
+    private enum State {
+        NEW,
+        UP,
+        STOPPING,
+        DOWN,
+    }
+
+    public CoreInboundContext(final RequestListener<I, O> requestListener, final Executor executor) {
         this.requestListener = requestListener;
+        this.executor = executor;
     }
 
-    // Outbound protocol messages
-
-    void sendReply(final RequestIdentifier requestIdentifier, final O reply) throws RemotingException {
-        coreSession.sendReply(contextIdentifier, requestIdentifier, reply);
+    public ContextServer<I, O> getContextServer() {
+        return new Server();
     }
 
-    void sendException(final RequestIdentifier requestIdentifier, final RemoteExecutionException cause) throws RemotingException {
-        coreSession.sendException(contextIdentifier, requestIdentifier, cause);
+    public void initialize(final ContextClient contextClient) {
+        state.requireTransitionExclusive(State.NEW, State.UP);
+        this.contextClient = contextClient;
+        state.releaseExclusive();
     }
 
-    void sendCancelAcknowledge(final RequestIdentifier requestIdentifier) throws RemotingException {
-        coreSession.sendCancelAcknowledge(contextIdentifier, requestIdentifier);
-    }
-
-    // Inbound protocol messages
-
-    void receiveCancelRequest(final RequestIdentifier requestIdentifier, final boolean mayInterrupt) {
-        final CoreInboundRequest<I, O> inboundRequest = getInboundRequest(requestIdentifier);
-        if (inboundRequest != null) {
-            inboundRequest.receiveCancelRequest(mayInterrupt);
+    public void remove(final CoreInboundRequest<I, O> request) {
+        final State current = state.getStateHold();
+        try {
+            requests.remove(request);
+            if (current != State.STOPPING) {
+                return;
+            }
+        } finally {
+            state.release();
+        }
+        if (requests.isEmpty()) {
+            state.transition(State.STOPPING, State.DOWN);
         }
     }
 
-    void receiveRequest(final RequestIdentifier requestIdentifier, final I request) {
-        final CoreInboundRequest<I, O> inboundRequest = createInboundRequest(requestIdentifier, request);
-        inboundRequest.receiveRequest(request);
-    }
+    public final class Server implements ContextServer<I, O> {
+        public RequestServer<I> createNewRequest(final RequestClient<O> requestClient) throws RemotingException {
+            if (state.inHold(State.UP)) try {
+                final CoreInboundRequest<I, O> inboundRequest = new CoreInboundRequest<I, O>(requestListener, executor);
+                inboundRequest.initialize(requestClient);
+                requests.add(inboundRequest);
+                return inboundRequest.getRequester();
+            } finally {
+                state.release();
+            } else {
+                throw new RemotingException("Context is not up");
+            }
+        }
 
-    // Other protocol-related
-
-    protected void shutdown() {
-        
-    }
-
-    // Request mgmt
-
-    CoreInboundRequest<I, O> createInboundRequest(final RequestIdentifier requestIdentifier, final I request) {
-        return new CoreInboundRequest<I, O>(requestIdentifier, this, requestListener, coreSession.getExecutor());
-    }
-
-    CoreInboundRequest<I, O> getInboundRequest(RequestIdentifier requestIdentifier) {
-        return requests.get(requestIdentifier);
+        public void handleClose(final boolean immediate, final boolean cancel, final boolean interrupt) throws RemotingException {
+            if (state.transition(State.UP, State.STOPPING)) {
+                contextClient.handleClosing(false);
+                if (immediate || cancel) {
+                    for (CoreInboundRequest<I, O> inboundRequest : requests) {
+                        try {
+                            inboundRequest.getRequester().handleCancelRequest(immediate || interrupt);
+                        } catch (Exception e) {
+                            log.trace("Failed to notify inbound request of cancellation upon context close: %s", e);
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -39,6 +39,7 @@ public abstract class AbstractTypeMap<B> implements TypeMap<B> {
 
     public boolean containsValue(final Object value) {
         // since we key by type, we can do an O(1) search for value!
+        // todo - unless the given value is stored at a key of one of its super-types
         final Class<? extends Object> claxx = value.getClass();
         return map.containsKey(claxx) && isEqual(value, map.get(claxx));
     }

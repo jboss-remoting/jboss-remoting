@@ -19,6 +19,10 @@ public class ContextSourceWrapper<I, O> implements ContextSource<I, O> {
         delegate.close();
     }
 
+    public void closeImmediate() throws RemotingException {
+        delegate.closeImmediate();
+    }
+
     public void addCloseHandler(final CloseHandler<ContextSource<I, O>> closeHandler) {
         delegate.addCloseHandler(new CloseHandler<ContextSource<I, O>>() {
             public void handleClose(final ContextSource<I, O> closed) {

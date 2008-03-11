@@ -14,6 +14,7 @@ import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.CloseHandler;
+import org.jboss.cx.remoting.core.util.OrderedExecutorFactory;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.version.Version;
 import org.jboss.cx.remoting.log.Logger;
@@ -88,17 +89,13 @@ public final class CoreEndpoint {
         sessions.notifyAll();
     }
 
-    RequestListener<?, ?> getRootRequestListener() {
-        return rootRequestListener;
-    }
-
     public final class CoreProtocolServerContext implements ProtocolServerContext {
         private CoreProtocolServerContext() {
         }
 
-        public ProtocolContext establishSession(ProtocolHandler handler) {
+        public <I, O> ProtocolContext establishSession(final ProtocolHandler handler, final Context<I, O> rootContext) {
             final CoreSession session = new CoreSession(CoreEndpoint.this);
-            session.initializeServer(handler);
+            session.initializeServer(handler, rootContext);
             return session.getProtocolContext();
         }
     }
@@ -157,7 +154,7 @@ public final class CoreEndpoint {
             return endpointMap;
         }
 
-        public Session openSession(final URI uri, final AttributeMap attributeMap) throws RemotingException {
+        public <I, O> Session openSession(final URI uri, final AttributeMap attributeMap, final Context<I, O> rootContext) throws RemotingException {
             final String scheme = uri.getScheme();
             if (scheme == null) {
                 throw new RemotingException("No scheme on remote endpoint URI");
@@ -171,7 +168,7 @@ public final class CoreEndpoint {
                 final ProtocolHandlerFactory factory = registration.getProtocolHandlerFactory();
                 try {
                     final CoreSession session = new CoreSession(CoreEndpoint.this);
-                    session.initializeClient(factory, uri, attributeMap);
+                    session.initializeClient(factory, uri, attributeMap, rootContext);
                     sessions.add(session);
                     return session.getUserSession();
                 } catch (IOException e) {
@@ -206,14 +203,26 @@ public final class CoreEndpoint {
         }
 
         public <I, O> Context<I, O> createContext(RequestListener<I, O> requestListener) {
-            return null;
+            final CoreInboundContext<I, O> inbound = new CoreInboundContext<I, O>(requestListener, executor);
+            final CoreOutboundContext<I, O> outbound = new CoreOutboundContext<I, O>(executor);
+            inbound.initialize(outbound.getContextClient());
+            outbound.initialize(inbound.getContextServer());
+            return outbound.getUserContext();
         }
 
         public <I, O> ContextSource<I, O> createService(RequestListener<I, O> requestListener) {
-            return null;
+            final CoreInboundService<I, O> inbound = new CoreInboundService<I, O>(requestListener, executor);
+            final CoreOutboundService<I, O> outbound = new CoreOutboundService<I, O>(executor);
+            inbound.initialize(outbound.getServiceClient());
+            outbound.initialize(inbound.getServiceServer());
+            return outbound.getUserContextSource();
         }
 
         public void close() throws RemotingException {
+            // todo ...
+        }
+
+        public void closeImmediate() throws RemotingException {
             // todo ...
         }
 

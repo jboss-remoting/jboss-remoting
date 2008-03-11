@@ -2,17 +2,17 @@ package org.jboss.cx.remoting.core;
 
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import java.io.Serializable;
 import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.CloseHandler;
+import org.jboss.cx.remoting.core.util.QueueExecutor;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.log.Logger;
-import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
-import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 
 /**
  *
@@ -20,91 +20,29 @@ import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 public final class CoreOutboundContext<I, O> {
     private static final Logger log = Logger.getLogger(CoreOutboundContext.class);
 
-    private final CoreEndpoint endpoint;
-    private final CoreSession session;
-    private final ContextIdentifier contextIdentifier;
-
     private final ConcurrentMap<Object, Object> contextMap = CollectionUtil.concurrentMap();
-    private final ConcurrentMap<RequestIdentifier, CoreOutboundRequest<I, O>> requests = CollectionUtil.concurrentMap();
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
     private final Context<I, O> userContext = new UserContext();
+    private final ContextClient contextClient = new ContextClientImpl();
+    private final Executor executor;
 
-    public CoreOutboundContext(final CoreSession session, final ContextIdentifier contextIdentifier) {
-        this.session = session;
-        this.contextIdentifier = contextIdentifier;
-        endpoint = session.getEndpoint();
+    private ContextServer<I, O> contextServer;
+    
+    public CoreOutboundContext(final Executor executor) {
+        this.executor = executor;
+    }
+
+    public void initialize(final ContextServer<I, O> contextServer) {
+        state.requireTransitionExclusive(State.INITIAL, State.UP);
+        this.contextServer = contextServer;
+        state.releaseExclusive();
     }
 
     private enum State {
+        INITIAL,
         UP,
         STOPPING,
         DOWN,
-    }
-
-    // Request management
-
-    void dropRequest(final RequestIdentifier requestIdentifier, final CoreOutboundRequest<I, O> coreOutboundRequest) {
-        requests.remove(requestIdentifier, coreOutboundRequest);
-    }
-
-    // Outbound protocol messages
-
-    boolean sendCancelRequest(final RequestIdentifier requestIdentifier, final boolean mayInterrupt) {
-        if (state.inHold(State.UP)) try {
-            return session.sendCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
-        } finally {
-            state.release();
-        } else {
-            return false;
-        }
-    }
-
-    void sendRequest(final RequestIdentifier requestIdentifier, final I request, final Executor streamExecutor) throws RemotingException {
-        session.sendRequest(contextIdentifier, requestIdentifier, request, streamExecutor);
-    }
-
-    // Inbound protocol messages
-
-    @SuppressWarnings ({"unchecked"})
-    void receiveCloseContext() {
-        final CoreOutboundRequest[] requestArray;
-        if (! state.transition(State.UP, State.STOPPING)) {
-            return;
-        }
-        requestArray = requests.values().toArray(empty);
-        for (CoreOutboundRequest<I, O> request : requestArray) {
-            request.receiveClose();
-        }
-        session.removeContext(contextIdentifier);
-    }
-
-    void receiveCancelAcknowledge(RequestIdentifier requestIdentifier) {
-        final CoreOutboundRequest<I, O> request = requests.get(requestIdentifier);
-        if (request != null) {
-            request.receiveCancelAcknowledge();
-        }
-    }
-
-    void receiveReply(RequestIdentifier requestIdentifier, O reply) {
-        final CoreOutboundRequest<I, O> request = requests.get(requestIdentifier);
-        if (request != null) {
-            request.receiveReply(reply);
-        }
-    }
-
-    void receiveException(RequestIdentifier requestIdentifier, RemoteExecutionException exception) {
-        final CoreOutboundRequest<I, O> request = requests.get(requestIdentifier);
-        if (request != null) {
-            request.receiveException(exception);
-        } else {
-            log.trace("Received an exception for an unknown request (%s)", requestIdentifier);
-        }
-    }
-
-    // Other protocol-related
-
-    RequestIdentifier openRequest() throws RemotingException {
-        return session.openRequest(contextIdentifier);
     }
 
     // Getters
@@ -113,64 +51,62 @@ public final class CoreOutboundContext<I, O> {
         return userContext;
     }
 
+    ContextClient getContextClient() {
+        return contextClient;
+    }
+
     // Other mgmt
 
     protected void finalize() throws Throwable {
         try {
             super.finalize();
         } finally {
-            receiveCloseContext();
+            // todo close it
             log.trace("Leaked a context instance: %s", this);
         }
     }
 
-    public final class UserContext implements Context<I, O> {
+    @SuppressWarnings ({"SerializableInnerClassWithNonSerializableOuterClass"})
+    public final class UserContext implements Context<I, O>, Serializable {
+        private static final long serialVersionUID = 1L;
 
         private UserContext() {
         }
 
+        private Object writeReplace() {
+            return contextServer;
+        }
+
         public void close() throws RemotingException {
-            receiveCloseContext();
+            contextServer.handleClose(false, false, false);
+        }
+
+        public void closeCancelling(final boolean mayInterrupt) throws RemotingException {
+            contextServer.handleClose(false, true, mayInterrupt);
+        }
+
+        public void closeImmediate() throws RemotingException {
+            contextServer.handleClose(true, true, true);
         }
 
         public void addCloseHandler(final CloseHandler<Context<I, O>> closeHandler) {
             // todo ...
         }
 
-        private FutureReply<O> doSend(final I request, final QueueExecutor queueExecutor) throws RemotingException {
-            final RequestIdentifier requestIdentifier;
-            requestIdentifier = openRequest();
-            final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>(CoreOutboundContext.this, requestIdentifier);
-            requests.put(requestIdentifier, outboundRequest);
-            // Request must be sent *after* the identifier is registered in the map
-            sendRequest(requestIdentifier, request, queueExecutor);
-            final FutureReply<O> futureReply = outboundRequest.getFutureReply();
-            futureReply.addCompletionNotifier(new RequestCompletionHandler<O>() {
-                public void notifyComplete(final FutureReply<O> futureReply) {
-                    queueExecutor.shutdown();
-                }
-            });
-            return futureReply;
-        }
-
-        public O invokeInterruptibly(final I request) throws RemotingException, RemoteExecutionException, InterruptedException {
-            state.requireHold(State.UP);
-            try {
-                final QueueExecutor queueExecutor = new QueueExecutor();
-                final FutureReply<O> futureReply = doSend(request, queueExecutor);
-                // todo - find a safe way to make this interruptible
-                queueExecutor.runQueue();
-                return futureReply.getInterruptibly();
-            } finally {
-                state.release();
-            }
-        }
-
         public O invoke(final I request) throws RemotingException, RemoteExecutionException {
             state.requireHold(State.UP);
             try {
                 final QueueExecutor queueExecutor = new QueueExecutor();
-                final FutureReply<O> futureReply = doSend(request, queueExecutor);
+                final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>();
+                final RequestServer<I> requestTerminus = contextServer.createNewRequest(outboundRequest.getReplier());
+                outboundRequest.setRequester(requestTerminus);
+                requestTerminus.handleRequest(request, queueExecutor);
+                final FutureReply<O> futureReply = outboundRequest.getFutureReply();
+                futureReply.addCompletionNotifier(new RequestCompletionHandler<O>() {
+                    public void notifyComplete(final FutureReply<O> futureReply) {
+                        queueExecutor.shutdown();
+                    }
+                });
                 queueExecutor.runQueue();
                 return futureReply.get();
             } finally {
@@ -181,13 +117,21 @@ public final class CoreOutboundContext<I, O> {
         public FutureReply<O> send(final I request) throws RemotingException {
             state.requireHold(State.UP);
             try {
-                final RequestIdentifier requestIdentifier;
-                requestIdentifier = openRequest();
-                final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>(CoreOutboundContext.this, requestIdentifier);
-                requests.put(requestIdentifier, outboundRequest);
-                // Request must be sent *after* the identifier is registered in the map
-                sendRequest(requestIdentifier, request, endpoint.getExecutor());
+                final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>();
+                final RequestServer<I> requestTerminus = contextServer.createNewRequest(outboundRequest.getReplier());
+                outboundRequest.setRequester(requestTerminus);
+                requestTerminus.handleRequest(request, executor);
                 return outboundRequest.getFutureReply();
+            } finally {
+                state.release();
+            }
+        }
+
+        public void sendOneWay(final I request) throws RemotingException {
+            state.requireHold(State.UP);
+            try {
+                final RequestServer<I> requestServer = contextServer.createNewRequest(null);
+                requestServer.handleRequest(request, executor);
             } finally {
                 state.release();
             }
@@ -198,5 +142,9 @@ public final class CoreOutboundContext<I, O> {
         }
     }
 
-    private static final CoreOutboundRequest[] empty = new CoreOutboundRequest[0];
+    public final class ContextClientImpl implements ContextClient {
+        public void handleClosing(boolean done) throws RemotingException {
+            // todo - remote side is closing
+        }
+    }
 }

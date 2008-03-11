@@ -1,9 +1,11 @@
 package org.jboss.cx.remoting.spi.protocol;
 
+import org.jboss.cx.remoting.Context;
+
 /**
  *
  */
 public interface ProtocolServerContext {
-    ProtocolContext establishSession(ProtocolHandler handler);
+    <I, O> ProtocolContext establishSession(ProtocolHandler handler, Context<I, O> rootContext);
 
 }

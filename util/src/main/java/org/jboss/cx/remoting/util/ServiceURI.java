@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- *
+ * A parser for JBoss Remoting URI types.
  */
 public final class ServiceURI {
     public static final String SCHEME = "jrs";

@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.util;
+package org.jboss.cx.remoting.spi;
 
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -6,7 +6,7 @@ import java.io.ObjectInput;
 /**
  * A readable message.
  */
-public interface MessageInput extends ByteInput, ObjectInput {
+public interface ObjectMessageInput extends DataMessageInput, ObjectInput {
     /**
      * Read an object using the current context classloader, or, if there is no such classloader, the classloader
      * which loaded this interface.

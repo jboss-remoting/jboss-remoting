@@ -3,8 +3,8 @@ package org.jboss.cx.remoting.core.stream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedList;
-import org.jboss.cx.remoting.util.MessageInput;
-import org.jboss.cx.remoting.util.MessageOutput;
+import org.jboss.cx.remoting.spi.ObjectMessageInput;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamContext;
@@ -50,12 +50,12 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
             sendNext();
         }
 
-        public void handleData(MessageInput data) throws IOException {
+        public void handleData(ObjectMessageInput data) throws IOException {
             sendNext();
         }
 
         private void sendNext() throws IOException {
-            final MessageOutput output = context.writeMessage();
+            final ObjectMessageOutput output = context.writeMessage();
             final byte[] bytes = new byte[BUF_LEN];
             int i, t;
             boolean end = false;
@@ -151,7 +151,7 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
         public void handleOpen() throws IOException {
         }
 
-        public void handleData(MessageInput data) throws IOException {
+        public void handleData(ObjectMessageInput data) throws IOException {
             synchronized(messageQueue) {
                 for (;;) {
                     final int d = data.read();

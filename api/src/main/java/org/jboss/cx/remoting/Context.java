@@ -7,27 +7,6 @@ import java.util.concurrent.ConcurrentMap;
  * state, as well as other state maintained by the remote side.
  */
 public interface Context<I, O> extends Closeable<Context<I, O>> {
-
-    void close() throws RemotingException;
-
-    /**
-     * Send a request and block until a reply is received.
-     * <p/>
-     * Uses the default invocation policy for handling remote invocations. If the remote side manipulates a stream, the
-     * current thread MAY be used to handle it.
-     * <p/>
-     * If the remote session cannot handle the request, a {@code RemotingException} will be thrown.
-     *
-     * @param request the request to send
-     *
-     * @return the result of the request
-     *
-     * @throws RemotingException if the request could not be sent
-     * @throws RemoteExecutionException if the remote handler threw an exception
-     * @throws InterruptedException if the request was interrupted (and thereby cancelled)
-     */
-    O invokeInterruptibly(I request) throws RemotingException, RemoteExecutionException, InterruptedException;
-
     /**
      * Send a request and block until a reply is received.
      * <p/>
@@ -62,10 +41,30 @@ public interface Context<I, O> extends Closeable<Context<I, O>> {
     FutureReply<O> send(I request) throws RemotingException;
 
     /**
+     * Send a request asynchronously, ignoring the reply.
+     * </p>
+     * Uses the default invocation policy for handling remote invocations. If the remote side manipulates a stream, it
+     * MAY fail with an exception (e.g. if this method is called on a client with no threads to handle streaming).
+     * <p/>
+     * Returns immediately.
+     *
+     * @param request the request to send
+     * @throws RemotingException if the request could not be sent
+     */
+    void sendOneWay(I request) throws RemotingException;
+
+    /**
      * Get the context map.  This map holds metadata about the current context.
      *
      * @return the context map
      */
     ConcurrentMap<Object, Object> getAttributes();
 
+    void close() throws RemotingException;
+
+    void closeCancelling(boolean mayInterrupt) throws RemotingException;
+
+    void closeImmediate() throws RemotingException;
+
+    void addCloseHandler(final CloseHandler<Context<I, O>> closeHandler);
 }

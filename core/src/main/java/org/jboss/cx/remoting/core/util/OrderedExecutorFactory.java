@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.core;
+package org.jboss.cx.remoting.core.util;
 
 import java.util.Collections;
 import java.util.HashSet;

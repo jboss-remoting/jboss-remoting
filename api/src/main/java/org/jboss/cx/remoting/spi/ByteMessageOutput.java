@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.util;
+package org.jboss.cx.remoting.spi;
 
 import java.io.Closeable;
 import java.io.Flushable;
@@ -7,7 +7,7 @@ import java.io.IOException;
 /**
  * A writable destination for byte data.
  */
-public interface ByteOutput extends Closeable, Flushable {
+public interface ByteMessageOutput extends Closeable, Flushable {
     /**
      * Write a single byte of data.  The input argument is truncated to 8 bits.
      *

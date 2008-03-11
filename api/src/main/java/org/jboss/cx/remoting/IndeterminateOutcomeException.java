@@ -3,7 +3,7 @@ package org.jboss.cx.remoting;
 /**
  *
  */
-public final class IndeterminateOutcomeException extends RemoteExecutionException {
+public class IndeterminateOutcomeException extends RemoteExecutionException {
     public IndeterminateOutcomeException() {
     }
 

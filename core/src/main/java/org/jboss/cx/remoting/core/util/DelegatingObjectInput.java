@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.core;
+package org.jboss.cx.remoting.core.util;
 
 import java.io.IOException;
 import java.io.ObjectInput;

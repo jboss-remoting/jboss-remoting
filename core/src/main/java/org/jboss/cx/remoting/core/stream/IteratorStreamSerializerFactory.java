@@ -2,7 +2,7 @@ package org.jboss.cx.remoting.core.stream;
 
 import java.io.IOException;
 import java.util.Iterator;
-import org.jboss.cx.remoting.util.MessageInput;
+import org.jboss.cx.remoting.spi.ObjectMessageInput;
 import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamContext;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
@@ -61,7 +61,7 @@ public final class IteratorStreamSerializerFactory implements StreamSerializerFa
         public void handleOpen() throws IOException {
         }
 
-        public void handleData(MessageInput data) throws IOException {
+        public void handleData(ObjectMessageInput data) throws IOException {
         }
 
         public void handleClose() throws IOException {

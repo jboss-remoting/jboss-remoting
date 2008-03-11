@@ -1,8 +1,8 @@
 package org.jboss.cx.remoting.core.stream;
 
 import java.io.IOException;
-import org.jboss.cx.remoting.util.MessageInput;
-import org.jboss.cx.remoting.util.MessageOutput;
+import org.jboss.cx.remoting.spi.ObjectMessageInput;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamContext;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
@@ -42,7 +42,7 @@ public final class ObjectSinkStreamSerializerFactory implements StreamSerializer
         }
 
         @SuppressWarnings ({"unchecked"})
-        public void handleData(MessageInput data) throws IOException {
+        public void handleData(ObjectMessageInput data) throws IOException {
             MessageType messageType = MessageType.values()[data.read()];
             switch (messageType) {
                 case DATA:
@@ -73,14 +73,14 @@ public final class ObjectSinkStreamSerializerFactory implements StreamSerializer
         public ObjectSink<?> getRemoteInstance() {
             return new ObjectSink<Object>() {
                 public void accept(final Object instance) throws IOException {
-                    final MessageOutput msg = context.writeMessage();
+                    final ObjectMessageOutput msg = context.writeMessage();
                     msg.write(MessageType.DATA.ordinal());
                     msg.writeObject(instance);
                     msg.commit();
                 }
 
                 public void flush() throws IOException {
-                    final MessageOutput msg = context.writeMessage();
+                    final ObjectMessageOutput msg = context.writeMessage();
                     msg.write(MessageType.FLUSH.ordinal());
                     msg.commit();
                 }
@@ -94,7 +94,7 @@ public final class ObjectSinkStreamSerializerFactory implements StreamSerializer
         public void handleOpen() throws IOException {
         }
 
-        public void handleData(MessageInput data) throws IOException {
+        public void handleData(ObjectMessageInput data) throws IOException {
         }
 
         public void handleClose() throws IOException {

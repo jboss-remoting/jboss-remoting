@@ -22,16 +22,16 @@ import org.jboss.cx.remoting.CommonKeys;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.AttributeMap;
-import org.jboss.cx.remoting.util.MessageOutput;
-import org.jboss.cx.remoting.util.MessageInput;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
+import org.jboss.cx.remoting.spi.ObjectMessageInput;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.util.WeakHashSet;
 import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppServiceIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppStreamIdentifier;
-import org.jboss.cx.remoting.jrpp.mina.IoBufferByteInput;
-import org.jboss.cx.remoting.jrpp.mina.IoBufferByteOutput;
+import org.jboss.cx.remoting.jrpp.mina.IoBufferByteMessageInput;
+import org.jboss.cx.remoting.jrpp.mina.IoBufferByteMessageOutput;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
@@ -148,7 +148,7 @@ public final class JrppConnection {
         try {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
-            final ProtocolContext protocolContext = protocolServerContext.establishSession(protocolHandler);
+            final ProtocolContext protocolContext = protocolServerContext.establishSession(protocolHandler, null /* todo */);
             this.protocolContext = protocolContext;
             client = false;
         } finally {
@@ -308,7 +308,7 @@ public final class JrppConnection {
 
     public void sendResponse(byte[] rawMsgData) throws IOException {
         final IoBuffer buffer = newBuffer(rawMsgData.length + 100, false);
-        final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+        final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
         write(output, MessageType.SASL_RESPONSE);
         output.write(rawMsgData);
         output.commit();
@@ -316,7 +316,7 @@ public final class JrppConnection {
 
     public void sendChallenge(byte[] rawMsgData) throws IOException {
         final IoBuffer buffer = newBuffer(rawMsgData.length + 100, false);
-        final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+        final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
         write(output, MessageType.SASL_CHALLENGE);
         output.write(rawMsgData);
         output.commit();
@@ -325,7 +325,7 @@ public final class JrppConnection {
     private void sendVersionMessage() throws IOException {
         // send version info
         final IoBuffer buffer = newBuffer(60, false);
-        final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+        final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
         write(output, MessageType.VERSION);
         output.writeShort(PROTOCOL_VERSION);
         output.writeUTF(protocolContext.getLocalEndpointName());
@@ -341,7 +341,7 @@ public final class JrppConnection {
         final SaslClientFilter saslClientFilter = getSaslClientFilter();
         saslClientFilter.setSaslClient(ioSession, saslClient);
         final IoBuffer buffer = newBuffer(600, true);
-        MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+        ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
         write(output, MessageType.AUTH_REQUEST);
         output.writeInt(clientMechs.length);
         for (String mech : clientMechs) {
@@ -413,11 +413,14 @@ public final class JrppConnection {
     }
 
     public final class RemotingProtocolHandler implements ProtocolHandler {
+        public void sendContextClosing(final ContextIdentifier remoteContextIdentifier, final boolean done) throws IOException {
+            // todo
+        }
 
         public ContextIdentifier openContext(ServiceIdentifier serviceIdentifier) throws IOException {
             final ContextIdentifier contextIdentifier = getNewContextIdentifier();
             final IoBuffer buffer = newBuffer(60, false);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+            final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.OPEN_CONTEXT);
             write(output, serviceIdentifier);
             write(output, contextIdentifier);
@@ -448,23 +451,23 @@ public final class JrppConnection {
             return remoteName;
         }
 
-        public void closeService(ServiceIdentifier serviceIdentifier) throws IOException {
+        public void sendServiceClose(ServiceIdentifier serviceIdentifier) throws IOException {
             if (! state.in(State.UP)) {
                 return;
             }
             final IoBuffer buffer = newBuffer(60, false);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+            final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.CLOSE_SERVICE);
             write(output, serviceIdentifier);
             output.commit();
         }
 
-        public void sendContextClose(ContextIdentifier contextIdentifier) throws IOException {
+        public void sendContextClose(ContextIdentifier contextIdentifier, final boolean immediate, final boolean cancel, final boolean interrupt) throws IOException {
             if (! state.in(State.UP)) {
                 return;
             }
             final IoBuffer buffer = newBuffer(60, false);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+            final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.CLOSE_CONTEXT);
             write(output, contextIdentifier);
             output.commit();
@@ -477,7 +480,7 @@ public final class JrppConnection {
             if (true /* todo if close not already sent */) {
                 // todo mark as sent or remove from table
                 final IoBuffer buffer = newBuffer(60, false);
-                final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+                final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
                 write(output, MessageType.CLOSE_STREAM);
                 write(output, streamIdentifier);
                 output.commit();
@@ -492,7 +495,7 @@ public final class JrppConnection {
                 throw new NullPointerException("requestIdentifier is null");
             }
             final IoBuffer buffer = newBuffer(500, true);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+            final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.REPLY);
             write(output, remoteContextIdentifier);
             write(output, requestIdentifier);
@@ -511,7 +514,7 @@ public final class JrppConnection {
                 throw new NullPointerException("exception is null");
             }
             final IoBuffer buffer = newBuffer(500, true);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+            final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.EXCEPTION);
             write(output, remoteContextIdentifier);
             write(output, requestIdentifier);
@@ -527,7 +530,7 @@ public final class JrppConnection {
                 throw new NullPointerException("requestIdentifier is null");
             }
             final IoBuffer buffer = newBuffer(500, true);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession), streamExecutor);
+            final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession), streamExecutor);
             write(output, MessageType.REQUEST);
             write(output, contextIdentifier);
             write(output, requestIdentifier);
@@ -543,19 +546,19 @@ public final class JrppConnection {
                 throw new NullPointerException("requestIdentifier is null");
             }
             final IoBuffer buffer = newBuffer(60, false);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+            final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.CANCEL_ACK);
             write(output, remoteContextIdentifier);
             write(output, requestIdentifier);
             output.commit();
         }
 
-        public void sendServiceTerminate(ServiceIdentifier remoteServiceIdentifier) throws IOException {
+        public void sendServiceClosing(ServiceIdentifier remoteServiceIdentifier) throws IOException {
             if (remoteServiceIdentifier == null) {
                 throw new NullPointerException("remoteServiceIdentifier is null");
             }
             final IoBuffer buffer = newBuffer(60, false);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+            final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.SERVICE_TERMINATE);
             write(output, remoteServiceIdentifier);
             output.commit();
@@ -577,7 +580,7 @@ public final class JrppConnection {
                 throw new NullPointerException("requestIdentifier is null");
             }
             final IoBuffer buffer = newBuffer(60, false);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+            final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.CANCEL_REQ);
             write(output, contextIdentifier);
             write(output, requestIdentifier);
@@ -589,7 +592,7 @@ public final class JrppConnection {
             return null;
         }
 
-        public MessageOutput sendStreamData(StreamIdentifier streamIdentifier, Executor streamExecutor) throws IOException {
+        public ObjectMessageOutput sendStreamData(StreamIdentifier streamIdentifier, Executor streamExecutor) throws IOException {
             if (streamIdentifier == null) {
                 throw new NullPointerException("streamIdentifier is null");
             }
@@ -597,7 +600,7 @@ public final class JrppConnection {
                 throw new NullPointerException("streamExeceutor is null");
             }
             final IoBuffer buffer = newBuffer(500, true);
-            final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession), streamExecutor);
+            final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession), streamExecutor);
             write(output, MessageType.STREAM_DATA);
             write(output, streamIdentifier);
             return output;
@@ -648,7 +651,7 @@ public final class JrppConnection {
 
         public void messageReceived(Object message) throws Exception {
             final boolean trace = log.isTrace();
-            final MessageInput input = protocolContext.getMessageInput(new IoBufferByteInput((IoBuffer) message));
+            final ObjectMessageInput input = protocolContext.getMessageInput(new IoBufferByteMessageInput((IoBuffer) message));
             final MessageType type = MessageType.values()[input.readByte() & 0xff];
             if (trace) {
                 log.trace("Received message of type %s in state %s", type, state.getState());
@@ -684,7 +687,7 @@ public final class JrppConnection {
                             try {
                                 if (saslServerFilter.handleSaslResponse(ioSession, bytes)) {
                                     final IoBuffer buffer = newBuffer(60, false);
-                                    final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+                                    final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
                                     write(output, MessageType.AUTH_SUCCESS);
                                     output.commit();
                                     saslServerFilter.startEncryption(ioSession);
@@ -693,7 +696,7 @@ public final class JrppConnection {
                                 }
                             } catch (SaslException ex) {
                                 final IoBuffer buffer = newBuffer(100, true);
-                                final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+                                final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
                                 write(output, MessageType.AUTH_FAILED);
                                 output.writeUTF("Authentication failed: " + ex.getMessage());
                                 output.commit();
@@ -732,7 +735,7 @@ public final class JrppConnection {
                                 if (saslServerFilter.sendInitialChallenge(ioSession)) {
                                     // complete (that was quick!)
                                     final IoBuffer buffer = newBuffer(60, false);
-                                    final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+                                    final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
                                     write(output, MessageType.AUTH_SUCCESS);
                                     output.commit();
                                     state.requireTransition(State.UP);
@@ -742,7 +745,7 @@ public final class JrppConnection {
                                 }
                             } catch (SaslException ex) {
                                 final IoBuffer buffer = newBuffer(100, true);
-                                final MessageOutput output = protocolContext.getMessageOutput(new IoBufferByteOutput(buffer, ioSession));
+                                final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
                                 write(output, MessageType.AUTH_FAILED);
                                 output.writeUTF("Unable to initiate SASL authentication: " + ex.getMessage());
                                 output.commit();
@@ -841,12 +844,12 @@ public final class JrppConnection {
                         }
                         case CLOSE_CONTEXT: {
                             final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
-                            protocolContext.closeContext(contextIdentifier);
+                            protocolContext.receiveContextClose(contextIdentifier, false, false, false);
                             return;
                         }
                         case CLOSE_SERVICE: {
                             final ServiceIdentifier serviceIdentifier = (ServiceIdentifier) input.readObject();
-                            protocolContext.closeService(serviceIdentifier);
+                            protocolContext.receiveServiceClose(serviceIdentifier);
                             return;
                         }
                         case CLOSE_STREAM: {
@@ -880,7 +883,7 @@ public final class JrppConnection {
                         }
                        case SERVICE_TERMINATE: {
                             final ServiceIdentifier serviceIdentifier = (ServiceIdentifier) input.readObject();
-                            protocolContext.receiveServiceTerminate(serviceIdentifier);
+                            protocolContext.receiveServiceClosing(serviceIdentifier);
                             return;
                         }
                         case STREAM_DATA: {

@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.core;
+package org.jboss.cx.remoting.core.service;
 
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.RequestContext;
@@ -40,10 +40,13 @@ public final class ServiceLocatorListener<I, O> implements RequestListener<Servi
     }
 
     private static <K, V> ConcurrentMap<K, V> syncMap() {
-        return CollectionUtil.concurrentMap(CollectionUtil.<K, V>hashMap());
+        return CollectionUtil.synchronizedMap(CollectionUtil.<K, V>hashMap());
     }
 
     private final ConcurrentMap<String, ConcurrentMap<String, ContextSource<?, ?>>> deployments = syncMap();
+
+    public void handleOpen() {
+    }
 
     public void handleRequest(final RequestContext<ServiceReply<I, O>> requestContext, final ServiceRequest<I, O> request) throws RemoteExecutionException, InterruptedException {
         final URI uri = request.getUri();
@@ -55,5 +58,8 @@ public final class ServiceLocatorListener<I, O> implements RequestListener<Servi
         
     }
 
-    
+    public void handleClose() {
+    }
+
+
 }
