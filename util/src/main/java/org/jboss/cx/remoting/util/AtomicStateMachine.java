@@ -488,6 +488,19 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         return state;
     }
 
+    public boolean inHoldExclusive(T state) {
+        writeLock.lock();
+        boolean ok = false;
+        try {
+            ok = this.state == state;
+            return ok;
+        } finally {
+            if (! ok) {
+                writeLock.unlock();
+            }
+        }
+    }
+
     public boolean inHoldExclusive(T... states) {
         if (states == null) {
             throw new NullPointerException("states is null");
@@ -502,6 +515,19 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         return false;
     }
 
+    public boolean inHold(T state) {
+        readLock.lock();
+        boolean ok = false;
+        try {
+            ok = this.state == state;
+            return ok;
+        } finally {
+            if (! ok) {
+                readLock.unlock();
+            }
+        }
+    }
+
     public boolean inHold(T... states) {
         if (states == null) {
             throw new NullPointerException("states is null");
@@ -514,6 +540,15 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
         readLock.unlock();
         return false;
+    }
+
+    public boolean in(T state) {
+        readLock.lock();
+        try {
+            return this.state == state;
+        } finally {
+            readLock.unlock();
+        }
     }
 
     public boolean in(T... states) {
