@@ -11,6 +11,7 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.Collections;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,6 +63,15 @@ public final class CollectionUtil {
      */
     public static <T> List<T> arrayList() {
         return new ArrayList<T>();
+    }
+
+    /**
+     * Create a synchronized array-backed list.
+     *
+     * @return a synchronized array-backed list
+     */
+    public static <T> List<T> synchronizedArrayList() {
+        return Collections.synchronizedList(CollectionUtil.<T>arrayList());
     }
 
     /**
