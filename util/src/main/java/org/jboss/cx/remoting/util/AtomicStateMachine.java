@@ -162,7 +162,6 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         boolean ok = false;
         try {
             if (state != fromState) {
-                writeLock.unlock();
                 return false;
             }
             state = toState;
