@@ -2,11 +2,14 @@ package org.jboss.cx.remoting;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import org.jboss.cx.remoting.util.AttributeHashMap;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.wrapper.ContextSourceWrapper;
 import org.jboss.cx.remoting.spi.wrapper.SessionWrapper;
+import org.jboss.cx.remoting.spi.wrapper.EndpointWrapper;
 import org.jboss.cx.remoting.core.CoreEndpoint;
 
 import javax.security.auth.callback.Callback;
@@ -22,7 +25,17 @@ public final class Remoting {
     private static final Logger log = Logger.getLogger(Remoting.class);
 
     public static Endpoint createEndpoint(String name) {
-        return null;
+        final CoreEndpoint coreEndpoint = new CoreEndpoint(name);
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+        coreEndpoint.setExecutor(executorService);
+        coreEndpoint.start();
+        final Endpoint userEndpoint = coreEndpoint.getUserEndpoint();
+        userEndpoint.addCloseHandler(new CloseHandler<Endpoint>() {
+            public void handleClose(final Endpoint closed) {
+                executorService.shutdown();
+            }
+        });
+        return userEndpoint;
     }
 
     public static Session createEndpointAndSession(String endpointName, URI remoteUri, final String userName, final char[] password) throws RemotingException {

@@ -124,7 +124,6 @@ public final class CoreInboundRequest<I, O> {
         }
 
         public void handleRequest(final I request, final Executor streamExecutor) {
-            state.requireTransition(State.INITIAL, State.UNSENT);
             executeTagged(new Runnable() {
                 public void run() {
                     try {

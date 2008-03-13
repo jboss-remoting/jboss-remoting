@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Set;
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -40,53 +41,55 @@ public final class CoreEndpoint {
 
     private final String name;
     private final Endpoint userEndpoint = new UserEndpoint();
-    private final OrderedExecutorFactory orderedExecutorFactory;
-    private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
-    private final Executor executor;
-    private final RequestListener<?, ?> rootRequestListener;
+    private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
+
+    private OrderedExecutorFactory orderedExecutorFactory;
+    private Executor executor;
 
     static {
         Logger.getLogger("org.jboss.cx.remoting").info("JBoss Remoting version %s", Version.VERSION);
     }
 
     private enum State {
+        INITIAL,
         UP,
         DOWN,
     }
 
-    protected CoreEndpoint(final String name, final RequestListener<?, ?> rootRequestListener) {
+    public CoreEndpoint(final String name) {
         this.name = name;
-        // todo - make this configurable
-        executor = Executors.newCachedThreadPool();
-        orderedExecutorFactory = new OrderedExecutorFactory(executor);
-        this.rootRequestListener = rootRequestListener;
     }
 
     private final ConcurrentMap<Object, Object> endpointMap = CollectionUtil.concurrentMap();
     private final ConcurrentMap<String, CoreProtocolRegistration> protocolMap = CollectionUtil.concurrentMap();
     private final Set<CoreSession> sessions = CollectionUtil.synchronizedSet(CollectionUtil.<CoreSession>hashSet());
     // accesses protected by {@code shutdownListeners} - always lock AFTER {@code state}
-    private final List<CloseHandler<Endpoint>> closeHandlers = CollectionUtil.arrayList();
+    private final List<CloseHandler<Endpoint>> closeHandlers = CollectionUtil.synchronizedArrayList();
 
-    ConcurrentMap<Object, Object> getAttributes() {
-        return endpointMap;
-    }
-
-    Executor getExecutor() {
+    public Executor getExecutor() {
         return executor;
     }
 
-    Executor getOrderedExecutor() {
-        return orderedExecutorFactory.getOrderedExecutor();
+    public void setExecutor(final Executor executor) {
+        this.executor = executor;
+        orderedExecutorFactory = new OrderedExecutorFactory(executor);
     }
 
-    Endpoint getUserEndpoint() {
+    public Endpoint getUserEndpoint() {
         return userEndpoint;
     }
 
     void removeSession(CoreSession coreSession) {
         sessions.remove(coreSession);
         sessions.notifyAll();
+    }
+
+    public void start() {
+        state.requireTransition(State.INITIAL, State.UP);
+    }
+
+    Executor getOrderedExecutor() {
+        return orderedExecutorFactory.getOrderedExecutor();
     }
 
     public final class CoreProtocolServerContext implements ProtocolServerContext {
@@ -219,15 +222,45 @@ public final class CoreEndpoint {
         }
 
         public void close() throws RemotingException {
-            // todo ...
+            if (state.transitionHold(State.UP, State.DOWN)) try {
+                Iterator<CloseHandler<Endpoint>> it = closeHandlers.iterator();
+                while (it.hasNext()) {
+                    CloseHandler<Endpoint> handler = it.next();
+                    handler.handleClose(this);
+                    it.remove();
+                }
+            } finally {
+                state.release();
+            }
         }
 
         public void closeImmediate() throws RemotingException {
-            // todo ...
+            if (state.transitionHold(State.UP, State.DOWN)) try {
+                Iterator<CloseHandler<Endpoint>> it = closeHandlers.iterator();
+                while (it.hasNext()) {
+                    CloseHandler<Endpoint> handler = it.next();
+                    handler.handleClose(this);
+                    it.remove();
+                }
+            } finally {
+                state.release();
+            }
         }
 
         public void addCloseHandler(final CloseHandler<Endpoint> closeHandler) {
-            // todo ...
+            if (closeHandler == null) {
+                throw new NullPointerException("closeHandler is null");
+            }
+            final State current = state.getStateHold();
+            try {
+                if (current != State.DOWN) {
+                    closeHandlers.add(closeHandler);
+                    return;
+                }
+            } finally {
+                state.release();
+            }
+            closeHandler.handleClose(this);
         }
     }
 }

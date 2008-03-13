@@ -21,7 +21,7 @@ public final class CoreOutboundContext<I, O> {
     private static final Logger log = Logger.getLogger(CoreOutboundContext.class);
 
     private final ConcurrentMap<Object, Object> contextMap = CollectionUtil.concurrentMap();
-    private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.UP);
+    private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
     private final Context<I, O> userContext = new UserContext();
     private final ContextClient contextClient = new ContextClientImpl();
     private final Executor executor;
