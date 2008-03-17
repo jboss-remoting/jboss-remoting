@@ -12,6 +12,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.Collections;
+import java.util.Collection;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -343,5 +344,106 @@ public final class CollectionUtil {
                 };
             }
         };
+    }
+
+    public static AttributeMap emptyAttributeMap() {
+        return EMPTY_ATTRIBUTE_MAP;
+    }
+
+    private static final AttributeMap EMPTY_ATTRIBUTE_MAP = new EmptyAttributeMap();
+
+    private static final class EmptyAttributeMap implements AttributeMap {
+
+        public <T> T get(final AttributeKey<T> key) {
+            return null;
+        }
+
+        public <T> T put(final AttributeKey<T> key, final T value) {
+            throw new UnsupportedOperationException("put()");
+        }
+
+        public <T> T remove(final AttributeKey<T> key) {
+            return null;
+        }
+
+        public <T> boolean remove(final AttributeKey<T> key, final T value) {
+            return false;
+        }
+
+        public <T> T putIfAbsent(final AttributeKey<T> key, final T value) {
+            throw new UnsupportedOperationException("putIfAbsent()");
+        }
+
+        public <T> boolean replace(final AttributeKey<T> key, final T oldValue, final T newValue) {
+            return false;
+        }
+
+        public <T> boolean containsKey(final AttributeKey<T> key) {
+            return false;
+        }
+
+        public <T> boolean containsValue(final T value) {
+            return false;
+        }
+
+        public Iterable<Entry<?>> entries() {
+            return emptyIterable();
+        }
+
+        public Set<AttributeKey<?>> keySet() {
+            return Collections.emptySet();
+        }
+
+        public Collection<?> values() {
+            return Collections.emptySet();
+        }
+
+        public boolean isEmpty() {
+            return true;
+        }
+
+        public int size() {
+            return 0;
+        }
+
+        public void clear() {
+            // might as well let it succeed
+        }
+    }
+
+    @SuppressWarnings ({"unchecked"})
+    public static <T> Iterable<T> emptyIterable() {
+        return (Iterable<T>) EMPTY_ITERABLE;
+    }
+
+    private static final Iterable<?> EMPTY_ITERABLE = new EmptyIterable();
+
+    private static class EmptyIterable implements Iterable<Object> {
+        public Iterator<Object> iterator() {
+            return emptyIterator();
+        }
+    }
+
+    @SuppressWarnings ({"unchecked"})
+    public static <T> Iterator<T> emptyIterator() {
+        return (Iterator<T>) EMPTY_ITERATOR;
+    }
+
+    private static final Iterator<?> EMPTY_ITERATOR = new EmptyIterator();
+
+    private static final class EmptyIterator implements Iterator {
+
+        public boolean hasNext() {
+            return false;
+        }
+
+        public Object next() {
+            throw new NoSuchElementException("next() past end of iterator");
+        }
+
+        public void remove() {
+            throw new IllegalStateException("next() has not yet been called");
+        }
+
     }
 }

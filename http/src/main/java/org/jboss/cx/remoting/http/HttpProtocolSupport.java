@@ -15,9 +15,6 @@ import org.jboss.cx.remoting.http.spi.IncomingHttpMessage;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
-import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
 
 /**
  *
@@ -27,8 +24,6 @@ public final class HttpProtocolSupport {
     private HttpTransporter httpTransporter;
 
     private final Endpoint endpoint;
-    private final ProtocolRegistration registration;
-    private final ProtocolServerContext serverContext;
     // todo - need secure random?
     private final Random random = new Random();
 
@@ -36,9 +31,7 @@ public final class HttpProtocolSupport {
 
     public HttpProtocolSupport(final Endpoint endpoint) throws RemotingException {
         this.endpoint = endpoint;
-        ProtocolRegistrationSpec spec = ProtocolRegistrationSpec.DEFAULT.setScheme("http").setProtocolHandlerFactory(protocolHandlerFactory);
-        registration = endpoint.registerProtocol(spec);
-        serverContext = registration.getProtocolServerContext();
+        endpoint.registerProtocol("http", protocolHandlerFactory);
     }
 
     public void setHttpTransporter(final HttpTransporter httpTransporter) {

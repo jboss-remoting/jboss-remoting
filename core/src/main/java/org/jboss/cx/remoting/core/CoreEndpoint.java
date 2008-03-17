@@ -7,7 +7,6 @@ import java.util.Set;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
@@ -24,9 +23,8 @@ import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
 import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
+import org.jboss.cx.remoting.spi.Registration;
 
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -88,6 +86,10 @@ public final class CoreEndpoint {
         state.requireTransition(State.INITIAL, State.UP);
     }
 
+    public void stop() {
+        // todo
+    }
+
     Executor getOrderedExecutor() {
         return orderedExecutorFactory.getOrderedExecutor();
     }
@@ -103,7 +105,7 @@ public final class CoreEndpoint {
         }
     }
 
-    public final class CoreProtocolRegistration implements ProtocolRegistration {
+    public final class CoreProtocolRegistration implements Registration {
         private final CoreProtocolServerContext protocolServerContext = new CoreProtocolServerContext();
         private final ProtocolHandlerFactory protocolHandlerFactory;
 
@@ -120,12 +122,8 @@ public final class CoreEndpoint {
         public void unregister() {
         }
 
-        public ProtocolHandlerFactory getProtocolHandlerFactory() {
+        private ProtocolHandlerFactory getProtocolHandlerFactory() {
             return protocolHandlerFactory;
-        }
-
-        public ProtocolServerContext getProtocolServerContext() {
-            return protocolServerContext;
         }
     }
 
@@ -184,21 +182,25 @@ public final class CoreEndpoint {
             }
         }
 
+        public <I, O> ProtocolContext openIncomingSession(final ProtocolHandler handler, final Context<I, O> rootContext) throws RemotingException {
+            return null;
+        }
+
         public String getName() {
             return name;
         }
 
-        public ProtocolRegistration registerProtocol(ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException {
-            if (spec.getScheme() == null) {
-                throw new NullPointerException("spec.getScheme() is null");
+        public Registration registerProtocol(final String scheme, final ProtocolHandlerFactory protocolHandlerFactory) throws RemotingException, IllegalArgumentException {
+            if (scheme == null) {
+                throw new NullPointerException("scheme is null");
             }
-            if (spec.getProtocolHandlerFactory() == null) {
-                throw new NullPointerException("spec.getProtocolHandlerFactory() is null");
+            if (protocolHandlerFactory == null) {
+                throw new NullPointerException("protocolHandlerFactory is null");
             }
             state.requireHold(State.UP);
             try {
-                final CoreProtocolRegistration registration = new CoreProtocolRegistration(spec.getProtocolHandlerFactory());
-                protocolMap.put(spec.getScheme(), registration);
+                final CoreProtocolRegistration registration = new CoreProtocolRegistration(protocolHandlerFactory);
+                protocolMap.put(scheme, registration);
                 return registration;
             } finally {
                 state.release();

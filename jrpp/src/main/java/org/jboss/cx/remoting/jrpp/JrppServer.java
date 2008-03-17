@@ -74,7 +74,6 @@ public final class JrppServer {
 
     @SuppressWarnings ({"unchecked"})
     public void create() {
-        serverContext = protocolSupport.getServerContext();
         executor = protocolSupport.getExecutor();
         ioProcessor = protocolSupport.getIoProcessor();
         ioAcceptor = new NioSocketAcceptor(executor, ioProcessor);

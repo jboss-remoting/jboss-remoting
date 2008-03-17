@@ -25,9 +25,7 @@ import org.jboss.cx.remoting.jrpp.mina.FramingIoFilter;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
-import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
+import org.jboss.cx.remoting.spi.Registration;
 
 /**
  *
@@ -42,10 +40,8 @@ public final class JrppProtocolSupport {
 
     /** The NIO processor.  Set upon {@code create}. */
     private IoProcessor ioProcessor;
-    /** Protocol server context.  Set upon {@code create}. */
-    private ProtocolServerContext serverContext;
     /** Protocol registration.  Set upon {@code create}. */
-    private ProtocolRegistration registration;
+    private Registration registration;
 
     public JrppProtocolSupport() {
     }
@@ -74,18 +70,12 @@ public final class JrppProtocolSupport {
         return ioProcessor;
     }
 
-    ProtocolServerContext getServerContext() {
-        return serverContext;
-    }
-
     // Lifecycle
 
     public void create() throws RemotingException {
         ioProcessor = new NioProcessor(executor);
         protocolHandlerFactory = new ProtocolHandlerFactoryImpl();
-        final ProtocolRegistrationSpec spec = ProtocolRegistrationSpec.DEFAULT.setScheme("jrpp").setProtocolHandlerFactory(protocolHandlerFactory);
-        final ProtocolRegistration registration = endpoint.registerProtocol(spec);
-        serverContext = registration.getProtocolServerContext();
+        final Registration registration = endpoint.registerProtocol("jrpp", protocolHandlerFactory);
         this.registration = registration;
     }
 
@@ -106,7 +96,6 @@ public final class JrppProtocolSupport {
             registration = null;
         }
         protocolHandlerFactory = null;
-        serverContext = null;
     }
 
     // Utilities

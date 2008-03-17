@@ -10,8 +10,10 @@ import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.util.AttributeMap;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistration;
-import org.jboss.cx.remoting.spi.protocol.ProtocolRegistrationSpec;
+import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
+import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
+import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
+import org.jboss.cx.remoting.spi.Registration;
 
 /**
  *
@@ -31,12 +33,16 @@ public class EndpointWrapper implements Endpoint {
         return delegate.openSession(remoteUri, attributeMap, rootContext);
     }
 
+    public <I, O> ProtocolContext openIncomingSession(final ProtocolHandler handler, final Context<I, O> rootContext) throws RemotingException {
+        return delegate.openIncomingSession(handler, rootContext);
+    }
+
     public String getName() {
         return delegate.getName();
     }
 
-    public ProtocolRegistration registerProtocol(final ProtocolRegistrationSpec spec) throws RemotingException, IllegalArgumentException {
-        return delegate.registerProtocol(spec);
+    public Registration registerProtocol(String scheme, ProtocolHandlerFactory protocolHandlerFactory) throws RemotingException, IllegalArgumentException {
+        return delegate.registerProtocol(scheme, protocolHandlerFactory);
     }
 
     public <I, O> Context<I, O> createContext(final RequestListener<I, O> requestListener) {

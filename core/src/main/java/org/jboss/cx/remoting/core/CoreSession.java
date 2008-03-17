@@ -115,6 +115,9 @@ public final class CoreSession {
         final ContextIdentifier remoteIdentifier = protocolHandler.getRemoteRootContextIdentifier();
         final ProtocolContextServerImpl<I, O> contextServer = new ProtocolContextServerImpl<I,O>(remoteIdentifier);
         clientContexts.put(remoteIdentifier, new WeakReference<ServerContextPair>(new ServerContextPair<I, O>(new BaseContextClient(), contextServer)));
+        final CoreOutboundContext<I, O> coreOutboundContext = new CoreOutboundContext<I, O>(executor);
+        coreOutboundContext.initialize(contextServer);
+        this.rootContext = coreOutboundContext.getUserContext();
     }
 
     <I, O> void initializeServer(final ProtocolHandler protocolHandler, final Context<I, O> rootContext) {
