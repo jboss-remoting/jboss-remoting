@@ -32,13 +32,12 @@ public interface Endpoint extends Closeable<Endpoint> {
      *
      * @param remoteUri the URI of the server to connect to
      * @param attributeMap the attribute map to use to configure this session
-     * @param rootContext the (local side of the) root context for the new session
      * @return a new session
      *
      * @throws RemotingException if there is a problem creating the session, or if the request or reply type does not
      * match the remote service
      */
-    <I, O> Session openSession(URI remoteUri, AttributeMap attributeMap, Context<I, O> rootContext) throws RemotingException;
+    Session openSession(URI remoteUri, AttributeMap attributeMap) throws RemotingException;
 
     /**
      * Open an inbound session from another endpoint.  Used by protocol handlers.
@@ -46,10 +45,9 @@ public interface Endpoint extends Closeable<Endpoint> {
      * You must have the TODO permission to invoke this method.
      *
      * @param handler the protocol handler to use
-     * @param rootContext the (local side of the) root context for this session
      * @return the protocol context
      */
-    <I, O> ProtocolContext openIncomingSession(ProtocolHandler handler, Context<I, O> rootContext) throws RemotingException;
+    ProtocolContext openIncomingSession(ProtocolHandler handler) throws RemotingException;
 
     /**
      * Get the name of this endpoint.

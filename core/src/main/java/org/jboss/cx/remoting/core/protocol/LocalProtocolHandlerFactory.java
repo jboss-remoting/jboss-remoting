@@ -18,20 +18,38 @@ import java.util.concurrent.ConcurrentMap;
 public final class LocalProtocolHandlerFactory implements ProtocolHandlerFactory {
     @SuppressWarnings ({"UnusedDeclaration"})
     private final Endpoint endpoint;
+    private final String endpointName;
 
     public LocalProtocolHandlerFactory(final Endpoint endpoint) {
         this.endpoint = endpoint;
+        endpointName = endpoint.getName();
     }
 
-    private static final ConcurrentMap<String, LocalProtocolHandlerFactory> endpoints = CollectionUtil.concurrentMap();
+    private static final ConcurrentMap<String, Endpoint> endpoints = CollectionUtil.concurrentMap();
 
     public boolean isLocal(final URI uri) {
         return true;
     }
 
-    public ProtocolHandler createHandler(final ProtocolContext context, final URI remoteUri, final AttributeMap attributeMap) throws IOException {
-
-        return new LocalProtocolHandler(context, remoteUri, attributeMap);
+    public ProtocolHandler createHandler(final ProtocolContext ourProtocolContext, final URI remoteUri, final AttributeMap attributeMap) throws IOException {
+        final String part = remoteUri.getSchemeSpecificPart();
+        final int index = part.indexOf(':');
+        final String otherEndpointName;
+        if (index == -1) {
+            otherEndpointName = part;
+        } else {
+            otherEndpointName = part.substring(0, index);
+        }
+        final Endpoint otherEndpoint = endpoints.get(otherEndpointName);
+        if (otherEndpoint == null) {
+            throw new RemotingException("No such local endpoint '" + otherEndpoint + "'");
+        }
+        final LocalProtocolHandler otherProtocolHandler = new LocalProtocolHandler(ourProtocolContext, otherEndpointName);
+        final ProtocolContext otherProtocolContext = otherEndpoint.openIncomingSession(otherProtocolHandler);
+        final LocalProtocolHandler ourProtocolHandler = new LocalProtocolHandler(otherProtocolContext, endpointName);
+        otherProtocolContext.openSession(endpointName);
+        ourProtocolContext.openSession(otherEndpointName);
+        return ourProtocolHandler;
     }
 
     public void close() {
@@ -43,6 +61,6 @@ public final class LocalProtocolHandlerFactory implements ProtocolHandlerFactory
         final LocalProtocolHandlerFactory handlerFactory = new LocalProtocolHandlerFactory(endpoint);
         final Registration registration = endpoint.registerProtocol("local", handlerFactory);
         registration.start();
-        endpoints.putIfAbsent(name, handlerFactory);
+        endpoints.putIfAbsent(name, endpoint);
     }
 }

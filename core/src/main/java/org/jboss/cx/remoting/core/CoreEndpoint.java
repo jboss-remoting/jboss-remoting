@@ -38,6 +38,7 @@ import javax.security.auth.callback.UnsupportedCallbackException;
 public final class CoreEndpoint {
 
     private final String name;
+    private final RequestListener<?, ?> rootListener;
     private final Endpoint userEndpoint = new UserEndpoint();
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
 
@@ -54,8 +55,9 @@ public final class CoreEndpoint {
         DOWN,
     }
 
-    public CoreEndpoint(final String name) {
+    public CoreEndpoint(final String name, final RequestListener<?, ?> rootListener) {
         this.name = name;
+        this.rootListener = rootListener;
     }
 
     private final ConcurrentMap<Object, Object> endpointMap = CollectionUtil.concurrentMap();
@@ -155,7 +157,7 @@ public final class CoreEndpoint {
             return endpointMap;
         }
 
-        public <I, O> Session openSession(final URI uri, final AttributeMap attributeMap, final Context<I, O> rootContext) throws RemotingException {
+        public Session openSession(final URI uri, final AttributeMap attributeMap) throws RemotingException {
             final String scheme = uri.getScheme();
             if (scheme == null) {
                 throw new RemotingException("No scheme on remote endpoint URI");
@@ -169,7 +171,7 @@ public final class CoreEndpoint {
                 final ProtocolHandlerFactory factory = registration.getProtocolHandlerFactory();
                 try {
                     final CoreSession session = new CoreSession(CoreEndpoint.this);
-                    session.initializeClient(factory, uri, attributeMap, rootContext);
+                    session.initializeClient(factory, uri, attributeMap, createContext(rootListener));
                     sessions.add(session);
                     return session.getUserSession();
                 } catch (IOException e) {
@@ -182,8 +184,16 @@ public final class CoreEndpoint {
             }
         }
 
-        public <I, O> ProtocolContext openIncomingSession(final ProtocolHandler handler, final Context<I, O> rootContext) throws RemotingException {
-            return null;
+        public ProtocolContext openIncomingSession(final ProtocolHandler handler) throws RemotingException {
+            state.requireHold(State.UP);
+            try {
+                final CoreSession session = new CoreSession(CoreEndpoint.this);
+                session.initializeServer(handler, createContext(rootListener));
+                sessions.add(session);
+                return session.getProtocolContext();
+            } finally {
+                state.release();
+            }
         }
 
         public String getName() {

@@ -13,8 +13,8 @@ import org.jboss.cx.remoting.core.protocol.LocalProtocolHandlerFactory;
 public final class Remoting {
     private static final Logger log = Logger.getLogger(Remoting.class);
 
-    public static Endpoint createEndpoint(String name) throws RemotingException {
-        final CoreEndpoint coreEndpoint = new CoreEndpoint(name);
+    public static <I, O> Endpoint createEndpoint(String name, RequestListener<I, O> listener) throws RemotingException {
+        final CoreEndpoint coreEndpoint = new CoreEndpoint(name, listener);
         final ExecutorService executorService = Executors.newCachedThreadPool();
         coreEndpoint.setExecutor(executorService);
         coreEndpoint.start();

@@ -22,10 +22,10 @@ public final class CoreOutboundContext<I, O> {
 
     private final ConcurrentMap<Object, Object> contextMap = CollectionUtil.concurrentMap();
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
-    private final Context<I, O> userContext = new UserContext();
     private final ContextClient contextClient = new ContextClientImpl();
     private final Executor executor;
 
+    private Context<I, O> userContext;
     private ContextServer<I, O> contextServer;
     
     public CoreOutboundContext(final Executor executor) {
@@ -35,6 +35,7 @@ public final class CoreOutboundContext<I, O> {
     public void initialize(final ContextServer<I, O> contextServer) {
         state.requireTransitionExclusive(State.INITIAL, State.UP);
         this.contextServer = contextServer;
+        userContext = new UserContext();
         state.releaseExclusive();
     }
 
@@ -67,10 +68,11 @@ public final class CoreOutboundContext<I, O> {
     }
 
     @SuppressWarnings ({"SerializableInnerClassWithNonSerializableOuterClass"})
-    public final class UserContext implements Context<I, O>, Serializable {
+    public final class UserContext extends AbstractRealContext<I, O> implements Serializable {
         private static final long serialVersionUID = 1L;
 
         private UserContext() {
+            super(contextServer);
         }
 
         private Object writeReplace() {
