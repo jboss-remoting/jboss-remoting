@@ -5,6 +5,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Set;
 import java.util.Iterator;
+import java.util.EnumSet;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.Endpoint;
@@ -49,10 +50,21 @@ public final class CoreEndpoint {
         Logger.getLogger("org.jboss.cx.remoting").info("JBoss Remoting version %s", Version.VERSION);
     }
 
-    private enum State {
+    private enum State implements org.jboss.cx.remoting.util.State<State> {
         INITIAL,
         UP,
-        DOWN,
+        DOWN;
+
+        public boolean isReachable(final State dest) {
+            switch (this) {
+                case INITIAL:
+                    return dest != INITIAL;
+                case UP:
+                    return dest == DOWN;
+                default:
+                    return false;
+            }
+        }
     }
 
     public CoreEndpoint(final String name, final RequestListener<?, ?> rootListener) {
@@ -158,6 +170,12 @@ public final class CoreEndpoint {
         }
 
         public Session openSession(final URI uri, final AttributeMap attributeMap) throws RemotingException {
+            if (uri == null) {
+                throw new NullPointerException("uri is null");
+            }
+            if (attributeMap == null) {
+                throw new NullPointerException("attributeMap is null");
+            }
             final String scheme = uri.getScheme();
             if (scheme == null) {
                 throw new RemotingException("No scheme on remote endpoint URI");

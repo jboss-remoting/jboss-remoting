@@ -12,6 +12,7 @@ import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.core.util.QueueExecutor;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.CollectionUtil;
+import org.jboss.cx.remoting.util.State;
 import org.jboss.cx.remoting.log.Logger;
 
 /**
@@ -39,11 +40,15 @@ public final class CoreOutboundContext<I, O> {
         state.releaseExclusive();
     }
 
-    private enum State {
+    private enum State implements org.jboss.cx.remoting.util.State<State> {
         INITIAL,
         UP,
         STOPPING,
-        DOWN,
+        DOWN,;
+
+        public boolean isReachable(final State dest) {
+            return compareTo(dest) < 0;
+        }
     }
 
     // Getters

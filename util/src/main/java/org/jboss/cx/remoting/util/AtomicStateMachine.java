@@ -10,16 +10,13 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  *
  */
-public final class AtomicStateMachine<T extends Enum<T>> {
+public final class AtomicStateMachine<T extends Enum<T> & State<T>> {
     // protected by {@code lock}
     private T state;
 
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
-    private final Lock readLock = lock.readLock();
-    private final Lock writeLock = lock.writeLock();
-    private final Condition cond = writeLock.newCondition();
+    private final StateLock stateLock = new StateLock();
 
-    public static <T extends Enum<T>> AtomicStateMachine<T> start(final T initialState) {
+    public static <T extends Enum<T> & State<T>> AtomicStateMachine<T> start(final T initialState) {
         return new AtomicStateMachine<T>(initialState);
     }
 
@@ -31,19 +28,18 @@ public final class AtomicStateMachine<T extends Enum<T>> {
     }
 
     public boolean transition(final T state) {
-        writeLock.lock();
+        if (state == null) {
+            throw new NullPointerException("state is null");
+        }
+        stateLock.lockExclusive();
         try {
-            if (state == null) {
-                throw new NullPointerException("state is null");
-            }
             if (this.state == state) {
                 return false;
             }
             this.state = state;
-            cond.signalAll();
             return true;
         } finally {
-            writeLock.unlock();
+            stateLock.unlockExclusive();
         }
     }
 
@@ -67,17 +63,16 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         if (state == null) {
             throw new NullPointerException("state is null");
         }
-        writeLock.lock();
+        stateLock.lockExclusive();
         try {
             if (this.state == state) {
                 return false;
             }
             this.state = state;
-            cond.signalAll();
-            readLock.lock();
+            stateLock.lockShared();
             return true;
         } finally {
-            writeLock.unlock();
+            stateLock.unlockExclusive();
         }
     }
 
@@ -85,12 +80,11 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         if (state == null) {
             throw new NullPointerException("state is null");
         }
-        writeLock.lock();
+        stateLock.lockExclusive();
         if (this.state == state) {
             return false;
         }
         this.state = state;
-        cond.signalAll();
         return true;
     }
 
@@ -98,16 +92,16 @@ public final class AtomicStateMachine<T extends Enum<T>> {
      * Release a held state.  Must be called from the same thread that is holding the state.
      */
     public void release() {
-        readLock.unlock();
+        stateLock.unlockShared();
     }
 
     public void releaseExclusive() {
-        writeLock.unlock();
+        stateLock.unlockExclusive();
     }
 
     public void releaseDowngrade() {
-        readLock.lock();
-        writeLock.unlock();
+        stateLock.lockShared();
+        stateLock.unlockExclusive();
     }
 
     public boolean transition(final T fromState, final T toState) {
@@ -117,16 +111,15 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         if (toState == null) {
             throw new NullPointerException("toState is null");
         }
-        writeLock.lock();
+        stateLock.lockExclusive();
         try {
             if (state != fromState) {
                 return false;
             }
             state = toState;
-            cond.signalAll();
             return true;
         } finally {
-            writeLock.unlock();
+            stateLock.unlockExclusive();
         }
     }
 
@@ -137,17 +130,16 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         if (toState == null) {
             throw new NullPointerException("toState is null");
         }
-        writeLock.lock();
+        stateLock.lockExclusive();
         try {
             if (state != fromState) {
                 return false;
             }
             state = toState;
-            cond.signalAll();
-            readLock.lock();
+            stateLock.lockShared();
             return true;
         } finally {
-            writeLock.unlock();
+            stateLock.unlockExclusive();
         }
     }
 
@@ -158,19 +150,18 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         if (toState == null) {
             throw new NullPointerException("toState is null");
         }
-        writeLock.lock();
+        stateLock.lockExclusive();
         boolean ok = false;
         try {
             if (state != fromState) {
                 return false;
             }
             state = toState;
-            cond.signalAll();
             ok = true;
             return true;
         } finally {
             if (! ok) {
-                writeLock.unlock();
+                stateLock.unlockExclusive();
             }
         }
     }
@@ -205,348 +196,151 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         }
     }
 
-
     public void waitInterruptiblyFor(final T state) throws InterruptedException {
-        if (in(state)) {
-            return;
-        }
-        writeLock.lockInterruptibly();
-        try {
-            while (this.state != state) {
-                cond.await();
+        stateLock.lockShared();
+        while (this.state != state) {
+            if (this.state.isReachable(state)) {
+                stateLock.yieldShared();
+            } else try {
+                throw new IllegalStateException("Destination state " + state + " is unreachable from " + this.state);
+            } finally {
+                stateLock.unlockShared();
             }
-        } finally {
-            writeLock.unlock();
         }
+        stateLock.unlockShared();
+        return;
     }
 
     public void waitFor(final T state) {
-        if (in(state)) {
-            return;
+        if (state == null) {
+            throw new NullPointerException("state is null");
         }
-        writeLock.lock();
-        try {
-            while (this.state != state) {
-                cond.awaitUninterruptibly();
+        stateLock.lockShared();
+        while (this.state != state) {
+            if (this.state.isReachable(state)) {
+                stateLock.yieldShared();
+            } else try {
+                throw new IllegalStateException("Destination state " + state + " is unreachable from " + this.state);
+            } finally {
+                stateLock.unlockShared();
             }
-        } finally {
-            writeLock.unlock();
         }
+        stateLock.unlockShared();
+        return;
     }
 
     public void waitForHold(final T state) {
-        if (inHold(state)) {
-            return;
+        if (state == null) {
+            throw new NullPointerException("state is null");
         }
-        writeLock.lock();
-        try {
-            while (this.state != state) {
-                cond.awaitUninterruptibly();
+        stateLock.lockShared();
+        while (this.state != state) {
+            if (this.state.isReachable(state)) {
+                stateLock.yieldShared();
+            } else try {
+                throw new IllegalStateException("Destination state " + state + " is unreachable from " + this.state);
+            } finally {
+                stateLock.unlockShared();
             }
-            readLock.lock();
-        } finally {
-            writeLock.unlock();
         }
-    }
-
-    public void waitForAny() {
-        writeLock.lock();
-        try {
-            waitForNot(state);
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    public boolean waitInterruptiblyFor(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
-        if (in(state)) {
-            return true;
-        }
-        final long timeoutMillis = timeUnit.toMillis(timeout);
-        final long startTime = System.currentTimeMillis();
-        final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
-        final Date deadline = new Date(endTime);
-        writeLock.lockInterruptibly();
-        try {
-            while (this.state != state) {
-                if (! cond.awaitUntil(deadline)) {
-                    return false;
-                }
-            }
-            return true;
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    public T waitInterruptiblyForNot(final T state) throws InterruptedException {
-        final T current = getState();
-        if (current != state) {
-            return current;
-        }
-        writeLock.lockInterruptibly();
-        try {
-            while (this.state == state) {
-                cond.await();
-            }
-            return this.state;
-        } finally {
-            writeLock.unlock();
-        }
+        return;
     }
 
     public T waitInterruptiblyForNotHold(final T state) throws InterruptedException {
-        final T current = getStateHold();
-        if (current != state) {
-            return current;
+        if (state == null) {
+            throw new NullPointerException("state is null");
         }
-        release();
-        writeLock.lockInterruptibly();
-        try {
-            while (this.state == state) {
-                cond.await();
-            }
-            readLock.lockInterruptibly();
-            return this.state;
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    public T waitForNot(final T state) {
-        final T current = getState();
-        if (current != state) {
-            return current;
-        }
-        writeLock.lock();
-        try {
-            while (this.state == state) {
-                cond.awaitUninterruptibly();
-            }
-            return this.state;
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    public T waitForNotHold(final T state) {
-        final T current = getStateHold();
-        if (current != state) {
-            return current;
-        }
-        release();
-        writeLock.lock();
-        try {
-            while (this.state == state) {
-                cond.awaitUninterruptibly();
-            }
-            readLock.lock();
-            return this.state;
-        } finally {
-            writeLock.unlock();
-        }
-    }
-
-    public T waitForNotExclusive(final T state) {
-        writeLock.lock();
+        stateLock.lockShared();
         while (this.state == state) {
-            cond.awaitUninterruptibly();
+            stateLock.yieldShared();
         }
         return this.state;
     }
 
-    public T waitInterruptiblyForNot(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
-        final T current = getState();
-        if (current != state) {
-            return current;
+    public T waitForNot(final T state) {
+        if (state == null) {
+            throw new NullPointerException("state is null");
         }
-        final long timeoutMillis = timeUnit.toMillis(timeout);
-        final long startTime = System.currentTimeMillis();
-        final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
-        final Date deadLine = new Date(endTime);
-        writeLock.lockInterruptibly();
+        stateLock.lockShared();
+        while (this.state == state) {
+            stateLock.yieldShared();
+        }
         try {
-            while (this.state == state) {
-                cond.awaitUntil(deadLine);
-            }
             return this.state;
         } finally {
-            writeLock.unlock();
+            stateLock.unlockShared();
         }
     }
 
+    public T waitForNotHold(final T state) {
+        if (state == null) {
+            throw new NullPointerException("state is null");
+        }
+        stateLock.lockShared();
+        while (this.state == state) {
+            stateLock.yieldShared();
+        }
+        return this.state;
+    }
+
+    @Deprecated
+    public T waitForNotExclusive(final T state) {
+        if (state == null) {
+            throw new NullPointerException("state is null");
+        }
+        stateLock.lockExclusive();
+        while (this.state == state) {
+            stateLock.awaitExclusive();
+        }
+        return this.state;
+    }
 
     public T waitInterruptiblyForNotHold(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
-        final T current = getStateHold();
-        if (current != state) {
-            return current;
-        }
-        release();
-        final long timeoutMillis = timeUnit.toMillis(timeout);
-        final long startTime = System.currentTimeMillis();
-        final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
-        final Date deadLine = new Date(endTime);
-        boolean waiting = true;
-        writeLock.lockInterruptibly();
-        try {
-            while (this.state == state) {
-                if (waiting) {
-                    waiting = cond.awaitUntil(deadLine);
-                } else {
-                    break;
-                }
-            }
-            readLock.lockInterruptibly();
-            return this.state;
-        } finally {
-            writeLock.unlock();
-        }
+        throw new RuntimeException("TODO - Implement");
     }
 
     public T waitForNotHold(final T state, final long timeout, final TimeUnit timeUnit) {
-        final T current = getStateHold();
-        if (current != state) {
-            return current;
-        }
-        release();
-        final long timeoutMillis = timeUnit.toMillis(timeout);
-        final long startTime = System.currentTimeMillis();
-        final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
-        final Date deadLine = new Date(endTime);
-        boolean intr = false;
-        try {
-            boolean waiting = true;
-            writeLock.lock();
-            try {
-                while (this.state == state) {
-                    if (waiting) {
-                        try {
-                            waiting = cond.awaitUntil(deadLine);
-                        } catch (InterruptedException e) {
-                            intr = Thread.currentThread().isInterrupted();
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                readLock.lock();
-                return this.state;
-            } finally {
-                writeLock.unlock();
-            }
-        } finally {
-            if (intr) Thread.currentThread().interrupt();
-        }
-    }
-
-    public T waitForNot(final T state, final long timeout, final TimeUnit timeUnit) {
-        final T current = getState();
-        if (current != state) {
-            return current;
-        }
-        final long timeoutMillis = timeUnit.toMillis(timeout);
-        final long startTime = System.currentTimeMillis();
-        final long endTime = startTime + timeoutMillis < 0 ? Long.MAX_VALUE : startTime + timeoutMillis;
-        final Date deadLine = new Date(endTime);
-        boolean intr = false;
-        writeLock.lock();
-        try {
-            while (this.state == state) {
-                try {
-                    if (! cond.awaitUntil(deadLine)) {
-                        break;
-                    }
-                } catch (InterruptedException e) {
-                    intr = true;
-                }
-            }
-            return this.state;
-        } finally {
-            if (intr) {
-                Thread.currentThread().interrupt();
-            }
-        }
+        throw new RuntimeException("TODO - Implement");
     }
 
     public T getState() {
-        readLock.lock();
+        stateLock.lockShared();
         try {
             return state;
         } finally {
-            readLock.unlock();
+            stateLock.unlockShared();
         }
     }
 
     public T getStateHold() {
-        readLock.lock();
+        stateLock.lockShared();
         return state;
     }
 
     public T getStateExclusive() {
-        writeLock.lock();
+        stateLock.lockExclusive();
         return state;
     }
 
-    public boolean inHoldExclusive(T state) {
-        writeLock.lock();
-        boolean ok = false;
-        try {
-            ok = this.state == state;
-            return ok;
-        } finally {
-            if (! ok) {
-                writeLock.unlock();
-            }
-        }
-    }
-
-    public boolean inHoldExclusive(T... states) {
-        if (states == null) {
-            throw new NullPointerException("states is null");
-        }
-        writeLock.lock();
-        for (T state : states) {
-            if (this.state == state) {
-                return true;
-            }
-        }
-        writeLock.unlock();
-        return false;
-    }
-
     public boolean inHold(T state) {
-        readLock.lock();
+        stateLock.lockShared();
         boolean ok = false;
         try {
             ok = this.state == state;
             return ok;
         } finally {
             if (! ok) {
-                readLock.unlock();
+                stateLock.unlockShared();
             }
         }
-    }
-
-    public boolean inHold(T... states) {
-        if (states == null) {
-            throw new NullPointerException("states is null");
-        }
-        readLock.lock();
-        for (T state : states) {
-            if (this.state == state) {
-                return true;
-            }
-        }
-        readLock.unlock();
-        return false;
     }
 
     public boolean in(T state) {
-        readLock.lock();
+        stateLock.lockShared();
         try {
             return this.state == state;
         } finally {
-            readLock.unlock();
+            stateLock.unlockShared();
         }
     }
 
@@ -554,7 +348,7 @@ public final class AtomicStateMachine<T extends Enum<T>> {
         if (states == null) {
             throw new NullPointerException("states is null");
         }
-        readLock.lock();
+        stateLock.lockShared();
         try {
             for (T state : states) {
                 if (this.state == state) {
@@ -563,21 +357,7 @@ public final class AtomicStateMachine<T extends Enum<T>> {
             }
             return false;
         } finally {
-            readLock.unlock();
-        }
-    }
-
-    public void require(T state) {
-        if (state == null) {
-            throw new NullPointerException("state is null");
-        }
-        readLock.lock();
-        try {
-            if (this.state != state) {
-                throw new IllegalStateException("Invalid state (expected " + state + ", but current state is " + this.state + ")");
-            }
-        } finally {
-            readLock.unlock();
+            stateLock.unlockShared();
         }
     }
 
@@ -586,39 +366,23 @@ public final class AtomicStateMachine<T extends Enum<T>> {
             throw new NullPointerException("state is null");
         }
         boolean ok = false;
-        readLock.lock();
+        stateLock.lockShared();
         try {
             if (this.state != state) {
                 throw new IllegalStateException("Invalid state (expected " + state + ", but current state is " + this.state + ")");
             }
             ok = true;
         } finally {
-            if (! ok) readLock.unlock();
-        }
-    }
-
-    public void requireExclusive(T state) {
-        if (state == null) {
-            throw new NullPointerException("state is null");
-        }
-        boolean ok = false;
-        writeLock.lock();
-        try {
-            if (this.state != state) {
-                throw new IllegalStateException("Invalid state (expected " + state + ", but current state is " + this.state + ")");
-            }
-            ok = true;
-        } finally {
-            if (! ok) writeLock.unlock();
+            if (! ok) stateLock.unlockShared();
         }
     }
 
     public String toString() {
-        readLock.lock();
+        stateLock.lockShared();
         try {
             return "State = " + state;
         } finally {
-            readLock.unlock();
+            stateLock.unlockShared();
         }
     }
 }

@@ -4,6 +4,7 @@ import static org.jboss.cx.remoting.util.AtomicStateMachine.start;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
+import org.jboss.cx.remoting.util.State;
 import java.util.concurrent.Executor;
 
 /**
@@ -16,9 +17,13 @@ public final class CoreInboundService<I, O> {
 
     private final AtomicStateMachine<State> state = start(State.INITIAL);
 
-    private enum State {
+    private enum State implements org.jboss.cx.remoting.util.State<State> {
         INITIAL,
-        UP,
+        UP;
+
+        public boolean isReachable(final State dest) {
+            return compareTo(dest) < 0;
+        }
     }
 
     public CoreInboundService(final RequestListener<I, O> requestListener, final Executor executor) {

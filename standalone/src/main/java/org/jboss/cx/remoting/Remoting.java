@@ -6,6 +6,7 @@ import java.util.concurrent.ExecutorService;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.core.CoreEndpoint;
 import org.jboss.cx.remoting.core.protocol.LocalProtocolHandlerFactory;
+import org.jboss.cx.remoting.jrpp.JrppProtocolSupport;
 
 /**
  *
@@ -22,6 +23,11 @@ public final class Remoting {
         try {
             final Endpoint userEndpoint = coreEndpoint.getUserEndpoint();
             LocalProtocolHandlerFactory.addTo(userEndpoint);
+            final JrppProtocolSupport jrppProtocolSupport = new JrppProtocolSupport();
+            jrppProtocolSupport.setEndpoint(userEndpoint);
+            jrppProtocolSupport.setExecutor(executorService);
+            jrppProtocolSupport.create();
+            jrppProtocolSupport.start();
             userEndpoint.addCloseHandler(new CloseHandler<Endpoint>() {
                 public void handleClose(final Endpoint closed) {
                     executorService.shutdown();

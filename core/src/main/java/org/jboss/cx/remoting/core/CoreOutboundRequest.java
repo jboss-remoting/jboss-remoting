@@ -12,6 +12,7 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
+import org.jboss.cx.remoting.util.State;
 import org.jboss.cx.remoting.log.Logger;
 
 /**
@@ -53,12 +54,22 @@ public final class CoreOutboundRequest<I, O> {
         return requestClient;
     }
 
-    private enum State {
+    private enum State implements org.jboss.cx.remoting.util.State<State> {
         WAITING,
         DONE,
         EXCEPTION,
         CANCELLED,
-        TERMINATED,
+        TERMINATED,;
+
+        public boolean isReachable(final State dest) {
+            switch (this) {
+                case WAITING:
+                case DONE:
+                    return compareTo(dest) < 0;
+                default:
+                    return false;
+            }
+        }
     }
 
     /**

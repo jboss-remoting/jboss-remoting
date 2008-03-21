@@ -6,6 +6,7 @@ import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
+import org.jboss.cx.remoting.util.State;
 import org.jboss.cx.remoting.log.Logger;
 import java.util.concurrent.Executor;
 import java.util.Set;
@@ -51,11 +52,15 @@ public final class CoreInboundRequest<I, O> {
         this.executor = executor;
     }
 
-    private enum State {
+    private enum State implements org.jboss.cx.remoting.util.State<State> {
         INITIAL,
         UNSENT,
         SENT,
-        TERMINATED,
+        TERMINATED;
+
+        public boolean isReachable(final State dest) {
+            return compareTo(dest) < 0;
+        }
     }
 
     public void initialize(final RequestClient<O> requestClient) {

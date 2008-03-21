@@ -28,6 +28,7 @@ import org.jboss.cx.remoting.spi.ByteMessageInput;
 import org.jboss.cx.remoting.spi.ByteMessageOutput;
 import org.jboss.cx.remoting.spi.ObjectMessageInput;
 import org.jboss.cx.remoting.util.CollectionUtil;
+import org.jboss.cx.remoting.util.State;
 import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
@@ -135,11 +136,16 @@ public final class CoreSession {
         if (protocolHandler == null) {
             throw new NullPointerException("protocolHandler is null");
         }
+        boolean ok = false;
         state.requireTransitionExclusive(State.NEW, State.CONNECTING);
         try {
             doInitialize(protocolHandler, rootContext);
+            ok = true;
         } finally {
             state.releaseExclusive();
+            if (! ok) {
+                state.transition(State.DOWN);
+            }
         }
     }
 
@@ -147,11 +153,16 @@ public final class CoreSession {
         if (protocolHandlerFactory == null) {
             throw new NullPointerException("protocolHandlerFactory is null");
         }
+        boolean ok = false;
         state.requireTransitionExclusive(State.NEW, State.CONNECTING);
         try {
             doInitialize(protocolHandlerFactory.createHandler(protocolContext, remoteUri, attributeMap), rootContext);
+            ok = true;
         } finally {
             state.releaseExclusive();
+            if (! ok) {
+                state.transition(State.DOWN);
+            }
         }
     }
 
@@ -165,12 +176,16 @@ public final class CoreSession {
 
     // State mgmt
 
-    private enum State {
+    private enum State implements org.jboss.cx.remoting.util.State<State> {
         NEW,
         CONNECTING,
         UP,
         STOPPING,
-        DOWN,
+        DOWN;
+
+        public boolean isReachable(final State dest) {
+            return compareTo(dest) < 0;
+        }
     }
 
     // Context mgmt

@@ -9,6 +9,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.mina.common.AttributeKey;
@@ -26,6 +28,7 @@ import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 import org.jboss.cx.remoting.spi.ObjectMessageInput;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.util.WeakHashSet;
+import org.jboss.cx.remoting.util.State;
 import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppServiceIdentifier;
@@ -100,7 +103,7 @@ public final class JrppConnection {
         return connection.getIoHandler();
     }
 
-    private enum State {
+    private enum State implements org.jboss.cx.remoting.util.State<State> {
         /** Initial state - unconnected */
         NEW,
         /** Client side, waiting to receive protocol version info */
@@ -118,7 +121,12 @@ public final class JrppConnection {
         /** Session is shutting down or closed */
         CLOSED,
         /** Session failed to connect */
-        FAILED,
+        FAILED;
+
+        public boolean isReachable(final State dest) {
+            // not perfect but close enough for now
+            return compareTo(dest) < 0;
+        }
     }
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.NEW);
@@ -351,8 +359,9 @@ public final class JrppConnection {
     }
 
     public void waitForUp() throws IOException {
+        
         while (! state.in(State.UP, State.FAILED)) {
-            state.waitForAny();
+//            state.waitForAny(); todo
         }
         if (state.in(State.FAILED)) {
             throw failureReason;

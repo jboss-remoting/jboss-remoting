@@ -6,6 +6,7 @@ import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
+import org.jboss.cx.remoting.util.State;
 
 import static org.jboss.cx.remoting.util.CollectionUtil.synchronizedHashSet;
 import static org.jboss.cx.remoting.util.AtomicStateMachine.start;
@@ -23,11 +24,15 @@ public final class CoreInboundContext<I, O> {
 
     private ContextClient contextClient;
 
-    private enum State {
+    private enum State implements org.jboss.cx.remoting.util.State<State> {
         NEW,
         UP,
         STOPPING,
-        DOWN,
+        DOWN;
+
+        public boolean isReachable(final State dest) {
+            return compareTo(dest) < 0;
+        }
     }
 
     public CoreInboundContext(final RequestListener<I, O> requestListener, final Executor executor) {

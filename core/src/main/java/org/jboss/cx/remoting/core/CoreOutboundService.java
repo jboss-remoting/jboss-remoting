@@ -5,6 +5,7 @@ import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
+import org.jboss.cx.remoting.util.State;
 import org.jboss.cx.remoting.log.Logger;
 import java.util.concurrent.Executor;
 import java.io.Serializable;
@@ -26,11 +27,15 @@ public final class CoreOutboundService<I, O> {
         this.executor = executor;
     }
 
-    private enum State {
+    private enum State implements org.jboss.cx.remoting.util.State<State> {
         INITIAL,
         UP,
         CLOSING,
-        DOWN
+        DOWN;
+
+        public boolean isReachable(final State dest) {
+            return compareTo(dest) < 0;
+        }
     }
 
     // Getters
