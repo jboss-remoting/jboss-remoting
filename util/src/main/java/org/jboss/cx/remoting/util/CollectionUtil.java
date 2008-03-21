@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.Collections;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,6 +65,15 @@ public final class CollectionUtil {
      */
     public static <T> List<T> arrayList() {
         return new ArrayList<T>();
+    }
+
+    /**
+     * Create a linked list.
+     *
+     * @return a linked list
+     */
+    public static <T> LinkedList<T> linkedList() {
+        return new LinkedList<T>();
     }
 
     /**
