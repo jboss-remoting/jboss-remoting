@@ -9,6 +9,11 @@ import java.util.Set;
 public interface AttributeMap {
 
     /**
+     * The empty attribute map.
+     */
+    AttributeMap EMPTY = CollectionUtil.emptyAttributeMap();
+
+    /**
      * Get a value from the map.
      *
      * @param key the key
