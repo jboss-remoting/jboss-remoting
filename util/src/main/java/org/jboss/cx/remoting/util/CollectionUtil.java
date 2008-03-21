@@ -14,6 +14,7 @@ import java.util.WeakHashMap;
 import java.util.Collections;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.EnumMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,6 +25,10 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class CollectionUtil {
     private CollectionUtil() {
+    }
+
+    public static <K extends Enum<K>, V> EnumMap<K, V> enumMap(Class<K> keyType) {
+        return new EnumMap<K, V>(keyType);
     }
 
     /**
