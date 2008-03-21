@@ -143,6 +143,11 @@ public final class StateLock {
             incLocalShrdCount();
             return;
         }
+        if (getLocalExclCount() > 0) {
+            sharedHolderCount++;
+            incLocalShrdCount();
+            return;
+        }
         synchronized (lock) {
             boolean intr = false;
             try {
