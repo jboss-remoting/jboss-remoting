@@ -98,7 +98,12 @@ public final class CoreSession {
     }
 
     UserSession getUserSession() {
-        return userSession;
+        state.requireHold(State.UP);
+        try {
+            return userSession;
+        } finally {
+            state.release();
+        }
     }
 
     // Initializers
