@@ -106,8 +106,10 @@ public final class JrppConnection {
     }
 
     private enum State implements org.jboss.cx.remoting.util.State<State> {
-        /** Initial state - unconnected */
+        /** Initial state - unconnected and uninitialized */
         NEW,
+        /** Initial state - unconnected but initialized */
+        INITIALIZED,
         /** Client side, waiting to receive protocol version info */
         AWAITING_SERVER_VERSION,
         /** Server side, waiting to receive protocol version info */
@@ -141,18 +143,14 @@ public final class JrppConnection {
         protocolHandler = new RemotingProtocolHandler();
     }
 
-    public void initializeClient(final IoSession ioSession, final ProtocolContext protocolContext) {
+    public void initializeClient(final IoSession ioSession) {
         if (ioSession == null) {
             throw new NullPointerException("ioSession is null");
         }
-        if (protocolContext == null) {
-            throw new NullPointerException("protocolContext is null");
-        }
-        state.transitionExclusive(State.NEW, State.AWAITING_SERVER_VERSION);
+        state.transitionExclusive(State.NEW, State.INITIALIZED);
         try {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
-            this.protocolContext = protocolContext;
             client = true;
             remoteRootContextIdentifier = new JrppContextIdentifier(false, 0);
             localRootContextIdentifier = new JrppContextIdentifier(true, 0);
@@ -161,24 +159,29 @@ public final class JrppConnection {
         }
     }
 
-    public void initializeServer(final IoSession ioSession, final ProtocolContext protocolContext) {
+    public void initializeServer(final IoSession ioSession) {
         if (ioSession == null) {
             throw new NullPointerException("ioSession is null");
         }
-        if (protocolContext == null) {
-            throw new NullPointerException("protocolContext is null");
-        }
-        state.transitionExclusive(State.NEW, State.AWAITING_CLIENT_VERSION);
+        state.transitionExclusive(State.NEW, State.INITIALIZED);
         try {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
-            this.protocolContext = protocolContext;
             client = false;
             remoteRootContextIdentifier = new JrppContextIdentifier(true, 0);
             localRootContextIdentifier = new JrppContextIdentifier(false, 0);
         } finally {
             state.releaseExclusive();
         }
+    }
+
+    public void start(final ProtocolContext protocolContext) {
+        if (protocolContext == null) {
+            throw new NullPointerException("protocolContext is null");
+        }
+        state.requireTransitionExclusive(State.INITIALIZED, client ? State.AWAITING_SERVER_VERSION : State.AWAITING_CLIENT_VERSION);
+        this.protocolContext = protocolContext;
+        state.releaseExclusive();
     }
 
     private String getNegotiatedMechanism(final String[] clientMechs, final Set<String> serverMechs) throws SaslException {

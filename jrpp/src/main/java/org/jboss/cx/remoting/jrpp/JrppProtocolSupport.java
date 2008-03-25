@@ -135,7 +135,8 @@ public final class JrppProtocolSupport {
             final SocketAddress serverAddress = getSocketAddressFromUri(remoteUri);
             final ConnectFuture future = connector.connect(serverAddress, new IoSessionInitializer<ConnectFuture>() {
                 public void initializeSession(final IoSession ioSession, final ConnectFuture connectFuture) {
-                    jrppConnection.initializeClient(ioSession, context);
+                    jrppConnection.initializeClient(ioSession);
+                    jrppConnection.start(context);
                 }
             });
             future.awaitUninterruptibly();

@@ -17,8 +17,7 @@ import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.jrpp.mina.FramingIoFilter;
 import org.jboss.cx.remoting.Endpoint;
-
-import com.sun.corba.se.impl.protocol.CorbaMessageMediatorImpl;
+import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 
 /**
  *
@@ -118,7 +117,9 @@ public final class JrppServer {
     private final class ServerSessionHandlerFactory implements SingleSessionIoHandlerFactory {
         public SingleSessionIoHandler getHandler(IoSession ioSession) throws IOException {
             final JrppConnection connection = new JrppConnection(attributeMap);
-            endpoint.openIncomingSession(connection.getProtocolHandler());
+            connection.initializeServer(ioSession);
+            final ProtocolContext protocolContext = endpoint.openIncomingSession(connection.getProtocolHandler());
+            connection.start(protocolContext);
             return connection.getIoHandler();
         }
     }
