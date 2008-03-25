@@ -307,6 +307,7 @@ public final class SrpSaslClientImpl extends AbstractSrpSaslParticipant implemen
                 try {
                     selectIntegrity(integrity, K_bytes);
                     clientOptions.getIntegritySet().add(integrity);
+                    System.out.println("Adding integrity option " + integrity);
                     break;
                 } catch (NoSuchAlgorithmException e) {
                     if (trace) log.trace("Rejected JCA MAC algorithm '" + integrity + "': " + e.getMessage());

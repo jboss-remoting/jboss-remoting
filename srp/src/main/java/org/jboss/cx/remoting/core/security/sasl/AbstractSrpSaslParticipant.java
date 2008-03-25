@@ -13,6 +13,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.security.AccessController;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -50,6 +51,7 @@ public abstract class AbstractSrpSaslParticipant implements NioSaslEndpoint {
     protected static final Map<String, String> SRP_TO_JCA_HMAC;
     protected static final Map<String, String> SRP_TO_JCA_SBC;
     protected static final Map<String, int[]> SRP_TO_JCA_KEY_SIZES;
+    protected static final Map<String, Integer> SRP_TO_JCA_IV_SIZES;
     protected static final String namePrompt = "SRP authentication ID: ";
     protected static final String passwordPrompt = "SRP password: ";
     protected static final String mechanismName = "SRP";
@@ -68,6 +70,7 @@ public abstract class AbstractSrpSaslParticipant implements NioSaslEndpoint {
     private byte[] sessionKey;
     private String jcaEncryptionAlgName;
     private int[] cipherKeySizes;
+    private int cipherIvSize;
 
     static {
         final Map<String, String> hmacMap = new HashMap<String, String>();
@@ -88,18 +91,42 @@ public abstract class AbstractSrpSaslParticipant implements NioSaslEndpoint {
         mdMap.put("sha-512", "SHA-512");
         SRP_TO_JCA_MD = Collections.unmodifiableMap(mdMap);
         final Map<String, String> sbcMap = new HashMap<String, String>();
-        sbcMap.put("aes", "AES/CBC/PKCS5Padding");
-        sbcMap.put("blowfish", "Blowfish/CBC/PKCS5Padding");
-        SRP_TO_JCA_SBC = Collections.unmodifiableMap(sbcMap);
-        // This whole thing is lame - there's no way to query valid key sizes - JCA sucks
         final Map<String, int[]> keySizeMap = new HashMap<String, int[]>();
-        keySizeMap.put("aes", new int[] { 16, 24, 32 });
-        keySizeMap.put("blowfish", new int[] {
-                4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
-                23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
-                40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56
-        });
+        final Map<String, Integer> ivSizeMap = new HashMap<String, Integer>();
+        // Detect the valid algorithms & key sizes
+        try {
+            final int maxAesLength = Cipher.getMaxAllowedKeyLength("AES");
+            sbcMap.put("aes", "AES/CBC/PKCS5Padding");
+            ivSizeMap.put("aes", Integer.valueOf(16));
+            if (maxAesLength < 256) {
+                if (maxAesLength < 192) {
+                    keySizeMap.put("aes", new int[] { 16 });
+                } else {
+                    keySizeMap.put("aes", new int[] { 16, 24 });
+                }
+            } else {
+                keySizeMap.put("aes", new int[] { 16, 24, 32 });
+            }
+        } catch (NoSuchAlgorithmException e) {
+            // AES is not supported
+        }
+        try {
+            final int maxBlowfishLength = Cipher.getMaxAllowedKeyLength("Blowfish");
+            sbcMap.put("blowfish", "Blowfish/CBC/PKCS5Padding");
+            ivSizeMap.put("blowfish", Integer.valueOf(8));
+            // limit the keysize, since apparently blowfish lets you use really, REALLY big keys
+            final int byteLength = Math.min(maxBlowfishLength / 8, 56);
+            int[] sizes = new int[byteLength - 3];
+            for (int i = 4; i < byteLength && i <= 56; i ++) {
+                sizes[i - 4] = i;
+            }
+            keySizeMap.put("blowfish", sizes);
+        } catch (NoSuchAlgorithmException e) {
+            // Blowfish is not supported
+        }
+        SRP_TO_JCA_SBC = Collections.unmodifiableMap(sbcMap);
         SRP_TO_JCA_KEY_SIZES = Collections.unmodifiableMap(keySizeMap);
+        SRP_TO_JCA_IV_SIZES = Collections.unmodifiableMap(ivSizeMap);
     }
 
     protected AbstractSrpSaslParticipant(final CallbackHandler callbackHandler) {
@@ -305,11 +332,18 @@ public abstract class AbstractSrpSaslParticipant implements NioSaslEndpoint {
     }
 
     protected void selectIntegrity(String algorithmName, byte[] key) throws SaslException, NoSuchAlgorithmException, InvalidKeyException {
-        Mac outboundMac, inboundMac;
-        outboundMac = Mac.getInstance(algorithmName);
-        outboundMac.init(new SecretKeySpec(key, algorithmName));
-        inboundMac = Mac.getInstance(algorithmName);
-        inboundMac.init(new SecretKeySpec(key, algorithmName));
+        final Mac outboundMac, inboundMac;
+        final String realAlgorithmName;
+        if (SRP_TO_JCA_HMAC.containsKey(algorithmName)) {
+            realAlgorithmName = SRP_TO_JCA_HMAC.get(algorithmName);
+        } else {
+            // Alogorithm not supported.  To add support, update the SRP_TO_JCA_SBC and SRP_TO_JCA_KEY_SIZE maps above
+            throw new NoSuchAlgorithmException("This SRP implementation does not support the HMAC algorithm \"" + algorithmName + "\"");
+        }
+        outboundMac = Mac.getInstance(realAlgorithmName);
+        outboundMac.init(new SecretKeySpec(key, realAlgorithmName));
+        inboundMac = Mac.getInstance(realAlgorithmName);
+        inboundMac.init(new SecretKeySpec(key, realAlgorithmName));
         this.outboundMac = outboundMac;
         this.inboundMac = inboundMac;
         integrityEnabled = true;
@@ -331,20 +365,26 @@ public abstract class AbstractSrpSaslParticipant implements NioSaslEndpoint {
             jcaEncryptionAlgName = SRP_TO_JCA_SBC.get(algorithmName);
         } else {
             // Alogorithm not supported.  To add support, update the SRP_TO_JCA_SBC and SRP_TO_JCA_KEY_SIZE maps above
-            throw new NoSuchAlgorithmException("This SRP implementation does not support the algorithm \"" + algorithmName + "\"");
+            throw new NoSuchAlgorithmException("This SRP implementation does not support the cipher algorithm \"" + algorithmName + "\"");
         }
         cipherKeySizes = SRP_TO_JCA_KEY_SIZES.get(algorithmName);
         if (cipherKeySizes == null) {
             throw new NoSuchAlgorithmException("Algorithm \"" + algorithmName + "\" does not have any valid key sizes specified");
         }
+        final Integer integer = SRP_TO_JCA_IV_SIZES.get(algorithmName);
+        if (integer == null) {
+            throw new NoSuchAlgorithmException("Algorithm \"" + algorithmName + "\" does not have a valid IV size specified");
+        }
+        cipherIvSize = integer.intValue();
         encryptCipher = Cipher.getInstance(jcaEncryptionAlgName);
         decryptCipher = Cipher.getInstance(jcaEncryptionAlgName);
         this.encryptCipher = encryptCipher;
         this.decryptCipher = decryptCipher;
     }
 
-    protected void enableConfidentiality(byte[] key, byte[] encryptIV, byte[] decryptIV) throws InvalidKeyException, InvalidAlgorithmParameterException {
+    protected void enableConfidentiality(final byte[] key, final byte[] encryptIV, final byte[] decryptIV) throws InvalidKeyException, InvalidAlgorithmParameterException {
         if (encryptCipher != null && decryptCipher != null && cipherKeySizes != null) {
+            final int keyLength, ivLength;
             final int idx = Arrays.binarySearch(cipherKeySizes, key.length);
             if (idx < 0) {
                 // key size isn't exact, let's pick the next smaller key size
@@ -353,14 +393,28 @@ public abstract class AbstractSrpSaslParticipant implements NioSaslEndpoint {
                     throw new InvalidKeyException("Negotiated key is too short to use with this algorithm");
                 }
                 final int size = cipherKeySizes[newIdx];
-                byte[] actualKey = new byte[size];
-                System.arraycopy(key, 0, actualKey, 0, size);
-                key = actualKey;
+                keyLength = size;
+            } else {
+                keyLength = key.length;
             }
-            encryptCipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, jcaEncryptionAlgName), new IvParameterSpec(encryptIV));
-            decryptCipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, jcaEncryptionAlgName), new IvParameterSpec(decryptIV));
+            ivLength = cipherIvSize;
+            final String simpleName;
+            final int slashPosition = jcaEncryptionAlgName.indexOf('/');
+            if (slashPosition != -1) {
+                simpleName = jcaEncryptionAlgName.substring(0, slashPosition);
+            } else {
+                simpleName = jcaEncryptionAlgName;
+            }
+            encryptCipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, 0, keyLength, simpleName), new IvParameterSpec(encryptIV, 0, ivLength));
+            decryptCipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, 0, keyLength, simpleName), new IvParameterSpec(decryptIV, 0, ivLength));
             confidentialityEnabled = true;
-            sessionKey = key;
+            if (keyLength < key.length) {
+                byte[] newSessionKey = new byte[keyLength];
+                System.arraycopy(key, 0, newSessionKey, 0, keyLength);
+                sessionKey = newSessionKey;
+            } else {
+                sessionKey = key;
+            }
         }
     }
 
