@@ -235,7 +235,8 @@ public final class JrppConnection {
         defaultProps.put(Sasl.POLICY_NOANONYMOUS, "true");
         defaultProps.put(Sasl.POLICY_NODICTIONARY, "true");
         defaultProps.put(Sasl.POLICY_NOACTIVE, "true");
-        defaultProps.put(Sasl.QOP, "auth-conf");
+        // TODO: JBREM-941
+        // defaultProps.put(Sasl.QOP, "auth-conf");
         defaultProps.put("org.jboss.cx.remoting.sasl.srp.verifier", "password");
         return defaultProps;
     }
@@ -736,6 +737,7 @@ public final class JrppConnection {
                                 output.writeUTF("Authentication failed: " + ex.getMessage());
                                 output.commit();
                                 log.debug("Client authentication failed (" + ex.getMessage() + ")");
+                                log.trace(ex, "Client authentication failure details follow");
                                 // todo - retry counter - JBREM-907
                                 state.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.AWAITING_CLIENT_AUTH_REQUEST);
                             }
