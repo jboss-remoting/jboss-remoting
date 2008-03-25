@@ -139,6 +139,14 @@ public final class JrppProtocolSupport {
                 }
             });
             future.awaitUninterruptibly();
+            if (! future.isConnected()) {
+                final Throwable t = future.getException();
+                if (t instanceof IOException) {
+                    throw (IOException)t;
+                } else {
+                    throw new RemotingException("Connection failed due to an unexpected exception", t);
+                }
+            }
             jrppConnection.waitForUp();
             return jrppConnection.getProtocolHandler();
         }

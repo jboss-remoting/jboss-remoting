@@ -24,7 +24,6 @@ import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
-import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
 import org.jboss.cx.remoting.spi.Registration;
 
 import javax.security.auth.callback.Callback;
@@ -108,19 +107,7 @@ public final class CoreEndpoint {
         return orderedExecutorFactory.getOrderedExecutor();
     }
 
-    public final class CoreProtocolServerContext implements ProtocolServerContext {
-        private CoreProtocolServerContext() {
-        }
-
-        public <I, O> ProtocolContext establishSession(final ProtocolHandler handler, final Context<I, O> rootContext) {
-            final CoreSession session = new CoreSession(CoreEndpoint.this);
-            session.initializeServer(handler, rootContext);
-            return session.getProtocolContext();
-        }
-    }
-
     public final class CoreProtocolRegistration implements Registration {
-        private final CoreProtocolServerContext protocolServerContext = new CoreProtocolServerContext();
         private final ProtocolHandlerFactory protocolHandlerFactory;
 
         private CoreProtocolRegistration(final ProtocolHandlerFactory protocolHandlerFactory) {

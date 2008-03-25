@@ -39,7 +39,6 @@ import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
-import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
@@ -86,6 +85,9 @@ public final class JrppConnection {
     private final AtomicInteger contextIdSequence = new AtomicInteger(1);
     private final AtomicInteger serviceIdSequence = new AtomicInteger(0);
     private final AtomicInteger requestIdSequence = new AtomicInteger(0);
+
+    private ContextIdentifier localRootContextIdentifier;
+    private ContextIdentifier remoteRootContextIdentifier;
 
     private final Set<StreamIdentifier> liveStreamSet = CollectionUtil.synchronizedSet(new WeakHashSet<StreamIdentifier>());
     private final Set<ContextIdentifier> liveContextSet = CollectionUtil.synchronizedSet(new WeakHashSet<ContextIdentifier>());
@@ -140,25 +142,40 @@ public final class JrppConnection {
     }
 
     public void initializeClient(final IoSession ioSession, final ProtocolContext protocolContext) {
+        if (ioSession == null) {
+            throw new NullPointerException("ioSession is null");
+        }
+        if (protocolContext == null) {
+            throw new NullPointerException("protocolContext is null");
+        }
         state.transitionExclusive(State.NEW, State.AWAITING_SERVER_VERSION);
         try {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
             this.protocolContext = protocolContext;
             client = true;
+            remoteRootContextIdentifier = new JrppContextIdentifier(false, 0);
+            localRootContextIdentifier = new JrppContextIdentifier(true, 0);
         } finally {
             state.releaseExclusive();
         }
     }
 
-    public void initializeServer(final IoSession ioSession, final ProtocolServerContext protocolServerContext) {
+    public void initializeServer(final IoSession ioSession, final ProtocolContext protocolContext) {
+        if (ioSession == null) {
+            throw new NullPointerException("ioSession is null");
+        }
+        if (protocolContext == null) {
+            throw new NullPointerException("protocolContext is null");
+        }
         state.transitionExclusive(State.NEW, State.AWAITING_CLIENT_VERSION);
         try {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
-            final ProtocolContext protocolContext = protocolServerContext.establishSession(protocolHandler, null /* todo */);
             this.protocolContext = protocolContext;
             client = false;
+            remoteRootContextIdentifier = new JrppContextIdentifier(true, 0);
+            localRootContextIdentifier = new JrppContextIdentifier(false, 0);
         } finally {
             state.releaseExclusive();
         }
@@ -359,12 +376,14 @@ public final class JrppConnection {
     }
 
     public void waitForUp() throws IOException {
-        
-        while (! state.in(State.UP, State.FAILED)) {
-//            state.waitForAny(); todo
-        }
-        if (state.in(State.FAILED)) {
-            throw failureReason;
+        try {
+            state.waitFor(State.UP);
+        } catch (IllegalStateException e) {
+            if (state.in(State.FAILED)) {
+                throw failureReason;
+            } else {
+                throw e;
+            }
         }
     }
 
@@ -574,11 +593,11 @@ public final class JrppConnection {
         }
 
         public ContextIdentifier getLocalRootContextIdentifier() {
-            return null;
+            return localRootContextIdentifier;
         }
 
         public ContextIdentifier getRemoteRootContextIdentifier() {
-            return null;
+            return remoteRootContextIdentifier;
         }
 
         public void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException {
@@ -659,8 +678,12 @@ public final class JrppConnection {
         }
 
         public void messageReceived(Object message) throws Exception {
-            final boolean trace = log.isTrace();
             final ObjectMessageInput input = protocolContext.getMessageInput(new IoBufferByteMessageInput((IoBuffer) message));
+            handleMessage(input);
+        }
+
+        private void handleMessage(final ObjectMessageInput input) throws Exception {
+            final boolean trace = log.isTrace();
             final MessageType type = MessageType.values()[input.readByte() & 0xff];
             if (trace) {
                 log.trace("Received message of type %s in state %s", type, state.getState());

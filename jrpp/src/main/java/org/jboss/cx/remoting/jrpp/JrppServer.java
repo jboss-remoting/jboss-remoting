@@ -16,7 +16,9 @@ import org.apache.mina.handler.multiton.SingleSessionIoHandlerFactory;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.jrpp.mina.FramingIoFilter;
-import org.jboss.cx.remoting.spi.protocol.ProtocolServerContext;
+import org.jboss.cx.remoting.Endpoint;
+
+import com.sun.corba.se.impl.protocol.CorbaMessageMediatorImpl;
 
 /**
  *
@@ -39,10 +41,10 @@ public final class JrppServer {
     private IoProcessor ioProcessor;
     /** IO Acceptor.  Set upon {@code create}. */
     private IoAcceptor ioAcceptor;
-    /** Protocol server context.  Set upon {@code create}. */
-    private ProtocolServerContext serverContext;
     /** Attribute map.  Set before {@code create}. */
     private AttributeMap attributeMap;
+    /** Endpoint.  Set before {@code create}. */
+    private Endpoint endpoint;
 
     // Accessors
 
@@ -68,6 +70,14 @@ public final class JrppServer {
 
     public void setAttributeMap(final AttributeMap attributeMap) {
         this.attributeMap = attributeMap;
+    }
+
+    public Endpoint getEndpoint() {
+        return endpoint;
+    }
+
+    public void setEndpoint(final Endpoint endpoint) {
+        this.endpoint = endpoint;
     }
 
     // Lifecycle
@@ -101,7 +111,6 @@ public final class JrppServer {
         ioAcceptor = null;
         ioProcessor = null;
         executor = null;
-        serverContext = null;
     }
 
     // MINA support
@@ -109,7 +118,7 @@ public final class JrppServer {
     private final class ServerSessionHandlerFactory implements SingleSessionIoHandlerFactory {
         public SingleSessionIoHandler getHandler(IoSession ioSession) throws IOException {
             final JrppConnection connection = new JrppConnection(attributeMap);
-            connection.initializeServer(ioSession, serverContext);
+            endpoint.openIncomingSession(connection.getProtocolHandler());
             return connection.getIoHandler();
         }
     }

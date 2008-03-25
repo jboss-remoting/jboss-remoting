@@ -863,6 +863,7 @@
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
                 <path refid="log-jul.classpath"/>
+                <path refid="jrpp.classpath"/>
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
@@ -873,7 +874,7 @@
         <delete dir="standalone/target"/>
     </target>
 
-    <target name="standalone" description="Build the standalone module" depends="api,core,log-jul,util,standalone.compile">
+    <target name="standalone" description="Build the standalone module" depends="api,core,jrpp,log-jul,util,standalone.compile">
         <path id="standalone.classpath">
             <pathelement location="standalone/target/main/classes"/>
         </path>
