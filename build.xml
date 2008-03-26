@@ -45,38 +45,38 @@
 
     <!-- External library: JBoss Microcontainer deployers SPI -->
 
-    <target name="lib.jbossmc-deployers-spi-check">
-        <available property="lib.jbossmc-deployers-spi.exists" file="${lib.jbossmc-deployers-spi.local}"/>
+    <target name="lib.jboss-deployers-spi-check">
+        <available property="lib.jboss-deployers-spi.exists" file="${lib.jboss-deployers-spi.local}"/>
     </target>
 
-    <target name="lib.jbossmc-deployers-spi" depends="lib.jbossmc-deployers-spi-check" unless="lib.jbossmc-deployers-spi.exists">
-        <mkdir dir="${local.repository}/${lib.jbossmc.local-dir}"/>
-        <get src="${lib.jbossmc-deployers-spi.remote}" dest="${lib.jbossmc-deployers-spi.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.jbossmc-deployers-spi.license}.txt" dest="${lib.jbossmc-deployers-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    <target name="lib.jboss-deployers-spi" depends="lib.jboss-deployers-spi-check" unless="lib.jboss-deployers-spi.exists">
+        <mkdir dir="${local.repository}/${lib.jboss-deployers.local-dir}"/>
+        <get src="${lib.jboss-deployers-spi.remote}" dest="${lib.jboss-deployers-spi.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jboss-deployers-spi.license}.txt" dest="${lib.jboss-deployers-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- External library: JBoss Microcontainer deployers structure SPI -->
 
-    <target name="lib.jbossmc-deployers-structure-spi-check">
-        <available property="lib.jbossmc-deployers-structure-spi.exists" file="${lib.jbossmc-deployers-structure-spi.local}"/>
+    <target name="lib.jboss-deployers-structure-spi-check">
+        <available property="lib.jboss-deployers-structure-spi.exists" file="${lib.jboss-deployers-structure-spi.local}"/>
     </target>
 
-    <target name="lib.jbossmc-deployers-structure-spi" depends="lib.jbossmc-deployers-structure-spi-check" unless="lib.jbossmc-deployers-structure-spi.exists">
-        <mkdir dir="${local.repository}/${lib.jbossmc.local-dir}"/>
-        <get src="${lib.jbossmc-deployers-structure-spi.remote}" dest="${lib.jbossmc-deployers-structure-spi.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.jbossmc-deployers-structure-spi.license}.txt" dest="${lib.jbossmc-deployers-structure-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    <target name="lib.jboss-deployers-structure-spi" depends="lib.jboss-deployers-structure-spi-check" unless="lib.jboss-deployers-structure-spi.exists">
+        <mkdir dir="${local.repository}/${lib.jboss-deployers.local-dir}"/>
+        <get src="${lib.jboss-deployers-structure-spi.remote}" dest="${lib.jboss-deployers-structure-spi.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jboss-deployers-structure-spi.license}.txt" dest="${lib.jboss-deployers-structure-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- External library: JBoss Microcontainer deployers core SPI -->
 
-    <target name="lib.jbossmc-deployers-core-spi-check">
-        <available property="lib.jbossmc-deployers-core-spi.exists" file="${lib.jbossmc-deployers-core-spi.local}"/>
+    <target name="lib.jboss-deployers-core-spi-check">
+        <available property="lib.jboss-deployers-core-spi.exists" file="${lib.jboss-deployers-core-spi.local}"/>
     </target>
 
-    <target name="lib.jbossmc-deployers-core-spi" depends="lib.jbossmc-deployers-core-spi-check" unless="lib.jbossmc-deployers-core-spi.exists">
-        <mkdir dir="${local.repository}/${lib.jbossmc.local-dir}"/>
-        <get src="${lib.jbossmc-deployers-core-spi.remote}" dest="${lib.jbossmc-deployers-core-spi.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.jbossmc-deployers-core-spi.license}.txt" dest="${lib.jbossmc-deployers-core-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    <target name="lib.jboss-deployers-core-spi" depends="lib.jboss-deployers-core-spi-check" unless="lib.jboss-deployers-core-spi.exists">
+        <mkdir dir="${local.repository}/${lib.jboss-deployers.local-dir}"/>
+        <get src="${lib.jboss-deployers-core-spi.remote}" dest="${lib.jboss-deployers-core-spi.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jboss-deployers-core-spi.license}.txt" dest="${lib.jboss-deployers-core-spi.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- External library: JBoss Microcontainer kernel -->
@@ -93,14 +93,14 @@
 
     <!-- External library: JBoss Microcontainer managed -->
 
-    <target name="lib.jbossmc-managed-check">
-        <available property="lib.jbossmc-managed.exists" file="${lib.jbossmc-managed.local}"/>
+    <target name="lib.jboss-managed-check">
+        <available property="lib.jboss-managed.exists" file="${lib.jboss-managed.local}"/>
     </target>
 
-    <target name="lib.jbossmc-managed" depends="lib.jbossmc-managed-check" unless="lib.jbossmc-managed.exists">
-        <mkdir dir="${local.repository}/${lib.jbossmc.local-dir}"/>
-        <get src="${lib.jbossmc-managed.remote}" dest="${lib.jbossmc-managed.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.jbossmc-managed.license}.txt" dest="${lib.jbossmc-managed.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    <target name="lib.jboss-managed" depends="lib.jboss-managed-check" unless="lib.jboss-managed.exists">
+        <mkdir dir="${local.repository}/${lib.jboss-managed.local-dir}"/>
+        <get src="${lib.jboss-managed.remote}" dest="${lib.jboss-managed.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jboss-managed.license}.txt" dest="${lib.jboss-managed.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- External library: JBossXB -->
@@ -662,11 +662,11 @@
                 <pathelement location="${lib.jaxb-api.local}"/>
                 <pathelement location="${lib.jboss-common-logging-spi.local}"/>
                 <pathelement location="${lib.jboss-common-core.local}"/>
-                <pathelement location="${lib.jbossmc-deployers-core-spi.local}"/>
-                <pathelement location="${lib.jbossmc-deployers-spi.local}"/>
-                <pathelement location="${lib.jbossmc-deployers-structure-spi.local}"/>
+                <pathelement location="${lib.jboss-deployers-core-spi.local}"/>
+                <pathelement location="${lib.jboss-deployers-spi.local}"/>
+                <pathelement location="${lib.jboss-deployers-structure-spi.local}"/>
                 <pathelement location="${lib.jbossmc-kernel.local}"/>
-                <pathelement location="${lib.jbossmc-managed.local}"/>
+                <pathelement location="${lib.jboss-managed.local}"/>
                 <pathelement location="${lib.jbossxb.local}"/>
             </classpath>
         </javac>
@@ -677,7 +677,7 @@
         <delete dir="mc-deployers/target"/>
     </target>
 
-    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jaxb-api,lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jbossmc-deployers-core-spi,lib.jbossmc-deployers-spi,lib.jbossmc-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-managed,lib.jbossxb,api,core,log-jboss,util,mc-deployers.compile">
+    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jaxb-api,lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jboss-managed,lib.jbossxb,api,core,log-jboss,util,mc-deployers.compile">
         <path id="mc-deployers.classpath">
             <pathelement location="mc-deployers/target/main/classes"/>
         </path>
@@ -1210,7 +1210,7 @@
 
     <!-- fetch: These should be the second-to-last targets in the file -->
 
-    <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jbossmc-deployers-core-spi,lib.jbossmc-deployers-spi,lib.jbossmc-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-managed,lib.jbossxb,lib.mina,lib.servlet"/>
+    <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jboss-managed,lib.jbossxb,lib.mina,lib.servlet"/>
 
     <!-- all: These should be the last targets in the file -->
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    JBoss Remoting Deployer
+-->
+
+<deployment xmlns="urn:jboss:bean-deployer:2.0">
+    <bean name="RemotingMetaDataParser" class="org.jboss.deployers.vfs.spi.deployer.SchemaResolverDeployer">
+        <constructor>
+            <parameter>org.jboss.cx.remoting.metadata.RemotingMetaData</parameter>
+        </constructor>
+        <property name="name">jboss-remoting.xml</property>
+        <property name="registerWithJBossXB">true</property>
+        <!-- TODO - build management info from annotations -->
+    </bean>
+</deployment>

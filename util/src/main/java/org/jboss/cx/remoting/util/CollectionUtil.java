@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.EnumMap;
+import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -190,8 +191,8 @@ public final class CollectionUtil {
      * @param entries the array
      * @return an unmodifiable list
      */
-    public static <T> List<T> unmodifiableList(final T[] entries) {
-        return new UnmodifiableArrayList<T>(entries);
+    public static <T> List<T> unmodifiableList(final T... entries) {
+        return Collections.unmodifiableList(Arrays.asList(entries));
     }
 
     /**
@@ -318,6 +319,21 @@ public final class CollectionUtil {
                 return translate(input.iterator(), translator);
             }
         };
+    }
+
+    /**
+     * Run a translation function for each element of a {@code List}, returning an {@code ArrayList}.
+     *
+     * @param input the input list
+     * @param translator the translator
+     * @return the translated data
+     */
+    public static <I,O> ArrayList<O> translate(final List<I> input, final Translator<I, O> translator) {
+        final ArrayList<O> output = new ArrayList<O>(input.size());
+        for (I item : input) {
+            output.add(translator.translate(item));
+        }
+        return output;
     }
 
     /**
