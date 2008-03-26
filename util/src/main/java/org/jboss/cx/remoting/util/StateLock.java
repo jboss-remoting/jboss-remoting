@@ -43,6 +43,9 @@ public final class StateLock {
     // @protectedby {@code lock} (writes only)
     private volatile boolean exclusive = false;
 
+    // @protectedby {@code lock} (all accesses)
+    private int serial = 0;
+
     private final ThreadLocal<LockState> localLockState = new ThreadLocal<LockState>();
 
     private void incLocalExclCount() {
@@ -116,6 +119,7 @@ public final class StateLock {
                     }
                 }
                 exclusive = true;
+                serial++;
                 incLocalExclCount();
                 return;
             } finally {
@@ -190,14 +194,11 @@ public final class StateLock {
                     final ReaderToken token = nextReaderToken;
                     token.count++;
                     sharedHolderCount--;
-                    while (! exclusive) {
-                        try {
-                            lock.wait();
-                        } catch (InterruptedException e) {
-                            intr = true;
-                        }
+                    if (sharedHolderCount == 0) {
+                        lock.notifyAll();
                     }
-                    while (exclusive) {
+                    final int origSerial = serial;
+                    while (serial == origSerial || exclusive) {
                         try {
                             lock.wait();
                         } catch (InterruptedException e) {
