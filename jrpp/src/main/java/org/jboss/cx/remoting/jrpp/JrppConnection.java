@@ -727,6 +727,7 @@ public final class JrppConnection {
                                     write(output, MessageType.AUTH_SUCCESS);
                                     output.commit();
                                     saslServerFilter.startEncryption(ioSession);
+                                    log.trace("Server transitioning to UP state");
                                     state.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.UP);
                                     protocolContext.openSession(remoteName);
                                 }
@@ -775,6 +776,7 @@ public final class JrppConnection {
                                     final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
                                     write(output, MessageType.AUTH_SUCCESS);
                                     output.commit();
+                                    log.trace("Server transitioning to UP state (immediate)");
                                     state.requireTransition(State.UP);
                                     protocolContext.openSession(remoteName);
                                 } else {
@@ -832,6 +834,7 @@ public final class JrppConnection {
                         case AUTH_SUCCESS: {
                             SaslClientFilter saslClientFilter = getSaslClientFilter();
                             saslClientFilter.startEncryption(ioSession);
+                            log.trace("Client transitioning to UP state");
                             state.requireTransition(State.AWAITING_SERVER_CHALLENGE, State.UP);
                             protocolContext.openSession(remoteName);
                             return;
