@@ -320,19 +320,19 @@ public final class JrppConnection {
     }
 
     private void write(ObjectOutput output, ServiceIdentifier serviceIdentifier) throws IOException {
-        output.writeShort(((JrppServiceIdentifier)serviceIdentifier).getId());
+        output.writeObject(serviceIdentifier);
     }
 
     private void write(ObjectOutput output, ContextIdentifier contextIdentifier) throws IOException {
-        output.writeShort(((JrppContextIdentifier)contextIdentifier).getId());
+        output.writeObject(contextIdentifier);
     }
 
     private void write(ObjectOutput output, StreamIdentifier streamIdentifier) throws IOException {
-        output.writeShort(((JrppStreamIdentifier)streamIdentifier).getId());
+        output.writeObject(streamIdentifier);
     }
 
     private void write(ObjectOutput output, RequestIdentifier requestIdentifier) throws IOException {
-        output.writeShort(((JrppRequestIdentifier)requestIdentifier).getId());
+        output.writeObject(requestIdentifier);
     }
 
     public void sendResponse(byte[] rawMsgData) throws IOException {
@@ -674,6 +674,7 @@ public final class JrppConnection {
 
         public void exceptionCaught(Throwable throwable) {
             log.error(throwable, "Exception from JRPP connection handler");
+            close();
             if (throwable instanceof IOException) {
                 fail((IOException)throwable);
             } else {

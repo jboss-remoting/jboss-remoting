@@ -98,7 +98,7 @@ public final class CoreSession {
     }
 
     UserSession getUserSession() {
-        state.requireHold(State.UP);
+        state.waitForHold(State.UP);
         try {
             return userSession;
         } finally {
@@ -452,9 +452,9 @@ public final class CoreSession {
 
         @SuppressWarnings ({"unchecked"})
         public void openSession(String remoteEndpointName) {
-            state.waitForNotExclusive(State.NEW);
+            state.waitFor(State.CONNECTING);
+            state.requireTransitionExclusive(State.CONNECTING, State.UP);
             try {
-                state.requireTransition(State.CONNECTING, State.UP);
                 CoreSession.this.remoteEndpointName = remoteEndpointName;
             } finally {
                 state.releaseExclusive();
@@ -565,9 +565,11 @@ public final class CoreSession {
                         throw new IOException("Duplicate stream identifier encountered: " + streamIdentifier);
                     }
                     streamSerializers.add(stream.getStreamSerializer());
+                    log.trace("Writing stream marker for object: %s", testObject);
                     return new StreamMarker(factory.getClass(), streamIdentifier);
                 }
             }
+            log.trace("Writing object: %s", testObject);
             return testObject;
         }
     }

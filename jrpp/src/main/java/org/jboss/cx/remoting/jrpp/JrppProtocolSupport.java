@@ -10,6 +10,7 @@ import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoProcessor;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.IoSessionInitializer;
+import org.apache.mina.common.ExceptionMonitor;
 import org.apache.mina.filter.logging.LoggingFilter;
 import org.apache.mina.filter.sasl.SaslClientFilter;
 import org.apache.mina.filter.sasl.SaslMessageSender;
@@ -73,6 +74,11 @@ public final class JrppProtocolSupport {
     // Lifecycle
 
     public void create() throws RemotingException {
+        ExceptionMonitor.setInstance(new ExceptionMonitor() {
+            public void exceptionCaught(final Throwable cause) {
+                // do nothing!
+            }
+        });
         ioProcessor = new NioProcessor(executor);
         protocolHandlerFactory = new ProtocolHandlerFactoryImpl();
         final Registration registration = endpoint.registerProtocol("jrpp", protocolHandlerFactory);
