@@ -283,18 +283,6 @@ public final class AtomicStateMachine<T extends Enum<T> & State<T>> {
         return this.state;
     }
 
-    @Deprecated
-    public T waitForNotExclusive(final T state) {
-        if (state == null) {
-            throw new NullPointerException("state is null");
-        }
-        stateLock.lockExclusive();
-        while (this.state == state) {
-            stateLock.awaitExclusive();
-        }
-        return this.state;
-    }
-
     public T waitInterruptiblyForNotHold(final T state, final long timeout, final TimeUnit timeUnit) throws InterruptedException {
         throw new RuntimeException("TODO - Implement");
     }
