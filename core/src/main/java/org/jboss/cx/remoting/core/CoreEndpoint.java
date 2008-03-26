@@ -8,6 +8,8 @@ import java.util.Iterator;
 import java.util.EnumSet;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
@@ -44,6 +46,7 @@ public final class CoreEndpoint {
 
     private OrderedExecutorFactory orderedExecutorFactory;
     private Executor executor;
+    private ExecutorService executorService;
 
     static {
         Logger.getLogger("org.jboss.cx.remoting").info("JBoss Remoting version %s", Version.VERSION);
@@ -96,10 +99,18 @@ public final class CoreEndpoint {
     }
 
     public void start() {
+        if (executor == null) {
+            executorService = Executors.newCachedThreadPool();
+            setExecutor(executorService);
+        }
         state.requireTransition(State.INITIAL, State.UP);
     }
 
     public void stop() {
+        if (executorService != null) {
+            executorService.shutdown();
+            executorService = null;
+        }
         // todo
     }
 
