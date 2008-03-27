@@ -397,6 +397,8 @@ public final class JrppConnection {
         } catch (IllegalStateException e) {
             if (state.in(State.FAILED)) {
                 throw failureReason;
+            } else if (state.in(State.CLOSED)) {
+                throw new IOException("Connection closed");
             } else {
                 throw e;
             }
