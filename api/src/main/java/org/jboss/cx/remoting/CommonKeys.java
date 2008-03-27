@@ -42,6 +42,10 @@ public final class CommonKeys {
      * the local endpoint is anonymous, defaults to {@code null}.
      */
     public static final AttributeKey<String> AUTHORIZATION_ID = key("AUTHORIZATION_ID");
+    /**
+     * The maximum number of times to retry authentication before giving up and failing.
+     */
+    public static final AttributeKey<Integer> AUTH_MAX_RETRIES = key("AUTH_MAX_RETRIES");
 
     // TODO: add keys for SSL/TLS
 

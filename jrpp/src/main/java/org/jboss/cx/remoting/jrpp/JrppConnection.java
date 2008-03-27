@@ -94,6 +94,8 @@ public final class JrppConnection {
     private final Set<RequestIdentifier> liveRequestSet = CollectionUtil.synchronizedSet(new WeakHashSet<RequestIdentifier>());
     private final Set<ServiceIdentifier> liveServiceSet = CollectionUtil.synchronizedSet(new WeakHashSet<ServiceIdentifier>());
 
+    private int authRetriesLeft = 2;
+
     /**
      * The negotiated protocol version.  Value is set to {@code min(PROTOCOL_VERSION, remote PROTOCOL_VERSION)}.
      */
@@ -139,6 +141,14 @@ public final class JrppConnection {
 
     public JrppConnection(final AttributeMap attributeMap) {
         this.attributeMap = attributeMap;
+        final Integer retries = attributeMap.get(CommonKeys.AUTH_MAX_RETRIES);
+        if (retries != null) {
+            final int actualRetries = retries.intValue();
+            if (actualRetries < 0) {
+                throw new IllegalArgumentException("Value of AUTH_MAX_RETRIES attribute must be greater than or equal to zero");
+            }
+            authRetriesLeft = actualRetries;
+        }
         ioHandler = new IoHandlerImpl();
         protocolHandler = new RemotingProtocolHandler();
     }
@@ -403,6 +413,8 @@ public final class JrppConnection {
         if (state.transitionExclusive(State.FAILED)) {
             failureReason = reason;
             state.releaseExclusive();
+            ioSession.close();
+            protocolContext.closeSession();
         }
     }
 
@@ -792,6 +804,10 @@ public final class JrppConnection {
                                 write(output, MessageType.AUTH_FAILED);
                                 output.writeUTF("Unable to initiate SASL authentication: " + ex.getMessage());
                                 output.commit();
+                                if (authRetriesLeft == 0) {
+                                    close();
+                                }
+                                authRetriesLeft--;
                             }
                             return;
                         }
@@ -849,6 +865,11 @@ public final class JrppConnection {
                             log.debug("JRPP client failed to authenticate: %s", reason);
                             final SaslClientFilter oldClientFilter = getSaslClientFilter();
                             oldClientFilter.destroy();
+                            if (authRetriesLeft == 0) {
+                                close();
+                                return;
+                            }
+                            authRetriesLeft--;
                             final CallbackHandler callbackHandler = getClientCallbackHandler(attributeMap);
                             final Map<String, ?> saslProps = getSaslProperties(attributeMap);
                             final String[] clientMechs = getClientMechanisms(attributeMap);
@@ -856,7 +877,6 @@ public final class JrppConnection {
                             final SaslClient saslClient = Sasl.createSaslClient(clientMechs, authorizationId, "jrpp", remoteName, saslProps, callbackHandler);
                             final SaslClientFilter saslClientFilter = getSaslClientFilter();
                             saslClientFilter.setSaslClient(ioSession, saslClient);
-                            // todo - retry counter - JBREM-907
                             sendAuthRequest();
                             return;
                         }
