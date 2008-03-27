@@ -15,7 +15,7 @@ public final class IoBufferByteMessageInput implements ByteMessageInput {
     }
 
     public int read() throws IOException {
-        return ioBuffer.hasRemaining() ? ioBuffer.get() : -1;
+        return ioBuffer.hasRemaining() ? ioBuffer.get() & 0xff : -1;
     }
 
     public int read(byte[] data) throws IOException {
