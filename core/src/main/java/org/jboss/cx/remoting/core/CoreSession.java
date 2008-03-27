@@ -59,8 +59,8 @@ public final class CoreSession {
 
     // Contexts and services that are available on the remote end of this session
     // In these paris, the Server points to the ProtocolHandler, and the Client points to...whatever
-    private final ConcurrentMap<ContextIdentifier, WeakReference<ClientContextPair>> clientContexts = CollectionUtil.concurrentMap();
-    private final ConcurrentMap<ServiceIdentifier, WeakReference<ClientServicePair>> clientServices = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<ContextIdentifier, ClientContextPair> clientContexts = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<ServiceIdentifier, ClientServicePair> clientServices = CollectionUtil.concurrentMap();
 
     // Contexts and services that are available on this end of this session
     // In these pairs, the Client points to the ProtocolHandler, and the Server points to... whatever
@@ -128,7 +128,7 @@ public final class CoreSession {
             throw new NullPointerException("remoteIdentifier is null");
         }
         final ProtocolContextServerImpl<I, O> contextServer = new ProtocolContextServerImpl<I,O>(remoteIdentifier);
-        clientContexts.put(remoteIdentifier, new WeakReference<ClientContextPair>(new ClientContextPair<I, O>(new BaseContextClient(), contextServer)));
+        clientContexts.put(remoteIdentifier, new ClientContextPair<I, O>(new BaseContextClient(), contextServer, remoteIdentifier));
         final CoreOutboundContext<I, O> coreOutboundContext = new CoreOutboundContext<I, O>(executor);
         coreOutboundContext.initialize(contextServer);
         this.rootContext = coreOutboundContext.getUserContext();
@@ -345,8 +345,7 @@ public final class CoreSession {
             if (serviceIdentifier == null) {
                 throw new NullPointerException("serviceIdentifier is null");
             }
-            final WeakReference<ClientServicePair> ref = clientServices.get(serviceIdentifier);
-            final ClientServicePair servicePair = ref.get();
+            final ClientServicePair servicePair = clientServices.get(serviceIdentifier);
             try {
                 servicePair.serviceClient.handleClosing();
             } catch (RemotingException e) {
@@ -358,8 +357,7 @@ public final class CoreSession {
             if (contextIdentifier == null) {
                 throw new NullPointerException("contextIdentifier is null");
             }
-            final WeakReference<ClientContextPair> ref = clientContexts.get(contextIdentifier);
-            final ClientContextPair contextPair = ref.get();
+            final ClientContextPair contextPair = clientContexts.get(contextIdentifier);
             try {
                 contextPair.contextClient.handleClosing(done);
             } catch (RemotingException e) {
@@ -374,8 +372,7 @@ public final class CoreSession {
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
             }
-            final WeakReference<ClientContextPair> ref = clientContexts.get(contextIdentifier);
-            final ClientContextPair contextPair = ref.get();
+            final ClientContextPair contextPair = clientContexts.get(contextIdentifier);
             if (contextPair == null) {
                 log.trace("Got reply for request %s on unknown context %s", requestIdentifier, contextIdentifier);
             } else {
@@ -400,8 +397,7 @@ public final class CoreSession {
             if (exception == null) {
                 throw new NullPointerException("exception is null");
             }
-            final WeakReference<ClientContextPair> ref = clientContexts.get(contextIdentifier);
-            final ClientContextPair contextPair = ref.get();
+            final ClientContextPair contextPair = clientContexts.get(contextIdentifier);
             final RequestClient<?> requestClient = (RequestClient<?>) contextPair.contextServer.requests.get(requestIdentifier);
             try {
                 requestClient.handleException(exception);
@@ -417,8 +413,7 @@ public final class CoreSession {
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
             }
-            final WeakReference<ClientContextPair> ref = clientContexts.get(contextIdentifier);
-            final ClientContextPair contextPair = ref.get();
+            final ClientContextPair contextPair = clientContexts.get(contextIdentifier);
             final RequestClient<?> requestClient = (RequestClient<?>) contextPair.contextServer.requests.get(requestIdentifier);
             try {
                 requestClient.handleCancelAcknowledge();
@@ -695,9 +690,10 @@ public final class CoreSession {
         private final ContextClient contextClient;
         private final ProtocolContextServerImpl<I, O> contextServer;
 
-        private ClientContextPair(final ContextClient contextClient, final ProtocolContextServerImpl<I, O> contextServer) {
+        private ClientContextPair(final ContextClient contextClient, final ProtocolContextServerImpl<I, O> contextServer, final ContextIdentifier contextIdentifier) {
             this.contextClient = contextClient;
             this.contextServer = contextServer;
+            // todo - auto-cleanup
         }
     }
 
@@ -793,7 +789,7 @@ public final class CoreSession {
                 if (contextIdentifier == null) {
                     throw new NullPointerException("contextIdentifier is null");
                 }
-                clientContexts.put(contextIdentifier, new WeakReference<ClientContextPair>(new ClientContextPair<I, O>(client, new ProtocolContextServerImpl<I, O>(contextIdentifier))));
+                clientContexts.put(contextIdentifier, new ClientContextPair<I, O>(client, new ProtocolContextServerImpl<I, O>(contextIdentifier), contextIdentifier));
                 return new ProtocolContextServerImpl<I, O>(contextIdentifier);
             } catch (RemotingException e) {
                 throw e;
