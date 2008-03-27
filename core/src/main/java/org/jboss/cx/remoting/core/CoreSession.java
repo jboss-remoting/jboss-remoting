@@ -547,7 +547,7 @@ public final class CoreSession {
                 public void close() throws IOException {
                     target.close();
                 }
-            });
+            }, true);
             if (target == null) {
                 throw new NullPointerException("target is null");
             }
@@ -581,14 +581,6 @@ public final class CoreSession {
             return target.getBytesWritten();
         }
 
-        protected final void writeObjectOverride(Object obj) throws IOException {
-            if (obj instanceof AbstractRealContext) {
-                super.writeObjectOverride(doContextReplace(((AbstractRealContext<?, ?>)obj).getContextServer()));
-            } else {
-                super.writeObjectOverride(obj);
-            }
-        }
-
         private final <I, O> ContextMarker doContextReplace(ContextServer<I, O> contextServer) throws IOException {
             final ContextIdentifier contextIdentifier = protocolHandler.openContext();
             final ProtocolContextClientImpl<I, O> contextClient = new ProtocolContextClientImpl<I, O>(contextIdentifier);
@@ -596,8 +588,20 @@ public final class CoreSession {
             return new ContextMarker(contextIdentifier);
         }
 
+        private final <I, O> ContextSourceMarker doContextSourceReplace(ServiceServer<I, O> serviceServer) throws IOException {
+            final ServiceIdentifier serviceIdentifier = protocolHandler.openService();
+            final ProtocolServiceClientImpl serviceClient = new ProtocolServiceClientImpl(serviceIdentifier);
+            new ServerServicePair<I, O>(serviceClient, serviceServer);
+            return new ContextSourceMarker(serviceIdentifier);
+        }
+
         protected Object replaceObject(Object obj) throws IOException {
             final Object testObject = super.replaceObject(obj);
+            if (testObject instanceof AbstractRealContext) {
+                return doContextReplace(((AbstractRealContext<?, ?>) obj).getContextServer());
+            } else if (testObject instanceof AbstractRealContextSource) {
+                return doContextSourceReplace(((AbstractRealContextSource<?, ?>) obj).getServiceServer());
+            }
             for (StreamDetector detector : streamDetectors) {
                 final StreamSerializerFactory factory = detector.detectStream(testObject);
                 if (factory != null) {
@@ -614,7 +618,6 @@ public final class CoreSession {
                     return new StreamMarker(factory.getClass(), streamIdentifier);
                 }
             }
-            log.trace("Writing object: %s", testObject);
             return testObject;
         }
     }

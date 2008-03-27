@@ -72,9 +72,7 @@ public final class CoreOutboundContext<I, O> {
         }
     }
 
-    @SuppressWarnings ({"SerializableInnerClassWithNonSerializableOuterClass"})
-    public final class UserContext extends AbstractRealContext<I, O> implements Serializable {
-        private static final long serialVersionUID = 1L;
+    public final class UserContext extends AbstractRealContext<I, O> {
 
         private UserContext() {
             super(contextServer);

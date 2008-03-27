@@ -6,8 +6,7 @@ import java.io.Serializable;
 /**
  *
  */
-public abstract class AbstractRealContext<I, O> implements Context<I, O>, Serializable {
-    private static final long serialVersionUID = 1L;
+public abstract class AbstractRealContext<I, O> implements Context<I, O> {
 
     private ContextServer<I,O> contextServer;
 
@@ -16,10 +15,6 @@ public abstract class AbstractRealContext<I, O> implements Context<I, O>, Serial
             throw new NullPointerException("contextServer is null");
         }
         this.contextServer = contextServer;
-    }
-
-    private Object writeReplace() {
-        return contextServer;
     }
 
     protected ContextServer<I, O> getContextServer() {

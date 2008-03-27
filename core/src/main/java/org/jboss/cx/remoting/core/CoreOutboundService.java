@@ -55,17 +55,13 @@ public final class CoreOutboundService<I, O> {
     }
 
     @SuppressWarnings ({"SerializableInnerClassWithNonSerializableOuterClass"})
-    public final class UserContextSource implements ContextSource<I, O>, Serializable {
-        private static final long serialVersionUID = 1L;
-
-        private Object writeReplace() {
-            return serviceServer;
+    public final class UserContextSource extends AbstractRealContextSource<I, O> {
+        protected UserContextSource() {
+            super(serviceServer);
         }
 
         public void close() {
             // todo ...
-
-            // todo: is it better to close all child contexts, or let them continue on independently?
         }
 
         public void closeImmediate() throws RemotingException {
