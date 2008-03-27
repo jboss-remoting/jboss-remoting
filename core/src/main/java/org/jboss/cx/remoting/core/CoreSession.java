@@ -39,6 +39,10 @@ import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 import org.jboss.cx.remoting.spi.stream.StreamDetector;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
+import org.jboss.serial.io.JBossObjectOutputStream;
+import org.jboss.serial.io.JBossObjectInputStream;
+import org.jboss.serial.io.JBossObjectOutputStreamSharedTree;
+import org.jboss.serial.io.JBossObjectInputStreamSharedTree;
 
 
 /**
@@ -473,7 +477,11 @@ public final class CoreSession {
                 throw new NullPointerException("data is null");
             }
             final CoreStream coreStream = streams.get(streamIdentifier);
-            coreStream.receiveStreamData(data);
+            if (coreStream == null) {
+                log.trace("Received stream data on an unknown context %s", streamIdentifier);
+            } else {
+                coreStream.receiveStreamData(data);
+            }
         }
 
         @SuppressWarnings ({"unchecked"})
@@ -512,7 +520,7 @@ public final class CoreSession {
 
     // message output
 
-    private final class ObjectMessageOutputImpl extends ObjectOutputStream implements ObjectMessageOutput {
+    private final class ObjectMessageOutputImpl extends JBossObjectOutputStream implements ObjectMessageOutput {
         private final ByteMessageOutput target;
         private final List<StreamDetector> streamDetectors;
         private final List<StreamSerializer> streamSerializers = new ArrayList<StreamSerializer>();
@@ -573,8 +581,19 @@ public final class CoreSession {
             return target.getBytesWritten();
         }
 
-        protected void writeObjectOverride(Object obj) throws IOException {
-            super.writeObjectOverride(obj);
+        protected final void writeObjectOverride(Object obj) throws IOException {
+            if (obj instanceof AbstractRealContext) {
+                super.writeObjectOverride(doContextReplace(((AbstractRealContext<?, ?>)obj).getContextServer()));
+            } else {
+                super.writeObjectOverride(obj);
+            }
+        }
+
+        private final <I, O> ContextMarker doContextReplace(ContextServer<I, O> contextServer) throws IOException {
+            final ContextIdentifier contextIdentifier = protocolHandler.openContext();
+            final ProtocolContextClientImpl<I, O> contextClient = new ProtocolContextClientImpl<I, O>(contextIdentifier);
+            new ServerContextPair<I, O>(contextClient, contextServer);
+            return new ContextMarker(contextIdentifier);
         }
 
         protected Object replaceObject(Object obj) throws IOException {
@@ -602,16 +621,16 @@ public final class CoreSession {
 
     // message input
 
-    private final class ObjectInputImpl extends ObjectInputStream {
+    private final class ObjectInputImpl extends JBossObjectInputStream {
 
         private ClassLoader classLoader;
 
         public ObjectInputImpl(final InputStream is) throws IOException {
             super(is);
-            super.enableResolveObject(true);
+            enableResolveObject(true);
         }
 
-        protected Object resolveObject(Object obj) throws IOException {
+        public Object resolveObject(Object obj) throws IOException {
             final Object testObject = super.resolveObject(obj);
             if (testObject instanceof StreamMarker) {
                 StreamMarker marker = (StreamMarker) testObject;
