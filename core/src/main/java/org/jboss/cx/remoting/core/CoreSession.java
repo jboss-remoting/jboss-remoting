@@ -128,8 +128,8 @@ public final class CoreSession {
             throw new NullPointerException("remoteIdentifier is null");
         }
         final ProtocolContextServerImpl<I, O> contextServer = new ProtocolContextServerImpl<I,O>(remoteIdentifier);
-        clientContexts.put(remoteIdentifier, new ClientContextPair<I, O>(new BaseContextClient(), contextServer, remoteIdentifier));
         final CoreOutboundContext<I, O> coreOutboundContext = new CoreOutboundContext<I, O>(executor);
+        clientContexts.put(remoteIdentifier, new ClientContextPair<I, O>(coreOutboundContext.getContextClient(), contextServer, remoteIdentifier));
         coreOutboundContext.initialize(contextServer);
         this.rootContext = coreOutboundContext.getUserContext();
         log.trace("Initialized session with remote context %s", remoteIdentifier);
@@ -376,13 +376,18 @@ public final class CoreSession {
             if (contextPair == null) {
                 log.trace("Got reply for request %s on unknown context %s", requestIdentifier, contextIdentifier);
             } else {
-                final RequestClient<?> requestClient = (RequestClient<?>) contextPair.contextServer.requests.get(requestIdentifier);
-                if (requestClient == null) {
-                    log.trace("Got reply for unknown request %s on context %s", requestIdentifier, contextIdentifier);
-                } else try {
-                    doSendReply(requestClient, reply);
-                } catch (RemotingException e) {
-                    log.trace(e, "Failed to receive a reply");
+                final ProtocolContextServerImpl<?, ?> contextServer = contextPair.contextServerRef.get();
+                if (contextServer == null) {
+                    log.trace("Got reply for request %s on unknown recently leaked context %s", requestIdentifier, contextIdentifier);
+                } else {
+                    final RequestClient<?> requestClient = (RequestClient<?>) contextServer.requests.get(requestIdentifier);
+                    if (requestClient == null) {
+                        log.trace("Got reply for unknown request %s on context %s", requestIdentifier, contextIdentifier);
+                    } else try {
+                        doSendReply(requestClient, reply);
+                    } catch (RemotingException e) {
+                        log.trace(e, "Failed to receive a reply");
+                    }
                 }
             }
         }
@@ -398,11 +403,22 @@ public final class CoreSession {
                 throw new NullPointerException("exception is null");
             }
             final ClientContextPair contextPair = clientContexts.get(contextIdentifier);
-            final RequestClient<?> requestClient = (RequestClient<?>) contextPair.contextServer.requests.get(requestIdentifier);
-            try {
-                requestClient.handleException(exception);
-            } catch (RemotingException e) {
-                log.trace(e, "Failed to receive an exception reply");
+            if (contextPair == null) {
+                log.trace("Got exception reply for request %s on unknown context %s", requestIdentifier, contextIdentifier);
+            } else {
+                final ProtocolContextServerImpl<?, ?> contextServer = contextPair.contextServerRef.get();
+                if (contextServer == null) {
+                    log.trace("Got exception reply for request %s on unknown recently leaked context %s", requestIdentifier, contextIdentifier);
+                } else {
+                    final RequestClient<?> requestClient = (RequestClient<?>) contextServer.requests.get(requestIdentifier);
+                    if (requestClient == null) {
+                        log.trace("Got exception reply for unknown request %s on context %s", requestIdentifier, contextIdentifier);
+                    } else try {
+                        requestClient.handleException(exception);
+                    } catch (RemotingException e) {
+                        log.trace(e, "Failed to receive an exception reply");
+                    }
+                }
             }
         }
 
@@ -414,11 +430,22 @@ public final class CoreSession {
                 throw new NullPointerException("requestIdentifier is null");
             }
             final ClientContextPair contextPair = clientContexts.get(contextIdentifier);
-            final RequestClient<?> requestClient = (RequestClient<?>) contextPair.contextServer.requests.get(requestIdentifier);
-            try {
-                requestClient.handleCancelAcknowledge();
-            } catch (RemotingException e) {
-                log.trace(e, "Failed to receive a cancellation acknowledgement");
+            if (contextPair == null) {
+                log.trace("Got cancellation acknowledgement for request %s on unknown context %s", requestIdentifier, contextIdentifier);
+            } else {
+                final ProtocolContextServerImpl<?, ?> contextServer = contextPair.contextServerRef.get();
+                if (contextServer == null) {
+                    log.trace("Got cancellation acknowledgement for request %s on unknown recently leaked context %s", requestIdentifier, contextIdentifier);
+                } else {
+                    final RequestClient<?> requestClient = (RequestClient<?>) contextServer.requests.get(requestIdentifier);
+                    if (requestClient == null) {
+                        log.trace("Got cancellation acknowledgement for unknown request %s on context %s", requestIdentifier, contextIdentifier);
+                    } else try {
+                        requestClient.handleCancelAcknowledge();
+                    } catch (RemotingException e) {
+                        log.trace(e, "Failed to receive a cancellation acknowledgement");
+                    }
+                }
             }
         }
 
@@ -686,13 +713,37 @@ public final class CoreSession {
         }
     }
 
-    private static final class ClientContextPair<I, O> {
+    private final class WeakProtocolContextServerReference<I, O> extends WeakReference<ProtocolContextServerImpl<I, O>> {
+        private final ClientContextPair<I, O> contextPair;
+
+        private WeakProtocolContextServerReference(ProtocolContextServerImpl<I, O> referent, ClientContextPair<I, O> contextPair) {
+            super(referent);
+            this.contextPair = contextPair;
+        }
+
+        public ProtocolContextServerImpl<I, O> get() {
+            return super.get();
+        }
+
+        public boolean enqueue() {
+            try {
+                clientContexts.remove(contextPair.contextIdentifier, contextPair);
+                // todo close?
+            } finally {
+                return super.enqueue();
+            }
+        }
+    }
+
+    private final class ClientContextPair<I, O> {
         private final ContextClient contextClient;
-        private final ProtocolContextServerImpl<I, O> contextServer;
+        private final WeakProtocolContextServerReference<I, O> contextServerRef;
+        private final ContextIdentifier contextIdentifier;
 
         private ClientContextPair(final ContextClient contextClient, final ProtocolContextServerImpl<I, O> contextServer, final ContextIdentifier contextIdentifier) {
             this.contextClient = contextClient;
-            this.contextServer = contextServer;
+            this.contextIdentifier = contextIdentifier;
+            contextServerRef = new WeakProtocolContextServerReference<I, O>(contextServer, this);
             // todo - auto-cleanup
         }
     }
