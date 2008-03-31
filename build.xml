@@ -103,6 +103,18 @@
         <get src="${remote.license.dir}/${lib.jboss-managed.license}.txt" dest="${lib.jboss-managed.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
+    <!-- External library: JBoss Serialization -->
+
+    <target name="lib.jboss-serialization-check">
+        <available property="lib.jboss-serialization.exists" file="${lib.jboss-serialization.local}"/>
+    </target>
+
+    <target name="lib.jboss-serialization" depends="lib.jboss-serialization-check" unless="lib.jboss-serialization.exists">
+        <mkdir dir="${local.repository}/${lib.jboss-serialization.local-dir}"/>
+        <get src="${lib.jboss-serialization.remote}" dest="${lib.jboss-serialization.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jboss-serialization.license}.txt" dest="${lib.jboss-serialization.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
     <!-- External library: JBossXB -->
 
     <target name="lib.jbossxb-check">
@@ -248,6 +260,7 @@
                 <path refid="log-jul.classpath"/>
                 <path refid="util.classpath"/>
                 <path refid="version.classpath"/>
+                <pathelement location="${lib.jboss-serialization.local}"/>
             </classpath>
         </javac>
         <touch file="core/target/main/.lastcompile" verbose="false"/>
@@ -257,7 +270,7 @@
         <delete dir="core/target"/>
     </target>
 
-    <target name="core" description="Build the core module" depends="api,log-jul,util,version,core.compile">
+    <target name="core" description="Build the core module" depends="lib.jboss-serialization,api,log-jul,util,version,core.compile">
         <path id="core.classpath">
             <pathelement location="core/target/main/classes"/>
         </path>
