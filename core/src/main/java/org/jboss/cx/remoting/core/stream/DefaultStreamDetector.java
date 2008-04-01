@@ -12,6 +12,8 @@ import org.jboss.cx.remoting.stream.ObjectSource;
  *
  */
 public final class DefaultStreamDetector implements StreamDetector {
+    public static final StreamDetector INSTANCE = new DefaultStreamDetector();
+
     public StreamSerializerFactory detectStream(Object candidate) {
         if (candidate instanceof InputStream) {
             return new InputStreamStreamSerializerFactory();

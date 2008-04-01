@@ -96,7 +96,7 @@ public final class CoreSession {
         this.endpoint = endpoint;
         executor = endpoint.getExecutor();
         // todo - make stream detectors pluggable
-        streamDetectors = java.util.Collections.<StreamDetector>singletonList(new DefaultStreamDetector());
+        streamDetectors = java.util.Collections.singletonList(DefaultStreamDetector.INSTANCE);
     }
 
     UserSession getUserSession() {
