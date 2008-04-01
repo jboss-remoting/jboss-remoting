@@ -893,6 +893,42 @@
         </path>
     </target>
 
+    <!-- testing-support module -->
+
+    <target name="testing-support.compile.depcheck">
+        <mkdir dir="testing-support/target/main"/>
+        <uptodate property="testing-support.compile.uptodate" targetfile="testing-support/target/main/.lastcompile">
+            <srcfiles dir="testing-support/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="testing-support.compile" depends="testing-support.compile.depcheck" unless="testing-support.compile.uptodate">
+        <mkdir dir="testing-support/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="testing-support/src/main/java"
+                destdir="testing-support/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+        </javac>
+        <touch file="testing-support/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="testing-support.clean">
+        <delete dir="testing-support/target"/>
+    </target>
+
+    <target name="testing-support" description="Build the testing-support module" depends="testing-support.compile">
+        <path id="testing-support.classpath">
+            <pathelement location="testing-support/target/main/classes"/>
+        </path>
+    </target>
+
     <!-- tools module -->
 
     <target name="tools.compile.depcheck">
@@ -1195,9 +1231,9 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,samples,standalone,tools,util"/>
+    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,samples,standalone,testing-support,tools,util"/>
 
-    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,samples.clean,standalone.clean,tools.clean,util.clean"/>
+    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,samples.clean,standalone.clean,testing-support.clean,tools.clean,util.clean"/>
 
     <!-- http -->
 
