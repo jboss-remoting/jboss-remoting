@@ -1,11 +1,10 @@
 package org.jboss.cx.remoting.core;
 
-import static org.jboss.cx.remoting.util.AtomicStateMachine.start;
-import org.jboss.cx.remoting.RequestListener;
-import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.util.AtomicStateMachine;
-import org.jboss.cx.remoting.util.State;
 import java.util.concurrent.Executor;
+import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.RequestListener;
+import org.jboss.cx.remoting.util.AtomicStateMachine;
+import static org.jboss.cx.remoting.util.AtomicStateMachine.start;
 
 /**
  *

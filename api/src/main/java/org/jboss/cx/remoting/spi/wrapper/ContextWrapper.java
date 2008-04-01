@@ -1,11 +1,11 @@
 package org.jboss.cx.remoting.spi.wrapper;
 
 import java.util.concurrent.ConcurrentMap;
+import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.CloseHandler;
 
 /**
  *

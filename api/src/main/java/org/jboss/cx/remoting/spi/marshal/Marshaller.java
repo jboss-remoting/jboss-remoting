@@ -1,10 +1,10 @@
 package org.jboss.cx.remoting.spi.marshal;
 
-import org.jboss.cx.remoting.spi.ObjectMessageOutput;
+import java.io.IOException;
+import org.jboss.cx.remoting.spi.DataMessageInput;
 import org.jboss.cx.remoting.spi.DataMessageOutput;
 import org.jboss.cx.remoting.spi.ObjectMessageInput;
-import org.jboss.cx.remoting.spi.DataMessageInput;
-import java.io.IOException;
+import org.jboss.cx.remoting.spi.ObjectMessageOutput;
 
 /**
  *

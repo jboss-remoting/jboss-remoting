@@ -6,11 +6,11 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.util.concurrent.Executor;
 import org.apache.mina.common.ConnectFuture;
+import org.apache.mina.common.ExceptionMonitor;
 import org.apache.mina.common.IoConnector;
 import org.apache.mina.common.IoProcessor;
 import org.apache.mina.common.IoSession;
 import org.apache.mina.common.IoSessionInitializer;
-import org.apache.mina.common.ExceptionMonitor;
 import org.apache.mina.filter.logging.LoggingFilter;
 import org.apache.mina.filter.sasl.SaslClientFilter;
 import org.apache.mina.filter.sasl.SaslMessageSender;
@@ -21,12 +21,12 @@ import org.apache.mina.transport.socket.nio.NioProcessor;
 import org.apache.mina.transport.socket.nio.NioSocketConnector;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.jrpp.mina.FramingIoFilter;
+import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
-import org.jboss.cx.remoting.spi.Registration;
+import org.jboss.cx.remoting.util.AttributeMap;
 
 /**
  *

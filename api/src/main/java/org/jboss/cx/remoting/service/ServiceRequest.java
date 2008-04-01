@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.service;
 
-import java.net.URI;
 import java.io.Serializable;
+import java.net.URI;
 
 /**
  *

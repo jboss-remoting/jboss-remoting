@@ -3,9 +3,9 @@ package org.jboss.cx.remoting.stream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.Enumeration;
 
 /**
  *

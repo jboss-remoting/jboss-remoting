@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 /**
  *
  */
-public final class SynchronizedQueue<T> implements BlockingQueue<T> {
+public class SynchronizedQueue<T> implements BlockingQueue<T> {
     private final Queue<T> delegate;
     private final Object monitor;
 

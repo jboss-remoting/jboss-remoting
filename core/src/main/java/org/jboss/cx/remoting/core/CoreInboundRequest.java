@@ -1,19 +1,18 @@
 package org.jboss.cx.remoting.core;
 
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RequestListener;
-import org.jboss.cx.remoting.util.AtomicStateMachine;
-import org.jboss.cx.remoting.util.State;
 import org.jboss.cx.remoting.log.Logger;
-import java.util.concurrent.Executor;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Iterator;
-import java.util.LinkedList;
+import org.jboss.cx.remoting.util.AtomicStateMachine;
 
 /**
  *

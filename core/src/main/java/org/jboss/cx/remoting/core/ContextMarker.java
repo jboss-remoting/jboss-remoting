@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.core;
 
-import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import java.io.Serializable;
+import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 
 /**
  *

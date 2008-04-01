@@ -6,8 +6,8 @@ import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.log.Logger;
-import org.jboss.cx.remoting.service.ClassLoaderResourceRequest;
 import org.jboss.cx.remoting.service.ClassLoaderResourceReply;
+import org.jboss.cx.remoting.service.ClassLoaderResourceRequest;
 import org.jboss.cx.remoting.service.RemoteResource;
 import org.jboss.cx.remoting.stream.ObjectSource;
 

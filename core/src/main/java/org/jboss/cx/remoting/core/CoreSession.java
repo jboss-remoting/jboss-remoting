@@ -2,8 +2,6 @@ package org.jboss.cx.remoting.core;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
@@ -14,21 +12,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import org.jboss.cx.remoting.CloseHandler;
+import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
-import org.jboss.cx.remoting.Context;
-import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.core.stream.DefaultStreamDetector;
 import org.jboss.cx.remoting.core.util.DelegatingObjectInput;
-import org.jboss.cx.remoting.util.AtomicStateMachine;
-import org.jboss.cx.remoting.util.AttributeMap;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.ByteMessageInput;
 import org.jboss.cx.remoting.spi.ByteMessageOutput;
 import org.jboss.cx.remoting.spi.ObjectMessageInput;
-import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.spi.ObjectMessageOutput;
-import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
@@ -39,10 +34,11 @@ import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 import org.jboss.cx.remoting.spi.stream.StreamDetector;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
-import org.jboss.serial.io.JBossObjectOutputStream;
+import org.jboss.cx.remoting.util.AtomicStateMachine;
+import org.jboss.cx.remoting.util.AttributeMap;
+import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.serial.io.JBossObjectInputStream;
-import org.jboss.serial.io.JBossObjectOutputStreamSharedTree;
-import org.jboss.serial.io.JBossObjectInputStreamSharedTree;
+import org.jboss.serial.io.JBossObjectOutputStream;
 
 
 /**

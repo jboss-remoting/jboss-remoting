@@ -9,11 +9,10 @@ import java.util.concurrent.TimeUnit;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.IndeterminateOutcomeException;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.util.AtomicStateMachine;
-import org.jboss.cx.remoting.util.State;
+import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.log.Logger;
+import org.jboss.cx.remoting.util.AtomicStateMachine;
 
 /**
  *

@@ -2,18 +2,18 @@ package org.jboss.cx.remoting.spi.wrapper;
 
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
+import org.jboss.cx.remoting.CloseHandler;
+import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Session;
-import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.RequestListener;
-import org.jboss.cx.remoting.ContextSource;
-import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.util.AttributeMap;
+import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
-import org.jboss.cx.remoting.spi.Registration;
+import org.jboss.cx.remoting.util.AttributeMap;
 
 /**
  *

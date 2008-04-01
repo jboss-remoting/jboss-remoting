@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.service;
 
-import java.io.Serializable;
 import java.io.InputStream;
+import java.io.Serializable;
 
 /**
  *

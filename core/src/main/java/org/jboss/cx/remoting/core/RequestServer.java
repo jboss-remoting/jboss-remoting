@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.core;
 
-import org.jboss.cx.remoting.RemotingException;
 import java.util.concurrent.Executor;
+import org.jboss.cx.remoting.RemotingException;
 
 /**
  *

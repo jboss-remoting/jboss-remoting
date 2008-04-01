@@ -1,15 +1,13 @@
 package org.jboss.cx.remoting.core;
 
-import java.util.concurrent.Executor;
 import java.util.Set;
-import org.jboss.cx.remoting.RequestListener;
+import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
-import org.jboss.cx.remoting.util.State;
-
-import static org.jboss.cx.remoting.util.CollectionUtil.synchronizedHashSet;
 import static org.jboss.cx.remoting.util.AtomicStateMachine.start;
+import static org.jboss.cx.remoting.util.CollectionUtil.synchronizedHashSet;
 
 /**
  *

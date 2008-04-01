@@ -1,8 +1,8 @@
 package org.jboss.cx.remoting.service;
 
-import org.jboss.cx.remoting.ContextSource;
-import org.jboss.cx.remoting.Context;
 import java.io.Serializable;
+import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.ContextSource;
 
 /**
  *

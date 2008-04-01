@@ -1,14 +1,12 @@
 package org.jboss.cx.remoting.core;
 
+import java.util.concurrent.Executor;
+import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.util.AtomicStateMachine;
-import org.jboss.cx.remoting.util.State;
 import org.jboss.cx.remoting.log.Logger;
-import java.util.concurrent.Executor;
-import java.io.Serializable;
+import org.jboss.cx.remoting.util.AtomicStateMachine;
 
 /**
  *
