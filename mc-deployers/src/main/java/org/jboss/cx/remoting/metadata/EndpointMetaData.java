@@ -9,6 +9,7 @@ import org.jboss.cx.remoting.util.CollectionUtil;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlType;
+import javax.xml.bind.annotation.XmlTransient;
 
 /**
  * Metadata that describes the creation of a Remoting endpoint.
@@ -98,6 +99,7 @@ public class EndpointMetaData implements BeanMetaDataFactory, Serializable {
      *
      * @return the metadata objects
      */
+    @XmlTransient
     public List<BeanMetaData> getBeans() {
         final String userEndpointName = "Endpoint:" + name;
         final String coreEndpointName = "CoreEndpoint:" + name;

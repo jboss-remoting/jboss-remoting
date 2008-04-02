@@ -12,6 +12,7 @@ import org.jboss.xb.annotations.JBossXmlSchema;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlNsForm;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.XmlType;
 
 /**
@@ -87,6 +88,7 @@ public class RemotingMetaData implements BeanMetaDataFactory, Serializable {
      *
      * @return the list of metadata items
      */
+    @XmlTransient
     public List<BeanMetaData> getBeans() {
         final List<BeanMetaData> metaDataList = CollectionUtil.arrayList();
         for (EndpointMetaData endpointMetaData : endpoints) {

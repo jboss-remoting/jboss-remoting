@@ -16,12 +16,13 @@ import java.lang.reflect.Field;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlTransient;
 
 /**
  * Metadata which describes a session to be established and maintained with another endpoint.
  */
 @XmlType(namespace = "urn:jboss:remoting:3.0", name = "session")
-public final class SessionMetaData implements BeanMetaDataFactory, Serializable {
+public class SessionMetaData implements BeanMetaDataFactory, Serializable {
     private static final long serialVersionUID = 1L;
 
     private String name;
@@ -69,6 +70,7 @@ public final class SessionMetaData implements BeanMetaDataFactory, Serializable 
         return (SessionMetaData) super.clone();
     }
 
+    @XmlTransient
     public List<BeanMetaData> getBeans() {
         return CollectionUtil.unmodifiableList(createSessionMetaData());
     }
@@ -85,7 +87,7 @@ public final class SessionMetaData implements BeanMetaDataFactory, Serializable 
         final AttributeMap attributeMap = new AttributeHashMap();
         try {
             for (SessionMetaDataAttribute attribute : attributeList) {
-                Class<?> claxx = attribute.getClaxx();
+                Class<?> claxx = Class.forName(attribute.getClaxx());
                 if (claxx == null) {
                     claxx = CommonKeys.class;
                 }

@@ -1,26 +1,24 @@
 package org.jboss.cx.remoting.metadata;
 
-import javax.xml.bind.annotation.XmlType;
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlAnyElement;
-import javax.xml.bind.annotation.XmlValue;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlType;
 
 /**
  *
  */
 @XmlType(namespace = "urn:jboss:remoting:3.0", name = "attribute")
-public final class SessionMetaDataAttribute {
-    private Class<?> claxx;
+public class SessionMetaDataAttribute {
+    private String claxx;
     private String name;
     private Object value;
 
-    public Class<?> getClaxx() {
+    public String getClaxx() {
         return claxx;
     }
 
     @XmlAttribute(name = "class")
-    public void setClaxx(final Class<?> claxx) {
+    public void setClaxx(final String claxx) {
         this.claxx = claxx;
     }
 
