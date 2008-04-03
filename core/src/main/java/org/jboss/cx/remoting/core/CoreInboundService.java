@@ -1,20 +1,28 @@
 package org.jboss.cx.remoting.core;
 
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
+import org.jboss.cx.remoting.ServiceContext;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import static org.jboss.cx.remoting.util.AtomicStateMachine.start;
+import org.jboss.cx.remoting.util.CollectionUtil;
 
 /**
  *
  */
 public final class CoreInboundService<I, O> {
+
     private final RequestListener<I, O> requestListener;
     private final Executor executor;
-    private ServiceClient serviceClient;
 
+    private final ServiceContext serviceContext = new UserServiceContext();
     private final AtomicStateMachine<State> state = start(State.INITIAL);
+    private final ConcurrentMap<Object, Object> attributes = CollectionUtil.concurrentMap();
+
+    private ServiceClient serviceClient;
 
     private enum State implements org.jboss.cx.remoting.util.State<State> {
         INITIAL,
@@ -33,7 +41,12 @@ public final class CoreInboundService<I, O> {
     public void initialize(final ServiceClient serviceClient) {
         state.requireTransitionExclusive(State.INITIAL, State.UP);
         this.serviceClient = serviceClient;
-        state.releaseExclusive();
+        state.releaseDowngrade();
+        try {
+            requestListener.handleServiceOpen(serviceContext);
+        } finally {
+            state.release();
+        }
     }
 
     public ServiceServer<I, O> getServiceServer() {
@@ -43,10 +56,29 @@ public final class CoreInboundService<I, O> {
             }
 
             public ContextServer<I, O> createNewContext(final ContextClient client) {
-                final CoreInboundContext<I, O> context = new CoreInboundContext<I, O>(requestListener, executor);
+                final CoreInboundContext<I, O> context = new CoreInboundContext<I, O>(requestListener, executor, serviceContext);
                 context.initialize(client);
                 return context.getContextServer();
             }
         };
+    }
+
+    public final class UserServiceContext implements ServiceContext {
+        private UserServiceContext() {
+        }
+
+        public ConcurrentMap<Object, Object> getAttributes() {
+            return attributes;
+        }
+
+        public void close() throws RemotingException {
+            // todo
+        }
+
+        public void closeImmediate() throws RemotingException {
+        }
+
+        public void addCloseHandler(final CloseHandler<ServiceContext> serviceContextCloseHandler) {
+        }
     }
 }

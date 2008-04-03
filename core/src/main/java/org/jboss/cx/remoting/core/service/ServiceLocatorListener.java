@@ -3,11 +3,11 @@ package org.jboss.cx.remoting.core.service;
 import java.net.URI;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentMap;
+import org.jboss.cx.remoting.AbstractRequestListener;
 import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RequestContext;
-import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.service.ServiceReply;
 import org.jboss.cx.remoting.service.ServiceRequest;
 import org.jboss.cx.remoting.util.CollectionUtil;
@@ -16,7 +16,7 @@ import org.jboss.cx.remoting.util.ServiceURI;
 /**
  *
  */
-public final class ServiceLocatorListener<I, O> implements RequestListener<ServiceRequest<I, O>, ServiceReply<I, O>> {
+public final class ServiceLocatorListener<I, O> extends AbstractRequestListener<ServiceRequest<I, O>,ServiceReply<I, O>> {
 
     private interface Service {
         String getGroupName();
@@ -45,21 +45,11 @@ public final class ServiceLocatorListener<I, O> implements RequestListener<Servi
 
     private final ConcurrentMap<String, ConcurrentMap<String, ContextSource<?, ?>>> deployments = syncMap();
 
-    public void handleOpen() {
-    }
-
     public void handleRequest(final RequestContext<ServiceReply<I, O>> requestContext, final ServiceRequest<I, O> request) throws RemoteExecutionException, InterruptedException {
         final URI uri = request.getUri();
         final ServiceURI serviceURI = new ServiceURI(uri);
         final String endpointName = serviceURI.getEndpointName();
         final String groupName = serviceURI.getGroupName();
         final String serviceType = serviceURI.getServiceType();
-
-        
     }
-
-    public void handleClose() {
-    }
-
-
 }

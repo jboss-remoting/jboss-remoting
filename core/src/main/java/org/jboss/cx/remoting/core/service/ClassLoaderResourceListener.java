@@ -4,10 +4,12 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Enumeration;
+import org.jboss.cx.remoting.AbstractRequestListener;
+import org.jboss.cx.remoting.ContextContext;
 import org.jboss.cx.remoting.IOExceptionCarrier;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RequestContext;
-import org.jboss.cx.remoting.RequestListener;
+import org.jboss.cx.remoting.ServiceContext;
 import org.jboss.cx.remoting.service.ClassLoaderResourceReply;
 import org.jboss.cx.remoting.service.ClassLoaderResourceRequest;
 import org.jboss.cx.remoting.service.RemoteResource;
@@ -20,7 +22,7 @@ import org.jboss.cx.remoting.util.Translator;
 /**
  *
  */
-public final class ClassLoaderResourceListener implements RequestListener<ClassLoaderResourceRequest, ClassLoaderResourceReply> {
+public final class ClassLoaderResourceListener extends AbstractRequestListener<ClassLoaderResourceRequest,ClassLoaderResourceReply> {
     private ClassLoader classLoader;
 
     public ClassLoader getClassLoader() {
@@ -29,9 +31,6 @@ public final class ClassLoaderResourceListener implements RequestListener<ClassL
 
     public void setClassLoader(final ClassLoader classLoader) {
         this.classLoader = classLoader;
-    }
-
-    public void handleOpen() {
     }
 
     public void handleRequest(final RequestContext<ClassLoaderResourceReply> requestContext, final ClassLoaderResourceRequest request) throws RemoteExecutionException, InterruptedException {
@@ -66,8 +65,5 @@ public final class ClassLoaderResourceListener implements RequestListener<ClassL
         } catch (IOException e) {
             throw new RemoteExecutionException("Unable to get resources: " + e.getMessage(), e);
         }
-    }
-
-    public void handleClose() {
     }
 }

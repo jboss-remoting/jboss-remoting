@@ -7,6 +7,13 @@ import java.util.concurrent.Executor;
  */
 public interface RequestContext<O> extends Executor {
     /**
+     * Get the context that the request came in on.
+     *
+     * @return the context
+     */
+    ContextContext getContext();
+
+    /**
      * Determine whether the current request was cancelled.
      *
      * @return {@code true} if the request was cancelled

@@ -11,6 +11,7 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RequestListener;
+import org.jboss.cx.remoting.ContextContext;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 
@@ -22,6 +23,7 @@ public final class CoreInboundRequest<I, O> {
 
     private final RequestListener<I,O> requestListener;
     private final Executor executor;
+    private final ContextContext contextContext;
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
     private final UserRequestContext userRequestContext = new UserRequestContext();
@@ -46,9 +48,10 @@ public final class CoreInboundRequest<I, O> {
      */
     private List<RequestCancelHandler<O>> cancelHandlers;
 
-    public CoreInboundRequest(final RequestListener<I, O> requestListener, final Executor executor) {
+    public CoreInboundRequest(final RequestListener<I, O> requestListener, final Executor executor, final ContextContext contextContext) {
         this.requestListener = requestListener;
         this.executor = executor;
+        this.contextContext = contextContext;
     }
 
     private enum State implements org.jboss.cx.remoting.util.State<State> {
@@ -178,6 +181,10 @@ public final class CoreInboundRequest<I, O> {
 
     public final class UserRequestContext implements RequestContext<O> {
         private UserRequestContext() {}
+
+        public ContextContext getContext() {
+            return contextContext;
+        }
 
         public boolean isCancelled() {
             synchronized(CoreInboundRequest.this) {

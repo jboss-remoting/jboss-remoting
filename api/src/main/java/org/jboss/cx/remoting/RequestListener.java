@@ -6,8 +6,17 @@ package org.jboss.cx.remoting;
 public interface RequestListener<I, O> {
     /**
      * Handle the opening of a context.
+     *
+     * @param context the context context
      */
-    void handleOpen();
+    void handleContextOpen(ContextContext context);
+
+    /**
+     * Handle the opening of a service.
+     *
+     * @param context the service context
+     */
+    void handleServiceOpen(ServiceContext context);
 
     /**
      * Handle a request.  If this method throws {@code RemoteExecutionException}, then that exception is passed
@@ -26,7 +35,16 @@ public interface RequestListener<I, O> {
     void handleRequest(RequestContext<O> context, I request) throws RemoteExecutionException, InterruptedException;
 
     /**
-     * Handle the close of a context.
+     * Handle the close of a service.
+     *
+     * @param context the service context
      */
-    void handleClose();
+    void handleServiceClose(ServiceContext context);
+
+    /**
+     * Handle the close of a context.
+     *
+     * @param context
+     */
+    void handleContextClose(ContextContext context);
 }

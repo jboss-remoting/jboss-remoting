@@ -3,6 +3,7 @@ package org.jboss.cx.remoting.spi.wrapper;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
+import org.jboss.cx.remoting.ContextContext;
 
 /**
  *
@@ -12,6 +13,10 @@ public class RequestContextWrapper<O> implements RequestContext<O> {
 
     protected RequestContextWrapper(final RequestContext<O> delegate) {
         this.delegate = delegate;
+    }
+
+    public ContextContext getContext() {
+        return delegate.getContext();
     }
 
     public boolean isCancelled() {
