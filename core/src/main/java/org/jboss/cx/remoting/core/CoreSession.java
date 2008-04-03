@@ -248,6 +248,8 @@ public final class CoreSession {
                 protocolHandler.closeSession();
             } catch (IOException e) {
                 log.trace(e, "Protocol handler session close failed");
+            } finally {
+                endpoint.removeSession(this);
             }
         }
     }

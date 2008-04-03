@@ -92,4 +92,18 @@ public interface Endpoint extends Closeable<Endpoint> {
      * @return the context source
      */
     <I, O> ContextSource<I, O> createService(RequestListener<I, O> requestListener);
+
+    /**
+     * Add a listener that is notified when a session is created.
+     *
+     * @param sessionListener the session listener
+     */
+    void addSessionListener(SessionListener sessionListener);
+
+    /**
+     * Remove a previously added session listener.
+     *
+     * @param sessionListener the session listener
+     */
+    void removeSessionListener(SessionListener sessionListener);
 }

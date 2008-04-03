@@ -3,6 +3,7 @@ package org.jboss.cx.remoting.core;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
@@ -16,6 +17,7 @@ import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.SessionListener;
 import org.jboss.cx.remoting.core.util.OrderedExecutorFactory;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.Registration;
@@ -42,6 +44,7 @@ public final class CoreEndpoint {
     private final RequestListener<?, ?> rootListener;
     private final Endpoint userEndpoint = new UserEndpoint();
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
+    private final Set<SessionListener> sessionListeners = CollectionUtil.synchronizedSet(new LinkedHashSet<SessionListener>());
 
     private OrderedExecutorFactory orderedExecutorFactory;
     private Executor executor;
@@ -93,8 +96,20 @@ public final class CoreEndpoint {
     }
 
     void removeSession(CoreSession coreSession) {
-        sessions.remove(coreSession);
-        sessions.notifyAll();
+        synchronized (sessions) {
+            if (!sessions.remove(coreSession)) {
+                return;
+            }
+            sessions.notifyAll();
+        }
+        final Session userSession = coreSession.getUserSession();
+        for (final SessionListener listener : sessionListeners) {
+            executor.execute(new Runnable() {
+                public void run() {
+                    listener.handleSessionClosed(userSession);
+                }
+            });
+        }
     }
 
     public void start() {
@@ -188,7 +203,15 @@ public final class CoreEndpoint {
                     final CoreSession session = new CoreSession(CoreEndpoint.this);
                     session.initializeClient(factory, uri, attributeMap, createContext(rootListener));
                     sessions.add(session);
-                    return session.getUserSession();
+                    final Session userSession = session.getUserSession();
+                    for (final SessionListener listener : sessionListeners) {
+                        executor.execute(new Runnable() {
+                            public void run() {
+                                listener.handleSessionOpened(userSession);
+                            }
+                        });
+                    }
+                    return userSession;
                 } catch (IOException e) {
                     RemotingException rex = new RemotingException("Failed to create protocol handler: " + e.getMessage());
                     rex.setStackTrace(e.getStackTrace());
@@ -246,6 +269,16 @@ public final class CoreEndpoint {
             inbound.initialize(outbound.getServiceClient());
             outbound.initialize(inbound.getServiceServer());
             return outbound.getUserContextSource();
+        }
+
+        public void addSessionListener(final SessionListener sessionListener) {
+            // TODO security check
+            sessionListeners.add(sessionListener);
+        }
+
+        public void removeSessionListener(final SessionListener sessionListener) {
+            // TODO security check
+            sessionListeners.remove(sessionListener);
         }
 
         public void close() throws RemotingException {
