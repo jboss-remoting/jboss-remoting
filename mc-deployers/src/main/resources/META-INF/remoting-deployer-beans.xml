@@ -12,4 +12,17 @@
         <property name="registerWithJBossXB">true</property>
         <!-- TODO - build management info from annotations -->
     </bean>
+
+    <bean name="BeanDeployer" class="org.jboss.deployers.vfs.deployer.kernel.BeanDeployer">
+         <property name="type">beans</property>
+    </bean>
+
+    <bean name="KernelDeploymentDeployer" class="org.jboss.deployers.vfs.deployer.kernel.KernelDeploymentDeployer">
+         <property name="type">beans</property>
+    </bean>
+
+    <bean name="BeanMetaDataDeployer" class="org.jboss.deployers.vfs.deployer.kernel.BeanMetaDataDeployer">
+        <constructor><parameter><inject bean="jboss.kernel:service=Kernel"/></parameter></constructor>
+        <property name="type">beans</property>
+    </bean>
 </deployment>
