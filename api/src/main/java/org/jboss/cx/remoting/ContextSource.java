@@ -8,7 +8,7 @@ public interface ContextSource<I, O> extends Closeable<ContextSource<I, O>> {
      * Close the context source.  New contexts may no longer be created after this
      * method is called.  Subsequent calls to this method have no additional effect.
      */
-    void close();
+    void close() throws RemotingException;
 
     /**
      * Create a new communications context.

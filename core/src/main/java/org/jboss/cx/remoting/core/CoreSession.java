@@ -8,8 +8,10 @@ import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.CloseHandler;
@@ -73,6 +75,7 @@ public final class CoreSession {
     // don't GC the endpoint while a session lives
     private final CoreEndpoint endpoint;
     private final Executor executor;
+    private final Set<CloseHandler<Session>> closeHandlers = CollectionUtil.synchronizedSet(new LinkedHashSet<CloseHandler<Session>>());
 
     /** The protocol handler.  Set on NEW -> CONNECTING */
     private ProtocolHandler protocolHandler;
@@ -201,17 +204,30 @@ public final class CoreSession {
         private final ConcurrentMap<Object, Object> sessionMap = CollectionUtil.concurrentMap();
 
         public void close() throws RemotingException {
+            // todo - maybe drain the session first?
             shutdown();
-            // todo - should this be non-blocking?
             state.waitFor(State.DOWN);
         }
 
         public void closeImmediate() throws RemotingException {
-            // todo ...
+            shutdown();
+            state.waitFor(State.DOWN);
         }
 
         public void addCloseHandler(final CloseHandler<Session> closeHandler) {
-            // todo ...
+            final State current = state.getStateHold();
+            try {
+                switch (current) {
+                    case DOWN:
+                    case STOPPING:
+                        closeHandler.handleClose(this);
+                        break;
+                    default:
+                        closeHandlers.add(closeHandler);
+                }
+            } finally {
+                state.release();
+            }
         }
 
         public ConcurrentMap<Object, Object> getAttributes() {
@@ -243,6 +259,14 @@ public final class CoreSession {
 
     private void shutdown() {
         if (state.transition(State.UP, State.STOPPING)) {
+            for (final CloseHandler<Session> closeHandler : closeHandlers) {
+                executor.execute(new Runnable() {
+                    public void run() {
+                        closeHandler.handleClose(userSession);
+                    }
+                });
+            }
+            closeHandlers.clear();
             try {
                 log.trace("Initiating session shutdown");
                 protocolHandler.closeSession();
@@ -298,7 +322,7 @@ public final class CoreSession {
             final ServerContextPair contextPair = serverContexts.remove(remoteContextIdentifier);
             // todo - do the whole close operation
             try {
-                contextPair.contextServer.handleClose(immediate, cancel, interrupt);
+                contextPair.contextServer.handleClose(immediate, cancel);
             } catch (RemotingException e) {
                 log.trace(e, "Failed to forward a context close");
             }
@@ -964,9 +988,9 @@ public final class CoreSession {
             }
         }
 
-        public void handleClose(final boolean immediate, final boolean cancel, final boolean interrupt) throws RemotingException {
+        public void handleClose(final boolean immediate, final boolean cancel) throws RemotingException {
             try {
-                protocolHandler.sendContextClose(contextIdentifier, immediate, cancel, interrupt);
+                protocolHandler.sendContextClose(contextIdentifier, immediate, cancel, false);
             } catch (RemotingException e) {
                 throw e;
             } catch (IOException e) {

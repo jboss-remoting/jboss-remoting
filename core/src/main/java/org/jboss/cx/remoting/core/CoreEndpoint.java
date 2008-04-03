@@ -102,14 +102,6 @@ public final class CoreEndpoint {
             }
             sessions.notifyAll();
         }
-        final Session userSession = coreSession.getUserSession();
-        for (final SessionListener listener : sessionListeners) {
-            executor.execute(new Runnable() {
-                public void run() {
-                    listener.handleSessionClosed(userSession);
-                }
-            });
-        }
     }
 
     public void start() {

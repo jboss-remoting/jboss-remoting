@@ -15,7 +15,7 @@ public class ContextSourceWrapper<I, O> implements ContextSource<I, O> {
         this.delegate = delegate;
     }
 
-    public void close() {
+    public void close() throws RemotingException {
         delegate.close();
     }
 

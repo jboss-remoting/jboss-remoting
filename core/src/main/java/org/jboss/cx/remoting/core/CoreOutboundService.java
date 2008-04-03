@@ -1,5 +1,7 @@
 package org.jboss.cx.remoting.core;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Context;
@@ -7,6 +9,7 @@ import org.jboss.cx.remoting.ContextSource;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
+import org.jboss.cx.remoting.util.CollectionUtil;
 
 /**
  *
@@ -20,6 +23,7 @@ public final class CoreOutboundService<I, O> {
     private final Executor executor;
 
     private ServiceServer<I,O> serviceServer;
+    private Set<CloseHandler<ContextSource<I,O>>> closeHandlers = CollectionUtil.synchronizedSet(new LinkedHashSet<CloseHandler<ContextSource<I, O>>>());
 
     public CoreOutboundService(final Executor executor) {
         this.executor = executor;
@@ -58,16 +62,47 @@ public final class CoreOutboundService<I, O> {
             super(serviceServer);
         }
 
-        public void close() {
-            // todo ...
+        private void doClose() throws RemotingException {
+            state.waitForNot(State.INITIAL);
+            if (state.transitionHold(State.UP, State.DOWN)) try {
+                synchronized (closeHandlers) {
+                    for (final CloseHandler<ContextSource<I, O>> handler : closeHandlers) {
+                        executor.execute(new Runnable() {
+                            public void run() {
+                                handler.handleClose(UserContextSource.this);
+                            }
+                        });
+                    }
+                    closeHandlers.clear();
+                }
+                serviceServer.handleClose();
+            } finally {
+                state.release();
+            }
+        }
+
+        public void close() throws RemotingException {
+            doClose();
         }
 
         public void closeImmediate() throws RemotingException {
-            // todo ...
+            doClose();
         }
 
         public void addCloseHandler(final CloseHandler<ContextSource<I, O>> closeHandler) {
-            // todo ...
+            final State current = state.getStateHold();
+            try {
+                switch (current) {
+                    case DOWN:
+                        closeHandler.handleClose(this);
+                        break;
+                    default:
+                        closeHandlers.add(closeHandler);
+                        break;
+                }
+            } finally {
+                state.release();
+            }
         }
 
         public Context<I, O> createContext() throws RemotingException {

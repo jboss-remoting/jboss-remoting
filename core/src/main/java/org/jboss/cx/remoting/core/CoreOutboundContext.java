@@ -1,5 +1,7 @@
 package org.jboss.cx.remoting.core;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.CloseHandler;
@@ -22,6 +24,7 @@ public final class CoreOutboundContext<I, O> {
     private final ConcurrentMap<Object, Object> contextMap = CollectionUtil.concurrentMap();
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
     private final ContextClient contextClient = new ContextClientImpl();
+    private final Set<CloseHandler<Context<I, O>>> closeHandlers = CollectionUtil.synchronizedSet(new LinkedHashSet<CloseHandler<Context<I, O>>>());
     private final Executor executor;
 
     private Context<I, O> userContext;
@@ -76,24 +79,48 @@ public final class CoreOutboundContext<I, O> {
             super(contextServer);
         }
 
-        private Object writeReplace() {
-            return contextServer;
+        private void doClose(final boolean immediate, final boolean cancel) throws RemotingException {
+            state.waitForNot(State.INITIAL);
+            if (state.transitionHold(State.UP, State.STOPPING)) try {
+                synchronized (closeHandlers) {
+                    for (final CloseHandler<Context<I, O>> handler : closeHandlers) {
+                        executor.execute(new Runnable() {
+                            public void run() {
+                                handler.handleClose(UserContext.this);
+                            }
+                        });
+                    }
+                    closeHandlers.clear();
+                }
+                contextServer.handleClose(immediate, cancel);
+            } finally {
+                state.release();
+            }
         }
 
         public void close() throws RemotingException {
-            contextServer.handleClose(false, false, false);
-        }
-
-        public void closeCancelling(final boolean mayInterrupt) throws RemotingException {
-            contextServer.handleClose(false, true, mayInterrupt);
+            doClose(false, false);
         }
 
         public void closeImmediate() throws RemotingException {
-            contextServer.handleClose(true, true, true);
+            doClose(true, true);
         }
 
         public void addCloseHandler(final CloseHandler<Context<I, O>> closeHandler) {
-            // todo ...
+            final State current = state.getStateHold();
+            try {
+                switch (current) {
+                    case STOPPING:
+                    case DOWN:
+                        closeHandler.handleClose(this);
+                        break;
+                    default:
+                        closeHandlers.add(closeHandler);
+                        break;
+                }
+            } finally {
+                state.release();
+            }
         }
 
         public O invoke(final I request) throws RemotingException, RemoteExecutionException {

@@ -108,13 +108,13 @@ public final class CoreInboundContext<I, O> {
             }
         }
 
-        public void handleClose(final boolean immediate, final boolean cancel, final boolean interrupt) throws RemotingException {
+        public void handleClose(final boolean immediate, final boolean cancel) throws RemotingException {
             if (state.transition(State.UP, State.STOPPING)) {
                 contextClient.handleClosing(false);
                 if (immediate || cancel) {
                     for (CoreInboundRequest<I, O> inboundRequest : requests) {
                         try {
-                            inboundRequest.getRequester().handleCancelRequest(immediate || interrupt);
+                            inboundRequest.getRequester().handleCancelRequest(immediate );
                         } catch (Exception e) {
                             log.trace("Failed to notify inbound request of cancellation upon context close: %s", e);
                         }
@@ -137,7 +137,7 @@ public final class CoreInboundContext<I, O> {
         }
 
         public void close() throws RemotingException {
-            // todo
+            contextClient.handleClosing(false);
         }
 
         public void closeImmediate() throws RemotingException {

@@ -21,10 +21,6 @@ public class ContextWrapper<I, O> implements Context<I, O> {
         delegate.close();
     }
 
-    public void closeCancelling(final boolean mayInterrupt) throws RemotingException {
-        delegate.closeCancelling(mayInterrupt);
-    }
-
     public void closeImmediate() throws RemotingException {
         delegate.closeImmediate();
     }

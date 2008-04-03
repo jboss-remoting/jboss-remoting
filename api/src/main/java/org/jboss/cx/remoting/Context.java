@@ -62,8 +62,6 @@ public interface Context<I, O> extends Closeable<Context<I, O>> {
 
     void close() throws RemotingException;
 
-    void closeCancelling(boolean mayInterrupt) throws RemotingException;
-
     void closeImmediate() throws RemotingException;
 
     void addCloseHandler(final CloseHandler<Context<I, O>> closeHandler);
