@@ -13,13 +13,11 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.security.AccessController;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import org.jboss.cx.remoting.core.security.sasl.BufferFactory;
 import org.jboss.cx.remoting.util.IoUtil;
 
 import javax.crypto.BadPaddingException;
