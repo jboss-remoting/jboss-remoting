@@ -91,6 +91,18 @@
         <get src="${remote.license.dir}/${lib.jbossmc-kernel.license}.txt" dest="${lib.jbossmc-kernel.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
+    <!-- External library: JBoss Microcontainer dependency -->
+
+    <target name="lib.jbossmc-dependency-check">
+        <available property="lib.jbossmc-dependency.exists" file="${lib.jbossmc-dependency.local}"/>
+    </target>
+
+    <target name="lib.jbossmc-dependency" depends="lib.jbossmc-dependency-check" unless="lib.jbossmc-dependency.exists">
+        <mkdir dir="${local.repository}/${lib.jbossmc.local-dir}"/>
+        <get src="${lib.jbossmc-dependency.remote}" dest="${lib.jbossmc-dependency.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jbossmc-dependency.license}.txt" dest="${lib.jbossmc-dependency.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
     <!-- External library: JBoss Microcontainer managed -->
 
     <target name="lib.jboss-managed-check">
@@ -679,6 +691,7 @@
                 <pathelement location="${lib.jboss-deployers-spi.local}"/>
                 <pathelement location="${lib.jboss-deployers-structure-spi.local}"/>
                 <pathelement location="${lib.jbossmc-kernel.local}"/>
+                <pathelement location="${lib.jbossmc-dependency.local}"/>
                 <pathelement location="${lib.jboss-managed.local}"/>
                 <pathelement location="${lib.jbossxb.local}"/>
             </classpath>
@@ -690,7 +703,7 @@
         <delete dir="mc-deployers/target"/>
     </target>
 
-    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jaxb-api,lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jboss-managed,lib.jbossxb,api,core,log-jboss,util,mc-deployers.compile">
+    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jaxb-api,lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-dependency,lib.jboss-managed,lib.jbossxb,api,core,log-jboss,util,mc-deployers.compile">
         <path id="mc-deployers.classpath">
             <pathelement location="mc-deployers/target/main/classes"/>
         </path>
