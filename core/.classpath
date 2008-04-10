@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src/main/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/remoting3-api"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/remoting3-log-jul"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/remoting3-version"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/remoting3-util"/>
+	<classpathentry kind="var" path="JBOSS_REPO/jboss-serialization/1.1.0-snapshot-r358/lib/jboss-serialization.jar"/>
+	<classpathentry kind="output" path="target/main/classes"/>
+</classpath>

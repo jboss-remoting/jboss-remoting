@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src/main/java"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="var" path="JBOSS_REPO/jboss-common-logging-spi/2.0.4.GA/lib/jboss-common-logging-spi-2.0.4.GA.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
