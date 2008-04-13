@@ -1,8 +1,9 @@
 package org.jboss.cx.remoting.jrpp;
 
+import static java.lang.Math.*;
+
 import java.io.IOException;
 import java.io.ObjectOutput;
-import static java.lang.Math.min;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,6 +12,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.callback.NameCallback;
+import javax.security.auth.callback.PasswordCallback;
+import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.security.sasl.AuthorizeCallback;
+import javax.security.sasl.RealmCallback;
+import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslClient;
+import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslServer;
+import javax.security.sasl.SaslServerFactory;
+
 import org.apache.mina.common.AttributeKey;
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoBuffer;
@@ -40,19 +55,6 @@ import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.util.WeakHashSet;
 
-import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.auth.callback.NameCallback;
-import javax.security.auth.callback.PasswordCallback;
-import javax.security.auth.callback.UnsupportedCallbackException;
-import javax.security.sasl.AuthorizeCallback;
-import javax.security.sasl.RealmCallback;
-import javax.security.sasl.Sasl;
-import javax.security.sasl.SaslClient;
-import javax.security.sasl.SaslException;
-import javax.security.sasl.SaslServer;
-import javax.security.sasl.SaslServerFactory;
-
 /**
  *
  */
@@ -63,6 +65,7 @@ public final class JrppConnection {
     private static final int PROTOCOL_VERSION = 0x0000;
 
     private static final AttributeKey JRPP_CONNECTION = new AttributeKey(JrppConnection.class, "jrppConnection");
+    private static final int PING_INTERVAL = 10; // 10 seconds
 
     public static final String SASL_CLIENT_FILTER_NAME = "SASL client filter";
     public static final String SASL_SERVER_FILTER_NAME = "SASL server filter";
@@ -653,12 +656,18 @@ public final class JrppConnection {
     }
 
     private final class IoHandlerImpl implements SingleSessionIoHandler {
-        public void sessionCreated() {
+        public void sessionCreated() throws IOException {
+            // Send a ping message every PING_INTERVAL seconds
+            // if there's nothing to send.
+            ioSession.getConfig().setWriterIdleTime(PING_INTERVAL);
+            // Close the session if no ping message is received
+            // within (PING_INTERVAL * 2) seconds.
+            ioSession.getConfig().setReaderIdleTime(PING_INTERVAL * 2);
+            sendVersionMessage();
         }
 
         public void sessionOpened() throws IOException {
-            // TODO - there may be a mina bug where this method is not guaranteed to be called before any messages can be received! DIRMINA-535
-            sendVersionMessage();
+            // Nothing to do here.
         }
 
         public void sessionClosed() {
@@ -682,7 +691,18 @@ public final class JrppConnection {
             }
         }
 
-        public void sessionIdle(IdleStatus idleStatus) {
+        public void sessionIdle(IdleStatus idleStatus) throws IOException {
+            if (idleStatus == IdleStatus.WRITER_IDLE) {
+                // Send a ping message before the remote peer closes the
+                // connection.
+                final IoBuffer buffer = newBuffer(60, false);
+                final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
+                write(output, MessageType.PING);
+                output.commit();
+            } else if (idleStatus == IdleStatus.READER_IDLE) {
+                // No message since last communication - close the connection.
+                close();
+            }
         }
 
         public void exceptionCaught(Throwable throwable) {
@@ -966,6 +986,7 @@ public final class JrppConnection {
         }
 
         public void messageSent(Object object) {
+            // Nothing to do.
         }
     }
 
