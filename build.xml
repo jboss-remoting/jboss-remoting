@@ -772,6 +772,7 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
+                <path refid="jrpp.classpath"/>
                 <path refid="srp.classpath"/>
                 <path refid="standalone.classpath"/>
                 <path refid="util.classpath"/>
@@ -784,7 +785,7 @@
         <delete dir="samples/target"/>
     </target>
 
-    <target name="samples" description="Build the samples module" depends="api,srp,standalone,util,samples.compile">
+    <target name="samples" description="Build the samples module" depends="api,jrpp,srp,standalone,util,samples.compile">
         <path id="samples.classpath">
             <pathelement location="samples/target/main/classes"/>
         </path>
