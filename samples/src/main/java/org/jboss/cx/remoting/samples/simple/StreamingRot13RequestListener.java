@@ -1,16 +1,16 @@
 package org.jboss.cx.remoting.samples.simple;
 
-import java.io.Reader;
 import java.io.IOException;
+import java.io.Reader;
 import org.jboss.cx.remoting.AbstractRequestListener;
-import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.RequestContext;
 
 /**
  *
  */
-public final class Rot13RequestListener extends AbstractRequestListener<Reader, Reader> {
+public final class StreamingRot13RequestListener extends AbstractRequestListener<Reader, Reader> {
 
     public void handleRequest(final RequestContext<Reader> readerRequestContext, final Reader request) throws RemoteExecutionException, InterruptedException {
         try {

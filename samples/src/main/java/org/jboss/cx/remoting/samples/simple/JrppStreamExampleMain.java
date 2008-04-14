@@ -19,11 +19,11 @@ import org.jboss.cx.remoting.util.AttributeMap;
 /**
  *
  */
-public final class JrppMain {
+public final class JrppStreamExampleMain {
 
     public static void main(String[] args) throws IOException, RemoteExecutionException, URISyntaxException {
         Security.addProvider(new Provider());
-        final Rot13RequestListener listener = new Rot13RequestListener();
+        final StreamingRot13RequestListener listener = new StreamingRot13RequestListener();
         final Endpoint endpoint = Remoting.createEndpoint("simple", listener);
         try {
             Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), AttributeMap.EMPTY);
