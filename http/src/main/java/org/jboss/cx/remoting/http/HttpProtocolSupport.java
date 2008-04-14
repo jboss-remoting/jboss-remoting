@@ -2,72 +2,131 @@ package org.jboss.cx.remoting.http;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.concurrent.ConcurrentMap;
+import java.security.SecureRandom;
 import java.util.Random;
+import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.util.CollectionUtil;
-import org.jboss.cx.remoting.util.AttributeMap;
-import org.jboss.cx.remoting.http.spi.RemotingHttpServerContext;
-import org.jboss.cx.remoting.http.spi.RemotingHttpSessionContext;
-import org.jboss.cx.remoting.http.spi.HttpTransporter;
-import org.jboss.cx.remoting.http.spi.IncomingHttpMessage;
+import org.jboss.cx.remoting.spi.Registration;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
+import org.jboss.cx.remoting.util.AttributeMap;
+import org.jboss.cx.remoting.util.CollectionUtil;
 
 /**
  *
  */
 public final class HttpProtocolSupport {
-    private final ProtocolHandlerFactory protocolHandlerFactory = new HttpProtocolHandlerFactory();
-    private HttpTransporter httpTransporter;
 
-    private final Endpoint endpoint;
-    // todo - need secure random?
-    private final Random random = new Random();
+    public HttpProtocolSupport() {/* empty */}
 
-    private final ConcurrentMap<String, RemotingHttpSessionContext> sessions = CollectionUtil.concurrentMap();
+    // Accessors: dependency
 
-    public HttpProtocolSupport(final Endpoint endpoint) throws RemotingException {
+    private Endpoint endpoint;
+    private Random random;
+
+    public Endpoint getEndpoint() {
+        return endpoint;
+    }
+
+    public void setEndpoint(final Endpoint endpoint) {
         this.endpoint = endpoint;
-        endpoint.registerProtocol("http", protocolHandlerFactory);
     }
 
-    public void setHttpTransporter(final HttpTransporter httpTransporter) {
-        this.httpTransporter = httpTransporter;
+    public Random getRandom() {
+        return random;
     }
 
-    public RemotingHttpServerContext addServer() {
-        return new RemotingHttpServerContext() {
-            public RemotingHttpSessionContext locateSession(IncomingHttpMessage message) {
-                final String sessionId = message.getFirstHeaderValue(Http.HEADER_SESSION_ID);
-                return sessionId == null ? null : sessions.get(sessionId);
+    public void setRandom(final Random random) {
+        this.random = random;
+    }
+
+    // Accessors: configuration
+    // (none)
+
+    // Lifecycle
+
+    private Registration registration;
+
+    public void create() throws RemotingException {
+        registration = endpoint.registerProtocol("http", new ProtocolHandlerFactory() {
+            public boolean isLocal(final URI uri) {
+                return false;
             }
-        };
-    }
 
-    public String generateSessionId() {
-        return Long.toString(random.nextLong());
-    }
-
-    public boolean registerSession(String idStr, RemotingHttpSessionContext context) {
-        return sessions.putIfAbsent(idStr, context) == null;
-    }
-
-    public final class HttpProtocolHandlerFactory implements ProtocolHandlerFactory {
-        public boolean isLocal(URI uri) {
-            return false;
-        }
-
-        public ProtocolHandler createHandler(ProtocolContext context, URI remoteUri, final AttributeMap attributeMap) throws IOException {
-            if (httpTransporter == null) {
-                throw new IOException("No ability to initiate an HTTP connection (no transporter available)");
+            public ProtocolHandler createHandler(final ProtocolContext context, final URI remoteUri, final AttributeMap attributeMap) throws IOException {
+                final RemotingHttpSession session = new RemotingHttpSession();
+                final String sessionId;
+                for (;;) {
+                    final String generatedId = generateSessionId();
+                    if (sessionMap.putIfAbsent(generatedId, session) == null) {
+                        sessionId = generatedId;
+                        break;
+                    }
+                }
+                session.intialize(HttpProtocolSupport.this, sessionId, context);
+                return session.getProtocolHandler();
             }
-            return new RemotingHttpSessionImpl(HttpProtocolSupport.this, context).getProtocolHandler();
-        }
 
-        public void close() {
+            public void close() {
+            }
+        });
+        if (random == null) {
+            random = new SecureRandom();
         }
+    }
+
+    public void start() {
+        registration.start();
+    }
+
+    public void stop() {
+        registration.stop();
+    }
+
+    public void destroy() {
+        try {
+            registration.unregister();
+        } finally {
+            endpoint = null;
+            random = null;
+            registration = null;
+        }
+    }
+
+    // Session management
+
+    // todo - weak value concurrent hash map
+    private final ConcurrentMap<String, RemotingHttpSession> sessionMap = CollectionUtil.concurrentMap();
+
+    private String generateSessionId() {
+        final byte[] bytes = new byte[32];
+        StringBuilder builder = new StringBuilder(bytes.length * 2);
+        random.nextBytes(bytes);
+        for (byte b : bytes) {
+            builder.append(Character.digit(b >>> 4 & 15, 16));
+            builder.append(Character.digit(b & 15, 16));
+        }
+        return builder.toString();
+    }
+
+    // todo - additional marshaller negotiation
+    public void establishInboundSession() throws RemotingException {
+        final RemotingHttpSession session = new RemotingHttpSession();
+        final String sessionId;
+        for (;;) {
+            final String generatedId = generateSessionId();
+            if (sessionMap.putIfAbsent(generatedId, session) == null) {
+                sessionId = generatedId;
+                break;
+            }
+        }
+        final ProtocolContext protocolContext = endpoint.openIncomingSession(session.getProtocolHandler());
+        session.intialize(this, sessionId, protocolContext);
+    }
+
+    RemotingHttpSession lookupSession(String sessionId) {
+        return sessionMap.get(sessionId);
     }
 }

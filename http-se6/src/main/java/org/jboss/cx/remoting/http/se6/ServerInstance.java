@@ -66,7 +66,7 @@ public final class ServerInstance {
             final InetAddress remoteAddress = inetSocketAddress.getAddress();
             final int remotePort = inetSocketAddress.getPort();
             RemotingHttpSessionContext httpSessionContext = null; // todo locate
-            httpSessionContext.queueMessage(new AbstractIncomingHttpMessage(localAddress, localPort, remoteAddress, remotePort) {
+            httpSessionContext.queueMessage(new AbstractIncomingHttpMessage() {
                 public ByteMessageInput getMessageData() {
                     final InputStream inputStream = httpExchange.getRequestBody();
                     return new ByteMessageInput() {
