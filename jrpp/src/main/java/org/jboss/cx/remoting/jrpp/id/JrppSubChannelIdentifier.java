@@ -9,6 +9,9 @@ import java.io.ObjectOutput;
  *
  */
 public abstract class JrppSubChannelIdentifier implements Externalizable {
+
+    private static final long serialVersionUID = 1L;
+
     private /*final*/ boolean client;
     private /*final*/ int id;
 

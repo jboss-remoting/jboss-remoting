@@ -7,6 +7,9 @@ import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
  */
 @SuppressWarnings ({"EqualsAndHashcode"})
 public final class JrppRequestIdentifier extends JrppSubChannelIdentifier implements RequestIdentifier {
+
+    private static final long serialVersionUID = 1L;
+
     public JrppRequestIdentifier() {
     }
 

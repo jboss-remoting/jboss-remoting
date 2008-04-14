@@ -7,6 +7,9 @@ import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
  */
 @SuppressWarnings ({"EqualsAndHashcode"})
 public final class JrppStreamIdentifier extends JrppSubChannelIdentifier implements StreamIdentifier {
+
+    private static final long serialVersionUID = 1L;
+
     public JrppStreamIdentifier() {
     }
 

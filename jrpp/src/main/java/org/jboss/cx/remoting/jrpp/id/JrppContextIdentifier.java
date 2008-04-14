@@ -7,6 +7,9 @@ import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
  */
 @SuppressWarnings ({"EqualsAndHashcode"})
 public final class JrppContextIdentifier extends JrppSubChannelIdentifier implements ContextIdentifier {
+
+    private static final long serialVersionUID = 1L;
+
     public JrppContextIdentifier() {
     }
 

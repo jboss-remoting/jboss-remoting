@@ -1,9 +1,8 @@
 package org.jboss.cx.remoting.jrpp;
 
-import static java.lang.Math.*;
-
 import java.io.IOException;
 import java.io.ObjectOutput;
+import static java.lang.Math.min;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,20 +11,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.auth.callback.NameCallback;
-import javax.security.auth.callback.PasswordCallback;
-import javax.security.auth.callback.UnsupportedCallbackException;
-import javax.security.sasl.AuthorizeCallback;
-import javax.security.sasl.RealmCallback;
-import javax.security.sasl.Sasl;
-import javax.security.sasl.SaslClient;
-import javax.security.sasl.SaslException;
-import javax.security.sasl.SaslServer;
-import javax.security.sasl.SaslServerFactory;
-
 import org.apache.mina.common.AttributeKey;
 import org.apache.mina.common.IdleStatus;
 import org.apache.mina.common.IoBuffer;
@@ -54,6 +39,19 @@ import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.util.WeakHashSet;
+
+import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.callback.NameCallback;
+import javax.security.auth.callback.PasswordCallback;
+import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.security.sasl.AuthorizeCallback;
+import javax.security.sasl.RealmCallback;
+import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslClient;
+import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslServer;
+import javax.security.sasl.SaslServerFactory;
 
 /**
  *
@@ -514,7 +512,7 @@ public final class JrppConnection {
             if (! state.in(State.UP)) {
                 return;
             }
-            final IoBuffer buffer = newBuffer(60, false);
+            final IoBuffer buffer = newBuffer(300, false);
             final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.CLOSE_CONTEXT);
             write(output, contextIdentifier);
