@@ -6,9 +6,8 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.List;
-import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.http.spi.AbstractIncomingHttpMessage;
 import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
@@ -55,8 +54,8 @@ public final class HttpUrlChannel {
 //                        httpURLConnection.setReadTimeout();
                         httpConnection.setRequestMethod("POST"); // All remoting requests are POST
                         for (Map.Entry<String, String> entry : cookies.entrySet()) {
-                            httpConnection.setRequestProperty();
-                            entry.getKey()
+//                            httpConnection.setRequestProperty();
+//                            entry.getKey()
                         }
                         httpConnection.connect();
                         final OutputStream outputStream = httpConnection.getOutputStream();

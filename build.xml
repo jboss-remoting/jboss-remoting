@@ -355,6 +355,7 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
+                <path refid="log-jul.classpath"/>
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
@@ -365,7 +366,7 @@
         <delete dir="http/target"/>
     </target>
 
-    <target name="http" description="Build the http module" depends="api,util,http.compile">
+    <target name="http" description="Build the http module" depends="api,log-jul,util,http.compile">
         <path id="http.classpath">
             <pathelement location="http/target/main/classes"/>
         </path>
@@ -566,6 +567,7 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="http.classpath"/>
+                <path refid="log-jul.classpath"/>
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
@@ -576,7 +578,7 @@
         <delete dir="http-urlconnection/target"/>
     </target>
 
-    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,util,http-urlconnection.compile">
+    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,log-jul,util,http-urlconnection.compile">
         <path id="http-urlconnection.classpath">
             <pathelement location="http-urlconnection/target/main/classes"/>
         </path>

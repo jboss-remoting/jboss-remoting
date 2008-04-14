@@ -174,7 +174,7 @@ public final class RemotingHttpSession {
         public void closeStream(final StreamIdentifier streamIdentifier) throws IOException {
         }
 
-        public ObjectMessageOutput sendStreamData(final StreamIdentifier streamIdentifier, final long sequence, final Executor streamExecutor) throws IOException {
+        public ObjectMessageOutput sendStreamData(final StreamIdentifier streamIdentifier, final Executor streamExecutor) throws IOException {
             return null;
         }
 
