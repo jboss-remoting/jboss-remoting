@@ -14,7 +14,7 @@ import org.jboss.cx.remoting.core.security.sasl.Provider;
 /**
  *
  */
-public final class Main {
+public final class LocalMain {
 
     public static void main(String[] args) throws IOException, RemoteExecutionException {
         Security.addProvider(new Provider());
