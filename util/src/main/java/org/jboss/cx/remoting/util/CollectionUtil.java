@@ -1,5 +1,6 @@
 package org.jboss.cx.remoting.util;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -375,6 +376,77 @@ public final class CollectionUtil {
                 };
             }
         };
+    }
+
+    @SuppressWarnings({ "unchecked" })
+    private static <T> T[] unroll(final Iterator<? extends T> iterator, final Class<T> type, final int c) {
+        if (iterator.hasNext()) {
+            final T t = iterator.next();
+            T[] array = unroll(iterator, type, c + 1);
+            array[c] = t;
+            return array;
+        } else {
+            return (T[]) Array.newInstance(type, c);
+        }
+    }
+
+    @SuppressWarnings({ "unchecked" })
+    private static <T> T[] unrollReversed(final Iterator<? extends T> iterator, final Class<T> type, final int c) {
+        if (iterator.hasNext()) {
+            final T t = iterator.next();
+            T[] array = unroll(iterator, type, c + 1);
+            array[array.length - c - 1] = t;
+            return array;
+        } else {
+            return (T[]) Array.newInstance(type, c);
+        }
+    }
+
+    /**
+     * Convert an iterator to an array.  The iterator should be relatively short to avoid blowing out the
+     * stack.
+     *
+     * @param iterator the iterator
+     * @param type the array element type
+     * @return the array
+     */
+    public static <T> T[] toArray(final Iterator<? extends T> iterator, final Class<T> type) {
+        return unroll(iterator, type, 0);
+    }
+
+    public static <T> T[] toArrayReversed(final Iterator<? extends T> iterator, final Class<T> type) {
+        return unrollReversed(iterator, type, 0);
+    }
+
+    /**
+     * Determine if one array begins with another.  If {@code prefix} is empty (has a length of zero), then this method
+     * always returns {@code true}.  If {@code prefix} is longer than {@code theArray}, this method returns {@code false}.
+     * Otherwise {@code true} is returned if the first {@code N} elements of {@code theArray} are equal to the corresponding
+     * element in {@code prefix}, where {@code N} is equal to the length of {@code prefix}.  "Equal" in this context means
+     * that either both elements being compared are {@code null}, or they are equal by way of {@code Object.equals()}.
+     *
+     * @param theArray the array to test
+     * @param prefix the prefix to test against
+     * @return {@code true} if {@code theArray} starts with {@code prefix}
+     */
+    public static boolean arrayStartsWith(Object[] theArray, Object[] prefix) {
+        if (prefix.length > theArray.length) {
+            return false;
+        }
+        for (int i = 0; i < prefix.length; i ++) {
+            final Object prefixObject = prefix[i];
+            final Object testObject = theArray[i];
+            if (testObject == null) {
+                if (prefixObject != null) {
+                    return false;
+                }
+            } else {
+                if (prefixObject == null || ! prefixObject.equals(testObject)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     public static AttributeMap emptyAttributeMap() {
