@@ -772,6 +772,8 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
+                <path refid="srp.classpath"/>
+                <path refid="standalone.classpath"/>
             </classpath>
         </javac>
         <touch file="samples/target/main/.lastcompile" verbose="false"/>
@@ -781,7 +783,7 @@
         <delete dir="samples/target"/>
     </target>
 
-    <target name="samples" description="Build the samples module" depends="api,samples.compile">
+    <target name="samples" description="Build the samples module" depends="api,srp,standalone,samples.compile">
         <path id="samples.classpath">
             <pathelement location="samples/target/main/classes"/>
         </path>
