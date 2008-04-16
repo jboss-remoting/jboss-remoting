@@ -2,7 +2,6 @@ package org.jboss.cx.remoting.spi.wrapper;
 
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
-import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.Endpoint;
@@ -60,21 +59,5 @@ public class EndpointWrapper implements Endpoint {
 
     public void removeSessionListener(final SessionListener sessionListener) {
         delegate.removeSessionListener(sessionListener);
-    }
-
-    public void close() throws RemotingException {
-        delegate.close();
-    }
-
-    public void closeImmediate() throws RemotingException {
-        delegate.closeImmediate();
-    }
-
-    public void addCloseHandler(final CloseHandler<Endpoint> closeHandler) {
-        delegate.addCloseHandler(new CloseHandler<Endpoint>() {
-            public void handleClose(final Endpoint closed) {
-                closeHandler.handleClose(EndpointWrapper.this);
-            }
-        });
     }
 }

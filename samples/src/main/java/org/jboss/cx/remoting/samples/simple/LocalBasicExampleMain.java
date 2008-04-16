@@ -27,7 +27,7 @@ public final class LocalBasicExampleMain {
                 client.close();
             }
         } finally {
-            endpoint.close();
+            Remoting.closeEndpoint(endpoint);
         }
     }
 }

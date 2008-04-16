@@ -5,6 +5,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.mina.common.ConnectFuture;
 import org.apache.mina.common.ExceptionMonitor;
 import org.apache.mina.common.IoConnector;
@@ -73,7 +75,12 @@ public final class JrppProtocolSupport {
 
     // Lifecycle
 
+    private ExecutorService executorService;
+
     public void create() throws RemotingException {
+        if (executor == null) {
+            executor = executorService = Executors.newCachedThreadPool();
+        }
         ExceptionMonitor.setInstance(new ExceptionMonitor() {
             public void exceptionCaught(final Throwable cause) {
                 // do nothing!
@@ -101,6 +108,10 @@ public final class JrppProtocolSupport {
             registration.unregister();
             registration = null;
         }
+        if (executorService != null) {
+            executorService.shutdown();
+        }
+        executor = executorService = null;
         protocolHandlerFactory = null;
     }
 

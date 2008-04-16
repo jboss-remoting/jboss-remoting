@@ -11,7 +11,7 @@ import org.jboss.cx.remoting.util.AttributeMap;
 /**
  * A potential participant in a JBoss Remoting communications relationship.
  */
-public interface Endpoint extends Closeable<Endpoint> {
+public interface Endpoint {
     /**
      * Get the endpoint attribute map.  This is a storage area for any data associated with this endpoint, including
      * (but not limited to) connection and protocol information, and application information.

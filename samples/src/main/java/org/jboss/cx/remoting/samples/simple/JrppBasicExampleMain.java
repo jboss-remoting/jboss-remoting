@@ -10,6 +10,7 @@ import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Remoting;
 import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.jrpp.JrppServer;
 import org.jboss.cx.remoting.core.security.sasl.Provider;
 import org.jboss.cx.remoting.util.AttributeMap;
 
@@ -23,23 +24,27 @@ public final class JrppBasicExampleMain {
         final StringRot13RequestListener listener = new StringRot13RequestListener();
         final Endpoint endpoint = Remoting.createEndpoint("simple", listener);
         try {
-            Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), AttributeMap.EMPTY);
-            Session session = endpoint.openSession(new URI("jrpp://localhost:12345"), AttributeMap.EMPTY);
+            final JrppServer jrppServer = Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), AttributeMap.EMPTY);
             try {
-                final Client<String,String> client = session.getRootClient();
+                Session session = endpoint.openSession(new URI("jrpp://localhost:12345"), AttributeMap.EMPTY);
                 try {
-                    final String original = "The Secret Message\n";
-                    final String result = client.invoke(original);
-                    System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), result.trim());
+                    final Client<String,String> client = session.getRootClient();
+                    try {
+                        final String original = "The Secret Message\n";
+                        final String result = client.invoke(original);
+                        System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), result.trim());
+                    } finally {
+                        client.close();
+                    }
                 } finally {
-                    client.close();
+                    session.close();
                 }
             } finally {
-                session.close();
+                jrppServer.stop();
+                jrppServer.destroy();
             }
         } finally {
-            endpoint.close();
+            Remoting.closeEndpoint(endpoint);
         }
-
     }
 }

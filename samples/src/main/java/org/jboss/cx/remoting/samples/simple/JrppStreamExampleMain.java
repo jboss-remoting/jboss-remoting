@@ -13,6 +13,7 @@ import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Remoting;
 import org.jboss.cx.remoting.Session;
+import org.jboss.cx.remoting.jrpp.JrppServer;
 import org.jboss.cx.remoting.core.security.sasl.Provider;
 import org.jboss.cx.remoting.util.AttributeMap;
 
@@ -26,37 +27,42 @@ public final class JrppStreamExampleMain {
         final StreamingRot13RequestListener listener = new StreamingRot13RequestListener();
         final Endpoint endpoint = Remoting.createEndpoint("simple", listener);
         try {
-            Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), AttributeMap.EMPTY);
-            Session session = endpoint.openSession(new URI("jrpp://localhost:12345"), AttributeMap.EMPTY);
+            final JrppServer jrppServer = Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), AttributeMap.EMPTY);
             try {
-                final Client<Reader,Reader> client = session.getRootClient();
+                Session session = endpoint.openSession(new URI("jrpp://localhost:12345"), AttributeMap.EMPTY);
                 try {
-                    final String original = "The Secret Message\n";
-                    final StringReader originalReader = new StringReader(original);
+                    final Client<Reader,Reader> client = session.getRootClient();
                     try {
-                        final Reader reader = client.send(originalReader).get();
+                        final String original = "The Secret Message\n";
+                        final StringReader originalReader = new StringReader(original);
                         try {
-                            final BufferedReader bufferedReader = new BufferedReader(reader);
+                            final Reader reader = client.send(originalReader).get();
                             try {
-                                final String secretLine = bufferedReader.readLine();
-                                System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), secretLine);
+                                final BufferedReader bufferedReader = new BufferedReader(reader);
+                                try {
+                                    final String secretLine = bufferedReader.readLine();
+                                    System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), secretLine);
+                                } finally {
+                                    bufferedReader.close();
+                                }
                             } finally {
-                                bufferedReader.close();
+                                reader.close();
                             }
                         } finally {
-                            reader.close();
+                            originalReader.close();
                         }
                     } finally {
-                        originalReader.close();
+                        client.close();
                     }
                 } finally {
-                    client.close();
+                    session.close();
                 }
             } finally {
-                session.close();
+                jrppServer.stop();
+                jrppServer.destroy();
             }
         } finally {
-            endpoint.close();
+            Remoting.closeEndpoint(endpoint);
         }
 
     }

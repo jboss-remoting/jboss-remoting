@@ -235,7 +235,7 @@ public final class CoreSession {
         }
 
         public String getLocalEndpointName() {
-            return endpoint.getUserEndpoint().getName();
+            return endpoint.getName();
         }
 
         public String getRemoteEndpointName() {
@@ -312,7 +312,7 @@ public final class CoreSession {
         }
 
         public String getLocalEndpointName() {
-            return endpoint.getUserEndpoint().getName();
+            return endpoint.getName();
         }
 
         public void receiveClientClose(ClientIdentifier remoteClientIdentifier, final boolean immediate, final boolean cancel, final boolean interrupt) {
