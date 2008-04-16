@@ -3,15 +3,14 @@ package org.jboss.cx.remoting;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * A communications context.  The context may be associated with a security/authentication state and a transactional
- * state, as well as other state maintained by the remote side.
+ * A communications client.  The client may be associated with state maintained by the local and/or remote side.
  */
 public interface Client<I, O> extends Closeable<Client<I, O>> {
     /**
      * Send a request and block until a reply is received.
      * <p/>
      * Uses the default invocation policy for handling remote invocations. If the remote side manipulates a stream, the
-     * current thread MAY be used to handle it.
+     * current thread will be used to handle it by default.
      * <p/>
      * If the remote session cannot handle the request, a {@code RemotingException} will be thrown.
      *
@@ -54,9 +53,9 @@ public interface Client<I, O> extends Closeable<Client<I, O>> {
     void sendOneWay(I request) throws RemotingException;
 
     /**
-     * Get the context map.  This map holds metadata about the current context.
+     * Get the attribute map.  This map holds metadata about the current clinet.
      *
-     * @return the context map
+     * @return the attribute map
      */
     ConcurrentMap<Object, Object> getAttributes();
 

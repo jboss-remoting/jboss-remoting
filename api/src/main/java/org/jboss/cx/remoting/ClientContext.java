@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentMap;
  */
 public interface ClientContext extends Closeable<ClientContext> {
     /**
-     * Get the attributes for this end of the context as a map.
+     * Get the attributes for this end of the channel as a map.
      *
      * @return the attribute map
      */

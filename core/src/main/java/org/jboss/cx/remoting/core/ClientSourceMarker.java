@@ -6,15 +6,15 @@ import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 /**
  *
  */
-public final class ContextSourceMarker implements Serializable {
+public final class ClientSourceMarker implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private ServiceIdentifier serviceIdentifier;
 
-    public ContextSourceMarker() {
+    public ClientSourceMarker() {
     }
 
-    public ContextSourceMarker(final ServiceIdentifier serviceIdentifier) {
+    public ClientSourceMarker(final ServiceIdentifier serviceIdentifier) {
         this.serviceIdentifier = serviceIdentifier;
     }
 

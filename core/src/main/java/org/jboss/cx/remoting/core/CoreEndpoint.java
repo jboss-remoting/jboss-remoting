@@ -193,7 +193,7 @@ public final class CoreEndpoint {
                 final ProtocolHandlerFactory factory = registration.getProtocolHandlerFactory();
                 try {
                     final CoreSession session = new CoreSession(CoreEndpoint.this);
-                    session.initializeClient(factory, uri, attributeMap, createContext(rootListener));
+                    session.initializeClient(factory, uri, attributeMap, createClient(rootListener));
                     sessions.add(session);
                     final Session userSession = session.getUserSession();
                     for (final SessionListener listener : sessionListeners) {
@@ -218,7 +218,7 @@ public final class CoreEndpoint {
             state.requireHold(State.UP);
             try {
                 final CoreSession session = new CoreSession(CoreEndpoint.this);
-                session.initializeServer(handler, createContext(rootListener));
+                session.initializeServer(handler, createClient(rootListener));
                 sessions.add(session);
                 return session.getProtocolContext();
             } finally {
@@ -247,7 +247,7 @@ public final class CoreEndpoint {
             }
         }
 
-        public <I, O> Client<I, O> createContext(RequestListener<I, O> requestListener) {
+        public <I, O> Client<I, O> createClient(RequestListener<I, O> requestListener) {
             final CoreInboundClient<I, O> inbound = new CoreInboundClient<I, O>(requestListener, executor);
             final CoreOutboundClient<I, O> outbound = new CoreOutboundClient<I, O>(executor);
             inbound.initialize(outbound.getContextClient());

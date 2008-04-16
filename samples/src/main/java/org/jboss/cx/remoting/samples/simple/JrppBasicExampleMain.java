@@ -26,7 +26,7 @@ public final class JrppBasicExampleMain {
             Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), AttributeMap.EMPTY);
             Session session = endpoint.openSession(new URI("jrpp://localhost:12345"), AttributeMap.EMPTY);
             try {
-                final Client<String,String> client = session.getRootContext();
+                final Client<String,String> client = session.getRootClient();
                 try {
                     final String original = "The Secret Message\n";
                     final String result = client.invoke(original);

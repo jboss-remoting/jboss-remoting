@@ -21,7 +21,7 @@ public final class LocalStreamExampleMain {
         final StreamingRot13RequestListener listener = new StreamingRot13RequestListener();
         final Endpoint endpoint = Remoting.createEndpoint("simple", listener);
         try {
-            final Client<Reader,Reader> client = endpoint.createContext(listener);
+            final Client<Reader,Reader> client = endpoint.createClient(listener);
             try {
                 final String original = "The Secret Message\n";
                 final StringReader originalReader = new StringReader(original);

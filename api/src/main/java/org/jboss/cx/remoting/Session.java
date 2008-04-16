@@ -38,9 +38,9 @@ public interface Session extends Closeable<Session> {
     String getRemoteEndpointName();
 
     /**
-     * Get the root context for this session.
+     * Get the root client for this session.
      *
-     * @return the root context
+     * @return the root client
      */
-    <I, O> Client<I, O> getRootContext();
+    <I, O> Client<I, O> getRootClient();
 }

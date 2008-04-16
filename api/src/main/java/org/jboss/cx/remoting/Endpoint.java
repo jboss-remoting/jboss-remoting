@@ -71,20 +71,20 @@ public interface Endpoint extends Closeable<Endpoint> {
     Registration registerProtocol(String scheme, ProtocolHandlerFactory protocolHandlerFactory) throws RemotingException, IllegalArgumentException;
 
     /**
-     * Create a context that can be used to invoke a request listener on this endpoint.  The context may be passed to a
+     * Create a client that can be used to invoke a request listener on this endpoint.  The client may be passed to a
      * remote endpoint as part of a request or a reply, or it may be used locally.
      *
      * You must have the TODO permission to invoke this method.
      *
      * @param requestListener the request listener
-     * @return the context
+     * @return the client
      */
-    <I, O> Client<I, O> createContext(RequestListener<I, O> requestListener);
+    <I, O> Client<I, O> createClient(RequestListener<I, O> requestListener);
 
     /**
-     * Create a context source that can be used to acquire contexts associated with a request listener on this endpoint.
-     * The context source may be passed to a remote endpoint as part of a request or a reply, or it may be used locally.
-     * The objects that are produced by this method may be used to mass-produce {@code Context} instances.
+     * Create a client source that can be used to acquire clients associated with a request listener on this endpoint.
+     * The client source may be passed to a remote endpoint as part of a request or a reply, or it may be used locally.
+     * The objects that are produced by this method may be used to mass-produce {@code Client} instances.
      *
      * You must have the TODO permission to invoke this method.
      *

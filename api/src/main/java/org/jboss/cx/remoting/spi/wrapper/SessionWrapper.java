@@ -44,7 +44,7 @@ public class SessionWrapper implements Session {
         return delegate.getRemoteEndpointName();
     }
 
-    public <I, O> Client<I, O> getRootContext() {
-        return delegate.getRootContext();
+    public <I, O> Client<I, O> getRootClient() {
+        return delegate.getRootClient();
     }
 }

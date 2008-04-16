@@ -46,8 +46,8 @@ public class EndpointWrapper implements Endpoint {
         return delegate.registerProtocol(scheme, protocolHandlerFactory);
     }
 
-    public <I, O> Client<I, O> createContext(final RequestListener<I, O> requestListener) {
-        return delegate.createContext(requestListener);
+    public <I, O> Client<I, O> createClient(final RequestListener<I, O> requestListener) {
+        return delegate.createClient(requestListener);
     }
 
     public <I, O> ClientSource<I, O> createService(final RequestListener<I, O> requestListener) {

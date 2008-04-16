@@ -29,7 +29,7 @@ public final class JrppStreamExampleMain {
             Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), AttributeMap.EMPTY);
             Session session = endpoint.openSession(new URI("jrpp://localhost:12345"), AttributeMap.EMPTY);
             try {
-                final Client<Reader,Reader> client = session.getRootContext();
+                final Client<Reader,Reader> client = session.getRootClient();
                 try {
                     final String original = "The Secret Message\n";
                     final StringReader originalReader = new StringReader(original);

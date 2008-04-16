@@ -243,7 +243,7 @@ public final class CoreSession {
         }
 
         @SuppressWarnings ({"unchecked"})
-        public <I, O> Client<I, O> getRootContext() {
+        public <I, O> Client<I, O> getRootClient() {
             return (Client<I, O>) rootClient;
         }
     }
@@ -610,11 +610,11 @@ public final class CoreSession {
             return new ClientMarker(clientIdentifier);
         }
 
-        private final <I, O> ContextSourceMarker doContextSourceReplace(ServiceResponder<I, O> serviceResponder) throws IOException {
+        private final <I, O> ClientSourceMarker doContextSourceReplace(ServiceResponder<I, O> serviceResponder) throws IOException {
             final ServiceIdentifier serviceIdentifier = protocolHandler.openService();
             final ProtocolServiceInitiatorImpl serviceClient = new ProtocolServiceInitiatorImpl(serviceIdentifier);
             new ServerServicePair<I, O>(serviceClient, serviceResponder);
-            return new ContextSourceMarker(serviceIdentifier);
+            return new ClientSourceMarker(serviceIdentifier);
         }
 
         protected Object replaceObject(Object obj) throws IOException {
