@@ -2,6 +2,7 @@ package org.jboss.cx.remoting.core;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.SecureClassLoader;
 import org.jboss.cx.remoting.Context;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
@@ -14,7 +15,7 @@ import org.jboss.cx.remoting.stream.ObjectSource;
 /**
  *
  */
-public final class RemoteClassLoader extends ClassLoader {
+public final class RemoteClassLoader extends SecureClassLoader {
     private static final Logger log = Logger.getLogger(RemoteClassLoader.class);
 
     private final Context<ClassLoaderResourceRequest, ClassLoaderResourceReply> loaderContext;
@@ -26,7 +27,10 @@ public final class RemoteClassLoader extends ClassLoader {
 
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         try {
-            return super.findClass(name);
+            final Class<?> firstClass = super.findClass(name);
+            if (firstClass != null) {
+                return firstClass;
+            }
         } catch (ClassNotFoundException e) {
             // continue on...
         }
