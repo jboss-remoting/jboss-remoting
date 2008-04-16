@@ -11,7 +11,7 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RequestListener;
-import org.jboss.cx.remoting.ContextContext;
+import org.jboss.cx.remoting.ClientContext;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 
@@ -23,13 +23,13 @@ public final class CoreInboundRequest<I, O> {
 
     private final RequestListener<I,O> requestListener;
     private final Executor executor;
-    private final ContextContext contextContext;
+    private final ClientContext clientContext;
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
     private final UserRequestContext userRequestContext = new UserRequestContext();
-    private final RequestServer<I> request = new Request();
+    private final RequestResponder<I> request = new Request();
 
-    private RequestClient<O> requestClient;
+    private RequestInitiator<O> requestInitiator;
 
     /**
      * @protectedby {@code this}
@@ -48,10 +48,10 @@ public final class CoreInboundRequest<I, O> {
      */
     private List<RequestCancelHandler<O>> cancelHandlers;
 
-    public CoreInboundRequest(final RequestListener<I, O> requestListener, final Executor executor, final ContextContext contextContext) {
+    public CoreInboundRequest(final RequestListener<I, O> requestListener, final Executor executor, final ClientContext clientContext) {
         this.requestListener = requestListener;
         this.executor = executor;
-        this.contextContext = contextContext;
+        this.clientContext = clientContext;
     }
 
     private enum State implements org.jboss.cx.remoting.util.State<State> {
@@ -65,13 +65,13 @@ public final class CoreInboundRequest<I, O> {
         }
     }
 
-    public void initialize(final RequestClient<O> requestClient) {
+    public void initialize(final RequestInitiator<O> requestInitiator) {
         state.requireTransitionExclusive(State.INITIAL, State.UNSENT);
-        this.requestClient = requestClient;
+        this.requestInitiator = requestInitiator;
         state.releaseExclusive();
     }
 
-    public RequestServer<I> getRequester() {
+    public RequestResponder<I> getRequestResponder() {
         return request;
     }
 
@@ -101,7 +101,7 @@ public final class CoreInboundRequest<I, O> {
         });
     }
 
-    public final class Request implements RequestServer<I> {
+    public final class Request implements RequestResponder<I> {
         public void handleCancelRequest(final boolean mayInterrupt) {
             synchronized(CoreInboundRequest.this) {
                 if (! cancel) {
@@ -143,17 +143,17 @@ public final class CoreInboundRequest<I, O> {
                         if (state.transition(State.UNSENT, State.SENT)) {
                             if (wasCancelled) {
                                 try {
-                                    requestClient.handleCancelAcknowledge();
+                                    requestInitiator.handleCancelAcknowledge();
                                 } catch (RemotingException e1) {
                                     try {
-                                        requestClient.handleException(new RemoteExecutionException("Failed to send a cancel ack to client: " + e1.toString(), e1));
+                                        requestInitiator.handleException(new RemoteExecutionException("Failed to send a cancel ack to client: " + e1.toString(), e1));
                                     } catch (RemotingException e2) {
                                         log.debug("Tried and failed to send an exception (%s): %s", e1, e2);
                                     }
                                 }
                             } else {
                                 try {
-                                    requestClient.handleException(new RemoteExecutionException("Execution failed: " + e.toString(), e));
+                                    requestInitiator.handleException(new RemoteExecutionException("Execution failed: " + e.toString(), e));
                                 } catch (RemotingException e1) {
                                     log.debug("Tried and failed to send an exception (%s): %s", e, e1);
                                 }
@@ -164,9 +164,9 @@ public final class CoreInboundRequest<I, O> {
                         if (state.transition(State.UNSENT, State.SENT)) {
                             try {
                                 if (e instanceof RemoteExecutionException) {
-                                    requestClient.handleException((RemoteExecutionException) e);
+                                    requestInitiator.handleException((RemoteExecutionException) e);
                                 } else {
-                                    requestClient.handleException(new RemoteExecutionException("Execution failed: " + e.toString(), e));
+                                    requestInitiator.handleException(new RemoteExecutionException("Execution failed: " + e.toString(), e));
                                 }
                             } catch (RemotingException e1) {
                                 log.debug("Tried and failed to send an exception (%s): %s", e, e1);
@@ -182,8 +182,8 @@ public final class CoreInboundRequest<I, O> {
     public final class UserRequestContext implements RequestContext<O> {
         private UserRequestContext() {}
 
-        public ContextContext getContext() {
-            return contextContext;
+        public ClientContext getContext() {
+            return clientContext;
         }
 
         public boolean isCancelled() {
@@ -194,19 +194,19 @@ public final class CoreInboundRequest<I, O> {
 
         public void sendReply(final O reply) throws RemotingException, IllegalStateException {
             state.requireTransition(State.UNSENT, State.SENT);
-            requestClient.handleReply(reply);
+            requestInitiator.handleReply(reply);
         }
 
         public void sendFailure(final String msg, final Throwable cause) throws RemotingException, IllegalStateException {
             state.requireTransition(State.UNSENT, State.SENT);
             final RemoteExecutionException rex = new RemoteExecutionException(msg, cause);
             rex.setStackTrace(cause.getStackTrace());
-            requestClient.handleException(rex);
+            requestInitiator.handleException(rex);
         }
 
         public void sendCancelled() throws RemotingException, IllegalStateException {
             state.requireTransition(State.UNSENT, State.SENT);
-            requestClient.handleCancelAcknowledge();
+            requestInitiator.handleCancelAcknowledge();
         }
 
         public void addCancelHandler(final RequestCancelHandler<O> requestCancelHandler) {

@@ -5,6 +5,6 @@ import org.jboss.cx.remoting.RemotingException;
 /**
  *
  */
-public interface ServiceClient {
+public interface ServiceInitiator {
     void handleClosing() throws RemotingException;
 }

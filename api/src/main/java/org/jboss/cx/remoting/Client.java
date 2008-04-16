@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentMap;
  * A communications context.  The context may be associated with a security/authentication state and a transactional
  * state, as well as other state maintained by the remote side.
  */
-public interface Context<I, O> extends Closeable<Context<I, O>> {
+public interface Client<I, O> extends Closeable<Client<I, O>> {
     /**
      * Send a request and block until a reply is received.
      * <p/>
@@ -64,5 +64,5 @@ public interface Context<I, O> extends Closeable<Context<I, O>> {
 
     void closeImmediate() throws RemotingException;
 
-    void addCloseHandler(final CloseHandler<Context<I, O>> closeHandler);
+    void addCloseHandler(final CloseHandler<Client<I, O>> closeHandler);
 }

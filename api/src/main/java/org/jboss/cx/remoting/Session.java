@@ -42,5 +42,5 @@ public interface Session extends Closeable<Session> {
      *
      * @return the root context
      */
-    <I, O> Context<I, O> getRootContext();
+    <I, O> Client<I, O> getRootContext();
 }

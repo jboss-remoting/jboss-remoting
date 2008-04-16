@@ -15,27 +15,27 @@ public interface ProtocolContext {
 
     /* CLIENT methods */
 
-    void receiveReply(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object reply);
+    void receiveReply(ClientIdentifier clientIdentifier, RequestIdentifier requestIdentifier, Object reply);
 
-    void receiveException(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception);
+    void receiveException(ClientIdentifier clientIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception);
 
-    void receiveCancelAcknowledge(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier);
+    void receiveCancelAcknowledge(ClientIdentifier clientIdentifier, RequestIdentifier requestIdentifier);
 
     void receiveServiceClosing(ServiceIdentifier serviceIdentifier);
 
-    void receiveContextClosing(ContextIdentifier contextIdentifier, boolean done);
+    void receiveClientClosing(ClientIdentifier clientIdentifier, boolean done);
 
     /* SERVER methods */
 
     void receiveServiceClose(ServiceIdentifier remoteServiceIdentifier);
 
-    void receiveContextClose(ContextIdentifier remoteContextIdentifier, boolean immediate, boolean cancel, boolean interrupt);
+    void receiveClientClose(ClientIdentifier remoteClientIdentifier, boolean immediate, boolean cancel, boolean interrupt);
 
-    void receiveOpenedContext(ServiceIdentifier remoteServiceIdentifier, ContextIdentifier remoteContextIdentifier);
+    void receiveOpenedContext(ServiceIdentifier remoteServiceIdentifier, ClientIdentifier remoteClientIdentifier);
 
-    void receiveRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Object request);
+    void receiveRequest(ClientIdentifier remoteClientIdentifier, RequestIdentifier requestIdentifier, Object request);
 
-    void receiveCancelRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt);
+    void receiveCancelRequest(ClientIdentifier remoteClientIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt);
 
     /* SESSION methods */
 

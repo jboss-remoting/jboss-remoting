@@ -6,7 +6,7 @@ import org.jboss.cx.remoting.RemotingException;
 /**
  *
  */
-public interface RequestClient<O> {
+public interface RequestInitiator<O> {
     // Outbound protocol messages
 
     void handleReply(final O reply) throws RemotingException;

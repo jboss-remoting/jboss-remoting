@@ -2,7 +2,7 @@ package org.jboss.cx.remoting.spi.wrapper;
 
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
@@ -10,10 +10,10 @@ import org.jboss.cx.remoting.RemotingException;
 /**
  *
  */
-public class ContextWrapper<I, O> implements Context<I, O> {
-    protected final Context<I, O> delegate;
+public class ClientWrapper<I, O> implements Client<I, O> {
+    protected final Client<I, O> delegate;
 
-    protected ContextWrapper(final Context<I, O> delegate) {
+    protected ClientWrapper(final Client<I, O> delegate) {
         this.delegate = delegate;
     }
 
@@ -25,10 +25,10 @@ public class ContextWrapper<I, O> implements Context<I, O> {
         delegate.closeImmediate();
     }
 
-    public void addCloseHandler(final CloseHandler<Context<I, O>> closeHandler) {
-        delegate.addCloseHandler(new CloseHandler<Context<I, O>>() {
-            public void handleClose(final Context<I, O> closed) {
-                closeHandler.handleClose(ContextWrapper.this);
+    public void addCloseHandler(final CloseHandler<Client<I, O>> closeHandler) {
+        delegate.addCloseHandler(new CloseHandler<Client<I, O>>() {
+            public void handleClose(final Client<I, O> closed) {
+                closeHandler.handleClose(ClientWrapper.this);
             }
         });
     }

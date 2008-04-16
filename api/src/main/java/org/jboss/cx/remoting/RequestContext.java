@@ -11,7 +11,7 @@ public interface RequestContext<O> extends Executor {
      *
      * @return the context
      */
-    ContextContext getContext();
+    ClientContext getContext();
 
     /**
      * Determine whether the current request was cancelled.

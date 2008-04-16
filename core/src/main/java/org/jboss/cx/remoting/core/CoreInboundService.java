@@ -24,7 +24,7 @@ public final class CoreInboundService<I, O> {
     private final AtomicStateMachine<State> state = start(State.INITIAL);
     private final ConcurrentMap<Object, Object> attributes = CollectionUtil.concurrentMap();
 
-    private ServiceClient serviceClient;
+    private ServiceInitiator serviceInitiator;
     private final Set<CloseHandler<ServiceContext>> closeHandlers = CollectionUtil.synchronizedSet(new LinkedHashSet<CloseHandler<ServiceContext>>());
 
     private enum State implements org.jboss.cx.remoting.util.State<State> {
@@ -42,9 +42,9 @@ public final class CoreInboundService<I, O> {
         this.executor = executor;
     }
 
-    public void initialize(final ServiceClient serviceClient) {
+    public void initialize(final ServiceInitiator serviceInitiator) {
         state.requireTransitionExclusive(State.INITIAL, State.UP);
-        this.serviceClient = serviceClient;
+        this.serviceInitiator = serviceInitiator;
         state.releaseDowngrade();
         try {
             requestListener.handleServiceOpen(serviceContext);
@@ -68,16 +68,16 @@ public final class CoreInboundService<I, O> {
         }
     }
 
-    public ServiceServer<I, O> getServiceServer() {
-        return new ServiceServer<I, O>() {
+    public ServiceResponder<I, O> getServiceResponder() {
+        return new ServiceResponder<I, O>() {
             public void handleClose() throws RemotingException {
                 doClose();
             }
 
-            public ContextServer<I, O> createNewContext(final ContextClient client) {
-                final CoreInboundContext<I, O> context = new CoreInboundContext<I, O>(requestListener, executor, serviceContext);
-                context.initialize(client);
-                return context.getContextServer();
+            public ClientResponder<I, O> createNewClient(final ClientInitiator clientInitiator) {
+                final CoreInboundClient<I, O> client = new CoreInboundClient<I, O>(requestListener, executor, serviceContext);
+                client.initialize(clientInitiator);
+                return client.getClientResponder();
             }
         };
     }
@@ -92,12 +92,12 @@ public final class CoreInboundService<I, O> {
 
         public void close() throws RemotingException {
             doClose();
-            serviceClient.handleClosing();
+            serviceInitiator.handleClosing();
         }
 
         public void closeImmediate() throws RemotingException {
             doClose();
-            serviceClient.handleClosing();
+            serviceInitiator.handleClosing();
         }
 
         public void addCloseHandler(final CloseHandler<ServiceContext> closeHandler) {

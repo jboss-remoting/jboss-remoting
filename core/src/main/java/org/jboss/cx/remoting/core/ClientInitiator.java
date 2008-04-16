@@ -5,6 +5,6 @@ import org.jboss.cx.remoting.RemotingException;
 /**
  *
  */
-public interface ContextClient {
+public interface ClientInitiator {
     void handleClosing(boolean done) throws RemotingException;
 }

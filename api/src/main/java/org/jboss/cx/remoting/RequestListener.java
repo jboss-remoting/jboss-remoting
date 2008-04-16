@@ -5,11 +5,11 @@ package org.jboss.cx.remoting;
  */
 public interface RequestListener<I, O> {
     /**
-     * Handle the opening of a context.
+     * Handle the opening of a client.
      *
-     * @param context the context context
+     * @param context the client context
      */
-    void handleContextOpen(ContextContext context);
+    void handleClientOpen(ClientContext context);
 
     /**
      * Handle the opening of a service.
@@ -42,9 +42,9 @@ public interface RequestListener<I, O> {
     void handleServiceClose(ServiceContext context);
 
     /**
-     * Handle the close of a context.
+     * Handle the close of a client.
      *
      * @param context
      */
-    void handleContextClose(ContextContext context);
+    void handleClientClose(ClientContext context);
 }

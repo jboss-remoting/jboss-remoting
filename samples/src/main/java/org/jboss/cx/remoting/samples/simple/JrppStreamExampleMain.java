@@ -8,7 +8,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.Security;
-import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Remoting;
@@ -29,12 +29,12 @@ public final class JrppStreamExampleMain {
             Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), AttributeMap.EMPTY);
             Session session = endpoint.openSession(new URI("jrpp://localhost:12345"), AttributeMap.EMPTY);
             try {
-                final Context<Reader,Reader> context = session.getRootContext();
+                final Client<Reader,Reader> client = session.getRootContext();
                 try {
                     final String original = "The Secret Message\n";
                     final StringReader originalReader = new StringReader(original);
                     try {
-                        final Reader reader = context.send(originalReader).get();
+                        final Reader reader = client.send(originalReader).get();
                         try {
                             final BufferedReader bufferedReader = new BufferedReader(reader);
                             try {
@@ -50,7 +50,7 @@ public final class JrppStreamExampleMain {
                         originalReader.close();
                     }
                 } finally {
-                    context.close();
+                    client.close();
                 }
             } finally {
                 session.close();

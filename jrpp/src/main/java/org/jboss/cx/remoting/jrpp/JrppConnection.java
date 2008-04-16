@@ -20,7 +20,7 @@ import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
 import org.jboss.cx.remoting.CommonKeys;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.jrpp.id.JrppContextIdentifier;
+import org.jboss.cx.remoting.jrpp.id.JrppClientIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppServiceIdentifier;
 import org.jboss.cx.remoting.jrpp.id.JrppStreamIdentifier;
@@ -29,7 +29,7 @@ import org.jboss.cx.remoting.jrpp.mina.IoBufferByteMessageOutput;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.spi.ObjectMessageInput;
 import org.jboss.cx.remoting.spi.ObjectMessageOutput;
-import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
+import org.jboss.cx.remoting.spi.protocol.ClientIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
@@ -84,11 +84,11 @@ public final class JrppConnection {
     private final AtomicInteger serviceIdSequence = new AtomicInteger(0);
     private final AtomicInteger requestIdSequence = new AtomicInteger(0);
 
-    private ContextIdentifier localRootContextIdentifier;
-    private ContextIdentifier remoteRootContextIdentifier;
+    private ClientIdentifier localRootClientIdentifier;
+    private ClientIdentifier remoteRootClientIdentifier;
 
     private final Set<StreamIdentifier> liveStreamSet = CollectionUtil.synchronizedSet(new WeakHashSet<StreamIdentifier>());
-    private final Set<ContextIdentifier> liveContextSet = CollectionUtil.synchronizedSet(new WeakHashSet<ContextIdentifier>());
+    private final Set<ClientIdentifier> liveClientSet = CollectionUtil.synchronizedSet(new WeakHashSet<ClientIdentifier>());
     private final Set<RequestIdentifier> liveRequestSet = CollectionUtil.synchronizedSet(new WeakHashSet<RequestIdentifier>());
     private final Set<ServiceIdentifier> liveServiceSet = CollectionUtil.synchronizedSet(new WeakHashSet<ServiceIdentifier>());
 
@@ -160,8 +160,8 @@ public final class JrppConnection {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
             client = true;
-            remoteRootContextIdentifier = new JrppContextIdentifier(false, 0);
-            localRootContextIdentifier = new JrppContextIdentifier(true, 0);
+            remoteRootClientIdentifier = new JrppClientIdentifier(false, 0);
+            localRootClientIdentifier = new JrppClientIdentifier(true, 0);
         } finally {
             state.releaseExclusive();
         }
@@ -176,8 +176,8 @@ public final class JrppConnection {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
             client = false;
-            remoteRootContextIdentifier = new JrppContextIdentifier(true, 0);
-            localRootContextIdentifier = new JrppContextIdentifier(false, 0);
+            remoteRootClientIdentifier = new JrppClientIdentifier(true, 0);
+            localRootClientIdentifier = new JrppClientIdentifier(false, 0);
         } finally {
             state.releaseExclusive();
         }
@@ -331,8 +331,8 @@ public final class JrppConnection {
         output.writeObject(serviceIdentifier);
     }
 
-    private void write(ObjectOutput output, ContextIdentifier contextIdentifier) throws IOException {
-        output.writeObject(contextIdentifier);
+    private void write(ObjectOutput output, ClientIdentifier clientIdentifier) throws IOException {
+        output.writeObject(clientIdentifier);
     }
 
     private void write(ObjectOutput output, StreamIdentifier streamIdentifier) throws IOException {
@@ -418,10 +418,10 @@ public final class JrppConnection {
         }
     }
 
-    private JrppContextIdentifier getNewContextIdentifier() {
+    private JrppClientIdentifier getNewContextIdentifier() {
         for (;;) {
-            final JrppContextIdentifier contextIdentifier = new JrppContextIdentifier(client, contextIdSequence.getAndIncrement());
-            if (liveContextSet.add(contextIdentifier)) {
+            final JrppClientIdentifier contextIdentifier = new JrppClientIdentifier(client, contextIdSequence.getAndIncrement());
+            if (liveClientSet.add(contextIdentifier)) {
                 return contextIdentifier;
             }
         }
@@ -459,22 +459,22 @@ public final class JrppConnection {
     }
 
     public final class RemotingProtocolHandler implements ProtocolHandler {
-        public void sendContextClosing(final ContextIdentifier remoteContextIdentifier, final boolean done) throws IOException {
+        public void sendClientClosing(final ClientIdentifier remoteClientIdentifier, final boolean done) throws IOException {
             // todo
         }
 
-        public ContextIdentifier openContext(ServiceIdentifier serviceIdentifier) throws IOException {
-            final ContextIdentifier contextIdentifier = getNewContextIdentifier();
+        public ClientIdentifier openClient(ServiceIdentifier serviceIdentifier) throws IOException {
+            final ClientIdentifier clientIdentifier = getNewContextIdentifier();
             final IoBuffer buffer = newBuffer(60, false);
             final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.OPEN_CONTEXT);
             write(output, serviceIdentifier);
-            write(output, contextIdentifier);
+            write(output, clientIdentifier);
             output.commit();
-            return contextIdentifier;
+            return clientIdentifier;
         }
 
-        public RequestIdentifier openRequest(ContextIdentifier contextIdentifier) throws IOException {
+        public RequestIdentifier openRequest(ClientIdentifier clientIdentifier) throws IOException {
             return getNewRequestIdentifier();
         }
 
@@ -508,14 +508,14 @@ public final class JrppConnection {
             output.commit();
         }
 
-        public void sendContextClose(ContextIdentifier contextIdentifier, final boolean immediate, final boolean cancel, final boolean interrupt) throws IOException {
+        public void sendClientClose(ClientIdentifier clientIdentifier, final boolean immediate, final boolean cancel, final boolean interrupt) throws IOException {
             if (! state.in(State.UP)) {
                 return;
             }
             final IoBuffer buffer = newBuffer(300, false);
             final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.CLOSE_CONTEXT);
-            write(output, contextIdentifier);
+            write(output, clientIdentifier);
             output.commit();
         }
 
@@ -533,9 +533,9 @@ public final class JrppConnection {
             }
         }
 
-        public void sendReply(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, Object reply) throws IOException {
-            if (remoteContextIdentifier == null) {
-                throw new NullPointerException("remoteContextIdentifier is null");
+        public void sendReply(ClientIdentifier remoteClientIdentifier, RequestIdentifier requestIdentifier, Object reply) throws IOException {
+            if (remoteClientIdentifier == null) {
+                throw new NullPointerException("remoteClientIdentifier is null");
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
@@ -543,15 +543,15 @@ public final class JrppConnection {
             final IoBuffer buffer = newBuffer(500, true);
             final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.REPLY);
-            write(output, remoteContextIdentifier);
+            write(output, remoteClientIdentifier);
             write(output, requestIdentifier);
             output.writeObject(reply);
             output.commit();
         }
 
-        public void sendException(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) throws IOException {
-            if (remoteContextIdentifier == null) {
-                throw new NullPointerException("remoteContextIdentifier is null");
+        public void sendException(ClientIdentifier remoteClientIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) throws IOException {
+            if (remoteClientIdentifier == null) {
+                throw new NullPointerException("remoteClientIdentifier is null");
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
@@ -562,15 +562,15 @@ public final class JrppConnection {
             final IoBuffer buffer = newBuffer(500, true);
             final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.EXCEPTION);
-            write(output, remoteContextIdentifier);
+            write(output, remoteClientIdentifier);
             write(output, requestIdentifier);
             output.writeObject(exception);
             output.commit();
         }
 
-        public void sendRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object request, final Executor streamExecutor) throws IOException {
-            if (contextIdentifier == null) {
-                throw new NullPointerException("contextIdentifier is null");
+        public void sendRequest(ClientIdentifier clientIdentifier, RequestIdentifier requestIdentifier, Object request, final Executor streamExecutor) throws IOException {
+            if (clientIdentifier == null) {
+                throw new NullPointerException("clientIdentifier is null");
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
@@ -578,15 +578,15 @@ public final class JrppConnection {
             final IoBuffer buffer = newBuffer(500, true);
             final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession), streamExecutor);
             write(output, MessageType.REQUEST);
-            write(output, contextIdentifier);
+            write(output, clientIdentifier);
             write(output, requestIdentifier);
             output.writeObject(request);
             output.commit();
         }
 
-        public void sendCancelAcknowledge(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier) throws IOException {
-            if (remoteContextIdentifier == null) {
-                throw new NullPointerException("remoteContextIdentifier is null");
+        public void sendCancelAcknowledge(ClientIdentifier remoteClientIdentifier, RequestIdentifier requestIdentifier) throws IOException {
+            if (remoteClientIdentifier == null) {
+                throw new NullPointerException("remoteClientIdentifier is null");
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
@@ -594,7 +594,7 @@ public final class JrppConnection {
             final IoBuffer buffer = newBuffer(60, false);
             final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.CANCEL_ACK);
-            write(output, remoteContextIdentifier);
+            write(output, remoteClientIdentifier);
             write(output, requestIdentifier);
             output.commit();
         }
@@ -610,17 +610,17 @@ public final class JrppConnection {
             output.commit();
         }
 
-        public ContextIdentifier getLocalRootContextIdentifier() {
-            return localRootContextIdentifier;
+        public ClientIdentifier getLocalRootClientIdentifier() {
+            return localRootClientIdentifier;
         }
 
-        public ContextIdentifier getRemoteRootContextIdentifier() {
-            return remoteRootContextIdentifier;
+        public ClientIdentifier getRemoteRootClientIdentifier() {
+            return remoteRootClientIdentifier;
         }
 
-        public void sendCancelRequest(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException {
-            if (contextIdentifier == null) {
-                throw new NullPointerException("contextIdentifier is null");
+        public void sendCancelRequest(ClientIdentifier clientIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) throws IOException {
+            if (clientIdentifier == null) {
+                throw new NullPointerException("clientIdentifier is null");
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
@@ -628,13 +628,13 @@ public final class JrppConnection {
             final IoBuffer buffer = newBuffer(60, false);
             final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
             write(output, MessageType.CANCEL_REQ);
-            write(output, contextIdentifier);
+            write(output, clientIdentifier);
             write(output, requestIdentifier);
             output.writeBoolean(mayInterrupt);
             output.commit();
         }
 
-        public ContextIdentifier openContext() throws IOException {
+        public ClientIdentifier openClient() throws IOException {
             return null;
         }
 
@@ -907,26 +907,26 @@ public final class JrppConnection {
                     switch (type) {
                         case OPEN_CONTEXT: {
                             final ServiceIdentifier serviceIdentifier = (ServiceIdentifier) input.readObject();
-                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
-                            protocolContext.receiveOpenedContext(serviceIdentifier, contextIdentifier);
+                            final ClientIdentifier clientIdentifier = (ClientIdentifier) input.readObject();
+                            protocolContext.receiveOpenedContext(serviceIdentifier, clientIdentifier);
                             return;
                         }
                         case CANCEL_ACK: {
-                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
+                            final ClientIdentifier clientIdentifier = (ClientIdentifier) input.readObject();
                             final RequestIdentifier requestIdentifier = (RequestIdentifier) input.readObject();
-                            protocolContext.receiveCancelAcknowledge(contextIdentifier, requestIdentifier);
+                            protocolContext.receiveCancelAcknowledge(clientIdentifier, requestIdentifier);
                             return;
                         }
                         case CANCEL_REQ: {
-                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
+                            final ClientIdentifier clientIdentifier = (ClientIdentifier) input.readObject();
                             final RequestIdentifier requestIdentifier = (RequestIdentifier) input.readObject();
                             final boolean mayInterrupt = input.readBoolean();
-                            protocolContext.receiveCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
+                            protocolContext.receiveCancelRequest(clientIdentifier, requestIdentifier, mayInterrupt);
                             return;
                         }
                         case CLOSE_CONTEXT: {
-                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
-                            protocolContext.receiveContextClose(contextIdentifier, false, false, false);
+                            final ClientIdentifier clientIdentifier = (ClientIdentifier) input.readObject();
+                            protocolContext.receiveClientClose(clientIdentifier, false, false, false);
                             return;
                         }
                         case CLOSE_SERVICE: {
@@ -940,27 +940,27 @@ public final class JrppConnection {
                             return;
                         }
                         case EXCEPTION: {
-                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
+                            final ClientIdentifier clientIdentifier = (ClientIdentifier) input.readObject();
                             final RequestIdentifier requestIdentifier = (RequestIdentifier) input.readObject();
                             final RemoteExecutionException exception = (RemoteExecutionException) input.readObject();
-                            protocolContext.receiveException(contextIdentifier, requestIdentifier, exception);
+                            protocolContext.receiveException(clientIdentifier, requestIdentifier, exception);
                             return;
                         }
                         case REPLY: {
-                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
+                            final ClientIdentifier clientIdentifier = (ClientIdentifier) input.readObject();
                             final RequestIdentifier requestIdentifier = (RequestIdentifier) input.readObject();
                             final Object reply = input.readObject();
-                            protocolContext.receiveReply(contextIdentifier, requestIdentifier, reply);
+                            protocolContext.receiveReply(clientIdentifier, requestIdentifier, reply);
                             return;
                         }
                         case REQUEST: {
-                            final ContextIdentifier contextIdentifier = (ContextIdentifier) input.readObject();
+                            final ClientIdentifier clientIdentifier = (ClientIdentifier) input.readObject();
                             final RequestIdentifier requestIdentifier = (RequestIdentifier) input.readObject();
                             final Object request = input.readObject();
                             if (trace) {
                                 log.trace("Received request - body is %s", request);
                             }
-                            protocolContext.receiveRequest(contextIdentifier, requestIdentifier, request);
+                            protocolContext.receiveRequest(clientIdentifier, requestIdentifier, request);
                             return;
                         }
                        case SERVICE_TERMINATE: {

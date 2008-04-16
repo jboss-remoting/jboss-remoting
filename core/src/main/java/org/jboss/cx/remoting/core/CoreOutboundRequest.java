@@ -21,9 +21,9 @@ public final class CoreOutboundRequest<I, O> {
 
     private static final Logger log = Logger.getLogger(CoreOutboundRequest.class);
 
-    private RequestServer<I> requestServer;
+    private RequestResponder<I> requestResponder;
 
-    private final RequestClient<O> requestClient = new RequestClientImpl();
+    private final RequestInitiator<O> requestInitiator = new RequestInitiatorImpl();
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.WAITING);
     private final FutureReply<O> futureReply = new FutureReplyImpl();
 
@@ -37,20 +37,20 @@ public final class CoreOutboundRequest<I, O> {
     public CoreOutboundRequest() {
     }
 
-    public RequestServer<I> getRequester() {
-        return requestServer;
+    public RequestResponder<I> getRequester() {
+        return requestResponder;
     }
 
-    public void setRequester(final RequestServer<I> requestServer) {
-        this.requestServer = requestServer;
+    public void setRequester(final RequestResponder<I> requestResponder) {
+        this.requestResponder = requestResponder;
     }
 
     public FutureReply<O> getFutureReply() {
         return futureReply;
     }
 
-    public RequestClient<O> getReplier() {
-        return requestClient;
+    public RequestInitiator<O> getReplier() {
+        return requestInitiator;
     }
 
     private enum State implements org.jboss.cx.remoting.util.State<State> {
@@ -91,7 +91,7 @@ public final class CoreOutboundRequest<I, O> {
         }
     }
 
-    public final class RequestClientImpl implements RequestClient<O> {
+    public final class RequestInitiatorImpl implements RequestInitiator<O> {
         public void handleCancelAcknowledge() {
             if (state.transitionHold(State.WAITING, State.CANCELLED)) try {
                 complete();
@@ -135,7 +135,7 @@ public final class CoreOutboundRequest<I, O> {
         public boolean cancel(final boolean mayInterruptIfRunning) {
             if (state.inHold(State.WAITING)) try {
                 try {
-                    requestServer.handleCancelRequest(mayInterruptIfRunning);
+                    requestResponder.handleCancelRequest(mayInterruptIfRunning);
                 } catch (RemotingException e) {
                     return false;
                 }
@@ -148,7 +148,7 @@ public final class CoreOutboundRequest<I, O> {
         public FutureReply<O> sendCancel(final boolean mayInterruptIfRunning) {
             if (state.inHold(State.WAITING)) try {
                 try {
-                    requestServer.handleCancelRequest(mayInterruptIfRunning);
+                    requestResponder.handleCancelRequest(mayInterruptIfRunning);
                 } catch (RemotingException e) {
                     // do nothing
                 }

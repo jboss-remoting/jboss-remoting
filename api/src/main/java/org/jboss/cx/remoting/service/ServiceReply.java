@@ -1,8 +1,8 @@
 package org.jboss.cx.remoting.service;
 
 import java.io.Serializable;
-import org.jboss.cx.remoting.Context;
-import org.jboss.cx.remoting.ContextSource;
+import org.jboss.cx.remoting.Client;
+import org.jboss.cx.remoting.ClientSource;
 
 /**
  *
@@ -10,25 +10,25 @@ import org.jboss.cx.remoting.ContextSource;
 public final class ServiceReply<I, O> implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private ContextSource<I, O> serviceContextSource;
-    private Context<ClassLoaderResourceRequest, ClassLoaderResourceReply> classLoadingContext;
+    private ClientSource<I, O> serviceClientSource;
+    private Client<ClassLoaderResourceRequest, ClassLoaderResourceReply> classLoadingClient;
 
     public ServiceReply() {
     }
 
-    public ContextSource<I, O> getServiceContextSource() {
-        return serviceContextSource;
+    public ClientSource<I, O> getServiceContextSource() {
+        return serviceClientSource;
     }
 
-    public void setServiceContextSource(final ContextSource<I, O> serviceContextSource) {
-        this.serviceContextSource = serviceContextSource;
+    public void setServiceContextSource(final ClientSource<I, O> serviceClientSource) {
+        this.serviceClientSource = serviceClientSource;
     }
 
-    public Context<ClassLoaderResourceRequest, ClassLoaderResourceReply> getClassLoadingContext() {
-        return classLoadingContext;
+    public Client<ClassLoaderResourceRequest, ClassLoaderResourceReply> getClassLoadingContext() {
+        return classLoadingClient;
     }
 
-    public void setClassLoadingContext(final Context<ClassLoaderResourceRequest, ClassLoaderResourceReply> classLoadingContext) {
-        this.classLoadingContext = classLoadingContext;
+    public void setClassLoadingContext(final Client<ClassLoaderResourceRequest, ClassLoaderResourceReply> classLoadingClient) {
+        this.classLoadingClient = classLoadingClient;
     }
 }

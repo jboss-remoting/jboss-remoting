@@ -6,7 +6,7 @@ import org.jboss.cx.remoting.RemotingException;
 /**
  *
  */
-public interface RequestServer<I> {
+public interface RequestResponder<I> {
 
     // Outbound protocol messages
 

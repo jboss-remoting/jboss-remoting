@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
@@ -26,7 +26,7 @@ import org.jboss.cx.remoting.spi.ByteMessageInput;
 import org.jboss.cx.remoting.spi.ByteMessageOutput;
 import org.jboss.cx.remoting.spi.ObjectMessageInput;
 import org.jboss.cx.remoting.spi.ObjectMessageOutput;
-import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
+import org.jboss.cx.remoting.spi.protocol.ClientIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
@@ -61,12 +61,12 @@ public final class CoreSession {
 
     // Contexts and services that are available on the remote end of this session
     // In these paris, the Server points to the ProtocolHandler, and the Client points to...whatever
-    private final ConcurrentMap<ContextIdentifier, ClientContextPair> clientContexts = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<ClientIdentifier, ClientContextPair> clientContexts = CollectionUtil.concurrentMap();
     private final ConcurrentMap<ServiceIdentifier, ClientServicePair> clientServices = CollectionUtil.concurrentMap();
 
     // Contexts and services that are available on this end of this session
     // In these pairs, the Client points to the ProtocolHandler, and the Server points to... whatever
-    private final ConcurrentMap<ContextIdentifier, ServerContextPair> serverContexts = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<ClientIdentifier, ServerContextPair> serverContexts = CollectionUtil.concurrentMap();
     private final ConcurrentMap<ServiceIdentifier, ServerServicePair> serverServices = CollectionUtil.concurrentMap();
 
     // streams - strong references, only clean up if a close message is sent or received
@@ -82,7 +82,7 @@ public final class CoreSession {
     /** The remote endpoint name.  Set on CONNECTING -> UP */
     private String remoteEndpointName;
     /** The root context.  Set on CONNECTING -> UP */
-    private Context<?, ?> rootContext;
+    private Client<?, ?> rootClient;
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.NEW);
 
@@ -109,43 +109,43 @@ public final class CoreSession {
 
     // Initializers
 
-    private <I, O> void doInitialize(final ProtocolHandler protocolHandler, final Context<I, O> rootContext) {
+    private <I, O> void doInitialize(final ProtocolHandler protocolHandler, final Client<I, O> rootClient) {
         if (protocolHandler == null) {
             throw new NullPointerException("protocolHandler is null");
         }
         this.protocolHandler = protocolHandler;
-        if (rootContext instanceof AbstractRealContext) {
-            final AbstractRealContext<I, O> abstractRealContext = (AbstractRealContext<I, O>) rootContext;
+        if (rootClient instanceof AbstractRealClient) {
+            final AbstractRealClient<I, O> abstractRealContext = (AbstractRealClient<I, O>) rootClient;
             // Forward local context
-            final ContextIdentifier localIdentifier = protocolHandler.getLocalRootContextIdentifier();
+            final ClientIdentifier localIdentifier = protocolHandler.getLocalRootClientIdentifier();
             if (localIdentifier == null) {
                 throw new NullPointerException("localIdentifier is null");
             }
-            final ProtocolContextClientImpl<I, O> contextClient = new ProtocolContextClientImpl<I, O>(localIdentifier);
+            final ProtocolClientInitiatorImpl<I, O> contextClient = new ProtocolClientInitiatorImpl<I, O>(localIdentifier);
             serverContexts.put(localIdentifier, new ServerContextPair<I, O>(contextClient, abstractRealContext.getContextServer()));
             log.trace("Initialized session with local context %s", localIdentifier);
         }
         // Forward remote context
-        final ContextIdentifier remoteIdentifier = protocolHandler.getRemoteRootContextIdentifier();
+        final ClientIdentifier remoteIdentifier = protocolHandler.getRemoteRootClientIdentifier();
         if (remoteIdentifier == null) {
             throw new NullPointerException("remoteIdentifier is null");
         }
-        final ProtocolContextServerImpl<I, O> contextServer = new ProtocolContextServerImpl<I,O>(remoteIdentifier);
-        final CoreOutboundContext<I, O> coreOutboundContext = new CoreOutboundContext<I, O>(executor);
-        clientContexts.put(remoteIdentifier, new ClientContextPair<I, O>(coreOutboundContext.getContextClient(), contextServer, remoteIdentifier));
-        coreOutboundContext.initialize(contextServer);
-        this.rootContext = coreOutboundContext.getUserContext();
+        final ProtocolClientResponderImpl<I, O> contextServer = new ProtocolClientResponderImpl<I,O>(remoteIdentifier);
+        final CoreOutboundClient<I, O> coreOutboundClient = new CoreOutboundClient<I, O>(executor);
+        clientContexts.put(remoteIdentifier, new ClientContextPair<I, O>(coreOutboundClient.getContextClient(), contextServer, remoteIdentifier));
+        coreOutboundClient.initialize(contextServer);
+        this.rootClient = coreOutboundClient.getUserContext();
         log.trace("Initialized session with remote context %s", remoteIdentifier);
     }
 
-    <I, O> void initializeServer(final ProtocolHandler protocolHandler, final Context<I, O> rootContext) {
+    <I, O> void initializeServer(final ProtocolHandler protocolHandler, final Client<I, O> rootClient) {
         if (protocolHandler == null) {
             throw new NullPointerException("protocolHandler is null");
         }
         boolean ok = false;
         state.requireTransitionExclusive(State.NEW, State.CONNECTING);
         try {
-            doInitialize(protocolHandler, rootContext);
+            doInitialize(protocolHandler, rootClient);
             ok = true;
         } finally {
             state.releaseExclusive();
@@ -155,14 +155,14 @@ public final class CoreSession {
         }
     }
 
-    <I, O> void initializeClient(final ProtocolHandlerFactory protocolHandlerFactory, final URI remoteUri, final AttributeMap attributeMap, final Context<I, O> rootContext) throws IOException {
+    <I, O> void initializeClient(final ProtocolHandlerFactory protocolHandlerFactory, final URI remoteUri, final AttributeMap attributeMap, final Client<I, O> rootClient) throws IOException {
         if (protocolHandlerFactory == null) {
             throw new NullPointerException("protocolHandlerFactory is null");
         }
         boolean ok = false;
         state.requireTransitionExclusive(State.NEW, State.CONNECTING);
         try {
-            doInitialize(protocolHandlerFactory.createHandler(protocolContext, remoteUri, attributeMap), rootContext);
+            doInitialize(protocolHandlerFactory.createHandler(protocolContext, remoteUri, attributeMap), rootClient);
             ok = true;
         } finally {
             state.releaseExclusive();
@@ -194,7 +194,7 @@ public final class CoreSession {
         }
     }
 
-    // Context mgmt
+    // Client mgmt
 
     // User session impl
 
@@ -243,16 +243,16 @@ public final class CoreSession {
         }
 
         @SuppressWarnings ({"unchecked"})
-        public <I, O> Context<I, O> getRootContext() {
-            return (Context<I, O>) rootContext;
+        public <I, O> Client<I, O> getRootContext() {
+            return (Client<I, O>) rootClient;
         }
     }
 
     // Protocol context
 
     @SuppressWarnings ({"unchecked"})
-    private static <O> void doSendReply(RequestClient<O> requestClient, Object data) throws RemotingException {
-        requestClient.handleReply((O)data);
+    private static <O> void doSendReply(RequestInitiator<O> requestInitiator, Object data) throws RemotingException {
+        requestInitiator.handleReply((O)data);
     }
 
     // Lifecycle
@@ -315,14 +315,14 @@ public final class CoreSession {
             return endpoint.getUserEndpoint().getName();
         }
 
-        public void receiveContextClose(ContextIdentifier remoteContextIdentifier, final boolean immediate, final boolean cancel, final boolean interrupt) {
-            if (remoteContextIdentifier == null) {
-                throw new NullPointerException("remoteContextIdentifier is null");
+        public void receiveClientClose(ClientIdentifier remoteClientIdentifier, final boolean immediate, final boolean cancel, final boolean interrupt) {
+            if (remoteClientIdentifier == null) {
+                throw new NullPointerException("remoteClientIdentifier is null");
             }
-            final ServerContextPair contextPair = serverContexts.remove(remoteContextIdentifier);
+            final ServerContextPair contextPair = serverContexts.remove(remoteClientIdentifier);
             // todo - do the whole close operation
             try {
-                contextPair.contextServer.handleClose(immediate, cancel);
+                contextPair.clientResponder.handleClose(immediate, cancel);
             } catch (RemotingException e) {
                 log.trace(e, "Failed to forward a context close");
             }
@@ -342,26 +342,26 @@ public final class CoreSession {
             }
             final ServerServicePair servicePair = serverServices.remove(serviceIdentifier);
             try {
-                servicePair.serviceServer.handleClose();
+                servicePair.serviceResponder.handleClose();
             } catch (RemotingException e) {
                 log.trace(e, "Failed to forward a service close");
             }
         }
 
         @SuppressWarnings ({"unchecked"})
-        public void receiveOpenedContext(ServiceIdentifier remoteServiceIdentifier, ContextIdentifier remoteContextIdentifier) {
+        public void receiveOpenedContext(ServiceIdentifier remoteServiceIdentifier, ClientIdentifier remoteClientIdentifier) {
             if (remoteServiceIdentifier == null) {
                 throw new NullPointerException("remoteServiceIdentifier is null");
             }
-            if (remoteContextIdentifier == null) {
-                throw new NullPointerException("remoteContextIdentifier is null");
+            if (remoteClientIdentifier == null) {
+                throw new NullPointerException("remoteClientIdentifier is null");
             }
             try {
                 final ServerServicePair servicePair = serverServices.get(remoteServiceIdentifier);
-                final ProtocolContextClientImpl contextClient = new ProtocolContextClientImpl(remoteContextIdentifier);
-                final ContextServer contextServer = servicePair.serviceServer.createNewContext(contextClient);
+                final ProtocolClientInitiatorImpl contextClient = new ProtocolClientInitiatorImpl(remoteClientIdentifier);
+                final ClientResponder clientResponder = servicePair.serviceResponder.createNewClient(contextClient);
                 // todo - who puts it in the map?
-                serverContexts.put(remoteContextIdentifier, new ServerContextPair(contextClient, contextServer));
+                serverContexts.put(remoteClientIdentifier, new ServerContextPair(contextClient, clientResponder));
             } catch (RemotingException e) {
                 log.trace(e, "Failed to add a context to a service");
             }
@@ -373,44 +373,44 @@ public final class CoreSession {
             }
             final ClientServicePair servicePair = clientServices.get(serviceIdentifier);
             try {
-                servicePair.serviceClient.handleClosing();
+                servicePair.serviceInitiator.handleClosing();
             } catch (RemotingException e) {
                 log.trace(e, "Failed to signal that a service was closing on the remote side");
             }
         }
 
-        public void receiveContextClosing(ContextIdentifier contextIdentifier, boolean done) {
-            if (contextIdentifier == null) {
-                throw new NullPointerException("contextIdentifier is null");
+        public void receiveClientClosing(ClientIdentifier clientIdentifier, boolean done) {
+            if (clientIdentifier == null) {
+                throw new NullPointerException("clientIdentifier is null");
             }
-            final ClientContextPair contextPair = clientContexts.get(contextIdentifier);
+            final ClientContextPair contextPair = clientContexts.get(clientIdentifier);
             try {
-                contextPair.contextClient.handleClosing(done);
+                contextPair.clientInitiator.handleClosing(done);
             } catch (RemotingException e) {
                 log.trace(e, "Failed to signal that a context was closing on the remote side");
             }
         }
 
-        public void receiveReply(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, Object reply) {
-            if (contextIdentifier == null) {
-                throw new NullPointerException("contextIdentifier is null");
+        public void receiveReply(ClientIdentifier clientIdentifier, RequestIdentifier requestIdentifier, Object reply) {
+            if (clientIdentifier == null) {
+                throw new NullPointerException("clientIdentifier is null");
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
             }
-            final ClientContextPair contextPair = clientContexts.get(contextIdentifier);
+            final ClientContextPair contextPair = clientContexts.get(clientIdentifier);
             if (contextPair == null) {
-                log.trace("Got reply for request %s on unknown context %s", requestIdentifier, contextIdentifier);
+                log.trace("Got reply for request %s on unknown context %s", requestIdentifier, clientIdentifier);
             } else {
-                final ProtocolContextServerImpl<?, ?> contextServer = contextPair.contextServerRef.get();
+                final ProtocolClientResponderImpl<?, ?> contextServer = contextPair.contextServerRef.get();
                 if (contextServer == null) {
-                    log.trace("Got reply for request %s on unknown recently leaked context %s", requestIdentifier, contextIdentifier);
+                    log.trace("Got reply for request %s on unknown recently leaked context %s", requestIdentifier, clientIdentifier);
                 } else {
-                    final RequestClient<?> requestClient = (RequestClient<?>) contextServer.requests.get(requestIdentifier);
-                    if (requestClient == null) {
-                        log.trace("Got reply for unknown request %s on context %s", requestIdentifier, contextIdentifier);
+                    final RequestInitiator<?> requestInitiator = (RequestInitiator<?>) contextServer.requests.get(requestIdentifier);
+                    if (requestInitiator == null) {
+                        log.trace("Got reply for unknown request %s on context %s", requestIdentifier, clientIdentifier);
                     } else try {
-                        doSendReply(requestClient, reply);
+                        doSendReply(requestInitiator, reply);
                     } catch (RemotingException e) {
                         log.trace(e, "Failed to receive a reply");
                     }
@@ -418,9 +418,9 @@ public final class CoreSession {
             }
         }
 
-        public void receiveException(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) {
-            if (contextIdentifier == null) {
-                throw new NullPointerException("contextIdentifier is null");
+        public void receiveException(ClientIdentifier clientIdentifier, RequestIdentifier requestIdentifier, RemoteExecutionException exception) {
+            if (clientIdentifier == null) {
+                throw new NullPointerException("clientIdentifier is null");
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
@@ -428,19 +428,19 @@ public final class CoreSession {
             if (exception == null) {
                 throw new NullPointerException("exception is null");
             }
-            final ClientContextPair contextPair = clientContexts.get(contextIdentifier);
+            final ClientContextPair contextPair = clientContexts.get(clientIdentifier);
             if (contextPair == null) {
-                log.trace("Got exception reply for request %s on unknown context %s", requestIdentifier, contextIdentifier);
+                log.trace("Got exception reply for request %s on unknown context %s", requestIdentifier, clientIdentifier);
             } else {
-                final ProtocolContextServerImpl<?, ?> contextServer = contextPair.contextServerRef.get();
+                final ProtocolClientResponderImpl<?, ?> contextServer = contextPair.contextServerRef.get();
                 if (contextServer == null) {
-                    log.trace("Got exception reply for request %s on unknown recently leaked context %s", requestIdentifier, contextIdentifier);
+                    log.trace("Got exception reply for request %s on unknown recently leaked context %s", requestIdentifier, clientIdentifier);
                 } else {
-                    final RequestClient<?> requestClient = (RequestClient<?>) contextServer.requests.get(requestIdentifier);
-                    if (requestClient == null) {
-                        log.trace("Got exception reply for unknown request %s on context %s", requestIdentifier, contextIdentifier);
+                    final RequestInitiator<?> requestInitiator = (RequestInitiator<?>) contextServer.requests.get(requestIdentifier);
+                    if (requestInitiator == null) {
+                        log.trace("Got exception reply for unknown request %s on context %s", requestIdentifier, clientIdentifier);
                     } else try {
-                        requestClient.handleException(exception);
+                        requestInitiator.handleException(exception);
                     } catch (RemotingException e) {
                         log.trace(e, "Failed to receive an exception reply");
                     }
@@ -448,26 +448,26 @@ public final class CoreSession {
             }
         }
 
-        public void receiveCancelAcknowledge(ContextIdentifier contextIdentifier, RequestIdentifier requestIdentifier) {
-            if (contextIdentifier == null) {
-                throw new NullPointerException("contextIdentifier is null");
+        public void receiveCancelAcknowledge(ClientIdentifier clientIdentifier, RequestIdentifier requestIdentifier) {
+            if (clientIdentifier == null) {
+                throw new NullPointerException("clientIdentifier is null");
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
             }
-            final ClientContextPair contextPair = clientContexts.get(contextIdentifier);
+            final ClientContextPair contextPair = clientContexts.get(clientIdentifier);
             if (contextPair == null) {
-                log.trace("Got cancellation acknowledgement for request %s on unknown context %s", requestIdentifier, contextIdentifier);
+                log.trace("Got cancellation acknowledgement for request %s on unknown context %s", requestIdentifier, clientIdentifier);
             } else {
-                final ProtocolContextServerImpl<?, ?> contextServer = contextPair.contextServerRef.get();
+                final ProtocolClientResponderImpl<?, ?> contextServer = contextPair.contextServerRef.get();
                 if (contextServer == null) {
-                    log.trace("Got cancellation acknowledgement for request %s on unknown recently leaked context %s", requestIdentifier, contextIdentifier);
+                    log.trace("Got cancellation acknowledgement for request %s on unknown recently leaked context %s", requestIdentifier, clientIdentifier);
                 } else {
-                    final RequestClient<?> requestClient = (RequestClient<?>) contextServer.requests.get(requestIdentifier);
-                    if (requestClient == null) {
-                        log.trace("Got cancellation acknowledgement for unknown request %s on context %s", requestIdentifier, contextIdentifier);
+                    final RequestInitiator<?> requestInitiator = (RequestInitiator<?>) contextServer.requests.get(requestIdentifier);
+                    if (requestInitiator == null) {
+                        log.trace("Got cancellation acknowledgement for unknown request %s on context %s", requestIdentifier, clientIdentifier);
                     } else try {
-                        requestClient.handleCancelAcknowledge();
+                        requestInitiator.handleCancelAcknowledge();
                     } catch (RemotingException e) {
                         log.trace(e, "Failed to receive a cancellation acknowledgement");
                     }
@@ -475,17 +475,17 @@ public final class CoreSession {
             }
         }
 
-        public void receiveCancelRequest(ContextIdentifier remoteContextIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) {
-            if (remoteContextIdentifier == null) {
-                throw new NullPointerException("remoteContextIdentifier is null");
+        public void receiveCancelRequest(ClientIdentifier remoteClientIdentifier, RequestIdentifier requestIdentifier, boolean mayInterrupt) {
+            if (remoteClientIdentifier == null) {
+                throw new NullPointerException("remoteClientIdentifier is null");
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
             }
-            final ServerContextPair contextPair = serverContexts.get(remoteContextIdentifier);
-            final RequestServer<?> requestServer = (RequestServer<?>) contextPair.contextClient.requests.get(requestIdentifier);
+            final ServerContextPair contextPair = serverContexts.get(remoteClientIdentifier);
+            final RequestResponder<?> requestResponder = (RequestResponder<?>) contextPair.contextClient.requests.get(requestIdentifier);
             try {
-                requestServer.handleCancelRequest(mayInterrupt);
+                requestResponder.handleCancelRequest(mayInterrupt);
             } catch (RemotingException e) {
                 log.trace(e, "Failed to receive a cancellation request");
             }
@@ -518,22 +518,22 @@ public final class CoreSession {
         }
 
         @SuppressWarnings ({"unchecked"})
-        public void receiveRequest(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier, final Object request) {
-            if (remoteContextIdentifier == null) {
-                throw new NullPointerException("remoteContextIdentifier is null");
+        public void receiveRequest(final ClientIdentifier remoteClientIdentifier, final RequestIdentifier requestIdentifier, final Object request) {
+            if (remoteClientIdentifier == null) {
+                throw new NullPointerException("remoteClientIdentifier is null");
             }
             if (requestIdentifier == null) {
                 throw new NullPointerException("requestIdentifier is null");
             }
-            final ServerContextPair contextPair = serverContexts.get(remoteContextIdentifier);
+            final ServerContextPair contextPair = serverContexts.get(remoteClientIdentifier);
             if (contextPair == null) {
-                log.trace("Received a request on an unknown context %s", remoteContextIdentifier);
+                log.trace("Received a request on an unknown context %s", remoteClientIdentifier);
                 return;
             }
             try {
-                final RequestClient client = contextPair.contextClient.addClient(requestIdentifier);
-                final RequestServer requestServer = contextPair.contextServer.createNewRequest(client);
-                requestServer.handleRequest(request, executor);
+                final RequestInitiator requestInitiator = contextPair.contextClient.addClient(requestIdentifier);
+                final RequestResponder requestResponder = contextPair.clientResponder.createNewRequest(requestInitiator);
+                requestResponder.handleRequest(request, executor);
             } catch (RemotingException e) {
                 e.printStackTrace();
             }
@@ -603,26 +603,26 @@ public final class CoreSession {
             return target.getBytesWritten();
         }
 
-        private final <I, O> ContextMarker doContextReplace(ContextServer<I, O> contextServer) throws IOException {
-            final ContextIdentifier contextIdentifier = protocolHandler.openContext();
-            final ProtocolContextClientImpl<I, O> contextClient = new ProtocolContextClientImpl<I, O>(contextIdentifier);
-            new ServerContextPair<I, O>(contextClient, contextServer);
-            return new ContextMarker(contextIdentifier);
+        private final <I, O> ClientMarker doContextReplace(ClientResponder<I, O> clientResponder) throws IOException {
+            final ClientIdentifier clientIdentifier = protocolHandler.openClient();
+            final ProtocolClientInitiatorImpl<I, O> contextClient = new ProtocolClientInitiatorImpl<I, O>(clientIdentifier);
+            new ServerContextPair<I, O>(contextClient, clientResponder);
+            return new ClientMarker(clientIdentifier);
         }
 
-        private final <I, O> ContextSourceMarker doContextSourceReplace(ServiceServer<I, O> serviceServer) throws IOException {
+        private final <I, O> ContextSourceMarker doContextSourceReplace(ServiceResponder<I, O> serviceResponder) throws IOException {
             final ServiceIdentifier serviceIdentifier = protocolHandler.openService();
-            final ProtocolServiceClientImpl serviceClient = new ProtocolServiceClientImpl(serviceIdentifier);
-            new ServerServicePair<I, O>(serviceClient, serviceServer);
+            final ProtocolServiceInitiatorImpl serviceClient = new ProtocolServiceInitiatorImpl(serviceIdentifier);
+            new ServerServicePair<I, O>(serviceClient, serviceResponder);
             return new ContextSourceMarker(serviceIdentifier);
         }
 
         protected Object replaceObject(Object obj) throws IOException {
             final Object testObject = super.replaceObject(obj);
-            if (testObject instanceof AbstractRealContext) {
-                return doContextReplace(((AbstractRealContext<?, ?>) obj).getContextServer());
-            } else if (testObject instanceof AbstractRealContextSource) {
-                return doContextSourceReplace(((AbstractRealContextSource<?, ?>) obj).getServiceServer());
+            if (testObject instanceof AbstractRealClient) {
+                return doContextReplace(((AbstractRealClient<?, ?>) obj).getContextServer());
+            } else if (testObject instanceof AbstractRealClientSource) {
+                return doContextSourceReplace(((AbstractRealClientSource<?, ?>) obj).getServiceServer());
             }
             for (StreamDetector detector : streamDetectors) {
                 final StreamSerializerFactory factory = detector.detectStream(testObject);
@@ -757,21 +757,21 @@ public final class CoreSession {
         }
     }
 
-    private final class WeakProtocolContextServerReference<I, O> extends WeakReference<ProtocolContextServerImpl<I, O>> {
+    private final class WeakProtocolContextServerReference<I, O> extends WeakReference<ProtocolClientResponderImpl<I, O>> {
         private final ClientContextPair<I, O> contextPair;
 
-        private WeakProtocolContextServerReference(ProtocolContextServerImpl<I, O> referent, ClientContextPair<I, O> contextPair) {
+        private WeakProtocolContextServerReference(ProtocolClientResponderImpl<I, O> referent, ClientContextPair<I, O> contextPair) {
             super(referent);
             this.contextPair = contextPair;
         }
 
-        public ProtocolContextServerImpl<I, O> get() {
+        public ProtocolClientResponderImpl<I, O> get() {
             return super.get();
         }
 
         public boolean enqueue() {
             try {
-                clientContexts.remove(contextPair.contextIdentifier, contextPair);
+                clientContexts.remove(contextPair.clientIdentifier, contextPair);
                 // todo close?
             } finally {
                 return super.enqueue();
@@ -780,70 +780,70 @@ public final class CoreSession {
     }
 
     private final class ClientContextPair<I, O> {
-        private final ContextClient contextClient;
+        private final ClientInitiator clientInitiator;
         private final WeakProtocolContextServerReference<I, O> contextServerRef;
-        private final ContextIdentifier contextIdentifier;
+        private final ClientIdentifier clientIdentifier;
 
-        private ClientContextPair(final ContextClient contextClient, final ProtocolContextServerImpl<I, O> contextServer, final ContextIdentifier contextIdentifier) {
-            this.contextClient = contextClient;
-            this.contextIdentifier = contextIdentifier;
+        private ClientContextPair(final ClientInitiator clientInitiator, final ProtocolClientResponderImpl<I, O> contextServer, final ClientIdentifier clientIdentifier) {
+            this.clientInitiator = clientInitiator;
+            this.clientIdentifier = clientIdentifier;
             contextServerRef = new WeakProtocolContextServerReference<I, O>(contextServer, this);
             // todo - auto-cleanup
         }
     }
 
     private static final class ServerContextPair<I, O> {
-        private final ProtocolContextClientImpl<I, O> contextClient;
-        private final ContextServer<I, O> contextServer;
+        private final ProtocolClientInitiatorImpl<I, O> contextClient;
+        private final ClientResponder<I, O> clientResponder;
 
-        private ServerContextPair(final ProtocolContextClientImpl<I, O> contextClient, final ContextServer<I, O> contextServer) {
+        private ServerContextPair(final ProtocolClientInitiatorImpl<I, O> contextClient, final ClientResponder<I, O> clientResponder) {
             if (contextClient == null) {
-                throw new NullPointerException("contextClient is null");
+                throw new NullPointerException("clientInitiator is null");
             }
-            if (contextServer == null) {
-                throw new NullPointerException("contextServer is null");
+            if (clientResponder == null) {
+                throw new NullPointerException("clientResponder is null");
             }
             this.contextClient = contextClient;
-            this.contextServer = contextServer;
+            this.clientResponder = clientResponder;
         }
     }
 
     private static final class ClientServicePair<I, O> {
-        private final ServiceClient serviceClient;
-        private final ProtocolServiceServerImpl<I, O> serviceServer;
+        private final ServiceInitiator serviceInitiator;
+        private final ProtocolServiceResponderImpl<I, O> serviceServer;
 
-        private ClientServicePair(final ServiceClient serviceClient, final ProtocolServiceServerImpl<I, O> serviceServer) {
-            if (serviceClient == null) {
-                throw new NullPointerException("serviceClient is null");
+        private ClientServicePair(final ServiceInitiator serviceInitiator, final ProtocolServiceResponderImpl<I, O> serviceServer) {
+            if (serviceInitiator == null) {
+                throw new NullPointerException("serviceInitiator is null");
             }
             if (serviceServer == null) {
-                throw new NullPointerException("serviceServer is null");
+                throw new NullPointerException("serviceResponder is null");
             }
-            this.serviceClient = serviceClient;
+            this.serviceInitiator = serviceInitiator;
             this.serviceServer = serviceServer;
         }
     }
 
     private static final class ServerServicePair<I, O> {
-        private final ProtocolServiceClientImpl serviceClient;
-        private final ServiceServer<I, O> serviceServer;
+        private final ProtocolServiceInitiatorImpl serviceClient;
+        private final ServiceResponder<I, O> serviceResponder;
 
-        private ServerServicePair(final ProtocolServiceClientImpl serviceClient, final ServiceServer<I, O> serviceServer) {
+        private ServerServicePair(final ProtocolServiceInitiatorImpl serviceClient, final ServiceResponder<I, O> serviceResponder) {
             if (serviceClient == null) {
-                throw new NullPointerException("serviceClient is null");
+                throw new NullPointerException("serviceInitiator is null");
             }
-            if (serviceServer == null) {
-                throw new NullPointerException("serviceServer is null");
+            if (serviceResponder == null) {
+                throw new NullPointerException("serviceResponder is null");
             }
             this.serviceClient = serviceClient;
-            this.serviceServer = serviceServer;
+            this.serviceResponder = serviceResponder;
         }
     }
 
-    private final class ProtocolServiceClientImpl implements ServiceClient {
+    private final class ProtocolServiceInitiatorImpl implements ServiceInitiator {
         private final ServiceIdentifier serviceIdentifier;
 
-        public ProtocolServiceClientImpl(final ServiceIdentifier serviceIdentifier) {
+        public ProtocolServiceInitiatorImpl(final ServiceIdentifier serviceIdentifier) {
             if (serviceIdentifier == null) {
                 throw new NullPointerException("serviceIdentifier is null");
             }
@@ -861,10 +861,10 @@ public final class CoreSession {
         }
     }
 
-    private final class ProtocolServiceServerImpl<I, O> implements ServiceServer<I, O> {
+    private final class ProtocolServiceResponderImpl<I, O> implements ServiceResponder<I, O> {
         private final ServiceIdentifier serviceIdentifier;
 
-        public ProtocolServiceServerImpl(final ServiceIdentifier serviceIdentifier) {
+        public ProtocolServiceResponderImpl(final ServiceIdentifier serviceIdentifier) {
             this.serviceIdentifier = serviceIdentifier;
         }
 
@@ -878,14 +878,14 @@ public final class CoreSession {
             }
         }
 
-        public ContextServer<I, O> createNewContext(final ContextClient client) throws RemotingException {
+        public ClientResponder<I, O> createNewClient(final ClientInitiator clientInitiator) throws RemotingException {
             try {
-                final ContextIdentifier contextIdentifier = protocolHandler.openContext(serviceIdentifier);
-                if (contextIdentifier == null) {
-                    throw new NullPointerException("contextIdentifier is null");
+                final ClientIdentifier clientIdentifier = protocolHandler.openClient(serviceIdentifier);
+                if (clientIdentifier == null) {
+                    throw new NullPointerException("clientIdentifier is null");
                 }
-                clientContexts.put(contextIdentifier, new ClientContextPair<I, O>(client, new ProtocolContextServerImpl<I, O>(contextIdentifier), contextIdentifier));
-                return new ProtocolContextServerImpl<I, O>(contextIdentifier);
+                clientContexts.put(clientIdentifier, new ClientContextPair<I, O>(clientInitiator, new ProtocolClientResponderImpl<I, O>(clientIdentifier), clientIdentifier));
+                return new ProtocolClientResponderImpl<I, O>(clientIdentifier);
             } catch (RemotingException e) {
                 throw e;
             } catch (IOException e) {
@@ -894,18 +894,18 @@ public final class CoreSession {
         }
     }
 
-    private final class ProtocolContextClientImpl<I, O> implements ContextClient {
-        private final ContextIdentifier contextIdentifier;
-        private final ConcurrentMap<RequestIdentifier, RequestServer<I>> requests = CollectionUtil.concurrentMap();
+    private final class ProtocolClientInitiatorImpl<I, O> implements ClientInitiator {
+        private final ClientIdentifier clientIdentifier;
+        private final ConcurrentMap<RequestIdentifier, RequestResponder<I>> requests = CollectionUtil.concurrentMap();
 
-        public ProtocolContextClientImpl(final ContextIdentifier contextIdentifier) {
-            this.contextIdentifier = contextIdentifier;
+        public ProtocolClientInitiatorImpl(final ClientIdentifier clientIdentifier) {
+            this.clientIdentifier = clientIdentifier;
         }
 
         public void handleClosing(boolean done) throws RemotingException {
             try {
                 if (state.inHold(State.UP)) {
-                    protocolHandler.sendContextClosing(contextIdentifier, done);
+                    protocolHandler.sendClientClosing(clientIdentifier, done);
                 }
             } catch (RemotingException e) {
                 throw e;
@@ -914,22 +914,22 @@ public final class CoreSession {
             }
         }
 
-        private RequestClient<O> addClient(RequestIdentifier identifier) {
-            return new ProtocolRequestClientImpl<O>(contextIdentifier, identifier);
+        private RequestInitiator<O> addClient(RequestIdentifier identifier) {
+            return new ProtocolRequestInitiatorImpl<O>(clientIdentifier, identifier);
         }
 
-        private final class ProtocolRequestClientImpl<O> implements RequestClient<O> {
-            private final ContextIdentifier contextIdentifer;
+        private final class ProtocolRequestInitiatorImpl<O> implements RequestInitiator<O> {
+            private final ClientIdentifier clientIdentifer;
             private final RequestIdentifier requestIdentifer;
 
-            public ProtocolRequestClientImpl(final ContextIdentifier contextIdentifer, final RequestIdentifier requestIdentifer) {
-                this.contextIdentifer = contextIdentifer;
+            public ProtocolRequestInitiatorImpl(final ClientIdentifier clientIdentifer, final RequestIdentifier requestIdentifer) {
+                this.clientIdentifer = clientIdentifer;
                 this.requestIdentifer = requestIdentifer;
             }
 
             public void handleReply(final O reply) throws RemotingException {
                 try {
-                    protocolHandler.sendReply(contextIdentifer, requestIdentifer, reply);
+                    protocolHandler.sendReply(clientIdentifer, requestIdentifer, reply);
                 } catch (RemotingException e) {
                     throw e;
                 } catch (IOException e) {
@@ -941,7 +941,7 @@ public final class CoreSession {
 
             public void handleException(final RemoteExecutionException cause) throws RemotingException {
                 try {
-                    protocolHandler.sendException(contextIdentifer, requestIdentifer, cause);
+                    protocolHandler.sendException(clientIdentifer, requestIdentifer, cause);
                 } catch (RemotingException e) {
                     throw e;
                 } catch (IOException e) {
@@ -953,7 +953,7 @@ public final class CoreSession {
 
             public void handleCancelAcknowledge() throws RemotingException {
                 try {
-                    protocolHandler.sendCancelAcknowledge(contextIdentifer, requestIdentifer);
+                    protocolHandler.sendCancelAcknowledge(clientIdentifer, requestIdentifer);
                 } catch (RemotingException e) {
                     throw e;
                 } catch (IOException e) {
@@ -965,22 +965,22 @@ public final class CoreSession {
         }
     }
 
-    private final class ProtocolContextServerImpl<I, O> implements ContextServer<I, O> {
-        private final ContextIdentifier contextIdentifier;
-        private final ConcurrentMap<RequestIdentifier, RequestClient<O>> requests = CollectionUtil.concurrentMap();
+    private final class ProtocolClientResponderImpl<I, O> implements ClientResponder<I, O> {
+        private final ClientIdentifier clientIdentifier;
+        private final ConcurrentMap<RequestIdentifier, RequestInitiator<O>> requests = CollectionUtil.concurrentMap();
 
-        public ProtocolContextServerImpl(final ContextIdentifier contextIdentifier) {
-            this.contextIdentifier = contextIdentifier;
+        public ProtocolClientResponderImpl(final ClientIdentifier clientIdentifier) {
+            this.clientIdentifier = clientIdentifier;
         }
 
-        public RequestServer<I> createNewRequest(final RequestClient<O> requestClient) throws RemotingException {
+        public RequestResponder<I> createNewRequest(final RequestInitiator<O> requestInitiator) throws RemotingException {
             try {
-                final RequestIdentifier requestIdentifier = protocolHandler.openRequest(contextIdentifier);
+                final RequestIdentifier requestIdentifier = protocolHandler.openRequest(clientIdentifier);
                 if (requestIdentifier == null) {
                     throw new NullPointerException("requestIdentifier is null");
                 }
-                requests.put(requestIdentifier, requestClient);
-                return new ProtocolRequestServerImpl(requestIdentifier);
+                requests.put(requestIdentifier, requestInitiator);
+                return new ProtocolRequestResponderImpl(requestIdentifier);
             } catch (RemotingException e) {
                 throw e;
             } catch (IOException e) {
@@ -990,7 +990,7 @@ public final class CoreSession {
 
         public void handleClose(final boolean immediate, final boolean cancel) throws RemotingException {
             try {
-                protocolHandler.sendContextClose(contextIdentifier, immediate, cancel, false);
+                protocolHandler.sendClientClose(clientIdentifier, immediate, cancel, false);
             } catch (RemotingException e) {
                 throw e;
             } catch (IOException e) {
@@ -998,16 +998,16 @@ public final class CoreSession {
             }
         }
 
-        private final class ProtocolRequestServerImpl implements RequestServer<I> {
+        private final class ProtocolRequestResponderImpl implements RequestResponder<I> {
             private final RequestIdentifier requestIdentifier;
 
-            public ProtocolRequestServerImpl(final RequestIdentifier requestIdentifier) {
+            public ProtocolRequestResponderImpl(final RequestIdentifier requestIdentifier) {
                 this.requestIdentifier = requestIdentifier;
             }
 
             public void handleRequest(final I request, final Executor streamExecutor) throws RemotingException {
                 try {
-                    protocolHandler.sendRequest(contextIdentifier, requestIdentifier, request, streamExecutor);
+                    protocolHandler.sendRequest(clientIdentifier, requestIdentifier, request, streamExecutor);
                 } catch (RemotingException e) {
                     throw e;
                 } catch (IOException e) {
@@ -1017,7 +1017,7 @@ public final class CoreSession {
 
             public void handleCancelRequest(final boolean mayInterrupt) throws RemotingException {
                 try {
-                    protocolHandler.sendCancelRequest(contextIdentifier, requestIdentifier, mayInterrupt);
+                    protocolHandler.sendCancelRequest(clientIdentifier, requestIdentifier, mayInterrupt);
                 } catch (RemotingException e) {
                     throw e;
                 } catch (IOException e) {

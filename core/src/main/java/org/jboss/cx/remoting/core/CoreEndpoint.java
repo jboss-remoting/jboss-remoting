@@ -11,8 +11,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.Context;
-import org.jboss.cx.remoting.ContextSource;
+import org.jboss.cx.remoting.Client;
+import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
@@ -247,19 +247,19 @@ public final class CoreEndpoint {
             }
         }
 
-        public <I, O> Context<I, O> createContext(RequestListener<I, O> requestListener) {
-            final CoreInboundContext<I, O> inbound = new CoreInboundContext<I, O>(requestListener, executor);
-            final CoreOutboundContext<I, O> outbound = new CoreOutboundContext<I, O>(executor);
+        public <I, O> Client<I, O> createContext(RequestListener<I, O> requestListener) {
+            final CoreInboundClient<I, O> inbound = new CoreInboundClient<I, O>(requestListener, executor);
+            final CoreOutboundClient<I, O> outbound = new CoreOutboundClient<I, O>(executor);
             inbound.initialize(outbound.getContextClient());
-            outbound.initialize(inbound.getContextServer());
+            outbound.initialize(inbound.getClientResponder());
             return outbound.getUserContext();
         }
 
-        public <I, O> ContextSource<I, O> createService(RequestListener<I, O> requestListener) {
+        public <I, O> ClientSource<I, O> createService(RequestListener<I, O> requestListener) {
             final CoreInboundService<I, O> inbound = new CoreInboundService<I, O>(requestListener, executor);
             final CoreOutboundService<I, O> outbound = new CoreOutboundService<I, O>(executor);
             inbound.initialize(outbound.getServiceClient());
-            outbound.initialize(inbound.getServiceServer());
+            outbound.initialize(inbound.getServiceResponder());
             return outbound.getUserContextSource();
         }
 

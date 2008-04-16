@@ -2,7 +2,7 @@ package org.jboss.cx.remoting.samples.simple;
 
 import java.io.IOException;
 import java.security.Security;
-import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Remoting;
@@ -18,13 +18,13 @@ public final class LocalBasicExampleMain {
         final StringRot13RequestListener listener = new StringRot13RequestListener();
         final Endpoint endpoint = Remoting.createEndpoint("simple", listener);
         try {
-            final Context<String,String> context = endpoint.createContext(listener);
+            final Client<String,String> client = endpoint.createContext(listener);
             try {
                 final String original = "The Secret Message\n";
-                final String result = context.invoke(original);
+                final String result = client.invoke(original);
                 System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), result.trim());
             } finally {
-                context.close();
+                client.close();
             }
         } finally {
             endpoint.close();

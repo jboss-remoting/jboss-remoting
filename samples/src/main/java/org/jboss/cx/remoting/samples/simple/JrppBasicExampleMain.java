@@ -5,7 +5,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.Security;
-import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Remoting;
@@ -26,13 +26,13 @@ public final class JrppBasicExampleMain {
             Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), AttributeMap.EMPTY);
             Session session = endpoint.openSession(new URI("jrpp://localhost:12345"), AttributeMap.EMPTY);
             try {
-                final Context<String,String> context = session.getRootContext();
+                final Client<String,String> client = session.getRootContext();
                 try {
                     final String original = "The Secret Message\n";
-                    final String result = context.invoke(original);
+                    final String result = client.invoke(original);
                     System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), result.trim());
                 } finally {
-                    context.close();
+                    client.close();
                 }
             } finally {
                 session.close();

@@ -5,8 +5,8 @@ import org.jboss.cx.remoting.RemotingException;
 /**
  *
  */
-public interface ContextServer<I, O> {
-    RequestServer<I> createNewRequest(RequestClient<O> requestClient) throws RemotingException;
+public interface ClientResponder<I, O> {
+    RequestResponder<I> createNewRequest(RequestInitiator<O> requestInitiator) throws RemotingException;
 
     void handleClose(boolean immediate, boolean cancel) throws RemotingException;
 }

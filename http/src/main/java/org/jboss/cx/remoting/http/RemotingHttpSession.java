@@ -13,7 +13,7 @@ import org.jboss.cx.remoting.http.spi.IncomingHttpMessage;
 import org.jboss.cx.remoting.http.spi.RemotingHttpSessionContext;
 import org.jboss.cx.remoting.spi.ByteMessageOutput;
 import org.jboss.cx.remoting.spi.ObjectMessageOutput;
-import org.jboss.cx.remoting.spi.protocol.ContextIdentifier;
+import org.jboss.cx.remoting.spi.protocol.ClientIdentifier;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
@@ -116,50 +116,50 @@ public final class RemotingHttpSession {
 
     private final class ProtocolHandlerImpl implements ProtocolHandler {
 
-        public void sendReply(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier, final Object reply) throws IOException {
+        public void sendReply(final ClientIdentifier remoteClientIdentifier, final RequestIdentifier requestIdentifier, final Object reply) throws IOException {
         }
 
-        public void sendException(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier, final RemoteExecutionException exception) throws IOException {
+        public void sendException(final ClientIdentifier remoteClientIdentifier, final RequestIdentifier requestIdentifier, final RemoteExecutionException exception) throws IOException {
         }
 
-        public void sendCancelAcknowledge(final ContextIdentifier remoteContextIdentifier, final RequestIdentifier requestIdentifier) throws IOException {
+        public void sendCancelAcknowledge(final ClientIdentifier remoteClientIdentifier, final RequestIdentifier requestIdentifier) throws IOException {
         }
 
         public void sendServiceClosing(final ServiceIdentifier remoteServiceIdentifier) throws IOException {
         }
 
-        public void sendContextClosing(final ContextIdentifier remoteContextIdentifier, final boolean done) throws IOException {
+        public void sendClientClosing(final ClientIdentifier remoteClientIdentifier, final boolean done) throws IOException {
         }
 
-        public ContextIdentifier getLocalRootContextIdentifier() {
+        public ClientIdentifier getLocalRootClientIdentifier() {
             return null;
         }
 
-        public ContextIdentifier getRemoteRootContextIdentifier() {
+        public ClientIdentifier getRemoteRootClientIdentifier() {
             return null;
         }
 
-        public ContextIdentifier openContext(final ServiceIdentifier serviceIdentifier) throws IOException {
+        public ClientIdentifier openClient(final ServiceIdentifier serviceIdentifier) throws IOException {
             return null;
         }
 
-        public void sendContextClose(final ContextIdentifier contextIdentifier, final boolean immediate, final boolean cancel, final boolean interrupt) throws IOException {
+        public void sendClientClose(final ClientIdentifier clientIdentifier, final boolean immediate, final boolean cancel, final boolean interrupt) throws IOException {
         }
 
-        public RequestIdentifier openRequest(final ContextIdentifier contextIdentifier) throws IOException {
+        public RequestIdentifier openRequest(final ClientIdentifier clientIdentifier) throws IOException {
             return null;
         }
 
         public void sendServiceClose(final ServiceIdentifier serviceIdentifier) throws IOException {
         }
 
-        public void sendRequest(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final Object request, final Executor streamExecutor) throws IOException {
+        public void sendRequest(final ClientIdentifier clientIdentifier, final RequestIdentifier requestIdentifier, final Object request, final Executor streamExecutor) throws IOException {
         }
 
-        public void sendCancelRequest(final ContextIdentifier contextIdentifier, final RequestIdentifier requestIdentifier, final boolean mayInterrupt) throws IOException {
+        public void sendCancelRequest(final ClientIdentifier clientIdentifier, final RequestIdentifier requestIdentifier, final boolean mayInterrupt) throws IOException {
         }
 
-        public ContextIdentifier openContext() throws IOException {
+        public ClientIdentifier openClient() throws IOException {
             return null;
         }
 

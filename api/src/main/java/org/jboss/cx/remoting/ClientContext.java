@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentMap;
 /**
  *
  */
-public interface ContextContext extends Closeable<ContextContext> {
+public interface ClientContext extends Closeable<ClientContext> {
     /**
      * Get the attributes for this end of the context as a map.
      *

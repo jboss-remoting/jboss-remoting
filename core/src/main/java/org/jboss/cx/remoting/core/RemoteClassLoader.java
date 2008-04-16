@@ -3,7 +3,7 @@ package org.jboss.cx.remoting.core;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.SecureClassLoader;
-import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.log.Logger;
@@ -18,11 +18,11 @@ import org.jboss.cx.remoting.stream.ObjectSource;
 public final class RemoteClassLoader extends SecureClassLoader {
     private static final Logger log = Logger.getLogger(RemoteClassLoader.class);
 
-    private final Context<ClassLoaderResourceRequest, ClassLoaderResourceReply> loaderContext;
+    private final Client<ClassLoaderResourceRequest, ClassLoaderResourceReply> loaderClient;
 
-    public RemoteClassLoader(ClassLoader parent, final Context<ClassLoaderResourceRequest, ClassLoaderResourceReply> loaderContext) {
+    public RemoteClassLoader(ClassLoader parent, final Client<ClassLoaderResourceRequest, ClassLoaderResourceReply> loaderClient) {
         super(parent);
-        this.loaderContext = loaderContext;
+        this.loaderClient = loaderClient;
     }
 
     protected Class<?> findClass(String name) throws ClassNotFoundException {
@@ -35,7 +35,7 @@ public final class RemoteClassLoader extends SecureClassLoader {
             // continue on...
         }
         try {
-            final ClassLoaderResourceReply reply = loaderContext.invoke(new ClassLoaderResourceRequest(name + ".class"));
+            final ClassLoaderResourceReply reply = loaderClient.invoke(new ClassLoaderResourceRequest(name + ".class"));
             final ObjectSource<RemoteResource> source = reply.getResources();
             try {
                 if (! source.hasNext()) {

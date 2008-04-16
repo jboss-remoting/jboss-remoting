@@ -2,7 +2,7 @@ package org.jboss.cx.remoting.spi.wrapper;
 
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
 
@@ -44,7 +44,7 @@ public class SessionWrapper implements Session {
         return delegate.getRemoteEndpointName();
     }
 
-    public <I, O> Context<I, O> getRootContext() {
+    public <I, O> Client<I, O> getRootContext() {
         return delegate.getRootContext();
     }
 }

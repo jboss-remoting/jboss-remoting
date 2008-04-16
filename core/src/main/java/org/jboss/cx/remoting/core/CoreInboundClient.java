@@ -4,7 +4,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.ContextContext;
+import org.jboss.cx.remoting.ClientContext;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.ServiceContext;
@@ -17,17 +17,17 @@ import static org.jboss.cx.remoting.util.CollectionUtil.synchronizedHashSet;
 /**
  *
  */
-public final class CoreInboundContext<I, O> {
-    private static final Logger log = Logger.getLogger(CoreInboundContext.class);
+public final class CoreInboundClient<I, O> {
+    private static final Logger log = Logger.getLogger(CoreInboundClient.class);
 
     private final RequestListener<I, O> requestListener;
     private final Executor executor;
     private final ServiceContext serviceContext;
     private final Set<CoreInboundRequest<I, O>> requests = synchronizedHashSet();
     private final AtomicStateMachine<State> state = start(State.NEW);
-    private final ContextContext contextContext = new UserContextContext();
+    private final ClientContext clientContext = new UserClientContext();
 
-    private ContextClient contextClient;
+    private ClientInitiator clientInitiator;
     private ConcurrentMap<Object, Object> attributes = CollectionUtil.concurrentMap();
 
     private enum State implements org.jboss.cx.remoting.util.State<State> {
@@ -41,28 +41,28 @@ public final class CoreInboundContext<I, O> {
         }
     }
 
-    public CoreInboundContext(final RequestListener<I, O> requestListener, final Executor executor) {
+    public CoreInboundClient(final RequestListener<I, O> requestListener, final Executor executor) {
         this.requestListener = requestListener;
         this.executor = executor;
         serviceContext = null;
     }
 
-    public CoreInboundContext(final RequestListener<I, O> requestListener, final Executor executor, final ServiceContext serviceContext) {
+    public CoreInboundClient(final RequestListener<I, O> requestListener, final Executor executor, final ServiceContext serviceContext) {
         this.requestListener = requestListener;
         this.executor = executor;
         this.serviceContext = serviceContext;
     }
 
-    public ContextServer<I, O> getContextServer() {
-        return new Server();
+    public ClientResponder<I, O> getClientResponder() {
+        return new Responder();
     }
 
-    public void initialize(final ContextClient contextClient) {
+    public void initialize(final ClientInitiator clientInitiator) {
         state.requireTransitionExclusive(State.NEW, State.UP);
-        this.contextClient = contextClient;
+        this.clientInitiator = clientInitiator;
         state.releaseDowngrade();
         try {
-            requestListener.handleContextOpen(contextContext);
+            requestListener.handleClientOpen(clientContext);
         } finally {
             state.release();
         }
@@ -85,36 +85,36 @@ public final class CoreInboundContext<I, O> {
 
     // Accessors
 
-    public ContextContext getContextContext() {
-        return contextContext;
+    public ClientContext getClientContext() {
+        return clientContext;
     }
 
     // Support classes
 
-    public final class Server implements ContextServer<I, O> {
-        private Server() {
+    public final class Responder implements ClientResponder<I, O> {
+        private Responder() {
         }
 
-        public RequestServer<I> createNewRequest(final RequestClient<O> requestClient) throws RemotingException {
+        public RequestResponder<I> createNewRequest(final RequestInitiator<O> requestInitiator) throws RemotingException {
             if (state.inHold(State.UP)) try {
-                final CoreInboundRequest<I, O> inboundRequest = new CoreInboundRequest<I, O>(requestListener, executor, contextContext);
-                inboundRequest.initialize(requestClient);
+                final CoreInboundRequest<I, O> inboundRequest = new CoreInboundRequest<I, O>(requestListener, executor, clientContext);
+                inboundRequest.initialize(requestInitiator);
                 requests.add(inboundRequest);
-                return inboundRequest.getRequester();
+                return inboundRequest.getRequestResponder();
             } finally {
                 state.release();
             } else {
-                throw new RemotingException("Context is not up");
+                throw new RemotingException("Client is not up");
             }
         }
 
         public void handleClose(final boolean immediate, final boolean cancel) throws RemotingException {
             if (state.transition(State.UP, State.STOPPING)) {
-                contextClient.handleClosing(false);
+                clientInitiator.handleClosing(false);
                 if (immediate || cancel) {
                     for (CoreInboundRequest<I, O> inboundRequest : requests) {
                         try {
-                            inboundRequest.getRequester().handleCancelRequest(immediate );
+                            inboundRequest.getRequestResponder().handleCancelRequest(immediate );
                         } catch (Exception e) {
                             log.trace("Failed to notify inbound request of cancellation upon context close: %s", e);
                         }
@@ -124,8 +124,8 @@ public final class CoreInboundContext<I, O> {
         }
     }
 
-    public final class UserContextContext implements ContextContext {
-        private UserContextContext() {
+    public final class UserClientContext implements ClientContext {
+        private UserClientContext() {
         }
 
         public ConcurrentMap<Object, Object> getAttributes() {
@@ -137,13 +137,13 @@ public final class CoreInboundContext<I, O> {
         }
 
         public void close() throws RemotingException {
-            contextClient.handleClosing(false);
+            clientInitiator.handleClosing(false);
         }
 
         public void closeImmediate() throws RemotingException {
         }
 
-        public void addCloseHandler(final CloseHandler<ContextContext> contextContextCloseHandler) {
+        public void addCloseHandler(final CloseHandler<ClientContext> contextContextCloseHandler) {
         }
     }
 }

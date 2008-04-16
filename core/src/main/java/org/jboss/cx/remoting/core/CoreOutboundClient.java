@@ -5,7 +5,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
@@ -18,26 +18,26 @@ import org.jboss.cx.remoting.util.CollectionUtil;
 /**
  *
  */
-public final class CoreOutboundContext<I, O> {
-    private static final Logger log = Logger.getLogger(CoreOutboundContext.class);
+public final class CoreOutboundClient<I, O> {
+    private static final Logger log = Logger.getLogger(CoreOutboundClient.class);
 
     private final ConcurrentMap<Object, Object> contextMap = CollectionUtil.concurrentMap();
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
-    private final ContextClient contextClient = new ContextClientImpl();
-    private final Set<CloseHandler<Context<I, O>>> closeHandlers = CollectionUtil.synchronizedSet(new LinkedHashSet<CloseHandler<Context<I, O>>>());
+    private final ClientInitiator clientInitiator = new ClientInitiatorImpl();
+    private final Set<CloseHandler<Client<I, O>>> closeHandlers = CollectionUtil.synchronizedSet(new LinkedHashSet<CloseHandler<Client<I, O>>>());
     private final Executor executor;
 
-    private Context<I, O> userContext;
-    private ContextServer<I, O> contextServer;
+    private Client<I, O> userClient;
+    private ClientResponder<I, O> clientResponder;
     
-    public CoreOutboundContext(final Executor executor) {
+    public CoreOutboundClient(final Executor executor) {
         this.executor = executor;
     }
 
-    public void initialize(final ContextServer<I, O> contextServer) {
+    public void initialize(final ClientResponder<I, O> clientResponder) {
         state.requireTransitionExclusive(State.INITIAL, State.UP);
-        this.contextServer = contextServer;
-        userContext = new UserContext();
+        this.clientResponder = clientResponder;
+        userClient = new UserClient();
         state.releaseExclusive();
     }
 
@@ -54,12 +54,12 @@ public final class CoreOutboundContext<I, O> {
 
     // Getters
 
-    Context<I,O> getUserContext() {
-        return userContext;
+    Client<I,O> getUserContext() {
+        return userClient;
     }
 
-    ContextClient getContextClient() {
-        return contextClient;
+    ClientInitiator getContextClient() {
+        return clientInitiator;
     }
 
     // Other mgmt
@@ -73,26 +73,26 @@ public final class CoreOutboundContext<I, O> {
         }
     }
 
-    public final class UserContext extends AbstractRealContext<I, O> {
+    public final class UserClient extends AbstractRealClient<I, O> {
 
-        private UserContext() {
-            super(contextServer);
+        private UserClient() {
+            super(clientResponder);
         }
 
         private void doClose(final boolean immediate, final boolean cancel) throws RemotingException {
             state.waitForNot(State.INITIAL);
             if (state.transitionHold(State.UP, State.STOPPING)) try {
                 synchronized (closeHandlers) {
-                    for (final CloseHandler<Context<I, O>> handler : closeHandlers) {
+                    for (final CloseHandler<Client<I, O>> handler : closeHandlers) {
                         executor.execute(new Runnable() {
                             public void run() {
-                                handler.handleClose(UserContext.this);
+                                handler.handleClose(UserClient.this);
                             }
                         });
                     }
                     closeHandlers.clear();
                 }
-                contextServer.handleClose(immediate, cancel);
+                clientResponder.handleClose(immediate, cancel);
             } finally {
                 state.release();
             }
@@ -106,7 +106,7 @@ public final class CoreOutboundContext<I, O> {
             doClose(true, true);
         }
 
-        public void addCloseHandler(final CloseHandler<Context<I, O>> closeHandler) {
+        public void addCloseHandler(final CloseHandler<Client<I, O>> closeHandler) {
             final State current = state.getStateHold();
             try {
                 switch (current) {
@@ -128,7 +128,7 @@ public final class CoreOutboundContext<I, O> {
             try {
                 final QueueExecutor queueExecutor = new QueueExecutor();
                 final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>();
-                final RequestServer<I> requestTerminus = contextServer.createNewRequest(outboundRequest.getReplier());
+                final RequestResponder<I> requestTerminus = clientResponder.createNewRequest(outboundRequest.getReplier());
                 outboundRequest.setRequester(requestTerminus);
                 requestTerminus.handleRequest(request, queueExecutor);
                 final FutureReply<O> futureReply = outboundRequest.getFutureReply();
@@ -148,7 +148,7 @@ public final class CoreOutboundContext<I, O> {
             state.requireHold(State.UP);
             try {
                 final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>();
-                final RequestServer<I> requestTerminus = contextServer.createNewRequest(outboundRequest.getReplier());
+                final RequestResponder<I> requestTerminus = clientResponder.createNewRequest(outboundRequest.getReplier());
                 outboundRequest.setRequester(requestTerminus);
                 requestTerminus.handleRequest(request, executor);
                 return outboundRequest.getFutureReply();
@@ -160,8 +160,8 @@ public final class CoreOutboundContext<I, O> {
         public void sendOneWay(final I request) throws RemotingException {
             state.requireHold(State.UP);
             try {
-                final RequestServer<I> requestServer = contextServer.createNewRequest(null);
-                requestServer.handleRequest(request, executor);
+                final RequestResponder<I> requestResponder = clientResponder.createNewRequest(null);
+                requestResponder.handleRequest(request, executor);
             } finally {
                 state.release();
             }
@@ -172,7 +172,7 @@ public final class CoreOutboundContext<I, O> {
         }
     }
 
-    public final class ContextClientImpl implements ContextClient {
+    public final class ClientInitiatorImpl implements ClientInitiator {
         public void handleClosing(boolean done) throws RemotingException {
             // todo - remote side is closing
         }

@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.security.Security;
-import org.jboss.cx.remoting.Context;
+import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Remoting;
@@ -21,12 +21,12 @@ public final class LocalStreamExampleMain {
         final StreamingRot13RequestListener listener = new StreamingRot13RequestListener();
         final Endpoint endpoint = Remoting.createEndpoint("simple", listener);
         try {
-            final Context<Reader,Reader> context = endpoint.createContext(listener);
+            final Client<Reader,Reader> client = endpoint.createContext(listener);
             try {
                 final String original = "The Secret Message\n";
                 final StringReader originalReader = new StringReader(original);
                 try {
-                    final Reader reader = context.send(originalReader).get();
+                    final Reader reader = client.send(originalReader).get();
                     try {
                         final BufferedReader bufferedReader = new BufferedReader(reader);
                         try {
@@ -42,7 +42,7 @@ public final class LocalStreamExampleMain {
                     originalReader.close();
                 }
             } finally {
-                context.close();
+                client.close();
             }
         } finally {
             endpoint.close();

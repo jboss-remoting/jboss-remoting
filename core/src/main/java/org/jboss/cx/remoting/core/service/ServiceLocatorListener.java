@@ -4,8 +4,8 @@ import java.net.URI;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.AbstractRequestListener;
-import org.jboss.cx.remoting.Context;
-import org.jboss.cx.remoting.ContextSource;
+import org.jboss.cx.remoting.Client;
+import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.service.ServiceReply;
@@ -24,7 +24,7 @@ public final class ServiceLocatorListener<I, O> extends AbstractRequestListener<
         String getType();
 
         // todo - add in whatever negotation to the request object (security?)
-        <X, Y> Context<Void, ServiceReply<X, Y>> getServiceChannel();
+        <X, Y> Client<Void, ServiceReply<X, Y>> getServiceChannel();
     }
 
     private interface Peer {
@@ -32,7 +32,7 @@ public final class ServiceLocatorListener<I, O> extends AbstractRequestListener<
 
         int getCost();
 
-        <X, Y> Context<ServiceRequest<X, Y>, ServiceReply<X, Y>> getLocatorContext();
+        <X, Y> Client<ServiceRequest<X, Y>, ServiceReply<X, Y>> getLocatorClient();
 
         SortedMap<String, Service> getServicesByGroupName();
 
@@ -43,7 +43,7 @@ public final class ServiceLocatorListener<I, O> extends AbstractRequestListener<
         return CollectionUtil.synchronizedMap(CollectionUtil.<K, V>hashMap());
     }
 
-    private final ConcurrentMap<String, ConcurrentMap<String, ContextSource<?, ?>>> deployments = syncMap();
+    private final ConcurrentMap<String, ConcurrentMap<String, ClientSource<?, ?>>> deployments = syncMap();
 
     public void handleRequest(final RequestContext<ServiceReply<I, O>> requestContext, final ServiceRequest<I, O> request) throws RemoteExecutionException, InterruptedException {
         final URI uri = request.getUri();

@@ -79,7 +79,7 @@ public interface Endpoint extends Closeable<Endpoint> {
      * @param requestListener the request listener
      * @return the context
      */
-    <I, O> Context<I, O> createContext(RequestListener<I, O> requestListener);
+    <I, O> Client<I, O> createContext(RequestListener<I, O> requestListener);
 
     /**
      * Create a context source that can be used to acquire contexts associated with a request listener on this endpoint.
@@ -91,7 +91,7 @@ public interface Endpoint extends Closeable<Endpoint> {
      * @param requestListener the request listener
      * @return the context source
      */
-    <I, O> ContextSource<I, O> createService(RequestListener<I, O> requestListener);
+    <I, O> ClientSource<I, O> createService(RequestListener<I, O> requestListener);
 
     /**
      * Add a listener that is notified when a session is created.
