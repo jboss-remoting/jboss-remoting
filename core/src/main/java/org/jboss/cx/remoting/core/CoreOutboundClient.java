@@ -76,7 +76,7 @@ public final class CoreOutboundClient<I, O> {
     public final class UserClient extends AbstractRealClient<I, O> {
 
         private UserClient() {
-            super(clientResponder);
+            super(clientResponder, Thread.currentThread().getContextClassLoader() /* TODO */);
         }
 
         private void doClose(final boolean immediate, final boolean cancel) throws RemotingException {

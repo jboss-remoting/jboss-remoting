@@ -1,16 +1,15 @@
 package org.jboss.cx.remoting;
 
-import java.net.URI;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
-import java.io.IOException;
-import org.jboss.cx.remoting.log.Logger;
+import java.util.concurrent.Executors;
 import org.jboss.cx.remoting.core.CoreEndpoint;
 import org.jboss.cx.remoting.core.protocol.LocalProtocolHandlerFactory;
 import org.jboss.cx.remoting.jrpp.JrppProtocolSupport;
 import org.jboss.cx.remoting.jrpp.JrppServer;
+import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AttributeMap;
 
 /**
@@ -67,14 +66,6 @@ public final class Remoting {
             }
         });
         return jrppServer;
-    }
-
-    public static Session createEndpointAndSession(String endpointName, URI remoteUri, final String userName, final char[] password) throws RemotingException {
-        return null;
-    }
-
-    public static <I, O> ClientSource<I, O> createEndpointAndOpenService(String endpointName, URI remoteUri, String userName, char[] password, Class<I> requestType, Class<O> replyType, String serviceType, String serviceGroupName) throws RemotingException {
-        return null;
     }
 
     // privates

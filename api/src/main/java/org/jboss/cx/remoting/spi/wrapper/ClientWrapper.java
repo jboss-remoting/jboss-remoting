@@ -49,4 +49,7 @@ public class ClientWrapper<I, O> implements Client<I, O> {
         return delegate.getAttributes();
     }
 
+    public ClassLoader getClassLoader() {
+        return delegate.getClassLoader();
+    }
 }

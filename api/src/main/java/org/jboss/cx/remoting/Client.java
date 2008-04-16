@@ -59,9 +59,11 @@ public interface Client<I, O> extends Closeable<Client<I, O>> {
      */
     ConcurrentMap<Object, Object> getAttributes();
 
-    void close() throws RemotingException;
-
-    void closeImmediate() throws RemotingException;
-
-    void addCloseHandler(final CloseHandler<Client<I, O>> closeHandler);
+    /**
+     * Get the classloader associated with this client.  This is the classloader that will be used to resolve any
+     * remote classes.
+     *
+     * @return the classloader
+     */
+    ClassLoader getClassLoader();
 }
