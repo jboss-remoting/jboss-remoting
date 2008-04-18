@@ -1052,6 +1052,9 @@
                 destdir="util/target/main/classes"
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="log-jul.classpath"/>
+            </classpath>
         </javac>
         <touch file="util/target/main/.lastcompile" verbose="false"/>
     </target>
