@@ -64,7 +64,7 @@ public final class Remoting {
         if (endpoint instanceof CoreEndpoint) {
             final CoreEndpoint coreEndpoint = (CoreEndpoint) endpoint;
             final ConcurrentMap<Object, Object> attributes = coreEndpoint.getAttributes();
-            final JrppProtocolSupport jrppProtocolSupport = (JrppProtocolSupport) attributes.get(JRPP_SUPPORT_KEY);
+            final JrppProtocolSupport jrppProtocolSupport = (JrppProtocolSupport) attributes.remove(JRPP_SUPPORT_KEY);
             coreEndpoint.stop();
             coreEndpoint.destroy();
             if (jrppProtocolSupport != null) {
