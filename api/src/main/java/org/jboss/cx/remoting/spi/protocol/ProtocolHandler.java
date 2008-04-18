@@ -3,7 +3,7 @@ package org.jboss.cx.remoting.spi.protocol;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.spi.ObjectMessageOutput;
+import org.jboss.cx.remoting.util.ObjectMessageOutput;
 
 /**
  * A protocol handler.
@@ -199,9 +199,9 @@ public interface ProtocolHandler {
 
     /**
      * Send data over a stream.  Returns a message output buffer that the message is written into.  When the message
-     * is fully written, the {@link org.jboss.cx.remoting.spi.ObjectMessageOutput#commit()} method will be called to perform
+     * is fully written, the {@link org.jboss.cx.remoting.util.ObjectMessageOutput#commit()} method will be called to perform
      * the transmission.  The supplied executor should be passed in to
-     * {@link org.jboss.cx.remoting.spi.protocol.ProtocolContext#getMessageOutput(org.jboss.cx.remoting.spi.ByteMessageOutput,java.util.concurrent.Executor)},
+     * {@link org.jboss.cx.remoting.spi.protocol.ProtocolContext#getMessageOutput(org.jboss.cx.remoting.util.ByteMessageOutput ,java.util.concurrent.Executor)},
      * if that method is used for serialization.
      *
      * @param streamIdentifier the stream to send data on

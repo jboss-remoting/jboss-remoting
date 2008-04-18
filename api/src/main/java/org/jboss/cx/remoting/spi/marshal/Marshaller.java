@@ -2,10 +2,10 @@ package org.jboss.cx.remoting.spi.marshal;
 
 import java.io.IOException;
 import java.io.Serializable;
-import org.jboss.cx.remoting.spi.DataMessageInput;
-import org.jboss.cx.remoting.spi.DataMessageOutput;
-import org.jboss.cx.remoting.spi.ObjectMessageInput;
-import org.jboss.cx.remoting.spi.ObjectMessageOutput;
+import org.jboss.cx.remoting.util.DataMessageInput;
+import org.jboss.cx.remoting.util.DataMessageOutput;
+import org.jboss.cx.remoting.util.ObjectMessageInput;
+import org.jboss.cx.remoting.util.ObjectMessageOutput;
 
 /**
  *

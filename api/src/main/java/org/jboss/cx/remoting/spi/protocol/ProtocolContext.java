@@ -3,10 +3,10 @@ package org.jboss.cx.remoting.spi.protocol;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.spi.ByteMessageInput;
-import org.jboss.cx.remoting.spi.ByteMessageOutput;
-import org.jboss.cx.remoting.spi.ObjectMessageInput;
-import org.jboss.cx.remoting.spi.ObjectMessageOutput;
+import org.jboss.cx.remoting.util.ByteMessageInput;
+import org.jboss.cx.remoting.util.ByteMessageOutput;
+import org.jboss.cx.remoting.util.ObjectMessageInput;
+import org.jboss.cx.remoting.util.ObjectMessageOutput;
 
 /**
  * The receiver interface for protocol sessions.  Methods on this interface are invoked as a result of

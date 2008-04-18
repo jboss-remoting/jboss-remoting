@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.spi.stream;
 
 import java.io.IOException;
-import org.jboss.cx.remoting.spi.ObjectMessageInput;
+import org.jboss.cx.remoting.util.ObjectMessageInput;
 
 /**
  *

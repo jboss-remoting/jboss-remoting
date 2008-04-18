@@ -3,7 +3,7 @@ package org.jboss.cx.remoting.jrpp.mina;
 import java.io.IOException;
 import org.apache.mina.common.IoBuffer;
 import org.apache.mina.common.IoSession;
-import org.jboss.cx.remoting.spi.ByteMessageOutput;
+import org.jboss.cx.remoting.util.ByteMessageOutput;
 
 /**
  *

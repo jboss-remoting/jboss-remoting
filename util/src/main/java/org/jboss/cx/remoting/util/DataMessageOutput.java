@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.spi;
+package org.jboss.cx.remoting.util;
 
 import java.io.DataOutput;
 

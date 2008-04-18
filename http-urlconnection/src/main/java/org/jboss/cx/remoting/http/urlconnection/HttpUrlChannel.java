@@ -13,8 +13,8 @@ import org.jboss.cx.remoting.http.spi.AbstractIncomingHttpMessage;
 import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
 import org.jboss.cx.remoting.http.spi.RemotingHttpSessionContext;
 import org.jboss.cx.remoting.log.Logger;
-import org.jboss.cx.remoting.spi.ByteMessageInput;
-import org.jboss.cx.remoting.spi.ByteMessageOutput;
+import org.jboss.cx.remoting.util.ByteMessageInput;
+import org.jboss.cx.remoting.util.ByteMessageOutput;
 import org.jboss.cx.remoting.util.CollectionUtil;
 
 /**
