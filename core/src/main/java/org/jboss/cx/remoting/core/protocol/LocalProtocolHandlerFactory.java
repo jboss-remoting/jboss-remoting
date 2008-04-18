@@ -47,8 +47,8 @@ public final class LocalProtocolHandlerFactory implements ProtocolHandlerFactory
         final LocalProtocolHandler otherProtocolHandler = new LocalProtocolHandler(ourProtocolContext, otherEndpointName);
         final ProtocolContext otherProtocolContext = otherEndpoint.openIncomingSession(otherProtocolHandler);
         final LocalProtocolHandler ourProtocolHandler = new LocalProtocolHandler(otherProtocolContext, endpointName);
-        otherProtocolContext.openSession(endpointName);
-        ourProtocolContext.openSession(otherEndpointName);
+        otherProtocolContext.receiveRemoteSideReady(endpointName);
+        ourProtocolContext.receiveRemoteSideReady(otherEndpointName);
         return ourProtocolHandler;
     }
 

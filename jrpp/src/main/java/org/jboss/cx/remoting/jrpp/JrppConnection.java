@@ -762,7 +762,7 @@ public final class JrppConnection {
                                     saslServerFilter.startEncryption(ioSession);
                                     log.trace("Server transitioning to UP state");
                                     state.requireTransition(State.AWAITING_CLIENT_RESPONSE, State.UP);
-                                    protocolContext.openSession(remoteName);
+                                    protocolContext.receiveRemoteSideReady(remoteName);
                                 }
                             } catch (SaslException ex) {
                                 final IoBuffer buffer = newBuffer(100, true);
@@ -811,7 +811,7 @@ public final class JrppConnection {
                                     output.commit();
                                     log.trace("Server transitioning to UP state (immediate)");
                                     state.requireTransition(State.UP);
-                                    protocolContext.openSession(remoteName);
+                                    protocolContext.receiveRemoteSideReady(remoteName);
                                 } else {
                                     state.requireTransition(State.AWAITING_CLIENT_RESPONSE);
                                 }
@@ -874,7 +874,7 @@ public final class JrppConnection {
                             saslClientFilter.startEncryption(ioSession);
                             log.trace("Client transitioning to UP state");
                             state.requireTransition(State.AWAITING_SERVER_CHALLENGE, State.UP);
-                            protocolContext.openSession(remoteName);
+                            protocolContext.receiveRemoteSideReady(remoteName);
                             return;
                         }
                         case AUTH_FAILED: {

@@ -333,7 +333,11 @@ public final class CoreSession {
                 throw new NullPointerException("streamIdentifier is null");
             }
             final CoreStream coreStream = streams.remove(streamIdentifier);
-            // todo - shut down stream
+            try {
+                coreStream.getStreamSerializer().handleClose();
+            } catch (IOException e) {
+                log.trace(e, "Failed to close the stream");
+            }
         }
 
         public void receiveServiceClose(ServiceIdentifier serviceIdentifier) {
@@ -507,7 +511,7 @@ public final class CoreSession {
         }
 
         @SuppressWarnings ({"unchecked"})
-        public void openSession(String remoteEndpointName) {
+        public void receiveRemoteSideReady(String remoteEndpointName) {
             state.waitFor(State.CONNECTING);
             state.requireTransitionExclusive(State.CONNECTING, State.UP);
             try {

@@ -43,7 +43,7 @@ public interface ProtocolContext {
 
     void receiveStreamData(StreamIdentifier streamIdentifier, ObjectMessageInput data);
 
-    void openSession(String remoteEndpointName);
+    void receiveRemoteSideReady(String remoteEndpointName);
 
     void closeSession();
 
