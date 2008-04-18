@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import org.jboss.cx.remoting.util.IoUtil;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -470,8 +469,8 @@ public abstract class AbstractSrpSaslParticipant implements NioSaslEndpoint {
         final ByteBuffer homeSlice;
         final ByteBuffer macSlice;
         if (integrityEnabled) {
-            homeSlice = IoUtil.getSlice(src, -macLength);
-            macSlice = IoUtil.getSlice(src, macLength);
+            homeSlice = getSlice(src, -macLength);
+            macSlice = getSlice(src, macLength);
             inboundMac.reset();
             inboundMac.update((ByteBuffer) homeSlice.mark());
             if (replayEnabled) {
@@ -499,6 +498,21 @@ public abstract class AbstractSrpSaslParticipant implements NioSaslEndpoint {
             target.put(homeSlice);
         }
         return;
+    }
+
+    private static ByteBuffer getSlice(final ByteBuffer src, final int macLength) {
+        ByteBuffer slice = src.duplicate();
+        final int newLimit;
+        if (macLength < 0) {
+            // calculate from end
+            newLimit = src.limit() - macLength;
+        } else {
+            // calculate from start
+            newLimit = src.position() + macLength;
+        }
+        slice.limit(newLimit);
+        src.position(newLimit);
+        return slice;
     }
 
     public boolean isWrappable() {

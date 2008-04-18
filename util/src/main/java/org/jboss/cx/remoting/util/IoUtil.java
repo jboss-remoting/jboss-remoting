@@ -11,21 +11,13 @@ import org.jboss.cx.remoting.log.Logger;
 public final class IoUtil {
     private static final Logger log = Logger.getLogger(IoUtil.class);
 
-    public static ByteBuffer getSlice(ByteBuffer source, int length) {
-        ByteBuffer slice = source.duplicate();
-        final int newLimit;
-        if (length < 0) {
-            // calculate from end
-            newLimit = source.limit() - length;
-        } else {
-            // calculate from start
-            newLimit = source.position() + length;
-        }
-        slice.limit(newLimit);
-        source.position(newLimit);
-        return slice;
-    }
-
+    /**
+     * Base-64 decode a character buffer into a byte buffer.
+     *
+     * @param source the base-64 encoded source material
+     * @param target the target for the decoded data
+     * @throws Base64DecodingException if the source data is not in base-64 format
+     */
     public static void base64Decode(CharBuffer source, ByteBuffer target) throws Base64DecodingException {
         int triad;
         while (source.hasRemaining()) {
@@ -126,6 +118,12 @@ public final class IoUtil {
             '4', '5', '6', '7', '8', '9', '+', '/',
     };
 
+    /**
+     * Base-64 encode a byte buffer into a character buffer.
+     *
+     * @param source the binary data to encode
+     * @param target the target for the encoded material
+     */
     public static void base64Encode(ByteBuffer source, CharBuffer target) {
         int idx = 0;
         while (source.hasRemaining()) {
@@ -151,6 +149,12 @@ public final class IoUtil {
         }
     }
 
+    /**
+     * Close a resource without throwing an exception.  If the underlying {@code close} throws an exception, log
+     * it.  For use in {@code finally} blocks.
+     *
+     * @param c the resource to close
+     */
     public static void closeSafely(Closeable c) {
         try {
             c.close();
