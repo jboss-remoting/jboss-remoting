@@ -41,7 +41,7 @@ public final class CollectionUtil {
      * @return a new concurrent map
      */
     public static <K, V> ConcurrentMap<K, V> concurrentMap() {
-        return new ConcurrentReferenceHashMap<K, V>(16, STRONG, STRONG);
+        return new ConcurrentHashMap<K, V>();
     }
 
     /**

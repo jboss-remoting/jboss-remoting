@@ -97,8 +97,7 @@ public final class HttpProtocolSupport {
 
     // Session management
 
-    // todo - weak value concurrent hash map
-    private final ConcurrentMap<String, RemotingHttpSession> sessionMap = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<String, RemotingHttpSession> sessionMap = CollectionUtil.concurrentWeakValueMap();
 
     private String generateSessionId() {
         final byte[] bytes = new byte[32];
