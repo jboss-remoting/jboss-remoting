@@ -29,6 +29,7 @@ import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
 import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
 import org.jboss.cx.remoting.util.AttributeMap;
+import org.jboss.cx.remoting.util.NamingThreadFactory;
 
 /**
  *
@@ -79,7 +80,7 @@ public final class JrppProtocolSupport {
 
     public void create() throws RemotingException {
         if (executor == null) {
-            executor = executorService = Executors.newCachedThreadPool();
+            executor = executorService = Executors.newCachedThreadPool(new NamingThreadFactory(Executors.defaultThreadFactory(), "Remoting JRPP %s"));
         }
         ExceptionMonitor.setInstance(new ExceptionMonitor() {
             public void exceptionCaught(final Throwable cause) {

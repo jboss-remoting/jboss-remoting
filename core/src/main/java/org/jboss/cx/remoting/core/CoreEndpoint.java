@@ -24,6 +24,7 @@ import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.util.CollectionUtil;
+import org.jboss.cx.remoting.util.NamingThreadFactory;
 import org.jboss.cx.remoting.version.Version;
 
 import javax.security.auth.callback.Callback;
@@ -115,7 +116,7 @@ public class CoreEndpoint implements Endpoint {
     public void start() {
         // todo security check
         if (executor == null) {
-            executorService = Executors.newCachedThreadPool();
+            executorService = Executors.newCachedThreadPool(new NamingThreadFactory(Executors.defaultThreadFactory(), "Remoting endpoint %s"));
             setExecutor(executorService);
         }
         state.requireTransition(State.INITIAL, State.UP);
