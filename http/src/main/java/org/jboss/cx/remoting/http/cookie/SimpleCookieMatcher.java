@@ -5,12 +5,12 @@ package org.jboss.cx.remoting.http.cookie;
  */
 public final class SimpleCookieMatcher implements CookieMatcher {
 
-    public boolean matches(final Cookie cookie, final CookieDomain requestDomain, final String path, final boolean secure) {
+    public boolean matches(final Cookie cookie, final String requestDomain, final String path, final boolean secure) {
         final boolean cookieSecure = cookie.isSecure();
         if (cookieSecure && ! secure) {
             return false;
         }
-        final CookieDomain cookieDomain = cookie.getDomain();
+        final String cookieDomain = cookie.getDomain();
         final String cookiePath = cookie.getPath();
         return requestDomain.matches(cookieDomain) && path.startsWith(cookiePath) && !cookie.isExpired();
     }

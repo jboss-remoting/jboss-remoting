@@ -14,5 +14,5 @@ public interface CookieMatcher {
      * @param secure whether the request is on a secure channel
      * @return {@code true} if the cookie should be sent
      */
-    boolean matches(Cookie cookie, CookieDomain requestDomain, String path, boolean secure);
+    boolean matches(Cookie cookie, String requestDomain, String path, boolean secure);
 }

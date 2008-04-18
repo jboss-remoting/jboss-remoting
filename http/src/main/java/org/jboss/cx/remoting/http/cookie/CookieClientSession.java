@@ -41,10 +41,9 @@ public final class CookieClientSession {
      * @return the cookie header value
      */
     public String getCookieHeader(String domain, String path, boolean secureRequest) {
-        final CookieDomain cookieDomain = new CookieDomain(domain);
         final SortedMap<Cookie.Key, Cookie> sortedValidatedCookies = new TreeMap<Cookie.Key, Cookie>();
         for (final Cookie cookie : cookieMap.values()) {
-            if (cookieMatcher.matches(cookie, cookieDomain, path, secureRequest)) {
+            if (cookieMatcher.matches(cookie, domain, path, secureRequest)) {
                 sortedValidatedCookies.put(cookie.getKey(), cookie);
             }
         }
@@ -66,15 +65,12 @@ public final class CookieClientSession {
      * @param path the request path
      */
     public void handleSetCookieHeader(String headerValue, String domain, String path) {
-        final CookieDomain requestDomain = new CookieDomain(domain);
-        final Cookie[] cookies = cookieParser.parseSetCookie(headerValue, requestDomain, path);
-        for (Cookie cookie : cookies) {
-            if (! cookieValidator.isValid(cookie, requestDomain)) {
-                log.trace("Ignoring invalid cookie %s", cookie);
-            } else {
-                log.trace("Adding cookie '%s' from domain '%s'", cookie, requestDomain);
-                cookieMap.put(cookie.getKey(), cookie);
-            }
+        final Cookie cookie = cookieParser.parseSetCookie(headerValue, domain, path);
+        if (! cookieValidator.isValid(cookie, domain)) {
+            log.trace("Ignoring invalid cookie %s", cookie);
+        } else {
+            log.trace("Adding cookie '%s' from domain '%s'", cookie, domain);
+            cookieMap.put(cookie.getKey(), cookie);
         }
     }
 }

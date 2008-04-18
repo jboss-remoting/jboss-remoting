@@ -9,8 +9,8 @@ public interface CookieValidator {
      * Determine whether a cookie from a server is valid.
      *
      * @param cookie the cookie from the server
-     * @param fromDomain the actual domain that the request was sent to
+     * @param requestDomain the domain that the request was sent to
      * @return {@code true} if the cookie is valid
      */
-    boolean isValid(Cookie cookie, CookieDomain fromDomain);
+    boolean isValid(Cookie cookie, String requestDomain);
 }

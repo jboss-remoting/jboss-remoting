@@ -2,9 +2,9 @@ package org.jboss.cx.remoting.http.cookie;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.jboss.cx.remoting.log.Logger;
-import org.jboss.cx.remoting.util.CollectionUtil;
 
 /**
  *
@@ -26,7 +26,10 @@ public final class SimpleCookieParser implements CookieParser {
         }
     }
 
-    public Cookie[] parseSetCookie(final String setCookie, final CookieDomain defaultDomain, final String defaultPath) {
+    private static final String PAIR_PATTERN_STRING = "(\\s*+[^=;]*?)(?:\\s+=\\s*+([^;]*?)\\s+)(?:;|$)";
+    private static final Pattern PAIR_PATTERN = Pattern.compile(PAIR_PATTERN_STRING);
+
+    public Cookie parseSetCookie(final String setCookie, final String defaultDomain, final String defaultPath) {
         if (setCookie == null) {
             throw new NullPointerException("setCookie is null");
         }
@@ -36,48 +39,46 @@ public final class SimpleCookieParser implements CookieParser {
         if (defaultPath == null) {
             throw new NullPointerException("defaultPath is null");
         }
+        final Matcher matcher = PAIR_PATTERN.matcher(setCookie);
+        if (! matcher.find()) {
+            return null; // no cookie!
+        }
+        final String name = matcher.group(1);
+        final String value = matcher.group(2);
+        if (name == null || value == null) {
+            return null; // no cookie!
+        }
         boolean secure = false;
         long expires = 0L;
-        CookieDomain domain = defaultDomain;
         String path = defaultPath;
-        List<Pair> pairs = CollectionUtil.arrayList();
-        for (final String s : CollectionUtil.split(";", setCookie)) {
-            final String assignment = s.trim();
-            final int equalsPos = assignment.indexOf('=');
-            if (equalsPos == -1) {
-                if (assignment.toLowerCase().equals("secure")) {
-                    secure = true;
-                    continue;
-                }
-            } else {
-                String name = assignment.substring(0, equalsPos).trim();
-                String lowerName = name.toLowerCase();
-                String value = assignment.substring(equalsPos + 1).trim();
-                if (lowerName.equals("expires")) {
-                    final int gmti = value.lastIndexOf(" GMT");
-                    if (gmti != -1) {
-                        value = value.substring(0, gmti);
-                    }
-                    final SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
-                    try {
-                        expires = dateFormat.parse(value).getTime();
-                    } catch (ParseException e) {
-                        log.trace("Invalid cookie expiration date '%s'", value);
-                    }
-                } else if (lowerName.equals("domain")) {
-                    domain = new CookieDomain(value);
-                } else if (lowerName.equals("path")) {
-                    path = value;
+        String domain = defaultDomain;
+        while (matcher.find()) {
+            final String attrName = matcher.group(1);
+            final String attrValue = matcher.group(2);
+            if ("secure".equalsIgnoreCase(attrName) && attrValue == null) {
+                secure = true;
+            } else if ("expires".equalsIgnoreCase(attrName) && attrValue != null) {
+                final int gmti = value.lastIndexOf(" GMT");
+                final String dateValue;
+                if (gmti != -1) {
+                    dateValue = attrValue.substring(0, gmti);
                 } else {
-                    pairs.add(new Pair(name, value));
+                    dateValue = attrValue;
                 }
+                final SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
+                try {
+                    expires = dateFormat.parse(dateValue).getTime();
+                } catch (ParseException e) {
+                    log.trace("Invalid cookie expiration date '%s'", value);
+                }
+            } else if ("domain".equalsIgnoreCase(attrName) && attrValue != null) {
+                domain = attrValue;
+            } else if ("path".equalsIgnoreCase(attrName) && attrValue != null) {
+                path = attrValue;
+            } else {
+                log.trace("Unknown cookie attribute-value pair: \"%s\"=\"%s\"", attrName, attrValue);
             }
         }
-        Cookie[] cookies = new Cookie[pairs.size()];
-        int i = 0;
-        for (Pair pair : pairs) {
-            cookies[i++] = new Cookie(pair.name, pair.value, path, domain, expires, secure);
-        }
-        return cookies;
+        return new Cookie(name, value, path, domain, expires, secure);
     }
 }

@@ -12,12 +12,12 @@ public final class Cookie implements Serializable {
     private final String value;
     private final String name;
     private final String path;
-    private final CookieDomain domain;
+    private final String domain;
     private final long expires;
     private final boolean secure;
     private final Key key;
 
-    public Cookie(final String name, final String value, final String path, final CookieDomain domain, final long expires, final boolean secure) {
+    public Cookie(final String name, final String value, final String path, final String domain, final long expires, final boolean secure) {
         this.expires = expires;
         if (name == null) {
             throw new NullPointerException("name is null");
@@ -34,7 +34,7 @@ public final class Cookie implements Serializable {
         this.name = name;
         this.value = value;
         this.path = path;
-        this.domain = domain;
+        this.domain = domain.toLowerCase();
         this.secure = secure;
         key = new Key(name, path);
     }
@@ -51,7 +51,7 @@ public final class Cookie implements Serializable {
         return path;
     }
 
-    public CookieDomain getDomain() {
+    public String getDomain() {
         return domain;
     }
 
