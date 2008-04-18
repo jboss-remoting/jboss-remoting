@@ -21,6 +21,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import static org.jboss.cx.remoting.util.ConcurrentReferenceHashMap.ReferenceType.STRONG;
+import static org.jboss.cx.remoting.util.ConcurrentReferenceHashMap.ReferenceType.WEAK;
 
 /**
  * A set of helpful utility functions for collections.
@@ -39,11 +41,25 @@ public final class CollectionUtil {
      * @return a new concurrent map
      */
     public static <K, V> ConcurrentMap<K, V> concurrentMap() {
-        if (true) {
-            return synchronizedHashMap();
-        } else {
-            return new ConcurrentHashMap<K, V>();
-        }
+        return new ConcurrentReferenceHashMap<K, V>(16, STRONG, STRONG);
+    }
+
+    /**
+     * Create a concurrent map with weak keys.
+     *
+     * @return a new concurrent map with weak keys
+     */
+    public static <K, V> ConcurrentMap<K, V> concurrentWeakMap() {
+        return new ConcurrentReferenceHashMap<K, V>(16, WEAK, STRONG);
+    }
+
+    /**
+     * Create a concurrent map with weak values.
+     *
+     * @return a new concurrent map with weak values
+     */
+    public static <K, V> ConcurrentMap<K, V> concurrentWeakValueMap() {
+        return new ConcurrentReferenceHashMap<K, V>(16, STRONG, WEAK);
     }
 
     /**
