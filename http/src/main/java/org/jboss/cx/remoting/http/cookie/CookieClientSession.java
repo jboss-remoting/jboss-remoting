@@ -38,7 +38,7 @@ public final class CookieClientSession {
      * @param domain the request domain
      * @param path the request path (sans file, with trailing slash)
      * @param secureRequest {@code true} if the request will use the {@code https} protocol
-     * @return the cookie header value
+     * @return the cookie header value, or {@code null} if there's no cookies to set
      */
     public String getCookieHeader(String domain, String path, boolean secureRequest) {
         final SortedMap<Cookie.Key, Cookie> sortedValidatedCookies = new TreeMap<Cookie.Key, Cookie>();
