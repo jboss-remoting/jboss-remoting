@@ -1,12 +1,16 @@
 package org.jboss.cx.remoting.util;
 
+import java.io.Closeable;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import org.jboss.cx.remoting.log.Logger;
 
 /**
  *
  */
 public final class IoUtil {
+    private static final Logger log = Logger.getLogger(IoUtil.class);
+
     public static ByteBuffer getSlice(ByteBuffer source, int length) {
         ByteBuffer slice = source.duplicate();
         final int newLimit;
@@ -144,6 +148,14 @@ public final class IoUtil {
             b = source.get() & 0xff;
             target.put(base64table[idx | (b >>> 6)]);
             target.put(base64table[b & 0x3f]);
+        }
+    }
+
+    public static void closeSafely(Closeable c) {
+        try {
+            c.close();
+        } catch (Throwable t) {
+            log.trace(t, "Closing %s failed", c);
         }
     }
 }

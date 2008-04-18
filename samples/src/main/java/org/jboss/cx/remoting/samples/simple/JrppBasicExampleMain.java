@@ -10,9 +10,10 @@ import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Remoting;
 import org.jboss.cx.remoting.Session;
-import org.jboss.cx.remoting.jrpp.JrppServer;
 import org.jboss.cx.remoting.core.security.sasl.Provider;
+import org.jboss.cx.remoting.jrpp.JrppServer;
 import org.jboss.cx.remoting.util.AttributeMap;
+import org.jboss.cx.remoting.util.IoUtil;
 
 /**
  *
@@ -34,10 +35,10 @@ public final class JrppBasicExampleMain {
                         final String result = client.invoke(original);
                         System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), result.trim());
                     } finally {
-                        client.close();
+                        IoUtil.closeSafely(client);
                     }
                 } finally {
-                    session.close();
+                    IoUtil.closeSafely(session);
                 }
             } finally {
                 jrppServer.stop();

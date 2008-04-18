@@ -11,6 +11,7 @@ import org.jboss.cx.remoting.service.ClassLoaderResourceReply;
 import org.jboss.cx.remoting.service.ClassLoaderResourceRequest;
 import org.jboss.cx.remoting.service.RemoteResource;
 import org.jboss.cx.remoting.stream.ObjectSource;
+import org.jboss.cx.remoting.util.IoUtil;
 
 /**
  *
@@ -49,18 +50,10 @@ public final class RemoteClassLoader extends SecureClassLoader {
                     for (int t = 0; t < size; t += stream.read(bytes, t, size - t));
                     return defineClass(name, bytes, 0, size);
                 } finally {
-                    try {
-                        stream.close();
-                    } catch (IOException e) {
-                        log.trace("Stream close failed", e);
-                    }
+                    IoUtil.closeSafely(stream);
                 }
             } finally {
-                try {
-                    source.close();
-                } catch (IOException e) {
-                    log.trace("Resource ObjectSource close failed", e);
-                }
+                IoUtil.closeSafely(source);
             }
         } catch (RemotingException e) {
             throw new ClassNotFoundException("Cannot load class " + name + " due to an invocation failure", e);

@@ -1060,7 +1060,7 @@
         <delete dir="util/target"/>
     </target>
 
-    <target name="util" description="Build the utilities module" depends="util.compile">
+    <target name="util" description="Build the utilities module" depends="log-jul,util.compile">
         <path id="util.classpath">
             <pathelement location="util/target/main/classes"/>
         </path>

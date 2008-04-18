@@ -10,6 +10,7 @@ import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Remoting;
 import org.jboss.cx.remoting.core.security.sasl.Provider;
+import org.jboss.cx.remoting.util.IoUtil;
 
 /**
  *
@@ -33,16 +34,16 @@ public final class LocalStreamExampleMain {
                             final String secretLine = bufferedReader.readLine();
                             System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), secretLine);
                         } finally {
-                            bufferedReader.close();
+                            IoUtil.closeSafely(bufferedReader);
                         }
                     } finally {
-                        reader.close();
+                        IoUtil.closeSafely(reader);
                     }
                 } finally {
-                    originalReader.close();
+                    IoUtil.closeSafely(originalReader);
                 }
             } finally {
-                client.close();
+                IoUtil.closeSafely(client);
             }
         } finally {
             Remoting.closeEndpoint(endpoint);
