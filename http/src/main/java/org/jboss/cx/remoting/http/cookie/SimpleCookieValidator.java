@@ -15,6 +15,9 @@ public final class SimpleCookieValidator implements CookieValidator {
     private static final String DOMAIN_PATTERN_STRING = "^(?:(?:[a-zA-Z0-9][a-zA-Z0-9]+)(?:-(?:[a-zA-Z0-9][a-zA-Z0-9]+))*(?:\\.(?:(?:[a-zA-Z0-9][a-zA-Z0-9]+)(?:-(?:[a-zA-Z0-9][a-zA-Z0-9]+))*)+$";
     private static final Pattern DOMAIN_PATTERN = Pattern.compile(DOMAIN_PATTERN_STRING);
 
+    private static final String COOKIE_PATTERN_STRING = "^([^=;,\\p{Space}]*)$";
+    private static final Pattern COOKIE_PATTERN = Pattern.compile(COOKIE_PATTERN_STRING);
+
     private static final Set<String> TLD_SET;
 
     private static final Logger log = Logger.getLogger(SimpleCookieValidator.class);
@@ -73,7 +76,15 @@ public final class SimpleCookieValidator implements CookieValidator {
             logReject(cookie, requestDomain, "cookie path is invalid");
             return false;
         }
-        log.trace("Accepting cookie \"%s\" from request domain \"%s\"", cookie.getName(), requestDomain);
+        final String name = cookie.getName();
+        if (! COOKIE_PATTERN.matcher(name).matches()) {
+            logReject(cookie, requestDomain, "cookie name is invalid");
+        }
+        final String value = cookie.getValue();
+        if (! COOKIE_PATTERN.matcher(value).matches()) {
+            logReject(cookie, requestDomain, "cookie value is invalid");
+        }
+        log.trace("Accepting cookie \"%s\" from request domain \"%s\"", name, requestDomain);
         return true;
     }
 }
