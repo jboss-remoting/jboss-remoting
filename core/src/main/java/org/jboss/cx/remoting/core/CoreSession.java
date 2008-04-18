@@ -361,11 +361,15 @@ public final class CoreSession {
                 throw new NullPointerException("remoteClientIdentifier is null");
             }
             try {
-                final ServerServicePair servicePair = serverServices.get(remoteServiceIdentifier);
-                final ProtocolClientInitiatorImpl contextClient = new ProtocolClientInitiatorImpl(remoteClientIdentifier);
-                final ClientResponder clientResponder = servicePair.serviceResponder.createNewClient(contextClient);
-                // todo - who puts it in the map?
-                serverContexts.put(remoteClientIdentifier, new ServerContextPair(contextClient, clientResponder));
+                // This operation needs to be idempotent
+                if (! serverContexts.containsKey(remoteClientIdentifier)) {
+                    final ServerServicePair servicePair = serverServices.get(remoteServiceIdentifier);
+                    final ProtocolClientInitiatorImpl contextClient = new ProtocolClientInitiatorImpl(remoteClientIdentifier);
+                    final ClientResponder clientResponder = servicePair.serviceResponder.createNewClient(contextClient);
+                    if (serverContexts.putIfAbsent(remoteClientIdentifier, new ServerContextPair(contextClient, clientResponder)) != null) {
+                        clientResponder.handleClose(true, true);
+                    }
+                }
             } catch (RemotingException e) {
                 log.trace(e, "Failed to add a context to a service");
             }
