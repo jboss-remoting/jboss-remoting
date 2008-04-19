@@ -4,9 +4,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ConcurrentMap;
+import java.security.SecureRandom;
 import org.jboss.cx.remoting.http.AbstractHttpChannel;
-import org.jboss.cx.remoting.http.HttpProtocolSupport;
 import org.jboss.cx.remoting.http.cookie.Cookie;
 import org.jboss.cx.remoting.http.cookie.CookieParser;
 import org.jboss.cx.remoting.http.spi.AbstractIncomingHttpMessage;
@@ -46,17 +47,9 @@ public final class SunHttpServerChannel extends AbstractHttpChannel implements H
 
     // Dependencies
 
-    private HttpProtocolSupport protocolSupport;
     private RemotingHttpServerContext serverContext;
     private HttpContext httpContext;
-
-    public HttpProtocolSupport getProtocolSupport() {
-        return protocolSupport;
-    }
-
-    public void setProtocolSupport(final HttpProtocolSupport protocolSupport) {
-        this.protocolSupport = protocolSupport;
-    }
+    private Random random;
 
     public RemotingHttpServerContext getServerContext() {
         return serverContext;
@@ -74,11 +67,22 @@ public final class SunHttpServerChannel extends AbstractHttpChannel implements H
         this.httpContext = httpContext;
     }
 
+    public Random getRandom() {
+        return random;
+    }
+
+    public void setRandom(final Random random) {
+        this.random = random;
+    }
+
     // Lifecycle
 
     public void create() {
         if (serverContext == null) {
             throw new NullPointerException("serverContext is null");
+        }
+        if (random == null) {
+            random = new SecureRandom();
         }
     }
 
@@ -97,6 +101,7 @@ public final class SunHttpServerChannel extends AbstractHttpChannel implements H
     public void destroy() {
         serverContext = null;
         httpContext = null;
+        random = null;
     }
 
     // Implementation
@@ -147,7 +152,7 @@ public final class SunHttpServerChannel extends AbstractHttpChannel implements H
             final StringBuilder setCookieBuilder = new StringBuilder(60);
             setCookieBuilder.append("JSESSIONID=");
             for (;;) {
-                String jsessionid = protocolSupport.generateSessionId();
+                String jsessionid = generateSessionId();
                 if (sessions.putIfAbsent(jsessionid, context) == null) {
                     setCookieBuilder.append(jsessionid);
                     break;
@@ -168,5 +173,16 @@ public final class SunHttpServerChannel extends AbstractHttpChannel implements H
         } finally {
             IoUtil.closeSafely(outputStream);
         }
+    }
+
+    private String generateSessionId() {
+        final byte[] bytes = new byte[16];
+        StringBuilder builder = new StringBuilder(bytes.length * 2);
+        random.nextBytes(bytes);
+        for (byte b : bytes) {
+            builder.append(Character.forDigit(b >>> 4 & 15, 16));
+            builder.append(Character.forDigit(b & 15, 16));
+        }
+        return builder.toString();
     }
 }
