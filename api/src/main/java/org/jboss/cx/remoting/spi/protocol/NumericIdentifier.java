@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.jrpp.id;
+package org.jboss.cx.remoting.spi.protocol;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -8,17 +8,17 @@ import java.io.ObjectOutput;
 /**
  *
  */
-public abstract class JrppSubChannelIdentifier implements Externalizable {
+public abstract class NumericIdentifier implements Externalizable {
 
     private static final long serialVersionUID = 1L;
 
     private /*final*/ boolean client;
     private /*final*/ int id;
 
-    protected JrppSubChannelIdentifier() {
+    protected NumericIdentifier() {
     }
 
-    protected JrppSubChannelIdentifier(final boolean client, final int id) {
+    protected NumericIdentifier(final boolean client, final int id) {
         if (id < 0) {
             throw new IllegalArgumentException("id must be >= 0");
         }
@@ -41,8 +41,8 @@ public abstract class JrppSubChannelIdentifier implements Externalizable {
     }
 
     public boolean equals(Object obj) {
-        if (!(obj instanceof JrppSubChannelIdentifier)) return false;
-        JrppSubChannelIdentifier other = (JrppSubChannelIdentifier) obj;
+        if (!(obj instanceof NumericIdentifier)) return false;
+        NumericIdentifier other = (NumericIdentifier) obj;
         return other.id == id && other.client == client;
     }
 

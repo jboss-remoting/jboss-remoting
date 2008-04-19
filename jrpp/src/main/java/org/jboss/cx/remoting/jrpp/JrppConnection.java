@@ -20,10 +20,10 @@ import org.apache.mina.filter.sasl.SaslServerFilter;
 import org.apache.mina.handler.multiton.SingleSessionIoHandler;
 import org.jboss.cx.remoting.CommonKeys;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.jrpp.id.JrppClientIdentifier;
-import org.jboss.cx.remoting.jrpp.id.JrppRequestIdentifier;
-import org.jboss.cx.remoting.jrpp.id.JrppServiceIdentifier;
-import org.jboss.cx.remoting.jrpp.id.JrppStreamIdentifier;
+import org.jboss.cx.remoting.spi.protocol.NumericClientIdentifier;
+import org.jboss.cx.remoting.spi.protocol.NumericRequestIdentifier;
+import org.jboss.cx.remoting.spi.protocol.NumericServiceIdentifier;
+import org.jboss.cx.remoting.spi.protocol.NumericStreamIdentifier;
 import org.jboss.cx.remoting.jrpp.mina.IoBufferByteMessageInput;
 import org.jboss.cx.remoting.jrpp.mina.IoBufferByteMessageOutput;
 import org.jboss.cx.remoting.log.Logger;
@@ -160,8 +160,8 @@ public final class JrppConnection {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
             client = true;
-            remoteRootClientIdentifier = new JrppClientIdentifier(false, 0);
-            localRootClientIdentifier = new JrppClientIdentifier(true, 0);
+            remoteRootClientIdentifier = new NumericClientIdentifier(false, 0);
+            localRootClientIdentifier = new NumericClientIdentifier(true, 0);
         } finally {
             state.releaseExclusive();
         }
@@ -176,8 +176,8 @@ public final class JrppConnection {
             ioSession.setAttribute(JRPP_CONNECTION, this);
             this.ioSession = ioSession;
             client = false;
-            remoteRootClientIdentifier = new JrppClientIdentifier(true, 0);
-            localRootClientIdentifier = new JrppClientIdentifier(false, 0);
+            remoteRootClientIdentifier = new NumericClientIdentifier(true, 0);
+            localRootClientIdentifier = new NumericClientIdentifier(false, 0);
         } finally {
             state.releaseExclusive();
         }
@@ -418,36 +418,36 @@ public final class JrppConnection {
         }
     }
 
-    private JrppClientIdentifier getNewContextIdentifier() {
+    private NumericClientIdentifier getNewContextIdentifier() {
         for (;;) {
-            final JrppClientIdentifier contextIdentifier = new JrppClientIdentifier(client, contextIdSequence.getAndIncrement());
+            final NumericClientIdentifier contextIdentifier = new NumericClientIdentifier(client, contextIdSequence.getAndIncrement());
             if (liveClientSet.add(contextIdentifier)) {
                 return contextIdentifier;
             }
         }
     }
 
-    private JrppRequestIdentifier getNewRequestIdentifier() {
+    private NumericRequestIdentifier getNewRequestIdentifier() {
         for (;;) {
-            final JrppRequestIdentifier requestIdentifier = new JrppRequestIdentifier(client, requestIdSequence.getAndIncrement());
+            final NumericRequestIdentifier requestIdentifier = new NumericRequestIdentifier(client, requestIdSequence.getAndIncrement());
             if (liveRequestSet.add(requestIdentifier)) {
                 return requestIdentifier;
             }
         }
     }
 
-    private JrppStreamIdentifier getNewStreamIdentifier() {
+    private NumericStreamIdentifier getNewStreamIdentifier() {
         for (;;) {
-            final JrppStreamIdentifier streamIdentifier = new JrppStreamIdentifier(client, streamIdSequence.getAndIncrement());
+            final NumericStreamIdentifier streamIdentifier = new NumericStreamIdentifier(client, streamIdSequence.getAndIncrement());
             if (liveStreamSet.add(streamIdentifier)) {
                 return streamIdentifier;
             }
         }
     }
 
-    private JrppServiceIdentifier getNewServiceIdentifier() {
+    private NumericServiceIdentifier getNewServiceIdentifier() {
         for (;;) {
-            final JrppServiceIdentifier serviceIdentifier = new JrppServiceIdentifier(client, serviceIdSequence.getAndIncrement());
+            final NumericServiceIdentifier serviceIdentifier = new NumericServiceIdentifier(client, serviceIdSequence.getAndIncrement());
             if (liveServiceSet.add(serviceIdentifier)) {
                 return serviceIdentifier;
             }
