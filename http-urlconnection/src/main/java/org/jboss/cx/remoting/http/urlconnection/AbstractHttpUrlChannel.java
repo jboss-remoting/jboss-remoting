@@ -19,6 +19,7 @@ import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AbstractOutputStreamByteMessageOutput;
 import org.jboss.cx.remoting.util.IoUtil;
 import org.jboss.cx.remoting.util.NamingThreadFactory;
+import org.jboss.cx.remoting.util.InputStreamByteMessageInput;
 
 /**
  *
@@ -178,7 +179,7 @@ public abstract class AbstractHttpUrlChannel extends AbstractHttpChannel {
                     }
                     final InputStream inputStream = httpConnection.getInputStream();
                     try {
-                        channelContext.processInboundMessage(INIT_ME);
+                        channelContext.processInboundMessage(new InputStreamByteMessageInput(inputStream, -1));
                     } finally {
                         IoUtil.closeSafely(inputStream);
                     }
