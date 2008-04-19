@@ -100,12 +100,12 @@ public final class HttpProtocolSupport {
     private final ConcurrentMap<String, RemotingHttpSession> sessionMap = CollectionUtil.concurrentWeakValueMap();
 
     public String generateSessionId() {
-        final byte[] bytes = new byte[32];
+        final byte[] bytes = new byte[16];
         StringBuilder builder = new StringBuilder(bytes.length * 2);
         random.nextBytes(bytes);
         for (byte b : bytes) {
-            builder.append(Character.digit(b >>> 4 & 15, 16));
-            builder.append(Character.digit(b & 15, 16));
+            builder.append(Character.forDigit(b >>> 4 & 15, 16));
+            builder.append(Character.forDigit(b & 15, 16));
         }
         return builder.toString();
     }

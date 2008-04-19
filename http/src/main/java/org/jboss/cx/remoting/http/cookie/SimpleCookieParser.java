@@ -4,7 +4,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.List;
 import org.jboss.cx.remoting.log.Logger;
+import org.jboss.cx.remoting.util.CollectionUtil;
+import static org.jboss.cx.remoting.util.CollectionUtil.arrayList;
 
 /**
  *
@@ -80,5 +83,21 @@ public final class SimpleCookieParser implements CookieParser {
             }
         }
         return new Cookie(name, value, path, domain, expires, secure);
+    }
+
+    public List<Cookie> parseCookie(final String cookie) {
+        if (cookie == null) {
+            throw new NullPointerException("cookie is null");
+        }
+        List<Cookie> cookieList = arrayList();
+        final Matcher matcher = PAIR_PATTERN.matcher(cookie);
+        while (matcher.find()) {
+            final String name = matcher.group(1);
+            final String value = matcher.group(2);
+            if (name != null && value != null) {
+                cookieList.add(new Cookie(name, value, "/", ".unknown.local", -1L, false));
+            }
+        }
+        return cookieList;
     }
 }
