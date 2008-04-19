@@ -1,4 +1,6 @@
-package org.jboss.cx.remoting.http.spi;
+package org.jboss.cx.remoting.http;
+
+import org.jboss.cx.remoting.util.ByteMessageInput;
 
 /**
  *
@@ -7,9 +9,9 @@ public interface RemotingHttpChannelContext {
     /**
      * Process an HTTP message that has arrived.
      *
-     * @param incomingHttpMessage the HTTP message
+     * @param input the source of the message data
      */
-    void processInboundMessage(IncomingHttpMessage incomingHttpMessage);
+    void processInboundMessage(ByteMessageInput input);
 
     /**
      * Wait for an outgoing HTTP message to become available, up to a certain time limit.  If no message is available
@@ -19,5 +21,5 @@ public interface RemotingHttpChannelContext {
      * @param millis the amount of time to wait in millseconds, {@code 0} to not wait, or {@code -1} to wait indefinitely.
      * @return an outgoing HTTP message
      */
-    OutgoingHttpMessage waitForOutgoingHttpMessage(int millis);
+    HttpMessageWriter waitForOutgoingHttpMessage(int millis);
 }

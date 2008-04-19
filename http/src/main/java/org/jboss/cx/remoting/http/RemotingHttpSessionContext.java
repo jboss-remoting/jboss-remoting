@@ -1,4 +1,4 @@
-package org.jboss.cx.remoting.http.spi;
+package org.jboss.cx.remoting.http;
 
 /**
  *

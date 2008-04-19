@@ -1,12 +1,11 @@
 package org.jboss.cx.remoting.http;
 
-import org.jboss.cx.remoting.http.spi.HttpChannel;
-import org.jboss.cx.remoting.http.spi.RemotingHttpChannelContext;
+import org.jboss.cx.remoting.http.RemotingHttpChannelContext;
 
 /**
  *
  */
-public abstract class AbstractHttpChannel implements HttpChannel {
+public abstract class AbstractHttpChannel {
 
     protected AbstractHttpChannel() {
     }

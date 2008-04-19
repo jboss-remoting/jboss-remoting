@@ -13,13 +13,10 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.Future;
 import org.jboss.cx.remoting.http.AbstractHttpChannel;
 import org.jboss.cx.remoting.http.cookie.CookieClientSession;
-import org.jboss.cx.remoting.http.spi.AbstractIncomingHttpMessage;
-import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
-import org.jboss.cx.remoting.http.spi.RemotingHttpChannelContext;
+import org.jboss.cx.remoting.http.HttpMessageWriter;
+import org.jboss.cx.remoting.http.RemotingHttpChannelContext;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AbstractOutputStreamByteMessageOutput;
-import org.jboss.cx.remoting.util.ByteMessageInput;
-import org.jboss.cx.remoting.util.InputStreamByteMessageInput;
 import org.jboss.cx.remoting.util.IoUtil;
 import org.jboss.cx.remoting.util.NamingThreadFactory;
 
@@ -158,7 +155,7 @@ public abstract class AbstractHttpUrlChannel extends AbstractHttpChannel {
         final RemotingHttpChannelContext channelContext = getChannelContext();
         final int localParkTime = getLocalParkTime();
         final int remoteParkTime = getRemoteParkTime();
-        final OutgoingHttpMessage message = channelContext.waitForOutgoingHttpMessage(localParkTime);
+        final HttpMessageWriter messageWriter = channelContext.waitForOutgoingHttpMessage(localParkTime);
         try {
             final HttpURLConnection httpConnection = intializeConnection(connectUrl);
             try {
@@ -168,7 +165,7 @@ public abstract class AbstractHttpUrlChannel extends AbstractHttpChannel {
                 httpConnection.connect();
                 final OutputStream outputStream = httpConnection.getOutputStream();
                 try {
-                    message.writeMessageData(new AbstractOutputStreamByteMessageOutput(outputStream) {
+                    messageWriter.writeMessageData(new AbstractOutputStreamByteMessageOutput(outputStream) {
                         public void commit() throws IOException {
                         }
                     });
@@ -181,11 +178,7 @@ public abstract class AbstractHttpUrlChannel extends AbstractHttpChannel {
                     }
                     final InputStream inputStream = httpConnection.getInputStream();
                     try {
-                        channelContext.processInboundMessage(new AbstractIncomingHttpMessage() {
-                            public ByteMessageInput getMessageData() throws IOException {
-                                return new InputStreamByteMessageInput(inputStream, -1);
-                            }
-                        });
+                        channelContext.processInboundMessage(INIT_ME);
                     } finally {
                         IoUtil.closeSafely(inputStream);
                     }

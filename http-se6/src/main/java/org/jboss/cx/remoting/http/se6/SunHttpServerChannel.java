@@ -8,17 +8,15 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentMap;
 import java.security.SecureRandom;
 import org.jboss.cx.remoting.http.AbstractHttpChannel;
+import org.jboss.cx.remoting.http.HttpMessageWriter;
 import org.jboss.cx.remoting.http.cookie.Cookie;
 import org.jboss.cx.remoting.http.cookie.CookieParser;
-import org.jboss.cx.remoting.http.spi.AbstractIncomingHttpMessage;
-import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
-import org.jboss.cx.remoting.http.spi.RemotingHttpChannelContext;
-import org.jboss.cx.remoting.http.spi.RemotingHttpServerContext;
+import org.jboss.cx.remoting.http.RemotingHttpChannelContext;
+import org.jboss.cx.remoting.http.RemotingHttpServerContext;
 import org.jboss.cx.remoting.util.AbstractOutputStreamByteMessageOutput;
-import org.jboss.cx.remoting.util.ByteMessageInput;
 import org.jboss.cx.remoting.util.CollectionUtil;
-import org.jboss.cx.remoting.util.InputStreamByteMessageInput;
 import org.jboss.cx.remoting.util.IoUtil;
+import org.jboss.cx.remoting.util.InputStreamByteMessageInput;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpContext;
@@ -133,17 +131,12 @@ public final class SunHttpServerChannel extends AbstractHttpChannel implements H
         RemotingHttpChannelContext context = sessions.get(sessionId);
         final InputStream inputStream = exchange.getRequestBody();
         try {
-            final AbstractIncomingHttpMessage incomingMessage = new AbstractIncomingHttpMessage() {
-                public ByteMessageInput getMessageData() throws IOException {
-                    return new InputStreamByteMessageInput(inputStream, -1);
-                }
-            };
             if (context == null) {
                 needToSetSession = true;
-                context = serverContext.processUnsolicitedInboundMessage(incomingMessage);
+                context = serverContext.processUnsolicitedInboundMessage(new InputStreamByteMessageInput(inputStream, -1));
             } else {
                 needToSetSession = false;
-                context.processInboundMessage(incomingMessage);
+                context.processInboundMessage(new InputStreamByteMessageInput(inputStream, -1));
             }
         } finally {
             IoUtil.closeSafely(inputStream);
@@ -163,10 +156,10 @@ public final class SunHttpServerChannel extends AbstractHttpChannel implements H
             }
             exchange.getResponseHeaders().set("Set-Cookie", setCookieBuilder.toString());
         }
-        final OutgoingHttpMessage outgoingMessage = context.waitForOutgoingHttpMessage(parkTimeout);
+        final HttpMessageWriter messageWriter = context.waitForOutgoingHttpMessage(parkTimeout);
         final OutputStream outputStream = exchange.getResponseBody();
         try {
-            outgoingMessage.writeMessageData(new AbstractOutputStreamByteMessageOutput(outputStream) {
+            messageWriter.writeMessageData(new AbstractOutputStreamByteMessageOutput(outputStream) {
                 public void commit() throws IOException {
                 }
             });
