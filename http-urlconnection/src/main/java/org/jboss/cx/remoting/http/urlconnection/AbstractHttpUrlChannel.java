@@ -9,20 +9,24 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.Future;
+import org.jboss.cx.remoting.http.AbstractHttpChannel;
 import org.jboss.cx.remoting.http.cookie.CookieClientSession;
 import org.jboss.cx.remoting.http.spi.AbstractIncomingHttpMessage;
 import org.jboss.cx.remoting.http.spi.OutgoingHttpMessage;
-import org.jboss.cx.remoting.http.spi.RemotingHttpSessionContext;
+import org.jboss.cx.remoting.http.spi.RemotingHttpChannelContext;
 import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AbstractOutputStreamByteMessageOutput;
 import org.jboss.cx.remoting.util.ByteMessageInput;
 import org.jboss.cx.remoting.util.InputStreamByteMessageInput;
 import org.jboss.cx.remoting.util.IoUtil;
+import org.jboss.cx.remoting.util.NamingThreadFactory;
 
 /**
  *
  */
-public abstract class AbstractHttpUrlChannel {
+public abstract class AbstractHttpUrlChannel extends AbstractHttpChannel {
 
     private static final Logger log = Logger.getLogger(AbstractHttpUrlChannel.class);
 
@@ -35,7 +39,8 @@ public abstract class AbstractHttpUrlChannel {
 
     private int concurrentRequests = 2;
     private int connectTimeout = 5000;
-    private int readTimeout = 5000;
+    private int readTimeout = 0;  // Default to unlimited to support "parking" the connection at the other end
+    private int errorBackoffTime = 5000;
     private URL connectUrl;
 
     public int getConcurrentRequests() {
@@ -62,6 +67,14 @@ public abstract class AbstractHttpUrlChannel {
         this.readTimeout = readTimeout;
     }
 
+    public int getErrorBackoffTime() {
+        return errorBackoffTime;
+    }
+
+    public void setErrorBackoffTime(final int errorBackoffTime) {
+        this.errorBackoffTime = errorBackoffTime;
+    }
+
     public URL getConnectUrl() {
         return connectUrl;
     }
@@ -72,16 +85,7 @@ public abstract class AbstractHttpUrlChannel {
 
     // Dependencies
 
-    private RemotingHttpSessionContext sessionContext;
     private Executor executor;
-
-    public RemotingHttpSessionContext getSessionContext() {
-        return sessionContext;
-    }
-
-    public void setSessionContext(final RemotingHttpSessionContext sessionContext) {
-        this.sessionContext = sessionContext;
-    }
 
     public Executor getExecutor() {
         return executor;
@@ -94,47 +98,73 @@ public abstract class AbstractHttpUrlChannel {
     // Lifecycle
 
     private ExecutorService executorService;
+    private Future[] futures;
 
     public void create() {
+        super.create();
         if (executor == null) {
-            executor = executorService = Executors.newFixedThreadPool(concurrentRequests);
+            executor = executorService = Executors.newFixedThreadPool(concurrentRequests, new NamingThreadFactory(Executors.defaultThreadFactory(), "Remoting HTTP client %s"));
         }
         if (connectUrl == null) {
             throw new NullPointerException("connectUrl is null");
         }
-        if (sessionContext == null) {
-            throw new NullPointerException("sessionContext is null");
-        }
     }
 
     public void start() {
-
+        final Future[] futures = new Future[concurrentRequests];
+        for (int i = 0; i < futures.length; i++) {
+            final FutureTask task = new FutureTask<Void>(null) {
+                public void run() {
+                    while (! isCancelled()) try {
+                        handleRequest();
+                    } catch (Throwable t) {
+                        log.trace(t, "Request hander failed");
+                    }
+                }
+            };
+            executor.execute(task);
+            futures[i] = task;
+        }
+        this.futures = futures;
     }
 
     public void stop() {
-
+        if (futures != null) {
+            final Future[] futures = this.futures;
+            this.futures = null;
+            for (Future future : futures) try {
+                future.cancel(true);
+            } catch (Throwable t) {
+                log.trace(t, "Error cancelling task");
+            }
+        }
     }
 
     public void destroy() {
         try {
-
+            super.destroy();
         } finally {
             if (executorService != null) {
                 executorService.shutdown();
             }
         }
         executor = executorService = null;
-        sessionContext = null;
     }
 
     // Interface
 
-    protected void handleRequest(final URL connectUrl) {
-        final RemotingHttpSessionContext sessionContext = getSessionContext();
-        final OutgoingHttpMessage message = sessionContext.getOutgoingHttpMessage();
+    protected void handleRequest() {
+        final URL connectUrl = getConnectUrl();
+        final RemotingHttpChannelContext channelContext = getChannelContext();
+        final int localParkTime = getLocalParkTime();
+        final int remoteParkTime = getRemoteParkTime();
+        final OutgoingHttpMessage message = channelContext.waitForOutgoingHttpMessage(localParkTime);
         try {
             final HttpURLConnection httpConnection = intializeConnection(connectUrl);
             try {
+                if (remoteParkTime >= 0) {
+                    httpConnection.addRequestProperty("Park-Timeout", Integer.toString(remoteParkTime));
+                }
                 httpConnection.connect();
                 final OutputStream outputStream = httpConnection.getOutputStream();
                 try {
@@ -151,7 +181,7 @@ public abstract class AbstractHttpUrlChannel {
                     }
                     final InputStream inputStream = httpConnection.getInputStream();
                     try {
-                        sessionContext.processInboundMessage(new AbstractIncomingHttpMessage() {
+                        channelContext.processInboundMessage(new AbstractIncomingHttpMessage() {
                             public ByteMessageInput getMessageData() throws IOException {
                                 return new InputStreamByteMessageInput(inputStream, -1);
                             }
@@ -178,7 +208,16 @@ public abstract class AbstractHttpUrlChannel {
                 } catch (IOException e2) {
                     log.trace(e2, "Error consuming the error stream from remote URL '%s'", connectUrl);
                 }
-                // todo - need a backoff timer to prevent a storm of HTTP errors.  Or perhaps the session should be torn down.
+                final int time = errorBackoffTime;
+                if (time > 0) {
+                    try {
+                        log.debug("HTTP error occurred; backing off for %d milliseconds", Integer.valueOf(time));
+                        Thread.sleep(time);
+                    } catch (InterruptedException e1) {
+                        log.trace("Thread interrupted while waiting for error backoff time to expire");
+                        Thread.currentThread().interrupt();
+                    }
+                }
             }
         } catch (IOException e) {
             log.trace(e, "Error establishing connection");
