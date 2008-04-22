@@ -114,7 +114,7 @@ public final class CoreOutboundRequest<I, O> {
         }
 
         public void handleException(final RemoteExecutionException exception) {
-            if (state.transitionExclusive(State.WAITING, State.DONE)) try {
+            if (state.transitionExclusive(State.WAITING, State.EXCEPTION)) try {
                 CoreOutboundRequest.this.exception = exception;
             } finally {
                 state.releaseDowngrade();
@@ -216,8 +216,6 @@ public final class CoreOutboundRequest<I, O> {
                         throw exception;
                     case DONE:
                         return reply;
-                    case WAITING:
-                        return null;
                     case TERMINATED:
                         throw new IndeterminateOutcomeException("Request terminated abruptly; outcome unknown");
                 }
@@ -237,8 +235,6 @@ public final class CoreOutboundRequest<I, O> {
                         throw exception;
                     case DONE:
                         return reply;
-                    case WAITING:
-                        return null;
                     case TERMINATED:
                         throw new IndeterminateOutcomeException("Request terminated abruptly; outcome unknown");
                 }
