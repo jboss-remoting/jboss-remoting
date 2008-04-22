@@ -163,6 +163,18 @@
         <get src="${remote.license.dir}/${lib.servlet.license}.txt" dest="${lib.servlet.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
+    <!-- External library: Sun embedded HTTP server -->
+
+    <target name="lib.sun-httpserver-check">
+        <available property="lib.sun-httpserver.exists" file="${lib.sun-httpserver.local}"/>
+    </target>
+
+    <target name="lib.sun-httpserver" depends="lib.sun-httpserver-check" unless="lib.sun-httpserver.exists">
+        <mkdir dir="${local.repository}/${lib.sun-httpserver.dir}"/>
+        <get src="${lib.sun-httpserver.remote}" dest="${lib.sun-httpserver.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.sun-httpserver.license}.txt" dest="${lib.sun-httpserver.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
     <!-- ============================================== -->
     <!-- MODULES - Keep in alpha order by target name   -->
     <!-- ============================================== -->
@@ -458,6 +470,24 @@
 
     <!-- http-se6 module -->
 
+    <target name="http-se6.httpserver.builtin-check">
+        <condition property="http-se6.httpserver.builtin">
+            <available classname="com.sun.http.HttpServer"/>
+        </condition>
+    </target>
+
+    <target name="http-se6.httpserver.classpath.false" depends="http-se6.httpserver.builtin-check" unless="http-se6.httpserver.builtin">
+        <path id="httpserver.classpath">
+            <pathelement location="${lib.sun-httpserver.local}"/>
+        </path>
+    </target>
+
+    <target name="http-se6.httpserver.classpath.true" depends="http-se6.httpserver.builtin-check" if="http-se6.httpserver.builtin">
+        <path id="httpserver.classpath"/>
+    </target>
+
+    <target name="http-se6.httpserver.classpath" depends="http-se6.httpserver.classpath.false,http-se6.httpserver.classpath.true"/>
+
     <target name="http-se6.compile.depcheck">
         <mkdir dir="http-se6/target/main"/>
         <uptodate property="http-se6.compile.uptodate" targetfile="http-se6/target/main/.lastcompile">
@@ -467,12 +497,9 @@
                 <exclude name="**/.*"/>
             </srcfiles>
         </uptodate>
-        <condition property="http-se6.supported">
-            <available classname="com.sun.net.httpserver.HttpServer"/>
-        </condition>
     </target>
 
-    <target name="http-se6.compile" depends="http-se6.compile.depcheck" unless="http-se6.compile.uptodate" if="http-se6.supported">
+    <target name="http-se6.compile" depends="http-se6.compile.depcheck,http-se6.httpserver.classpath" unless="http-se6.compile.uptodate">
         <mkdir dir="http-se6/target/main/classes"/>
         <javac
                 source="${javac.source}"
@@ -485,6 +512,7 @@
                 <path refid="api.classpath"/>
                 <path refid="http.classpath"/>
                 <path refid="util.classpath"/>
+                <path refid="httpserver.classpath"/>
             </classpath>
         </javac>
         <touch file="http-se6/target/main/.lastcompile" verbose="false"/>
@@ -494,7 +522,7 @@
         <delete dir="http-se6/target"/>
     </target>
 
-    <target name="http-se6" description="Build the http-se6 module" depends="api,http,util,http-se6.compile">
+    <target name="http-se6" description="Build the http-se6 module" depends="lib.sun-httpserver,api,http,util,http-se6.compile">
         <path id="http-se6.classpath">
             <pathelement location="http-se6/target/main/classes"/>
         </path>
