@@ -309,38 +309,31 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
         final int hash;
         volatile Object valueRef;
         final HashEntry<K,V> next;
-        final ReferenceType keyType;
-        final ReferenceType valueType;
 
         HashEntry(K key, int hash,  HashEntry<K,V> next, V value, 
                 ReferenceType keyType, ReferenceType valueType, 
                 ReferenceQueue<K> refQueue) {
-            this.keyType = keyType;
-            this.valueType = valueType;
-            this.keyRef = newKeyReference(key, hash, refQueue);
+            this.keyRef = newKeyReference(key, keyType, hash, refQueue);
             this.hash = hash;
             this.next = next;
-            this.valueRef = newValueReference(value);
+            this.valueRef = newValueReference(value, valueType);
         }
         
-        final Object newKeyReference(K key, int hash, ReferenceQueue<K> refQueue) {
-            switch (keyType) {
-                case WEAK:
-                    return new WeakKeyReference<K>(key, hash, refQueue);
-                case SOFT:
-                    return new SoftKeyReference<K>(key, hash, refQueue);
-            }
+        final Object newKeyReference(K key, ReferenceType keyType, int hash, 
+                ReferenceQueue<K> refQueue) {
+            if (keyType == ReferenceType.WEAK)
+                return new WeakKeyReference<K>(key, hash, refQueue);
+            if (keyType == ReferenceType.SOFT)
+                return new SoftKeyReference<K>(key, hash, refQueue);
             
             return key;
         }
         
-        final Object newValueReference(V value) {
-            switch (valueType) {
-                case WEAK:
-                    return new WeakReference<V>(value);
-                case SOFT:
-                    return new SoftReference<V>(value);
-            }
+        final Object newValueReference(V value, ReferenceType valueType) {
+            if (valueType == ReferenceType.WEAK)
+                return new WeakReference<V>(value);
+            if (valueType == ReferenceType.SOFT)
+                return new SoftReference<V>(value);
             
             return value;
         }
@@ -365,8 +358,8 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
             return (V) value;
         }
         
-        final void setValue(V value) {
-            this.valueRef = newValueReference(value);
+        final void setValue(V value, ReferenceType valueType) {
+            this.valueRef = newValueReference(value, valueType);
         }
 
         @SuppressWarnings("unchecked")
@@ -588,7 +581,7 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
                 boolean replaced = false;
                 if (e != null && oldValue.equals(e.value())) {
                     replaced = true;
-                    e.setValue(newValue);
+                    e.setValue(newValue, valueType);
                 }
                 return replaced;
             } finally {
@@ -607,7 +600,7 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
                 V oldValue = null;
                 if (e != null) {
                     oldValue = e.value();
-                    e.setValue(newValue);
+                    e.setValue(newValue, valueType);
                 }
                 return oldValue;
             } finally {
@@ -638,7 +631,7 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V>
                 if (e != null) {
                     oldValue = e.value();
                     if (!onlyIfAbsent)
-                        e.setValue(value);
+                        e.setValue(value, valueType);
                 }
                 else {
                     oldValue = null;
