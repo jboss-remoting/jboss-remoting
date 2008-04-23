@@ -697,9 +697,6 @@ public final class JrppConnection {
                 final ObjectMessageOutput output = protocolContext.getMessageOutput(new IoBufferByteMessageOutput(buffer, ioSession));
                 write(output, MessageType.PING);
                 output.commit();
-            } else if (idleStatus == IdleStatus.READER_IDLE) {
-                // No message since last communication - close the connection.
-                close();
             }
         }
 
