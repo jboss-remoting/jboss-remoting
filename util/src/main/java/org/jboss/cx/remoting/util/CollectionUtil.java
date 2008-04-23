@@ -17,6 +17,7 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.ListIterator;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -564,5 +565,67 @@ public final class CollectionUtil {
             throw new IllegalStateException("next() has not yet been called");
         }
 
+    }
+
+    public static <T> ListIterator<T> reverse(ListIterator<T> original) {
+        if (original instanceof ReverseListIterator) {
+            return ((ReverseListIterator<T>)original).original;
+        } else {
+            return new ReverseListIterator<T>(original);
+        }
+    }
+
+    public static <T> Iterable<T> reverse(final List<T> list) {
+        return new Iterable<T>() {
+            public Iterator<T> iterator() {
+                return reverse(list.listIterator());
+            }
+        };
+    }
+
+    private static final class ReverseListIterator<T> implements ListIterator<T> {
+
+        private final ListIterator<T> original;
+
+        private ReverseListIterator(final ListIterator<T> original) {
+            this.original = original;
+        }
+
+        public boolean hasNext() {
+            return original.hasPrevious();
+        }
+
+        public T next() {
+            return original.previous();
+        }
+
+        public boolean hasPrevious() {
+            return original.hasNext();
+        }
+
+        public T previous() {
+            return original.next();
+        }
+
+        public int nextIndex() {
+            return original.previousIndex();
+        }
+
+        public int previousIndex() {
+            return original.nextIndex();
+        }
+
+        public void remove() {
+            original.remove();
+        }
+
+        public void set(final T o) {
+            original.set(o);
+        }
+
+        public void add(final T o) {
+            original.add(o);
+            original.previous();
+        }
     }
 }

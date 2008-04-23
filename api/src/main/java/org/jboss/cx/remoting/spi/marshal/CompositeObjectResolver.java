@@ -26,7 +26,7 @@ public final class CompositeObjectResolver implements ObjectResolver {
     }
 
     public Object readResolve(Object object) throws IOException {
-        for (ObjectResolver resolver : resolvers) {
+        for (ObjectResolver resolver : CollectionUtil.reverse(resolvers)) {
             object = resolver.readResolve(object);
         }
         return object;
