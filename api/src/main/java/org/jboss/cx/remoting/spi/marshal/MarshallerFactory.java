@@ -6,5 +6,5 @@ import java.io.IOException;
  *
  */
 public interface MarshallerFactory {
-    Marshaller createRootMarshaller(ClassLoader classLoader) throws IOException;
+    Marshaller createRootMarshaller(ObjectResolver resolver, ClassLoader classLoader) throws IOException;
 }
