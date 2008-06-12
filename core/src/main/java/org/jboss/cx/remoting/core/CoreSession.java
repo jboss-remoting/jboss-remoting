@@ -36,6 +36,8 @@ import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 import org.jboss.cx.remoting.spi.stream.StreamDetector;
 import org.jboss.cx.remoting.spi.stream.StreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
+import org.jboss.cx.remoting.spi.marshal.ObjectResolver;
+import org.jboss.cx.remoting.spi.marshal.MarshallerFactory;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.util.CollectionUtil;
@@ -58,6 +60,8 @@ public final class CoreSession {
 
     // stream serialization detectors - immutable (for now?)
     private final List<StreamDetector> streamDetectors;
+    private List<ObjectResolver> resolvers = new ArrayList<ObjectResolver>();
+    private MarshallerFactory marshallerFactory;
 
     // Contexts and services that are available on the remote end of this session
     // In these paris, the Server points to the ProtocolHandler, and the Client points to...whatever
@@ -85,6 +89,7 @@ public final class CoreSession {
     private Client<?, ?> rootClient;
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.NEW);
+    private ObjectResolver resolver; // todo - initialize to a composite resolver
 
     // Constructors
 
@@ -106,6 +111,23 @@ public final class CoreSession {
             state.release();
         }
     }
+
+    public MarshallerFactory getMarshallerFactory() {
+        return marshallerFactory;
+    }
+
+    public void setMarshallerFactory(final MarshallerFactory marshallerFactory) {
+        this.marshallerFactory = marshallerFactory;
+    }
+
+    public void addFirstResolver(ObjectResolver resolver) {
+        resolvers.add(0, resolver);
+    }
+
+    public void addLastResolver(ObjectResolver resolver) {
+        resolvers.add(resolver);
+    }
+
 
     // Initializers
 
@@ -132,7 +154,7 @@ public final class CoreSession {
         }
         final ProtocolClientResponderImpl<I, O> contextServer = new ProtocolClientResponderImpl<I,O>(remoteIdentifier);
         final CoreOutboundClient<I, O> coreOutboundClient = new CoreOutboundClient<I, O>(executor);
-        clientContexts.put(remoteIdentifier, new ClientContextPair<I, O>(coreOutboundClient.getContextClient(), contextServer, remoteIdentifier));
+        clientContexts.put(remoteIdentifier, new ClientContextPair<I, O>(coreOutboundClient.getClientInitiator(), contextServer, remoteIdentifier));
         coreOutboundClient.initialize(contextServer);
         this.rootClient = coreOutboundClient.getUserContext();
         log.trace("Initialized session with remote context %s", remoteIdentifier);
@@ -291,7 +313,7 @@ public final class CoreSession {
             if (target == null) {
                 throw new NullPointerException("target is null");
             }
-            return new ObjectMessageOutputImpl(target, streamDetectors, endpoint.getOrderedExecutor());
+            return marshallerFactory.createRootMarshaller(resolver, getClass().getClassLoader() /* todo this is WRONG */).getMessageOutput(target);
         }
 
         public ObjectMessageOutput getMessageOutput(ByteMessageOutput target, Executor streamExecutor) throws IOException {
@@ -301,14 +323,14 @@ public final class CoreSession {
             if (streamExecutor == null) {
                 throw new NullPointerException("streamExecutor is null");
             }
-            return new ObjectMessageOutputImpl(target, streamDetectors, streamExecutor);
+            return marshallerFactory.createRootMarshaller(resolver, getClass().getClassLoader() /* todo this is WRONG */).getMessageOutput(target);
         }
 
         public ObjectMessageInput getMessageInput(ByteMessageInput source) throws IOException {
             if (source == null) {
                 throw new NullPointerException("source is null");
             }
-            return new ObjectMessageInputImpl(source);
+            return marshallerFactory.createRootMarshaller(resolver, getClass().getClassLoader() /* todo this is WRONG */).getMessageInput(source);
         }
 
         public String getLocalEndpointName() {
@@ -544,223 +566,6 @@ public final class CoreSession {
                 requestResponder.handleRequest(request, executor);
             } catch (RemotingException e) {
                 e.printStackTrace();
-            }
-        }
-    }
-
-    // message output
-
-    private final class ObjectMessageOutputImpl extends JBossObjectOutputStream implements ObjectMessageOutput {
-        private final ByteMessageOutput target;
-        private final List<StreamDetector> streamDetectors;
-        private final List<StreamSerializer> streamSerializers = new ArrayList<StreamSerializer>();
-        private final Executor streamExecutor;
-
-        private ObjectMessageOutputImpl(final ByteMessageOutput target, final List<StreamDetector> streamDetectors, final Executor streamExecutor) throws IOException {
-            super(new OutputStream() {
-                public void write(int b) throws IOException {
-                    target.write(b);
-                }
-
-                public void write(byte b[]) throws IOException {
-                    target.write(b);
-                }
-
-                public void write(byte b[], int off, int len) throws IOException {
-                    target.write(b, off, len);
-                }
-
-                public void flush() throws IOException {
-                    target.flush();
-                }
-
-                public void close() throws IOException {
-                    target.close();
-                }
-            }, true);
-            if (target == null) {
-                throw new NullPointerException("target is null");
-            }
-            if (streamDetectors == null) {
-                throw new NullPointerException("streamDetectors is null");
-            }
-            if (streamExecutor == null) {
-                throw new NullPointerException("streamExecutor is null");
-            }
-            enableReplaceObject(true);
-            this.target = target;
-            this.streamDetectors = streamDetectors;
-            this.streamExecutor = streamExecutor;
-        }
-
-        public void commit() throws IOException {
-            close();
-            target.commit();
-            for (StreamSerializer serializer : streamSerializers) {
-                try {
-                    serializer.handleOpen();
-                } catch (Exception ex) {
-                    // todo - log
-                }
-            }
-            streamSerializers.clear();
-        }
-
-        public int getBytesWritten() throws IOException {
-            flush();
-            return target.getBytesWritten();
-        }
-
-        private final <I, O> ClientMarker doContextReplace(ClientResponder<I, O> clientResponder) throws IOException {
-            final ClientIdentifier clientIdentifier = protocolHandler.openClient();
-            final ProtocolClientInitiatorImpl<I, O> contextClient = new ProtocolClientInitiatorImpl<I, O>(clientIdentifier);
-            new ServerContextPair<I, O>(contextClient, clientResponder);
-            return new ClientMarker(clientIdentifier);
-        }
-
-        private final <I, O> ClientSourceMarker doContextSourceReplace(ServiceResponder<I, O> serviceResponder) throws IOException {
-            final ServiceIdentifier serviceIdentifier = protocolHandler.openService();
-            final ProtocolServiceInitiatorImpl serviceClient = new ProtocolServiceInitiatorImpl(serviceIdentifier);
-            new ServerServicePair<I, O>(serviceClient, serviceResponder);
-            return new ClientSourceMarker(serviceIdentifier);
-        }
-
-        protected Object replaceObject(Object obj) throws IOException {
-            final Object testObject = super.replaceObject(obj);
-            if (testObject instanceof AbstractRealClient) {
-                return doContextReplace(((AbstractRealClient<?, ?>) obj).getContextServer());
-            } else if (testObject instanceof AbstractRealClientSource) {
-                return doContextSourceReplace(((AbstractRealClientSource<?, ?>) obj).getServiceServer());
-            }
-            for (StreamDetector detector : streamDetectors) {
-                final StreamSerializerFactory factory = detector.detectStream(testObject);
-                if (factory != null) {
-                    final StreamIdentifier streamIdentifier = protocolHandler.openStream();
-                    if (streamIdentifier == null) {
-                        throw new NullPointerException("streamIdentifier is null");
-                    }
-                    final CoreStream stream = new CoreStream(CoreSession.this, streamExecutor, streamIdentifier, factory, testObject);
-                    if (streams.putIfAbsent(streamIdentifier, stream) != null) {
-                        throw new IOException("Duplicate stream identifier encountered: " + streamIdentifier);
-                    }
-                    streamSerializers.add(stream.getStreamSerializer());
-                    log.trace("Writing stream marker for object: %s", testObject);
-                    return new StreamMarker(factory.getClass(), streamIdentifier);
-                }
-            }
-            return testObject;
-        }
-    }
-
-    // message input
-
-    private final class ObjectInputImpl extends JBossObjectInputStream {
-
-        private ClassLoader classLoader;
-
-        public ObjectInputImpl(final InputStream is) throws IOException {
-            super(is);
-            enableResolveObject(true);
-        }
-
-        public Object resolveObject(Object obj) throws IOException {
-            final Object testObject = super.resolveObject(obj);
-            if (testObject instanceof StreamMarker) {
-                StreamMarker marker = (StreamMarker) testObject;
-                final StreamIdentifier streamIdentifier = marker.getStreamIdentifier();
-                if (streamIdentifier == null) {
-                    throw new NullPointerException("streamIdentifier is null");
-                }
-                final StreamSerializerFactory streamSerializerFactory;
-                try {
-                    streamSerializerFactory = marker.getFactoryClass().newInstance();
-                } catch (InstantiationException e) {
-                    throw new IOException("Failed to instantiate a stream: " + e);
-                } catch (IllegalAccessException e) {
-                    throw new IOException("Failed to instantiate a stream: " + e);
-                }
-                final CoreStream stream = new CoreStream(CoreSession.this, endpoint.getOrderedExecutor(), streamIdentifier, streamSerializerFactory);
-                if (streams.putIfAbsent(streamIdentifier, stream) != null) {
-                    throw new IOException("Duplicate stream received");
-                }
-                return stream.getRemoteSerializer().getRemoteInstance();
-            } else {
-                return testObject;
-            }
-        }
-
-        protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
-            final String name = desc.getName();
-            if (classLoader != null) {
-                if (primitiveTypes.containsKey(name)) {
-                    return primitiveTypes.get(name);
-                } else {
-                    return Class.forName(name, false, classLoader);
-                }
-            } else {
-                return super.resolveClass(desc);
-            }
-        }
-
-        protected Class<?> resolveProxyClass(String[] interfaces) throws IOException, ClassNotFoundException {
-            return super.resolveProxyClass(interfaces);
-        }
-
-        public Object readObject(final ClassLoader loader) throws ClassNotFoundException, IOException {
-            classLoader = loader;
-            try {
-                return readObject();
-            } finally {
-                classLoader = null;
-            }
-        }
-    }
-
-    private final class ObjectMessageInputImpl extends DelegatingObjectInput implements ObjectMessageInput {
-        private CoreSession.ObjectInputImpl objectInput;
-
-        private ObjectMessageInputImpl(final ObjectInputImpl objectInput) throws IOException {
-            super(objectInput);
-            this.objectInput = objectInput;
-        }
-
-        private ObjectMessageInputImpl(final ByteMessageInput source) throws IOException {
-            this(new ObjectInputImpl(new InputStream() {
-                public int read(byte b[]) throws IOException {
-                    return source.read(b);
-                }
-
-                public int read(byte b[], int off, int len) throws IOException {
-                    return source.read(b, off, len);
-                }
-
-                public int read() throws IOException {
-                    return source.read();
-                }
-
-                public void close() throws IOException {
-                    source.close();
-                }
-
-                public int available() throws IOException {
-                    return source.remaining();
-                }
-            }));
-        }
-
-        public Object readObject() throws ClassNotFoundException, IOException {
-            return objectInput.readObject();
-        }
-
-        public Object readObject(ClassLoader loader) throws ClassNotFoundException, IOException {
-            return objectInput.readObject(loader);
-        }
-
-        public int remaining() {
-            try {
-                return objectInput.available();
-            } catch (IOException e) {
-                throw new IllegalStateException("Available failed", e);
             }
         }
     }
@@ -1033,23 +838,5 @@ public final class CoreSession {
                 }
             }
         }
-    }
-
-    private static final Map<String, Class<?>> primitiveTypes = new HashMap<String, Class<?>>();
-
-    private static <T> void add(Class<T> type) {
-        primitiveTypes.put(type.getName(), type);
-    }
-
-    static {
-        add(void.class);
-        add(boolean.class);
-        add(byte.class);
-        add(short.class);
-        add(int.class);
-        add(long.class);
-        add(float.class);
-        add(double.class);
-        add(char.class);
     }
 }

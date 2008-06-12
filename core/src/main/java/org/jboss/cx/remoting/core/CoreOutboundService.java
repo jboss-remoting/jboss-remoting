@@ -107,7 +107,7 @@ public final class CoreOutboundService<I, O> {
 
         public Client<I, O> createContext() throws RemotingException {
             final CoreOutboundClient<I, O> client = new CoreOutboundClient<I, O>(executor);
-            final ClientResponder<I, O> clientResponder = serviceResponder.createNewClient(client.getContextClient());
+            final ClientResponder<I, O> clientResponder = serviceResponder.createNewClient(client.getClientInitiator());
             client.initialize(clientResponder);
             return client.getUserContext();
         }

@@ -20,7 +20,7 @@ public final class LocalStreamExampleMain {
     public static void main(String[] args) throws IOException, RemoteExecutionException {
         Security.addProvider(new Provider());
         final StreamingRot13RequestListener listener = new StreamingRot13RequestListener();
-        final Endpoint endpoint = Remoting.createEndpoint("simple", listener);
+        final Endpoint endpoint = Remoting.createEndpoint("simple");
         try {
             final Client<Reader,Reader> client = endpoint.createClient(listener);
             try {

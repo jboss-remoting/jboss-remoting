@@ -32,12 +32,13 @@ public interface Endpoint {
      *
      * @param remoteUri the URI of the server to connect to
      * @param attributeMap the attribute map to use to configure this session
+     * @param rootListener the root request listener for this end of the session
      * @return a new session
      *
      * @throws RemotingException if there is a problem creating the session, or if the request or reply type does not
      * match the remote service
      */
-    Session openSession(URI remoteUri, AttributeMap attributeMap) throws RemotingException;
+    Session openSession(URI remoteUri, AttributeMap attributeMap, RequestListener<?, ?> rootListener) throws RemotingException;
 
     /**
      * Open an inbound session from another endpoint.  Used by protocol handlers.
@@ -45,9 +46,10 @@ public interface Endpoint {
      * You must have the TODO permission to invoke this method.
      *
      * @param handler the protocol handler to use
+     * @param rootListener the root request listener for this end of the session
      * @return the protocol context
      */
-    ProtocolContext openIncomingSession(ProtocolHandler handler) throws RemotingException;
+    ProtocolContext openSession(ProtocolHandler handler, RequestListener<?, ?> rootListener) throws RemotingException;
 
     /**
      * Get the name of this endpoint.

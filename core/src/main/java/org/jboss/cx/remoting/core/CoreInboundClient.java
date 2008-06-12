@@ -62,7 +62,9 @@ public final class CoreInboundClient<I, O> {
         this.clientInitiator = clientInitiator;
         state.releaseDowngrade();
         try {
-            requestListener.handleClientOpen(clientContext);
+            if (requestListener != null) {
+                requestListener.handleClientOpen(clientContext);
+            }
         } finally {
             state.release();
         }

@@ -18,7 +18,7 @@ public final class ClientMarker implements Serializable {
         this.clientIdentifer = clientIdentifer;
     }
 
-    public ClientIdentifier getContextIdentifer() {
+    public ClientIdentifier getClientIdentifer() {
         return clientIdentifer;
     }
 

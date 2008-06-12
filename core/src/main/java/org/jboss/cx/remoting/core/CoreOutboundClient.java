@@ -58,7 +58,7 @@ public final class CoreOutboundClient<I, O> {
         return userClient;
     }
 
-    ClientInitiator getContextClient() {
+    ClientInitiator getClientInitiator() {
         return clientInitiator;
     }
 
@@ -71,6 +71,13 @@ public final class CoreOutboundClient<I, O> {
             // todo close it
             log.trace("Leaked a context instance: %s", this);
         }
+    }
+
+    void invalidate() {
+        // An extra instance was mistakenly created; we'll kill this one and quietly step away
+        state.transition(State.DOWN);
+        userClient = null;
+        clientResponder = null;
     }
 
     public final class UserClient extends AbstractRealClient<I, O> {
@@ -128,9 +135,9 @@ public final class CoreOutboundClient<I, O> {
             try {
                 final QueueExecutor queueExecutor = new QueueExecutor();
                 final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>();
-                final RequestResponder<I> requestTerminus = clientResponder.createNewRequest(outboundRequest.getReplier());
-                outboundRequest.setRequester(requestTerminus);
-                requestTerminus.handleRequest(request, queueExecutor);
+                final RequestResponder<I> requestResponder = clientResponder.createNewRequest(outboundRequest.getReplier());
+                outboundRequest.setRequestResponder(requestResponder);
+                requestResponder.handleRequest(request, queueExecutor);
                 final FutureReply<O> futureReply = outboundRequest.getFutureReply();
                 futureReply.addCompletionNotifier(new RequestCompletionHandler<O>() {
                     public void notifyComplete(final FutureReply<O> futureReply) {
@@ -149,7 +156,7 @@ public final class CoreOutboundClient<I, O> {
             try {
                 final CoreOutboundRequest<I, O> outboundRequest = new CoreOutboundRequest<I, O>();
                 final RequestResponder<I> requestTerminus = clientResponder.createNewRequest(outboundRequest.getReplier());
-                outboundRequest.setRequester(requestTerminus);
+                outboundRequest.setRequestResponder(requestTerminus);
                 requestTerminus.handleRequest(request, executor);
                 return outboundRequest.getFutureReply();
             } finally {

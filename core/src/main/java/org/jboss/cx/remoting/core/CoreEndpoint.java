@@ -54,7 +54,6 @@ public class CoreEndpoint implements Endpoint {
     }
 
     private String name;
-    private RequestListener<?, ?> rootListener;
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
     private final Set<SessionListener> sessionListeners = CollectionUtil.synchronizedSet(new LinkedHashSet<SessionListener>());
@@ -96,21 +95,10 @@ public class CoreEndpoint implements Endpoint {
         return name;
     }
 
-    public void setRootListener(final RequestListener<?, ?> rootListener) {
-        this.rootListener = rootListener;
-    }
-
-    public RequestListener<?, ?> getRootListener() {
-        return rootListener;
-    }
-
     // Lifecycle
 
     public void create() {
         // todo security check
-        if (rootListener == null) {
-            throw new NullPointerException("rootListener is null");
-        }
     }
 
     public void start() {
@@ -132,7 +120,6 @@ public class CoreEndpoint implements Endpoint {
     }
 
     public void destroy() {
-        rootListener = null;
         executor = null;
     }
 
@@ -143,7 +130,7 @@ public class CoreEndpoint implements Endpoint {
         return endpointMap;
     }
 
-    public Session openSession(final URI uri, final AttributeMap attributeMap) throws RemotingException {
+    public Session openSession(final URI uri, final AttributeMap attributeMap, final RequestListener<?, ?> rootListener) throws RemotingException {
         if (uri == null) {
             throw new NullPointerException("uri is null");
         }
@@ -184,11 +171,11 @@ public class CoreEndpoint implements Endpoint {
         }
     }
 
-    public ProtocolContext openIncomingSession(final ProtocolHandler handler) throws RemotingException {
+    public ProtocolContext openSession(final ProtocolHandler handler, final RequestListener<?, ?> rootListener) throws RemotingException {
         state.requireHold(State.UP);
         try {
             final CoreSession session = new CoreSession(CoreEndpoint.this);
-            session.initializeServer(handler, createClient(rootListener));
+            session.initializeServer(handler, rootListener == null ? null : createClient(rootListener));
             sessions.add(session);
             return session.getProtocolContext();
         } finally {
@@ -216,7 +203,7 @@ public class CoreEndpoint implements Endpoint {
     public <I, O> Client<I, O> createClient(RequestListener<I, O> requestListener) {
         final CoreInboundClient<I, O> inbound = new CoreInboundClient<I, O>(requestListener, executor);
         final CoreOutboundClient<I, O> outbound = new CoreOutboundClient<I, O>(executor);
-        inbound.initialize(outbound.getContextClient());
+        inbound.initialize(outbound.getClientInitiator());
         outbound.initialize(inbound.getClientResponder());
         return outbound.getUserContext();
     }

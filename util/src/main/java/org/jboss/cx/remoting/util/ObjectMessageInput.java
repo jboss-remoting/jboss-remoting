@@ -16,14 +16,4 @@ public interface ObjectMessageInput extends DataMessageInput, ObjectInput {
      * @throws IOException if an I/O error occurs
      */
     Object readObject() throws ClassNotFoundException, IOException;
-
-    /**
-     * Read an object using the given classloader.
-     *
-     * @param loader the classloader to use
-     * @return the object from the message
-     * @throws ClassNotFoundException if the class of the object could not be resolved by the classloader
-     * @throws IOException if an I/O error occurs
-     */
-    Object readObject(ClassLoader loader) throws ClassNotFoundException, IOException;
 }

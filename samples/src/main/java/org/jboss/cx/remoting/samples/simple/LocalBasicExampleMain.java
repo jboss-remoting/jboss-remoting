@@ -17,7 +17,7 @@ public final class LocalBasicExampleMain {
     public static void main(String[] args) throws IOException, RemoteExecutionException {
         Security.addProvider(new Provider());
         final StringRot13RequestListener listener = new StringRot13RequestListener();
-        final Endpoint endpoint = Remoting.createEndpoint("simple", listener);
+        final Endpoint endpoint = Remoting.createEndpoint("simple");
         try {
             final Client<String,String> client = endpoint.createClient(listener);
             try {

@@ -29,12 +29,12 @@ public class EndpointWrapper implements Endpoint {
         return delegate.getAttributes();
     }
 
-    public Session openSession(final URI remoteUri, final AttributeMap attributeMap) throws RemotingException {
-        return delegate.openSession(remoteUri, attributeMap);
+    public Session openSession(final URI remoteUri, final AttributeMap attributeMap, final RequestListener<?, ?> rootListener) throws RemotingException {
+        return delegate.openSession(remoteUri, attributeMap, rootListener);
     }
 
-    public ProtocolContext openIncomingSession(final ProtocolHandler handler) throws RemotingException {
-        return delegate.openIncomingSession(handler);
+    public ProtocolContext openSession(final ProtocolHandler handler, final RequestListener<?, ?> rootListener) throws RemotingException {
+        return delegate.openSession(handler, rootListener);
     }
 
     public String getName() {

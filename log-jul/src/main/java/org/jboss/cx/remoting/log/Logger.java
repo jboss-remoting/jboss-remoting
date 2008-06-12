@@ -8,6 +8,9 @@ import java.util.logging.LogRecord;
  */
 public final class Logger {
     public static final class Level extends java.util.logging.Level {
+
+        private static final long serialVersionUID = 9150446594030531854L;
+
         protected Level(final String name, final int value) {
             super(name, value);
         }

@@ -23,11 +23,11 @@ public final class JrppBasicExampleMain {
     public static void main(String[] args) throws IOException, RemoteExecutionException, URISyntaxException {
         Security.addProvider(new Provider());
         final StringRot13RequestListener listener = new StringRot13RequestListener();
-        final Endpoint endpoint = Remoting.createEndpoint("simple", listener);
+        final Endpoint endpoint = Remoting.createEndpoint("simple");
         try {
-            final JrppServer jrppServer = Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), AttributeMap.EMPTY);
+            final JrppServer jrppServer = Remoting.addJrppServer(endpoint, new InetSocketAddress(12345), listener, AttributeMap.EMPTY);
             try {
-                Session session = endpoint.openSession(new URI("jrpp://localhost:12345"), AttributeMap.EMPTY);
+                Session session = endpoint.openSession(new URI("jrpp://localhost:12345"), AttributeMap.EMPTY, null);
                 try {
                     final Client<String,String> client = session.getRootClient();
                     try {

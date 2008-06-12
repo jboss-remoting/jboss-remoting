@@ -21,12 +21,11 @@ public final class Remoting {
     // lifecycle lock
     private static final Object lifecycle = new Object();
 
-    public static <I, O> Endpoint createEndpoint(String name, RequestListener<I, O> listener) throws IOException {
+    public static <I, O> Endpoint createEndpoint(String name) throws IOException {
         synchronized (lifecycle) {
             boolean ok = false;
             final CoreEndpoint coreEndpoint = new CoreEndpoint();
             coreEndpoint.setName(name);
-            coreEndpoint.setRootListener(listener);
             coreEndpoint.create();
             try {
                 coreEndpoint.start();
@@ -81,7 +80,7 @@ public final class Remoting {
         }
     }
 
-    public static JrppServer addJrppServer(Endpoint endpoint, SocketAddress address, AttributeMap attributeMap) throws IOException {
+    public static JrppServer addJrppServer(Endpoint endpoint, SocketAddress address, RequestListener<?, ?> rootRequestListener, AttributeMap attributeMap) throws IOException {
         synchronized (lifecycle) {
             boolean ok = false;
             final JrppServer jrppServer = new JrppServer();
@@ -89,6 +88,7 @@ public final class Remoting {
             jrppServer.setSocketAddress(address);
             jrppServer.setAttributeMap(attributeMap);
             jrppServer.setEndpoint(endpoint);
+            jrppServer.setRootListener(rootRequestListener);
             jrppServer.create();
             try {
                 jrppServer.start();

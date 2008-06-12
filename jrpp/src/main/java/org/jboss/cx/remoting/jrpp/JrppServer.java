@@ -15,6 +15,7 @@ import org.apache.mina.handler.multiton.SingleSessionIoHandlerDelegate;
 import org.apache.mina.handler.multiton.SingleSessionIoHandlerFactory;
 import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
 import org.jboss.cx.remoting.Endpoint;
+import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.jrpp.mina.FramingIoFilter;
 import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
 import org.jboss.cx.remoting.util.AttributeMap;
@@ -31,6 +32,8 @@ public final class JrppServer {
     private SocketAddress socketAddress;
     /** Protocol support object.  Set before {@code create}. */
     private JrppProtocolSupport protocolSupport;
+    /** Root request listener.  Set before {@code create}. */
+    private RequestListener<?, ?> rootListener;
 
     // calculated properties
 
@@ -79,6 +82,14 @@ public final class JrppServer {
         this.endpoint = endpoint;
     }
 
+    public RequestListener<?, ?> getRootListener() {
+        return rootListener;
+    }
+
+    public void setRootListener(final RequestListener<?, ?> rootListener) {
+        this.rootListener = rootListener;
+    }
+
     // Lifecycle
 
     @SuppressWarnings ({"unchecked"})
@@ -118,7 +129,7 @@ public final class JrppServer {
         public SingleSessionIoHandler getHandler(IoSession ioSession) throws IOException {
             final JrppConnection connection = new JrppConnection(attributeMap);
             connection.initializeServer(ioSession);
-            final ProtocolContext protocolContext = endpoint.openIncomingSession(connection.getProtocolHandler());
+            final ProtocolContext protocolContext = endpoint.openSession(connection.getProtocolHandler(), rootListener);
             connection.start(protocolContext);
             return connection.getIoHandler();
         }

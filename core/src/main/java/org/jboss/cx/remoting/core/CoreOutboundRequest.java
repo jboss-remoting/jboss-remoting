@@ -41,7 +41,7 @@ public final class CoreOutboundRequest<I, O> {
         return requestResponder;
     }
 
-    public void setRequester(final RequestResponder<I> requestResponder) {
+    public void setRequestResponder(final RequestResponder<I> requestResponder) {
         this.requestResponder = requestResponder;
     }
 

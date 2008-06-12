@@ -45,7 +45,7 @@ public final class LocalProtocolHandlerFactory implements ProtocolHandlerFactory
             throw new RemotingException("No such local endpoint '" + otherEndpoint + "'");
         }
         final LocalProtocolHandler otherProtocolHandler = new LocalProtocolHandler(ourProtocolContext, otherEndpointName);
-        final ProtocolContext otherProtocolContext = otherEndpoint.openIncomingSession(otherProtocolHandler);
+        final ProtocolContext otherProtocolContext = otherEndpoint.openSession(otherProtocolHandler, null);
         final LocalProtocolHandler ourProtocolHandler = new LocalProtocolHandler(otherProtocolContext, endpointName);
         otherProtocolContext.receiveRemoteSideReady(endpointName);
         ourProtocolContext.receiveRemoteSideReady(otherEndpointName);

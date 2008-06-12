@@ -9,7 +9,8 @@ import org.jboss.cx.remoting.util.ByteMessageInput;
 
 /**
  * A marshaller/unmarshaller for transmitting data over a wire protocol of some sort.  Each marshaller instance is
- * guaranteed to be used by only one thread.  Marshallers are not pooled or reused in any way.
+ * guaranteed to be used by only one thread.  Marshallers are not pooled or reused in any way.  Any pooling of marshallers
+ * must be done by implementations of this class and/or {@link org.jboss.cx.remoting.spi.marshal.MarshallerFactory}.
  */
 public interface Marshaller extends Serializable {
 
