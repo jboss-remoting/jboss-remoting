@@ -1131,7 +1131,7 @@
         <path id="version.classpath">
             <pathelement location="version/target/main/classes"/>
         </path>
-        <java classpathref="version.classpath" classname="org.jboss.cx.remoting.version.Verssion" outputproperty="version"/>
+        <java classpathref="version.classpath" classname="org.jboss.cx.remoting.version.Version" outputproperty="version"/>
         <property name="version" value="UNKNOWN"/>
     </target>
 
