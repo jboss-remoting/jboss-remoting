@@ -1,15 +1,15 @@
 package org.jboss.cx.remoting.util;
 
-import java.io.Closeable;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import org.jboss.cx.remoting.log.Logger;
 
 /**
  *
  */
-public final class IoUtil {
-    private static final Logger log = Logger.getLogger(IoUtil.class);
+public final class Base64Util {
+
+    private Base64Util() {
+    }
 
     /**
      * Base-64 decode a character buffer into a byte buffer.
@@ -146,20 +146,6 @@ public final class IoUtil {
             b = source.get() & 0xff;
             target.put(base64table[idx | (b >>> 6)]);
             target.put(base64table[b & 0x3f]);
-        }
-    }
-
-    /**
-     * Close a resource without throwing an exception.  If the underlying {@code close} throws an exception, log
-     * it.  For use in {@code finally} blocks.
-     *
-     * @param c the resource to close
-     */
-    public static void closeSafely(Closeable c) {
-        try {
-            c.close();
-        } catch (Throwable t) {
-            log.trace(t, "Closing %s failed", c);
         }
     }
 }
