@@ -175,6 +175,18 @@
         <get src="${remote.license.dir}/${lib.sun-httpserver.license}.txt" dest="${lib.sun-httpserver.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
+    <!-- External library: XNIO -->
+
+    <target name="lib.xnio-api-check">
+        <available property="lib.xnio-api.exists" file="${lib.xnio-api.local}"/>
+    </target>
+
+    <target name="lib.xnio-api" depends="lib.xnio-api-check" unless="lib.xnio-api.exists">
+        <mkdir dir="${local.repository}/${lib.xnio-api.dir}"/>
+        <get src="${lib.xnio-api.remote}" dest="${lib.xnio-api.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.xnio-api.license}.txt" dest="${lib.xnio-api.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
     <!-- ============================================== -->
     <!-- MODULES - Keep in alpha order by target name   -->
     <!-- ============================================== -->
@@ -202,6 +214,7 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
+                <pathelement location="${lib.xnio-api.local}"/>
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
@@ -212,7 +225,7 @@
         <delete dir="api/target"/>
     </target>
 
-    <target name="api" description="Build the API module" depends="util,api.compile">
+    <target name="api" description="Build the API module" depends="lib.xnio-api,util,api.compile">
         <path id="api.classpath">
             <pathelement location="api/target/main/classes"/>
         </path>
@@ -1303,7 +1316,7 @@
 
     <!-- JARs: These should be the third-to-last targets in the file -->
 
-    <target name="all-jars" description="Build all the JARs" depends="api-jar,core-jar,jrpp-jar,standalone-jar"/>
+    <target name="all-jars" description="Build all the JARs" depends="api-jar,core-jar,standalone-jar"/>
 
     <!-- fetch: These should be the second-to-last targets in the file -->
 
@@ -1311,7 +1324,7 @@
 
     <!-- all: These should be the last targets in the file -->
 
-    <target name="all" description="Build everything" depends="all-core,all-http,all-jrpp,all-log,all-jars,api-javadoc"/>
+    <target name="all" description="Build everything" depends="all-core,all-http,all-log,all-jars,api-javadoc"/>
 
     <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,clean-jrpp,clean-log"/>
 
