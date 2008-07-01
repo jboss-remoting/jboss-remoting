@@ -7,7 +7,7 @@ import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.Remoting;
 import org.jboss.cx.remoting.core.security.sasl.Provider;
-import org.jboss.cx.remoting.util.IoUtil;
+import org.jboss.xnio.IoUtils;
 
 /**
  *
@@ -25,7 +25,7 @@ public final class LocalBasicExampleMain {
                 final String result = client.invoke(original);
                 System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), result.trim());
             } finally {
-                IoUtil.closeSafely(client);
+                IoUtils.safeClose(client);
             }
         } finally {
             Remoting.closeEndpoint(endpoint);

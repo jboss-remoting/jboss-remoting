@@ -5,10 +5,6 @@ import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.spi.Registration;
-import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.util.CollectionUtil;
 

@@ -11,7 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 import java.util.Set;
 import org.jboss.cx.remoting.util.Base64DecodingException;
-import org.jboss.cx.remoting.util.IoUtil;
+import org.jboss.cx.remoting.util.Base64Util;
 
 /**
  *
@@ -59,7 +59,7 @@ public final class SrpVerifier implements Serializable {
         }
         String messageDigestName = digestNameBuilder.toString();
         ByteBuffer target = ByteBuffer.allocate(512);
-        IoUtil.base64Decode(source, target);
+        Base64Util.base64Decode(source, target);
         target.flip();
         int length;
         byte[] byteData;
@@ -191,7 +191,7 @@ public final class SrpVerifier implements Serializable {
         writeIntegerBytes(safePrime.toByteArray(), byteData);
         writeIntegerBytes(verifier.toByteArray(), byteData);
         byteData.flip();
-        IoUtil.base64Encode(byteData, target);
+        Base64Util.base64Encode(byteData, target);
     }
 
     private void writeIntegerBytes(final byte[] integerBytes, final ByteBuffer byteData) {

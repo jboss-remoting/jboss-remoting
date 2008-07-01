@@ -11,7 +11,6 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.core.util.QueueExecutor;
-import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.CollectionUtil;
 
@@ -19,7 +18,7 @@ import org.jboss.cx.remoting.util.CollectionUtil;
  *
  */
 public final class CoreOutboundClient<I, O> {
-    private static final Logger log = Logger.getLogger(CoreOutboundClient.class);
+    private static final org.jboss.xnio.log.Logger log = org.jboss.xnio.log.Logger.getLogger(CoreOutboundClient.class);
 
     private final ConcurrentMap<Object, Object> contextMap = CollectionUtil.concurrentMap();
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
@@ -107,10 +106,6 @@ public final class CoreOutboundClient<I, O> {
 
         public void close() throws RemotingException {
             doClose(false, false);
-        }
-
-        public void closeImmediate() throws RemotingException {
-            doClose(true, true);
         }
 
         public void addCloseHandler(final CloseHandler<Client<I, O>> closeHandler) {

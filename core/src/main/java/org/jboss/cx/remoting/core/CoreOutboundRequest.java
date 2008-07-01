@@ -11,7 +11,7 @@ import org.jboss.cx.remoting.IndeterminateOutcomeException;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestCompletionHandler;
-import org.jboss.cx.remoting.log.Logger;
+import org.jboss.xnio.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 
 /**
@@ -19,7 +19,7 @@ import org.jboss.cx.remoting.util.AtomicStateMachine;
  */
 public final class CoreOutboundRequest<I, O> {
 
-    private static final Logger log = Logger.getLogger(CoreOutboundRequest.class);
+    private static final org.jboss.xnio.log.Logger log = Logger.getLogger(CoreOutboundRequest.class);
 
     private RequestResponder<I> requestResponder;
 

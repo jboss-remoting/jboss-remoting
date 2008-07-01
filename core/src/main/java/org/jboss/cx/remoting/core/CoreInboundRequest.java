@@ -12,14 +12,13 @@ import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.ClientContext;
-import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 
 /**
  *
  */
 public final class CoreInboundRequest<I, O> {
-    private static final Logger log = Logger.getLogger(CoreInboundRequest.class);
+    private static final org.jboss.xnio.log.Logger log = org.jboss.xnio.log.Logger.getLogger(CoreInboundRequest.class);
 
     private final RequestListener<I,O> requestListener;
     private final Executor executor;

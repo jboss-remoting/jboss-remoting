@@ -7,6 +7,8 @@ import org.jboss.cx.remoting.util.ByteMessageInput;
 import org.jboss.cx.remoting.util.ByteMessageOutput;
 import org.jboss.cx.remoting.util.ObjectMessageInput;
 import org.jboss.cx.remoting.util.ObjectMessageOutput;
+import org.jboss.cx.remoting.stream.ObjectSink;
+import org.jboss.cx.remoting.stream.ObjectSource;
 
 /**
  *
@@ -29,5 +31,13 @@ public class JBossSerializationMarhsaller implements Marshaller {
 
     public ObjectMessageInput getMessageInput(final ByteMessageInput byteMessageInput) throws IOException {
         return new JBossSerializationObjectMessageInput(resolver, byteMessageInput, classLoader);
+    }
+
+    public ObjectSink getMarshalingSink(final ObjectSink bufferSink) throws IOException {
+        return null;
+    }
+
+    public ObjectSource getUnmarshalingSource(final ObjectSource bufferSource) throws IOException {
+        return null;
     }
 }

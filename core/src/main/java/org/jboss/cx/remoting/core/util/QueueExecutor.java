@@ -3,7 +3,7 @@ package org.jboss.cx.remoting.core.util;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.Executor;
-import org.jboss.cx.remoting.log.Logger;
+import org.jboss.xnio.log.Logger;
 
 /**
  * An executor designed to run all submitted tasks in the current thread.  The queue is run continuously
@@ -12,7 +12,7 @@ import org.jboss.cx.remoting.log.Logger;
  * shut down.
  */
 public final class QueueExecutor implements Executor {
-    private static final Logger log = Logger.getLogger(QueueExecutor.class);
+    private static final Logger log = org.jboss.xnio.log.Logger.getLogger(QueueExecutor.class);
 
     private final Queue<Runnable> queue = new LinkedList<Runnable>();
 

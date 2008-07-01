@@ -3,68 +3,27 @@ package org.jboss.cx.remoting.core.stream;
 import java.io.IOException;
 import java.util.Iterator;
 import org.jboss.cx.remoting.util.ObjectMessageInput;
-import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
-import org.jboss.cx.remoting.spi.stream.StreamContext;
-import org.jboss.cx.remoting.spi.stream.StreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
 import org.jboss.cx.remoting.stream.ObjectSource;
 import org.jboss.cx.remoting.stream.Streams;
+import org.jboss.xnio.channels.StreamChannel;
+import org.jboss.xnio.IoHandler;
+import org.jboss.xnio.Client;
 
 /**
  *
  */
 public final class IteratorStreamSerializerFactory implements StreamSerializerFactory {
-    private final ObjectSourceStreamSerializerFactory other = new ObjectSourceStreamSerializerFactory();
 
-    public StreamSerializer getLocalSide(StreamContext context, Object local) throws IOException {
-        return other.getLocalSide(context, Streams.getIteratorObjectSource((Iterator<?>)local));
+    private static final long serialVersionUID = 5106872230130868988L;
+
+    private 
+
+    public IoHandler<? super StreamChannel> getLocalSide(final Object localSide) throws IOException {
+        return null;
     }
 
-    public RemoteStreamSerializer getRemoteSide(StreamContext context) throws IOException {
-        return new RemoteStreamSerializerImpl(other.getRemoteSide(context), context);
-    }
-
-    public static final class RemoteStreamSerializerImpl implements RemoteStreamSerializer {
-        private final RemoteStreamSerializer other;
-        private final StreamContext context;
-
-        public RemoteStreamSerializerImpl(final RemoteStreamSerializer other, final StreamContext context) {
-            this.other = other;
-            this.context = context;
-        }
-
-        public Iterator<Object> getRemoteInstance() {
-            final ObjectSource<?> objectSource = (ObjectSource<?>) other.getRemoteInstance();
-            return new Iterator<Object>() {
-                public boolean hasNext() {
-                    try {
-                        return objectSource.hasNext();
-                    } catch (IOException e) {
-                        throw new IllegalStateException("Illegal state: " + e.toString());
-                    }
-                }
-
-                public Object next() {
-                    try {
-                        return objectSource.next();
-                    } catch (IOException e) {
-                        throw new IllegalStateException("Illegal state: " + e.toString());
-                    }
-                }
-
-                public void remove() {
-                    throw new UnsupportedOperationException("remove()");
-                }
-            };
-        }
-
-        public void handleOpen() throws IOException {
-        }
-
-        public void handleData(ObjectMessageInput data) throws IOException {
-        }
-
-        public void handleClose() throws IOException {
-        }
+    public Object getRemoteSide(final Client<StreamChannel> remoteClient) throws IOException {
+        return null;
     }
 }

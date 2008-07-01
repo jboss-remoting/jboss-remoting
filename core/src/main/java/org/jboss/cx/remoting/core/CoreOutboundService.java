@@ -7,7 +7,7 @@ import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.log.Logger;
+import org.jboss.xnio.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.CollectionUtil;
 
@@ -82,10 +82,6 @@ public final class CoreOutboundService<I, O> {
         }
 
         public void close() throws RemotingException {
-            doClose();
-        }
-
-        public void closeImmediate() throws RemotingException {
             doClose();
         }
 

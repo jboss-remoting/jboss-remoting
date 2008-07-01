@@ -12,14 +12,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.Future;
 import org.jboss.cx.remoting.http.AbstractHttpChannel;
-import org.jboss.cx.remoting.http.cookie.CookieClientSession;
 import org.jboss.cx.remoting.http.HttpMessageWriter;
 import org.jboss.cx.remoting.http.RemotingHttpChannelContext;
-import org.jboss.cx.remoting.log.Logger;
+import org.jboss.xnio.log.Logger;
 import org.jboss.cx.remoting.util.AbstractOutputStreamByteMessageOutput;
-import org.jboss.cx.remoting.util.IoUtil;
 import org.jboss.cx.remoting.util.NamingThreadFactory;
 import org.jboss.cx.remoting.util.InputStreamByteMessageInput;
+import org.jboss.xnio.IoUtils;
 
 /**
  *
@@ -181,10 +180,10 @@ public abstract class AbstractHttpUrlChannel extends AbstractHttpChannel {
                     try {
                         channelContext.processInboundMessage(new InputStreamByteMessageInput(inputStream, -1));
                     } finally {
-                        IoUtil.closeSafely(inputStream);
+                        IoUtils.safeClose(inputStream);
                     }
                 } finally {
-                    IoUtil.closeSafely(outputStream);
+                    IoUtils.safeClose(outputStream);
                 }
             } catch (IOException e) {
                 // probably a HTTP error occurred, so let's consume it
@@ -195,7 +194,7 @@ public abstract class AbstractHttpUrlChannel extends AbstractHttpChannel {
                         while (errorStream.read() > -1);
                         errorStream.close();
                     } finally {
-                        IoUtil.closeSafely(errorStream);
+                        IoUtils.safeClose(errorStream);
                     } else {
                         log.trace(e, "Connection failed but there is no error stream");
                     }

@@ -9,14 +9,12 @@ import java.util.concurrent.ConcurrentMap;
 import java.security.SecureRandom;
 import org.jboss.cx.remoting.http.AbstractHttpChannel;
 import org.jboss.cx.remoting.http.HttpMessageWriter;
-import org.jboss.cx.remoting.http.cookie.Cookie;
-import org.jboss.cx.remoting.http.cookie.CookieParser;
 import org.jboss.cx.remoting.http.RemotingHttpChannelContext;
 import org.jboss.cx.remoting.http.RemotingHttpServerContext;
 import org.jboss.cx.remoting.util.AbstractOutputStreamByteMessageOutput;
 import org.jboss.cx.remoting.util.CollectionUtil;
-import org.jboss.cx.remoting.util.IoUtil;
 import org.jboss.cx.remoting.util.InputStreamByteMessageInput;
+import org.jboss.xnio.IoUtils;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpContext;
@@ -139,7 +137,7 @@ public final class SunHttpServerChannel extends AbstractHttpChannel implements H
                 context.processInboundMessage(new InputStreamByteMessageInput(inputStream, -1));
             }
         } finally {
-            IoUtil.closeSafely(inputStream);
+            IoUtils.safeClose(inputStream);
         }
         if (needToSetSession) {
             final StringBuilder setCookieBuilder = new StringBuilder(60);
@@ -164,7 +162,7 @@ public final class SunHttpServerChannel extends AbstractHttpChannel implements H
                 }
             });
         } finally {
-            IoUtil.closeSafely(outputStream);
+            IoUtils.safeClose(outputStream);
         }
     }
 

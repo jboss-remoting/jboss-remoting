@@ -3,9 +3,6 @@ package org.jboss.cx.remoting.core.stream;
 import java.io.IOException;
 import org.jboss.cx.remoting.util.ObjectMessageInput;
 import org.jboss.cx.remoting.util.ObjectMessageOutput;
-import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
-import org.jboss.cx.remoting.spi.stream.StreamContext;
-import org.jboss.cx.remoting.spi.stream.StreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
 import org.jboss.cx.remoting.stream.ObjectSink;
 

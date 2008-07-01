@@ -6,18 +6,17 @@ import java.security.SecureClassLoader;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.service.ClassLoaderResourceReply;
 import org.jboss.cx.remoting.service.ClassLoaderResourceRequest;
 import org.jboss.cx.remoting.service.RemoteResource;
 import org.jboss.cx.remoting.stream.ObjectSource;
-import org.jboss.cx.remoting.util.IoUtil;
+import org.jboss.xnio.IoUtils;
 
 /**
  *
  */
 public final class RemoteClassLoader extends SecureClassLoader {
-    private static final Logger log = Logger.getLogger(RemoteClassLoader.class);
+    private static final org.jboss.xnio.log.Logger log = org.jboss.xnio.log.Logger.getLogger(RemoteClassLoader.class);
 
     private final Client<ClassLoaderResourceRequest, ClassLoaderResourceReply> loaderClient;
 
@@ -50,10 +49,10 @@ public final class RemoteClassLoader extends SecureClassLoader {
                     for (int t = 0; t < size; t += stream.read(bytes, t, size - t));
                     return defineClass(name, bytes, 0, size);
                 } finally {
-                    IoUtil.closeSafely(stream);
+                    IoUtils.safeClose(stream);
                 }
             } finally {
-                IoUtil.closeSafely(source);
+                IoUtils.safeClose(source);
             }
         } catch (RemotingException e) {
             throw new ClassNotFoundException("Cannot load class " + name + " due to an invocation failure", e);

@@ -4,14 +4,6 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.util.ObjectMessageOutput;
-import org.jboss.cx.remoting.spi.protocol.ClientIdentifier;
-import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
-import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
-import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
-import org.jboss.cx.remoting.spi.protocol.SimpleClientIdentifier;
-import org.jboss.cx.remoting.spi.protocol.SimpleRequestIdentifier;
-import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 
 /**
  *

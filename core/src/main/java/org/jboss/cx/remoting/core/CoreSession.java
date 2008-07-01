@@ -1,16 +1,11 @@
 package org.jboss.cx.remoting.core;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectStreamClass;
-import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
@@ -20,30 +15,17 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.core.stream.DefaultStreamDetector;
-import org.jboss.cx.remoting.core.util.DelegatingObjectInput;
-import org.jboss.cx.remoting.log.Logger;
+import org.jboss.xnio.log.Logger;
 import org.jboss.cx.remoting.util.ByteMessageInput;
 import org.jboss.cx.remoting.util.ByteMessageOutput;
 import org.jboss.cx.remoting.util.ObjectMessageInput;
 import org.jboss.cx.remoting.util.ObjectMessageOutput;
-import org.jboss.cx.remoting.spi.protocol.ClientIdentifier;
-import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
-import org.jboss.cx.remoting.spi.protocol.RequestIdentifier;
-import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
-import org.jboss.cx.remoting.spi.protocol.StreamIdentifier;
 import org.jboss.cx.remoting.spi.stream.StreamDetector;
-import org.jboss.cx.remoting.spi.stream.StreamSerializer;
-import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
 import org.jboss.cx.remoting.spi.marshal.ObjectResolver;
 import org.jboss.cx.remoting.spi.marshal.MarshallerFactory;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.AttributeMap;
 import org.jboss.cx.remoting.util.CollectionUtil;
-import org.jboss.serial.io.JBossObjectInputStream;
-import org.jboss.serial.io.JBossObjectOutputStream;
-
 
 /**
  * Three execution contexts:
@@ -231,11 +213,6 @@ public final class CoreSession {
             state.waitFor(State.DOWN);
         }
 
-        public void closeImmediate() throws RemotingException {
-            shutdown();
-            state.waitFor(State.DOWN);
-        }
-
         public void addCloseHandler(final CloseHandler<Session> closeHandler) {
             final State current = state.getStateHold();
             try {
@@ -313,7 +290,7 @@ public final class CoreSession {
             if (target == null) {
                 throw new NullPointerException("target is null");
             }
-            return marshallerFactory.createRootMarshaller(resolver, getClass().getClassLoader() /* todo this is WRONG */).getMessageOutput(target);
+            return marshallerFactory.createMarshaller(resolver, getClass().getClassLoader() /* todo this is WRONG */).getMarshalingSink(target);
         }
 
         public ObjectMessageOutput getMessageOutput(ByteMessageOutput target, Executor streamExecutor) throws IOException {
@@ -323,14 +300,14 @@ public final class CoreSession {
             if (streamExecutor == null) {
                 throw new NullPointerException("streamExecutor is null");
             }
-            return marshallerFactory.createRootMarshaller(resolver, getClass().getClassLoader() /* todo this is WRONG */).getMessageOutput(target);
+            return marshallerFactory.createMarshaller(resolver, getClass().getClassLoader() /* todo this is WRONG */).getMarshalingSink(target);
         }
 
         public ObjectMessageInput getMessageInput(ByteMessageInput source) throws IOException {
             if (source == null) {
                 throw new NullPointerException("source is null");
             }
-            return marshallerFactory.createRootMarshaller(resolver, getClass().getClassLoader() /* todo this is WRONG */).getMessageInput(source);
+            return marshallerFactory.createMarshaller(resolver, getClass().getClassLoader() /* todo this is WRONG */).getUnmarshalingSource(source);
         }
 
         public String getLocalEndpointName() {

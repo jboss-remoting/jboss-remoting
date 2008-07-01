@@ -6,185 +6,83 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import org.jboss.cx.remoting.util.ObjectMessageInput;
 import org.jboss.cx.remoting.util.ObjectMessageOutput;
-import org.jboss.cx.remoting.spi.stream.RemoteStreamSerializer;
-import org.jboss.cx.remoting.spi.stream.StreamContext;
-import org.jboss.cx.remoting.spi.stream.StreamSerializer;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
+import org.jboss.cx.remoting.spi.marshal.MarshallerFactory;
 import org.jboss.cx.remoting.stream.ObjectSource;
+import org.jboss.xnio.channels.StreamChannel;
+import org.jboss.xnio.channels.StreamSourceChannel;
+import org.jboss.xnio.channels.StreamSinkChannel;
+import org.jboss.xnio.channels.CommonOptions;
+import org.jboss.xnio.IoHandler;
+import org.jboss.xnio.Client;
+import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
 public final class ObjectSourceStreamSerializerFactory implements StreamSerializerFactory {
-    public StreamSerializer getLocalSide(final StreamContext context, final Object local) throws IOException {
-        return new StreamSerializerImpl(context, (ObjectSource<?>) local);
+
+    private static final long serialVersionUID = -7485283009011459281L;
+
+    private static final Logger log = Logger.getLogger(ObjectSourceStreamSerializerFactory.class);
+
+
+    private MarshallerFactory marshallerFactory;
+
+    public MarshallerFactory getMarshallerFactory() {
+        return marshallerFactory;
     }
 
-    public RemoteStreamSerializer getRemoteSide(final StreamContext context) throws IOException {
-        return new RemoteStreamSerializerImpl(context);
+    public void setMarshallerFactory(final MarshallerFactory marshallerFactory) {
+        this.marshallerFactory = marshallerFactory;
     }
 
-    private static final class StreamSerializerImpl implements StreamSerializer {
-        private final StreamContext streamContext;
-        private final ObjectSource<?> objectSource;
-
-        public StreamSerializerImpl(final StreamContext streamContext, final ObjectSource<?> objectSource) throws IOException {
-            this.streamContext = streamContext;
-            this.objectSource = objectSource;
-        }
-
-        public void handleOpen() throws IOException {
-            transmitNext();
-        }
-
-        public void handleData(ObjectMessageInput data) throws IOException {
-            transmitNext();
-        }
-
-        public void handleClose() throws IOException {
-            objectSource.close();
-        }
-
-        private void transmitNext() throws IOException {
-            final ObjectMessageOutput msg = streamContext.writeMessage();
-            final boolean hasNext = objectSource.hasNext();
-            msg.writeBoolean(hasNext);
-            if (hasNext) {
-                msg.writeObject(objectSource.next());
-                msg.writeBoolean(objectSource.hasNext());
-            }
-            msg.commit();
-            msg.close();
-        }
-
+    public IoHandler<? super StreamChannel> getLocalSide(final Object localSide) throws IOException {
+        
+        return null;
     }
 
-    private static final class RemoteStreamSerializerImpl implements RemoteStreamSerializer {
+    public Object getRemoteSide(final Client<StreamChannel> remoteClient) throws IOException {
+        return null;
+    }
 
-        private enum Type {
-            ITEM,
-            EXCEPTION,
-            CLOSE,
-            END,
-        }
+    public static class LocalHandler implements IoHandler<StreamSinkChannel> {
+        private final ObjectSource objectSource;
 
-        private class Message {
-            private final Type type;
-            private final Object data;
-
-            public Message(final Type type, final Object data) {
-                this.type = type;
-                this.data = data;
+        public void handleOpened(final StreamSinkChannel channel) {
+            if (channel.getOptions().contains(CommonOptions.TCP_NODELAY)) try {
+                channel.setOption(CommonOptions.TCP_NODELAY, Boolean.TRUE);
+            } catch (Exception e) {
+                log.trace("Error setting TCP_NODELAY option: %s", e.getMessage());
             }
+            channel.resumeWrites();
         }
 
-        private final Queue<Message> messageQueue = new LinkedList<Message>();
-
-        private final StreamContext context;
-
-        public RemoteStreamSerializerImpl(final StreamContext context) {
-            this.context = context;
+        public void handleReadable(final StreamSinkChannel channel) {
+            // not invoked
         }
 
-        public ObjectSource getRemoteInstance() {
-            return new ObjectSource() {
-                public boolean hasNext() throws IOException {
-                    boolean intr = Thread.interrupted();
-                    try {
-                        synchronized(messageQueue) {
-                            while (messageQueue.isEmpty()) {
-                                try {
-                                    messageQueue.wait();
-                                } catch (InterruptedException e) {
-                                    intr = true;
-                                    Thread.interrupted();
-                                }
-                            }
-                            final Message msg = messageQueue.peek();
-                            return msg.type != Type.END;
-                        }
-                    } finally {
-                        if (intr) Thread.currentThread().interrupt();
-                    }
-                }
-
-                public Object next() throws IOException {
-                    boolean intr = Thread.interrupted();
-                    try {
-                        synchronized(messageQueue) {
-                            while (messageQueue.isEmpty()) {
-                                try {
-                                    messageQueue.wait();
-                                } catch (InterruptedException e) {
-                                    intr = true;
-                                    Thread.interrupted();
-                                }
-                            }
-                            final Message msg = messageQueue.remove();
-                            final ObjectMessageOutput omsg;
-                            switch (msg.type) {
-                                case ITEM:
-                                    omsg = context.writeMessage();
-                                    omsg.commit();
-                                    omsg.close();
-                                    return msg.data;
-                                case EXCEPTION:
-                                    omsg = context.writeMessage();
-                                    omsg.commit();
-                                    omsg.close();
-                                    throw (IOException) msg.data;
-                                case END:
-                                    messageQueue.add(msg);
-                                    throw new NoSuchElementException("next() past end of iterator");
-                                case CLOSE:
-                                    messageQueue.add(msg);
-                                    throw new IOException("Channel closed");
-                            }
-                            throw new IllegalStateException("wrong state");
-                        }
-                    } finally {
-                        if (intr) Thread.currentThread().interrupt();
-                    }
-                }
-
-                public void close() throws IOException {
-                    context.close();
-                    synchronized(messageQueue) {
-                        messageQueue.clear();
-                        messageQueue.add(new Message(Type.CLOSE, null));
-                    }
-                }
-            };
+        public void handleWritable(final StreamSinkChannel channel) {
         }
 
-        public void handleOpen() throws IOException {
+        public void handleClosed(final StreamSinkChannel channel) {
+            IoUtils.safeClose(objectSource);
+        }
+    }
+
+    public static class RemoteHandler implements IoHandler<StreamSourceChannel> {
+
+        public void handleOpened(final StreamSourceChannel channel) {
         }
 
-        @SuppressWarnings ({"unchecked"})
-        public void handleData(ObjectMessageInput data) throws IOException {
-            synchronized(messageQueue) {
-                if (! data.readBoolean()) {
-                    messageQueue.add(new Message(Type.END, null));
-                } else {
-                    final Object obj;
-                    try {
-                        obj = data.readObject();
-                        messageQueue.add(new Message(Type.ITEM, obj));
-                    } catch (ClassNotFoundException e) {
-                        messageQueue.add(new Message(Type.EXCEPTION, new IOException("Failed to load class for next item: " + e.toString())));
-                    }
-                    if (! data.readBoolean()) {
-                        messageQueue.add(new Message(Type.END, null));
-                    }
-                }
-            }
+        public void handleReadable(final StreamSourceChannel channel) {
         }
 
-        public void handleClose() throws IOException {
-            synchronized(messageQueue) {
-                messageQueue.add(new Message(Type.CLOSE, null));
-            }
+        public void handleWritable(final StreamSourceChannel channel) {
         }
 
+        public void handleClosed(final StreamSourceChannel channel) {
+        }
     }
 }

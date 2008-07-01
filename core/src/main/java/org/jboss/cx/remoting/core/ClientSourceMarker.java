@@ -1,7 +1,6 @@
 package org.jboss.cx.remoting.core;
 
 import java.io.Serializable;
-import org.jboss.cx.remoting.spi.protocol.ServiceIdentifier;
 
 /**
  *

@@ -95,11 +95,6 @@ public final class CoreInboundService<I, O> {
             serviceInitiator.handleClosing();
         }
 
-        public void closeImmediate() throws RemotingException {
-            doClose();
-            serviceInitiator.handleClosing();
-        }
-
         public void addCloseHandler(final CloseHandler<ServiceContext> closeHandler) {
             final State current = state.getStateHold();
             try {

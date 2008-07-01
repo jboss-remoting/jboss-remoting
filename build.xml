@@ -139,18 +139,6 @@
         <get src="${remote.license.dir}/${lib.jbossxb.license}.txt" dest="${lib.jbossxb.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
-    <!-- External library: MINA -->
-
-    <target name="lib.mina-check">
-        <available property="lib.mina.exists" file="${lib.mina.local}"/>
-    </target>
-
-    <target name="lib.mina" depends="lib.mina-check" unless="lib.mina.exists">
-        <mkdir dir="${local.repository}/${lib.mina.dir}"/>
-        <get src="${lib.mina.remote}" dest="${lib.mina.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.mina.license}.txt" dest="${lib.mina.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
-    </target>
-
     <!-- External library: Servlet API 2.4 -->
 
     <target name="lib.servlet-check">
@@ -294,7 +282,6 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
-                <path refid="log-jul.classpath"/>
                 <path refid="util.classpath"/>
                 <path refid="version.classpath"/>
                 <pathelement location="${lib.jboss-serialization.local}"/>
@@ -307,52 +294,9 @@
         <delete dir="core/target"/>
     </target>
 
-    <target name="core" description="Build the core module" depends="lib.jboss-serialization,api,log-jul,util,version,core.compile">
+    <target name="core" description="Build the core module" depends="lib.jboss-serialization,api,util,version,core.compile">
         <path id="core.classpath">
             <pathelement location="core/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- jrpp module -->
-
-    <target name="jrpp.compile.depcheck">
-        <mkdir dir="jrpp/target/main"/>
-        <uptodate property="jrpp.compile.uptodate" targetfile="jrpp/target/main/.lastcompile">
-            <srcfiles dir="jrpp/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="jrpp.compile" depends="jrpp.compile.depcheck" unless="jrpp.compile.uptodate">
-        <mkdir dir="jrpp/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="jrpp/src/main/java"
-                destdir="jrpp/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="log-jul.classpath"/>
-                <path refid="mina-sasl.classpath"/>
-                <path refid="util.classpath"/>
-                <pathelement location="${lib.mina.local}"/>
-            </classpath>
-        </javac>
-        <touch file="jrpp/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="jrpp.clean">
-        <delete dir="jrpp/target"/>
-    </target>
-
-    <target name="jrpp" description="Build the jrpp module" depends="lib.mina,api,log-jul,mina-sasl,util,jrpp.compile">
-        <path id="jrpp.classpath">
-            <pathelement location="jrpp/target/main/classes"/>
         </path>
     </target>
 
@@ -380,7 +324,6 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
-                <path refid="log-jul.classpath"/>
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
@@ -391,93 +334,9 @@
         <delete dir="http/target"/>
     </target>
 
-    <target name="http" description="Build the http module" depends="api,log-jul,util,http.compile">
+    <target name="http" description="Build the http module" depends="api,util,http.compile">
         <path id="http.classpath">
             <pathelement location="http/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- http-mina-client module -->
-
-    <target name="http-mina-client.compile.depcheck">
-        <mkdir dir="http-mina-client/target/main"/>
-        <uptodate property="http-mina-client.compile.uptodate" targetfile="http-mina-client/target/main/.lastcompile">
-            <srcfiles dir="http-mina-client/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="http-mina-client.compile" depends="http-mina-client.compile.depcheck" unless="http-mina-client.compile.uptodate">
-        <mkdir dir="http-mina-client/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="http-mina-client/src/main/java"
-                destdir="http-mina-client/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="http.classpath"/>
-                <path refid="util.classpath"/>
-                <pathelement location="${lib.mina.local}"/>
-            </classpath>
-        </javac>
-        <touch file="http-mina-client/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="http-mina-client.clean">
-        <delete dir="http-mina-client/target"/>
-    </target>
-
-    <target name="http-mina-client" description="Build the http-mina-client module" depends="api,http,util,http-mina-client.compile">
-        <path id="http-mina-client.classpath">
-            <pathelement location="http-mina-client/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- http-mina-server module -->
-
-    <target name="http-mina-server.compile.depcheck">
-        <mkdir dir="http-mina-server/target/main"/>
-        <uptodate property="http-mina-server.compile.uptodate" targetfile="http-mina-server/target/main/.lastcompile">
-            <srcfiles dir="http-mina-server/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="http-mina-server.compile" depends="http-mina-server.compile.depcheck" unless="http-mina-server.compile.uptodate">
-        <mkdir dir="http-mina-server/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="http-mina-server/src/main/java"
-                destdir="http-mina-server/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="http.classpath"/>
-                <path refid="util.classpath"/>
-                <pathelement location="${lib.mina.local}"/>
-            </classpath>
-        </javac>
-        <touch file="http-mina-server/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="http-mina-server.clean">
-        <delete dir="http-mina-server/target"/>
-    </target>
-
-    <target name="http-mina-server" description="Build the http-mina-server module" depends="api,http,util,http-mina-server.compile">
-        <path id="http-mina-server.classpath">
-            <pathelement location="http-mina-server/target/main/classes"/>
         </path>
     </target>
 
@@ -608,7 +467,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="http.classpath"/>
-                <path refid="log-jul.classpath"/>
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
@@ -619,84 +477,9 @@
         <delete dir="http-urlconnection/target"/>
     </target>
 
-    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,log-jul,util,http-urlconnection.compile">
+    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,util,http-urlconnection.compile">
         <path id="http-urlconnection.classpath">
             <pathelement location="http-urlconnection/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- log-jboss module -->
-
-    <target name="log-jboss.compile.depcheck">
-        <mkdir dir="log-jboss/target/main"/>
-        <uptodate property="log-jboss.compile.uptodate" targetfile="log-jboss/target/main/.lastcompile">
-            <srcfiles dir="log-jboss/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="log-jboss.compile" depends="log-jboss.compile.depcheck" unless="log-jboss.compile.uptodate">
-        <mkdir dir="log-jboss/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="log-jboss/src/main/java"
-                destdir="log-jboss/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <pathelement location="${lib.jboss-common-logging-spi.local}"/>
-            </classpath>
-        </javac>
-        <touch file="log-jboss/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="log-jboss.clean">
-        <delete dir="log-jboss/target"/>
-    </target>
-
-    <target name="log-jboss" description="Build the log-jboss module" depends="lib.jboss-common-logging-spi,log-jboss.compile">
-        <path id="log-jboss.classpath">
-            <pathelement location="log-jboss/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- log-jul module -->
-
-    <target name="log-jul.compile.depcheck">
-        <mkdir dir="log-jul/target/main"/>
-        <uptodate property="log-jul.compile.uptodate" targetfile="log-jul/target/main/.lastcompile">
-            <srcfiles dir="log-jul/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="log-jul.compile" depends="log-jul.compile.depcheck" unless="log-jul.compile.uptodate">
-        <mkdir dir="log-jul/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="log-jul/src/main/java"
-                destdir="log-jul/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-        </javac>
-        <touch file="log-jul/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="log-jul.clean">
-        <delete dir="log-jul/target"/>
-    </target>
-
-    <target name="log-jul" description="Build the log-jul module" depends="log-jul.compile">
-        <path id="log-jul.classpath">
-            <pathelement location="log-jul/target/main/classes"/>
         </path>
     </target>
 
@@ -725,7 +508,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
-                <path refid="log-jboss.classpath"/>
                 <path refid="util.classpath"/>
                 <pathelement location="${lib.jaxb-api.local}"/>
                 <pathelement location="${lib.jboss-common-logging-spi.local}"/>
@@ -746,48 +528,9 @@
         <delete dir="mc-deployers/target"/>
     </target>
 
-    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jaxb-api,lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-dependency,lib.jboss-managed,lib.jbossxb,api,core,log-jboss,util,mc-deployers.compile">
+    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jaxb-api,lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-dependency,lib.jboss-managed,lib.jbossxb,api,core,util,mc-deployers.compile">
         <path id="mc-deployers.classpath">
             <pathelement location="mc-deployers/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- mina-sasl module -->
-
-    <target name="mina-sasl.compile.depcheck">
-        <mkdir dir="mina-sasl/target/main"/>
-        <uptodate property="mina-sasl.compile.uptodate" targetfile="mina-sasl/target/main/.lastcompile">
-            <srcfiles dir="mina-sasl/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="mina-sasl.compile" depends="mina-sasl.compile.depcheck" unless="mina-sasl.compile.uptodate">
-        <mkdir dir="mina-sasl/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="mina-sasl/src/main/java"
-                destdir="mina-sasl/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <pathelement location="${lib.mina.local}"/>
-            </classpath>
-        </javac>
-        <touch file="mina-sasl/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="mina-sasl.clean">
-        <delete dir="mina-sasl/target"/>
-    </target>
-
-    <target name="mina-sasl" description="Build the mina-sasl module" depends="lib.mina,mina-sasl.compile">
-        <path id="mina-sasl.classpath">
-            <pathelement location="mina-sasl/target/main/classes"/>
         </path>
     </target>
 
@@ -815,7 +558,6 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
-                <path refid="jrpp.classpath"/>
                 <path refid="srp.classpath"/>
                 <path refid="standalone.classpath"/>
                 <path refid="util.classpath"/>
@@ -828,7 +570,7 @@
         <delete dir="samples/target"/>
     </target>
 
-    <target name="samples" description="Build the samples module" depends="api,jrpp,srp,standalone,util,samples.compile">
+    <target name="samples" description="Build the samples module" depends="api,srp,standalone,util,samples.compile">
         <path id="samples.classpath">
             <pathelement location="samples/target/main/classes"/>
         </path>
@@ -893,7 +635,6 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
-                <path refid="log-jul.classpath"/>
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
@@ -904,7 +645,7 @@
         <delete dir="srp/target"/>
     </target>
 
-    <target name="srp" description="Build the SRP SASL module" depends="log-jul,util,srp.compile">
+    <target name="srp" description="Build the SRP SASL module" depends="util,srp.compile">
         <path id="srp.classpath">
             <pathelement location="srp/target/main/classes"/>
         </path>
@@ -935,8 +676,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
-                <path refid="log-jul.classpath"/>
-                <path refid="jrpp.classpath"/>
                 <path refid="util.classpath"/>
             </classpath>
         </javac>
@@ -947,7 +686,7 @@
         <delete dir="standalone/target"/>
     </target>
 
-    <target name="standalone" description="Build the standalone module" depends="api,core,jrpp,log-jul,util,standalone.compile">
+    <target name="standalone" description="Build the standalone module" depends="api,core,util,standalone.compile">
         <path id="standalone.classpath">
             <pathelement location="standalone/target/main/classes"/>
         </path>
@@ -1094,7 +833,6 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
-                <path refid="log-jul.classpath"/>
             </classpath>
         </javac>
         <touch file="util/target/main/.lastcompile" verbose="false"/>
@@ -1104,7 +842,7 @@
         <delete dir="util/target"/>
     </target>
 
-    <target name="util" description="Build the utilities module" depends="log-jul,util.compile">
+    <target name="util" description="Build the utilities module" depends="util.compile">
         <path id="util.classpath">
             <pathelement location="util/target/main/classes"/>
         </path>
@@ -1175,7 +913,7 @@
         </jar>
     </target>
 
-    <target name="core-jar" description="Build the Core JAR" depends="core,log-jboss,version">
+    <target name="core-jar" description="Build the Core JAR" depends="core,version">
         <delete file="jboss-remoting-core.jar"/>
         <jar jarfile="jboss-remoting-core.jar">
             <manifest>
@@ -1192,42 +930,13 @@
             <zipfileset dir="core/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
-            <zipfileset dir="log-jboss/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
             <zipfileset dir="version/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
         </jar>
     </target>
 
-    <target name="jrpp-jar" description="Build the JRPP JAR" depends="jrpp,mina-sasl,srp,version">
-        <delete file="jboss-remoting-jrpp.jar"/>
-        <jar jarfile="jboss-remoting-jrpp.jar">
-            <manifest>
-                <attribute name="Created-By" value="${java.vm.version} (${java.vm.vendor})"/>
-                <attribute name="Specification-Title" value="JBoss Remoting"/>
-                <attribute name="Specification-Version" value="${version}"/>
-                <attribute name="Specification-Vendor" value="JBoss (http://www.jboss.org/)"/>
-                <attribute name="Implementation-Title" value="JBoss Remoting (JRPP)"/>
-                <attribute name="Implementation-URL" value="http://labs.jboss.org/jbossremoting/"/>
-                <attribute name="Implementation-Version" value="${version}"/>
-                <attribute name="Implementation-Vendor" value="JBoss, a division of Red Hat, Inc."/>
-                <attribute name="Implementation-Vendor-Id" value="http://www.jboss.org"/>
-            </manifest>
-            <zipfileset dir="jrpp/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-            <zipfileset dir="mina-sasl/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-            <zipfileset dir="srp/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-        </jar>
-    </target>
-
-    <target name="standalone-jar" description="Build the standalone JAR" depends="api,core,jrpp,log-jul,srp,standalone,util,version">
+    <target name="standalone-jar" description="Build the standalone JAR" depends="api,core,srp,standalone,util,version">
         <delete file="jboss-remoting-standalone.jar"/>
         <jar jarfile="jboss-remoting-standalone.jar">
             <manifest>
@@ -1247,12 +956,6 @@
             <zipfileset dir="core/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
-            <zipfileset dir="jrpp/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-            <zipfileset dir="log-jul/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
             <zipfileset dir="srp/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
@@ -1269,7 +972,7 @@
     <!-- JAVADOCS                                       -->
     <!-- ============================================== -->
 
-    <target name="api-javadoc" depends="api,core,jrpp,log-jul,standalone,util">
+    <target name="api-javadoc" depends="api,core,standalone,util">
         <delete dir="api/target/main/docs"/>
         <mkdir dir="api/target/main/docs"/>
         <javadoc destdir="api/target/main/docs" author="false" version="false" use="false" windowtitle="JBoss Remoting API">
@@ -1280,9 +983,7 @@
             <bottom><![CDATA[<i>Copyright &#169; 2008 JBoss, a division of Red Hat, Inc.</i>]]></bottom>
             <link href="http://java.sun.com/j2se/1.5.0/docs/api/"/>
             <classpath>
-                <path refid="log-jul.classpath"/>
                 <path refid="core.classpath"/>
-                <path refid="jrpp.classpath"/>
             </classpath>
         </javadoc>
     </target>
@@ -1298,21 +999,9 @@
 
     <!-- http -->
 
-    <target name="all-http" description="Build all HTTP targets" depends="http,http-mina-client,http-mina-server,http-se6,http-servlet,http-urlconnection"/>
+    <target name="all-http" description="Build all HTTP targets" depends="http,http-se6,http-servlet,http-urlconnection"/>
 
-    <target name="clean-http" description="Clean all HTTP targets" depends="http.clean,http-mina-client.clean,http-mina-server.clean,http-se6.clean,http-servlet.clean,http-urlconnection.clean"/>
-
-    <!-- jrpp -->
-
-    <target name="all-jrpp" description="Build all JRPP targets" depends="jrpp,mina-sasl,sasl-null,srp"/>
-
-    <target name="clean-jrpp" description="Clean all JRPP targets" depends="jrpp.clean,mina-sasl.clean,sasl-null.clean,srp.clean"/>
-
-    <!-- log -->
-
-    <target name="all-log" description="Build all log targets" depends="log-jboss,log-jul"/>
-
-    <target name="clean-log" description="Clean all log targets" depends="log-jboss.clean,log-jul.clean"/>
+    <target name="clean-http" description="Clean all HTTP targets" depends="http.clean,http-se6.clean,http-servlet.clean,http-urlconnection.clean"/>
 
     <!-- JARs: These should be the third-to-last targets in the file -->
 
@@ -1320,12 +1009,12 @@
 
     <!-- fetch: These should be the second-to-last targets in the file -->
 
-    <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jboss-managed,lib.jbossxb,lib.mina,lib.servlet"/>
+    <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jboss-managed,lib.jbossxb,lib.servlet"/>
 
     <!-- all: These should be the last targets in the file -->
 
-    <target name="all" description="Build everything" depends="all-core,all-http,all-log,all-jars,api-javadoc"/>
+    <target name="all" description="Build everything" depends="all-core,all-jars,api-javadoc"/>
 
-    <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,clean-jrpp,clean-log"/>
+    <target name="clean" description="Clean out all build files" depends="clean-core,clean-http"/>
 
 </project>

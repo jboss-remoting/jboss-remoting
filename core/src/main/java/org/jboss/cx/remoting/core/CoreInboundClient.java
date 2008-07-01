@@ -8,7 +8,7 @@ import org.jboss.cx.remoting.ClientContext;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.ServiceContext;
-import org.jboss.cx.remoting.log.Logger;
+import org.jboss.xnio.log.Logger;
 import org.jboss.cx.remoting.util.AtomicStateMachine;
 import static org.jboss.cx.remoting.util.AtomicStateMachine.start;
 import org.jboss.cx.remoting.util.CollectionUtil;
@@ -18,7 +18,7 @@ import static org.jboss.cx.remoting.util.CollectionUtil.synchronizedHashSet;
  *
  */
 public final class CoreInboundClient<I, O> {
-    private static final Logger log = Logger.getLogger(CoreInboundClient.class);
+    private static final Logger log = org.jboss.xnio.log.Logger.getLogger(CoreInboundClient.class);
 
     private final RequestListener<I, O> requestListener;
     private final Executor executor;
@@ -140,9 +140,6 @@ public final class CoreInboundClient<I, O> {
 
         public void close() throws RemotingException {
             clientInitiator.handleClosing(false);
-        }
-
-        public void closeImmediate() throws RemotingException {
         }
 
         public void addCloseHandler(final CloseHandler<ClientContext> contextContextCloseHandler) {
