@@ -4,6 +4,9 @@ import java.util.concurrent.ConcurrentMap;
 
 /**
  * A communications client.  The client may be associated with state maintained by the local and/or remote side.
+ *
+ * @param <I> the request type
+ * @param <O> the reply type
  */
 public interface Client<I, O> extends Closeable<Client<I, O>> {
     /**

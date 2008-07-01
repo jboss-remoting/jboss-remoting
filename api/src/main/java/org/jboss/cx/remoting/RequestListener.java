@@ -1,7 +1,10 @@
 package org.jboss.cx.remoting;
 
 /**
+ * A request listener.  Implementations of this interface will reply to client requests.
  *
+ * @param <I> the request type
+ * @param <O> the reply type
  */
 public interface RequestListener<I, O> {
     /**
@@ -44,7 +47,7 @@ public interface RequestListener<I, O> {
     /**
      * Handle the close of a client.
      *
-     * @param context
+     * @param context the client context
      */
     void handleClientClose(ClientContext context);
 }

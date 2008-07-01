@@ -2,33 +2,36 @@ package org.jboss.cx.remoting.spi.marshal;
 
 import java.io.IOException;
 import java.io.Serializable;
-import org.jboss.cx.remoting.util.ObjectMessageInput;
-import org.jboss.cx.remoting.util.ObjectMessageOutput;
-import org.jboss.cx.remoting.util.ByteMessageOutput;
-import org.jboss.cx.remoting.util.ByteMessageInput;
+import java.nio.Buffer;
+import org.jboss.cx.remoting.stream.ObjectSink;
+import org.jboss.cx.remoting.stream.ObjectSource;
 
 /**
  * A marshaller/unmarshaller for transmitting data over a wire protocol of some sort.  Each marshaller instance is
  * guaranteed to be used by only one thread.  Marshallers are not pooled or reused in any way.  Any pooling of marshallers
  * must be done by implementations of this class and/or {@link org.jboss.cx.remoting.spi.marshal.MarshallerFactory}.
+ *
+ * @param <T> the type of buffer that the marshaller uses, typically {@link java.nio.ByteBuffer} or {@link java.nio.CharBuffer}
  */
-public interface Marshaller extends Serializable {
+public interface Marshaller<T extends Buffer> extends Serializable {
 
     /**
-     * Get a message writer that marshals to the given stream.
+     * Write objects to buffers.  The buffers are allocated from the {@link org.jboss.xnio.BufferAllocator} that was
+     * provided to the {@link org.jboss.cx.remoting.spi.marshal.MarshallerFactory}.
      *
-     * @param byteMessageOutput the target stream
-     * @return the message writer
-     * @throws IOException if an error occurs
+     * @param bufferSink the sink for filled (and flipped) buffers
+     * @return a sink for objects
+     * @throws IOException if an error occurs while creating the marshaling sink
      */
-    ObjectMessageOutput getMessageOutput(ByteMessageOutput byteMessageOutput) throws IOException;
+    ObjectSink<Object> getMarshalingSink(ObjectSink<T> bufferSink) throws IOException;
 
     /**
-     * Get a message reader that unmarshals from the given stream.
+     * Read objects from buffers.  The buffers are freed to the {@link org.jboss.xnio.BufferAllocator} that was
+     * provided to the {@link org.jboss.cx.remoting.spi.marshal.MarshallerFactory}.
      *
-     * @param byteMessageInput the source stream
-     * @return the message reader
-     * @throws IOException if an error occurs
+     * @param bufferSource the source for filled (and flipped) buffers
+     * @return a source for objects
+     * @throws IOException if an error occurs while creating the unmarshaling source
      */
-    ObjectMessageInput getMessageInput(ByteMessageInput byteMessageInput) throws IOException;
+    ObjectSource<Object> getUnmarshalingSource(ObjectSource<T> bufferSource) throws IOException;
 }

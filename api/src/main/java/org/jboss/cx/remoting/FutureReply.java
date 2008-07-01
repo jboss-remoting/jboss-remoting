@@ -9,6 +9,8 @@ import java.util.concurrent.TimeUnit;
  * <p/>
  * In addition to representing the invocation results, this interface allows the user to cancel the request, or schedule
  * an asynchronous callback for when the request completes.
+ *
+ * @param <T> the result type of the future operation
  */
 public interface FutureReply<T> extends Future<T> {
 

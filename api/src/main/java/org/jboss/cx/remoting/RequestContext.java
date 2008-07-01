@@ -4,6 +4,8 @@ import java.util.concurrent.Executor;
 
 /**
  * The context of a single request.
+ *
+ * @param <O> the reply type
  */
 public interface RequestContext<O> extends Executor {
     /**
@@ -52,7 +54,7 @@ public interface RequestContext<O> extends Executor {
      * Add a notifier to be called if a cancel request is received.  The notifier may be called from the current thread
      * or a different thread.  If the request has already been cancelled, the notifier will be called immediately.
      *
-     * @param handler
+     * @param handler the cancel handler
      */
     void addCancelHandler(RequestCancelHandler<O> handler);
 

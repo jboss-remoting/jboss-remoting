@@ -6,20 +6,9 @@ import java.io.IOException;
  *
  */
 public class ObjectSourceWrapper<T> implements ObjectSource<T> {
-    private ObjectSource<T> target;
-
-    protected ObjectSourceWrapper() {
-    }
+    private final ObjectSource<T> target;
 
     public ObjectSourceWrapper(final ObjectSource<T> target) {
-        this.target = target;
-    }
-
-    protected ObjectSource<T> getTarget() {
-        return target;
-    }
-
-    protected void setTarget(final ObjectSource<T> target) {
         this.target = target;
     }
 

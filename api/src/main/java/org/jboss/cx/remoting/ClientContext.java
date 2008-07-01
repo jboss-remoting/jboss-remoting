@@ -3,7 +3,7 @@ package org.jboss.cx.remoting;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- *
+ * The server context for a single remote client instance.
  */
 public interface ClientContext extends Closeable<ClientContext> {
     /**

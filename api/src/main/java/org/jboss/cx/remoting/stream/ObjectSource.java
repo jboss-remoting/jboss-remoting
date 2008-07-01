@@ -5,6 +5,8 @@ import java.io.IOException;
 
 /**
  * A streaming source for objects.
+ *
+ * @param <T> the object type
  */
 public interface ObjectSource<T> extends Closeable {
 

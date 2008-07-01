@@ -40,6 +40,8 @@ public interface Session extends Closeable<Session> {
     /**
      * Get the root client for this session.
      *
+     * @param <I> the request type
+     * @param <O> the reply type
      * @return the root client
      */
     <I, O> Client<I, O> getRootClient();

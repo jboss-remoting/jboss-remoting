@@ -6,20 +6,9 @@ import java.io.IOException;
  *
  */
 public class ObjectSinkWrapper<T> implements ObjectSink<T> {
-    private ObjectSink<T> target;
-
-    protected ObjectSinkWrapper() {
-    }
+    private final ObjectSink<T> target;
 
     public ObjectSinkWrapper(final ObjectSink<T> target) {
-        this.target = target;
-    }
-
-    protected final ObjectSink<T> getTarget() {
-        return target;
-    }
-
-    protected final void setTarget(final ObjectSink<T> target) {
         this.target = target;
     }
 

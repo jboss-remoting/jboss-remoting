@@ -8,20 +8,41 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
- *
+ * Handy utility methods for stream types.
  */
 public final class Streams {
     private Streams() {
     }
 
+    /**
+     * Get an object sink that appends to a collection.
+     *
+     * @param <T> the collection object type
+     * @param target the target collection
+     * @return an object sink
+     */
     public static <T> ObjectSink<T> getCollectionObjectSink(Collection<T> target) {
         return new CollectionObjectSink<T>(target);
     }
 
+    /**
+     * Get an object source that reads from an iterator.
+     *
+     * @param <T> the iterator object type
+     * @param iterator the iterater to read from
+     * @return an object source
+     */
     public static <T> ObjectSource<T> getIteratorObjectSource(Iterator<T> iterator) {
         return new IteratorObjectSource<T>(iterator);
     }
 
+    /**
+     * Get an object source that reads from an enumeration.
+     *
+     * @param <T> the enumeration object type
+     * @param enumeration the enumeration to read from
+     * @return an object source
+     */
     public static <T> ObjectSource<T> getEnumerationObjectSource(Enumeration<T> enumeration) {
         return new EnumerationObjectSource<T>(enumeration);
     }

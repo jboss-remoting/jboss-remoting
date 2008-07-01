@@ -9,54 +9,68 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.SessionListener;
-import org.jboss.cx.remoting.spi.Registration;
-import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
 import org.jboss.cx.remoting.util.AttributeMap;
 
 /**
- *
+ * A simple delegating wrapper for endpoints.
  */
 public class EndpointWrapper implements Endpoint {
     protected final Endpoint delegate;
 
-    protected EndpointWrapper(final Endpoint endpoint) {
-        delegate = endpoint;
+    /**
+     * Construct a new instance.  Calls will be sent to the given {@code delegate} by default.
+     *
+     * @param delegate the delegate client instance
+     */
+    protected EndpointWrapper(final Endpoint delegate) {
+        this.delegate = delegate;
     }
 
+    /**
+     * {@inheritDoc}  This implementation calls the same method on the delegate object.
+     */
     public ConcurrentMap<Object, Object> getAttributes() {
         return delegate.getAttributes();
     }
 
+    /**
+     * {@inheritDoc}  This implementation calls the same method on the delegate object.
+     */
     public Session openSession(final URI remoteUri, final AttributeMap attributeMap, final RequestListener<?, ?> rootListener) throws RemotingException {
         return delegate.openSession(remoteUri, attributeMap, rootListener);
     }
 
-    public ProtocolContext openSession(final ProtocolHandler handler, final RequestListener<?, ?> rootListener) throws RemotingException {
-        return delegate.openSession(handler, rootListener);
-    }
-
+    /**
+     * {@inheritDoc}  This implementation calls the same method on the delegate object.
+     */
     public String getName() {
         return delegate.getName();
     }
 
-    public Registration registerProtocol(String scheme, ProtocolHandlerFactory protocolHandlerFactory) throws RemotingException, IllegalArgumentException {
-        return delegate.registerProtocol(scheme, protocolHandlerFactory);
-    }
-
+    /**
+     * {@inheritDoc}  This implementation calls the same method on the delegate object.
+     */
     public <I, O> Client<I, O> createClient(final RequestListener<I, O> requestListener) {
         return delegate.createClient(requestListener);
     }
 
+    /**
+     * {@inheritDoc}  This implementation calls the same method on the delegate object.
+     */
     public <I, O> ClientSource<I, O> createService(final RequestListener<I, O> requestListener) {
         return delegate.createService(requestListener);
     }
 
+    /**
+     * {@inheritDoc}  This implementation calls the same method on the delegate object.
+     */
     public void addSessionListener(final SessionListener sessionListener) {
         delegate.addSessionListener(sessionListener);
     }
 
+    /**
+     * {@inheritDoc}  This implementation calls the same method on the delegate object.
+     */
     public void removeSessionListener(final SessionListener sessionListener) {
         delegate.removeSessionListener(sessionListener);
     }

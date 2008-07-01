@@ -2,10 +2,6 @@ package org.jboss.cx.remoting;
 
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
-import org.jboss.cx.remoting.spi.Registration;
-import org.jboss.cx.remoting.spi.protocol.ProtocolContext;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandler;
-import org.jboss.cx.remoting.spi.protocol.ProtocolHandlerFactory;
 import org.jboss.cx.remoting.util.AttributeMap;
 
 /**
@@ -41,36 +37,11 @@ public interface Endpoint {
     Session openSession(URI remoteUri, AttributeMap attributeMap, RequestListener<?, ?> rootListener) throws RemotingException;
 
     /**
-     * Open an inbound session from another endpoint.  Used by protocol handlers.
-     *
-     * You must have the TODO permission to invoke this method.
-     *
-     * @param handler the protocol handler to use
-     * @param rootListener the root request listener for this end of the session
-     * @return the protocol context
-     */
-    ProtocolContext openSession(ProtocolHandler handler, RequestListener<?, ?> rootListener) throws RemotingException;
-
-    /**
      * Get the name of this endpoint.
      *
      * @return the endpoint name, or {@code null} if there is no name
      */
     String getName();
-
-    /**
-     * Register a protocol specification for this endpoint.
-     *
-     * You must have the TODO permission to invoke this method.
-     *
-     * @param scheme the URI scheme
-     * @param protocolHandlerFactory the protocol handler factory
-     * @return a registration that may be used to control this deployment
-     *
-     * @throws RemotingException if the protocol registration failed
-     * @throws IllegalArgumentException if the specification failed validation
-     */
-    Registration registerProtocol(String scheme, ProtocolHandlerFactory protocolHandlerFactory) throws RemotingException, IllegalArgumentException;
 
     /**
      * Create a client that can be used to invoke a request listener on this endpoint.  The client may be passed to a

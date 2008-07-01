@@ -2,6 +2,9 @@ package org.jboss.cx.remoting;
 
 /**
  * A source for new Remoting contexts.
+ *
+ * @param <I> the request type
+ * @param <O> the reply type
  */
 public interface ClientSource<I, O> extends Closeable<ClientSource<I, O>> {
     /**
