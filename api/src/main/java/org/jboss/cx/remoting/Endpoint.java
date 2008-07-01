@@ -49,6 +49,8 @@ public interface Endpoint {
      *
      * You must have the TODO permission to invoke this method.
      *
+     * @param <I> the request type
+     * @param <O> the reply type
      * @param requestListener the request listener
      * @return the client
      */
@@ -61,6 +63,8 @@ public interface Endpoint {
      *
      * You must have the TODO permission to invoke this method.
      *
+     * @param <I> the request type
+     * @param <O> the reply type
      * @param requestListener the request listener
      * @return the context source
      */

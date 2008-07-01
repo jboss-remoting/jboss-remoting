@@ -33,13 +33,6 @@ public class ClientSourceWrapper<I, O> implements ClientSource<I, O> {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public void closeImmediate() throws RemotingException {
-        delegate.closeImmediate();
-    }
-
-    /**
-     * {@inheritDoc}  This implementation calls the same method on the delegate object.
-     */
     public void addCloseHandler(final CloseHandler<ClientSource<I, O>> closeHandler) {
         delegate.addCloseHandler(new CloseHandler<ClientSource<I, O>>() {
             public void handleClose(final ClientSource<I, O> closed) {

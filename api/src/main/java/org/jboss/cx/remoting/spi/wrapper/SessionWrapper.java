@@ -31,13 +31,6 @@ public class SessionWrapper implements Session {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public void closeImmediate() throws RemotingException {
-        delegate.closeImmediate();
-    }
-
-    /**
-     * {@inheritDoc}  This implementation calls the same method on the delegate object.
-     */
     public void addCloseHandler(final CloseHandler<Session> closeHandler) {
         delegate.addCloseHandler(new CloseHandler<Session>() {
             public void handleClose(final Session closed) {
