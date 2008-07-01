@@ -7,21 +7,18 @@ import org.jboss.cx.remoting.core.CoreEndpoint;
 import org.jboss.cx.remoting.core.protocol.LocalProtocolHandlerFactory;
 import org.jboss.cx.remoting.jrpp.JrppProtocolSupport;
 import org.jboss.cx.remoting.jrpp.JrppServer;
-import org.jboss.cx.remoting.log.Logger;
 import org.jboss.cx.remoting.util.AttributeMap;
 
 /**
  *
  */
 public final class Remoting {
-    private static final Logger log = Logger.getLogger(Remoting.class);
-
     private static final String JRPP_SUPPORT_KEY = "org.jboss.cx.remoting.standalone.jrpp.support";
 
     // lifecycle lock
     private static final Object lifecycle = new Object();
 
-    public static <I, O> Endpoint createEndpoint(String name) throws IOException {
+    public static Endpoint createEndpoint(String name) throws IOException {
         synchronized (lifecycle) {
             boolean ok = false;
             final CoreEndpoint coreEndpoint = new CoreEndpoint();
