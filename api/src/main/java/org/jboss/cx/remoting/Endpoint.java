@@ -3,6 +3,8 @@ package org.jboss.cx.remoting;
 import java.net.URI;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.util.AttributeMap;
+import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
+import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
 
 /**
  * A potential participant in a JBoss Remoting communications relationship.
@@ -44,7 +46,7 @@ public interface Endpoint {
     String getName();
 
     /**
-     * Create a client that can be used to invoke a request listener on this endpoint.  The client may be passed to a
+     * Create a client endpoint that can be used to receive incoming requests on this endpoint.  The client may be passed to a
      * remote endpoint as part of a request or a reply, or it may be used locally.
      *
      * You must have the TODO permission to invoke this method.
@@ -54,7 +56,7 @@ public interface Endpoint {
      * @param requestListener the request listener
      * @return the client
      */
-    <I, O> Client<I, O> createClient(RequestListener<I, O> requestListener);
+    <I, O> RemoteClientEndpoint<I, O> createClient(RequestListener<I, O> requestListener);
 
     /**
      * Create a client source that can be used to acquire clients associated with a request listener on this endpoint.
@@ -68,7 +70,7 @@ public interface Endpoint {
      * @param requestListener the request listener
      * @return the context source
      */
-    <I, O> ClientSource<I, O> createService(RequestListener<I, O> requestListener);
+    <I, O> RemoteServiceEndpoint<I, O> createService(RequestListener<I, O> requestListener);
 
     /**
      * Add a listener that is notified when a session is created.

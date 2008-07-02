@@ -6,7 +6,6 @@ package org.jboss.cx.remoting;
  * @param <T> the type that is passed to the close handler
  */
 public interface Closeable<T> extends java.io.Closeable {
-    // TODO - do we need an async close method?
 
     /**
      * Close, waiting for any outstanding processing to finish.
