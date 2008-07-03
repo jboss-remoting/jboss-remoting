@@ -107,7 +107,7 @@ public final class CharBufferWriter extends Writer {
         do {
             final CharBuffer buffer = getBuffer();
             final int rem = Math.min(len, buffer.remaining());
-            buffer.put(str, off, rem);
+            buffer.put(str, off, off + rem);
             if (! buffer.hasRemaining()) {
                 localFlush();
             }

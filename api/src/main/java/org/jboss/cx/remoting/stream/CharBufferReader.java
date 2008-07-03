@@ -100,7 +100,9 @@ public final class CharBufferReader extends Reader {
         try {
             final CharBuffer buffer = current;
             current = null;
-            allocator.free(buffer);
+            if (buffer != null) {
+                allocator.free(buffer);
+            }
             bufferSource.close();
         } finally {
             closed = true;
@@ -147,13 +149,16 @@ public final class CharBufferReader extends Reader {
     private CharBuffer getBuffer() throws IOException {
         final CharBuffer buffer = current;
         if (buffer == null) {
-            if (bufferSource.hasNext()) {
+            while (bufferSource.hasNext()) {
                 final CharBuffer newBuffer = bufferSource.next();
-                current = newBuffer;
-                return newBuffer;
-            } else {
-                return null;
+                if (newBuffer.hasRemaining()) {
+                    current = newBuffer;
+                    return newBuffer;
+                } else {
+                    allocator.free(newBuffer);
+                }
             }
+            return null;
         } else {
             return buffer;
         }

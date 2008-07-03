@@ -96,7 +96,9 @@ public final class ByteBufferInputStream extends InputStream {
         try {
             final ByteBuffer buffer = current;
             current = null;
-            allocator.free(buffer);
+            if (buffer != null) {
+                allocator.free(buffer);
+            }
             bufferSource.close();
         } finally {
             closed = true;
@@ -107,13 +109,16 @@ public final class ByteBufferInputStream extends InputStream {
     private ByteBuffer getBuffer() throws IOException {
         final ByteBuffer buffer = current;
         if (buffer == null) {
-            if (bufferSource.hasNext()) {
+            while (bufferSource.hasNext()) {
                 final ByteBuffer newBuffer = bufferSource.next();
-                current = newBuffer;
-                return newBuffer;
-            } else {
-                return null;
+                if (newBuffer.hasRemaining()) {
+                    current = newBuffer;
+                    return newBuffer;
+                } else {
+                    allocator.free(newBuffer);
+                }
             }
+            return null;
         } else {
             return buffer;
         }

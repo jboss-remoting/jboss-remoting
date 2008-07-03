@@ -578,7 +578,7 @@ public final class CollectionUtil {
     public static <T> Iterable<T> reverse(final List<T> list) {
         return new Iterable<T>() {
             public Iterator<T> iterator() {
-                return reverse(list.listIterator());
+                return reverse(list.listIterator(list.size()));
             }
         };
     }
