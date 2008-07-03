@@ -139,6 +139,16 @@
         <get src="${remote.license.dir}/${lib.jbossxb.license}.txt" dest="${lib.jbossxb.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
+    <target name="lib.junit-check">
+        <available property="lib.junit.exists" file="${lib.junit.local}"/>
+    </target>
+
+    <target name="lib.junit" depends="lib.junit-check" unless="lib.junit.exists">
+        <mkdir dir="${local.repository}/${lib.junit.dir}"/>
+        <get src="${lib.junit.remote}" dest="${lib.junit.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.junit.license}.txt" dest="${lib.junit.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
     <!-- External library: Servlet API 2.4 -->
 
     <target name="lib.servlet-check">
@@ -207,6 +217,78 @@
             </classpath>
         </javac>
         <touch file="api/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="api.test.compile.depcheck">
+        <mkdir dir="api/target/test"/>
+        <uptodate property="api.compile.uptodate" targetfile="api/target/test/.lastcompile">
+            <srcfiles dir="api/src/test/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="api.test.compile" depends="lib.junit,api.compile,api.test.compile.depcheck" unless="api.test.compile.uptodate">
+        <mkdir dir="api/target/test/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="api/src/test/java"
+                destdir="api/target/test/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="testing-support.classpath"/>
+                <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
+            </classpath>
+        </javac>
+        <touch file="api/target/test/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="api.test.pseudotarget">
+        <echo message="============================================="/>
+        <echo message="${message}"/>
+        <echo message="============================================="/>
+        <mkdir dir="api/target/test-results"/>
+        <junit printsummary="true" fork="yes" includeantruntime="true">
+            <sysproperty key="build.home" value="${basedir}"/>
+            <sysproperty key="ant.library.dir" value="${ant.home}/lib"/>
+            <sysproperty key="lib.junit.local" value="${lib.junit.local}"/>
+            <sysproperty key="lib.xnio-api.local" value="${lib.xnio-api.local}"/>
+            <jvmarg line="${test.jvmargs}"/>
+            <formatter type="plain" extension="${extension}"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="testing-support.classpath"/>
+                <path refid="util.classpath"/>
+                <pathelement location="api/target/test/classes"/>
+                <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
+            </classpath>
+            <batchtest fork="yes" todir="api/target/test-results"
+                       haltonfailure="no">
+               <fileset dir="api/target/test/classes">
+                   <include name="**/*TestCase.class"/>
+               </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="api.test" depends="api,testing-support,api.test.compile">
+        <antcall inheritall="true" inheritrefs="true" target="api.test.pseudotarget">
+            <param name="extension" value=".txt"/>
+            <param name="message" value="Running with no security manager"/>
+            <param name="test.jvmargs" value="-Ddummy=dummy"/>
+        </antcall>
+        <antcall inheritall="true" inheritrefs="true" target="api.test.pseudotarget">
+            <param name="extension" value="-security.txt"/>
+            <param name="message" value="Running with security manager"/>
+            <param name="test.jvmargs" value="-Djava.security.manager=org.jboss.cx.remoting.test.support.LoggingSecurityManager -Djava.security.policy=${basedir}/testing-support/src/main/resources/testing.policy"/>
+        </antcall>
     </target>
 
     <target name="api.clean">
@@ -717,6 +799,10 @@
                 destdir="testing-support/target/main/classes"
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
+            </classpath>
         </javac>
         <touch file="testing-support/target/main/.lastcompile" verbose="false"/>
     </target>
@@ -725,7 +811,7 @@
         <delete dir="testing-support/target"/>
     </target>
 
-    <target name="testing-support" description="Build the testing-support module" depends="testing-support.compile">
+    <target name="testing-support" description="Build the testing-support module" depends="lib.junit,lib.xnio-api,testing-support.compile">
         <path id="testing-support.classpath">
             <pathelement location="testing-support/target/main/classes"/>
         </path>
@@ -1021,5 +1107,7 @@
     <target name="all" description="Build everything" depends="all-core,all-jars,api-javadoc"/>
 
     <target name="clean" description="Clean out all build files" depends="clean-core,clean-http"/>
+
+    <target name="test" description="Run all tests" depends="api.test"/>
 
 </project>

@@ -1,0 +1,39 @@
+
+// Permissions to grant to modules
+
+grant codeBase "file:${build.home}/api/target/main/classes/-"
+{
+};
+
+// Permissions to run the api test suite
+
+grant codeBase "file:${build.home}/api/target/main/classes/-"
+{
+};
+
+// Support classes
+
+grant codeBase "file:${build.home}/testing-support/target/main/classes/-"
+{
+    permission java.security.AllPermission;
+};
+
+grant codeBase "file:${idea.home}/lib/idea_rt.jar"
+{
+    permission java.security.AllPermission;
+};
+
+grant codeBase "file:${lib.junit.local}"
+{
+    permission java.security.AllPermission;
+};
+
+grant codeBase "file:${ant.library.dir}/-"
+{
+    permission java.security.AllPermission;
+};
+
+grant codeBase "file:${lib.xnio-api.local}"
+{
+    permission java.security.AllPermission;
+};
