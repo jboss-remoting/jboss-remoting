@@ -12,7 +12,7 @@ import org.jboss.cx.remoting.RequestContext;
  */
 public final class StreamingRot13RequestListener extends AbstractRequestListener<Reader, Reader> {
 
-    public void handleRequest(final RequestContext<Reader> readerRequestContext, final Reader request) throws RemoteExecutionException, InterruptedException {
+    public void handleRequest(final RequestContext<Reader> readerRequestContext, final Reader request) throws RemoteExecutionException {
         try {
             readerRequestContext.sendReply(new Reader() {
 

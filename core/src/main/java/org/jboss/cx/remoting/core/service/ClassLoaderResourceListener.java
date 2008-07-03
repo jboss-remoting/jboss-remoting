@@ -31,7 +31,7 @@ public final class ClassLoaderResourceListener extends AbstractRequestListener<C
         this.classLoader = classLoader;
     }
 
-    public void handleRequest(final RequestContext<ClassLoaderResourceReply> requestContext, final ClassLoaderResourceRequest request) throws RemoteExecutionException, InterruptedException {
+    public void handleRequest(final RequestContext<ClassLoaderResourceReply> requestContext, final ClassLoaderResourceRequest request) throws RemoteExecutionException {
         try {
             final Enumeration<URL> urlResources = classLoader.getResources(request.getName());
             final Enumeration<RemoteResource> actualResources = CollectionUtil.translate(urlResources, new Translator<URL, RemoteResource>() {

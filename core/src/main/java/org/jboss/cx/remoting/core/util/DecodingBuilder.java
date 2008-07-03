@@ -73,6 +73,7 @@ public final class DecodingBuilder {
             stringBuilder.append(flip(holder));
             holder.clear();
         } while (oflow);
+        return this;
     }
 
     public static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
@@ -84,6 +85,7 @@ public final class DecodingBuilder {
             stringBuilder.append(flip(holder));
             holder.clear();
         } while (oflow);
+        return this;
     }
 
     public String toString() {

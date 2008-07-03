@@ -44,7 +44,8 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
     }
 
     public Object getRemoteSide(final Client<StreamChannel> remoteClient) throws IOException {
-        return new RemoteInputStream(taskList, futureChannel);
+//        return new RemoteInputStream(taskList, futureChannel);
+        return null;
     }
 
     public BufferAllocator<ByteBuffer> getAllocator() {

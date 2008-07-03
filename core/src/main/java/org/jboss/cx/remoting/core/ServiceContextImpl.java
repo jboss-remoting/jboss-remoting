@@ -20,31 +20,25 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.cx.remoting.spi.remote;
+package org.jboss.cx.remoting.core;
+
+import org.jboss.cx.remoting.ServiceContext;
+import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.CloseHandler;
+import java.util.concurrent.ConcurrentMap;
 
 /**
- * A handler for replies from a request.  The handler should respect the first invocation made on it, and ignore
- * any subsequent invocations.
+ *
  */
-public interface ReplyHandler<O> {
+public final class ServiceContextImpl implements ServiceContext {
 
-    /**
-     * Handle a successful reply.
-     *
-     * @param reply the reply
-     */
-    void handleReply(O reply);
+    public ConcurrentMap<Object, Object> getAttributes() {
+        return null;
+    }
 
-    /**
-     * Handle a remote exception.
-     *
-     * @param msg the message
-     * @param cause the cause
-     */
-    void handleException(final String msg, Throwable cause);
+    public void close() throws RemotingException {
+    }
 
-    /**
-     * Handle a cancellation request.
-     */
-    void handleCancellation();
+    public void addCloseHandler(final CloseHandler<ServiceContext> serviceContextCloseHandler) {
+    }
 }

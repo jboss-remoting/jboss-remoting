@@ -9,6 +9,8 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.Session;
 import org.jboss.cx.remoting.SessionListener;
+import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
+import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
 import org.jboss.cx.remoting.util.AttributeMap;
 
 /**
@@ -36,13 +38,6 @@ public class EndpointWrapper implements Endpoint {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public Session openSession(final URI remoteUri, final AttributeMap attributeMap, final RequestListener<?, ?> rootListener) throws RemotingException {
-        return delegate.openSession(remoteUri, attributeMap, rootListener);
-    }
-
-    /**
-     * {@inheritDoc}  This implementation calls the same method on the delegate object.
-     */
     public String getName() {
         return delegate.getName();
     }
@@ -50,14 +45,14 @@ public class EndpointWrapper implements Endpoint {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> Client<I, O> createClient(final RequestListener<I, O> requestListener) {
+    public <I, O> RemoteClientEndpoint<I, O> createClient(final RequestListener<I, O> requestListener) {
         return delegate.createClient(requestListener);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> ClientSource<I, O> createService(final RequestListener<I, O> requestListener) {
+    public <I, O> RemoteServiceEndpoint<I,O> createService(final RequestListener<I, O> requestListener) {
         return delegate.createService(requestListener);
     }
 

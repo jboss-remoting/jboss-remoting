@@ -17,12 +17,15 @@ import org.jboss.xnio.IoUtils;
  */
 public final class LocalStreamExampleMain {
 
+    private LocalStreamExampleMain() {
+    }
+
     public static void main(String[] args) throws IOException, RemoteExecutionException {
         Security.addProvider(new Provider());
         final StreamingRot13RequestListener listener = new StreamingRot13RequestListener();
         final Endpoint endpoint = Remoting.createEndpoint("simple");
         try {
-            final Client<Reader,Reader> client = endpoint.createClient(listener);
+            final Client<Reader,Reader> client = endpoint.createClient(listener).getClient();
             try {
                 final String original = "The Secret Message\n";
                 final StringReader originalReader = new StringReader(original);

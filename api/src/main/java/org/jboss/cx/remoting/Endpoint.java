@@ -21,24 +21,6 @@ public interface Endpoint {
     ConcurrentMap<Object, Object> getAttributes();
 
     /**
-     * Open an outbound session to another endpoint.  The protocol used is determined by the URI scheme.  The URI user-info part
-     * must be {@code null} unless the specific protocol has an additional authentication scheme (e.g. HTTP BASIC).  The
-     * authority is used to locate the server (the exact interpretation is dependent upon the protocol). The path may be
-     * relative to a protocol-specific deployment path.
-     *
-     * You must have the TODO permission to invoke this method.
-     *
-     * @param remoteUri the URI of the server to connect to
-     * @param attributeMap the attribute map to use to configure this session
-     * @param rootListener the root request listener for this end of the session
-     * @return a new session
-     *
-     * @throws RemotingException if there is a problem creating the session, or if the request or reply type does not
-     * match the remote service
-     */
-    Session openSession(URI remoteUri, AttributeMap attributeMap, RequestListener<?, ?> rootListener) throws RemotingException;
-
-    /**
      * Get the name of this endpoint.
      *
      * @return the endpoint name, or {@code null} if there is no name

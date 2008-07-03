@@ -36,7 +36,7 @@ public interface RemoteClientEndpoint<I, O> extends Closeable<RemoteClientEndpoi
     /**
      * Receive a request from a remote system.  This method is intended to be called by protocol handlers.  If the
      * request cannot be accepted for some reason, the
-     * {@link org.jboss.cx.remoting.spi.remote.ReplyHandler#handleException(Throwable)}
+     * {@link ReplyHandler#handleException(String, Throwable)}
      * method is called immediately.
      *
      * @param request the request

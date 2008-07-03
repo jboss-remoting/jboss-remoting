@@ -10,7 +10,7 @@ import org.jboss.cx.remoting.RequestContext;
  */
 public final class StringRot13RequestListener extends AbstractRequestListener<String, String> {
 
-    public void handleRequest(final RequestContext<String> readerRequestContext, final String request) throws RemoteExecutionException, InterruptedException {
+    public void handleRequest(final RequestContext<String> readerRequestContext, final String request) throws RemoteExecutionException {
         try {
             StringBuilder b = new StringBuilder(request.length());
             for (int i = 0; i < request.length(); i ++) {

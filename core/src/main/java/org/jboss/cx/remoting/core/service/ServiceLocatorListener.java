@@ -45,7 +45,7 @@ public final class ServiceLocatorListener<I, O> extends AbstractRequestListener<
 
     private final ConcurrentMap<String, ConcurrentMap<String, ClientSource<?, ?>>> deployments = syncMap();
 
-    public void handleRequest(final RequestContext<ServiceReply<I, O>> requestContext, final ServiceRequest<I, O> request) throws RemoteExecutionException, InterruptedException {
+    public void handleRequest(final RequestContext<ServiceReply<I, O>> requestContext, final ServiceRequest<I, O> request) throws RemoteExecutionException {
         final URI uri = request.getUri();
         final ServiceURI serviceURI = new ServiceURI(uri);
         final String endpointName = serviceURI.getEndpointName();

@@ -47,7 +47,7 @@ public final class SessionBean {
     }
 
     public void start() throws RemotingException {
-        session = endpoint.openSession(destination, attributeMap, null);
+//        session = endpoint.openSession(destination, attributeMap, null);
     }
 
     public void stop() throws RemotingException {

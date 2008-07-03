@@ -50,6 +50,10 @@ public final class ObjectSourceStreamSerializerFactory implements StreamSerializ
     public static class LocalHandler implements IoHandler<StreamSinkChannel> {
         private final ObjectSource objectSource;
 
+        public LocalHandler(final ObjectSource source) {
+            objectSource = source;
+        }
+
         public void handleOpened(final StreamSinkChannel channel) {
             if (channel.getOptions().contains(CommonOptions.TCP_NODELAY)) try {
                 channel.setOption(CommonOptions.TCP_NODELAY, Boolean.TRUE);

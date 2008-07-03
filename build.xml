@@ -285,6 +285,7 @@
                 <path refid="util.classpath"/>
                 <path refid="version.classpath"/>
                 <pathelement location="${lib.jboss-serialization.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="core/target/main/.lastcompile" verbose="false"/>
@@ -561,6 +562,7 @@
                 <path refid="srp.classpath"/>
                 <path refid="standalone.classpath"/>
                 <path refid="util.classpath"/>
+                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="samples/target/main/.lastcompile" verbose="false"/>
@@ -636,6 +638,7 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="util.classpath"/>
+                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="srp/target/main/.lastcompile" verbose="false"/>
@@ -982,8 +985,10 @@
             <doctitle><![CDATA[<h1>JBoss Remoting 3</h1>]]></doctitle>
             <bottom><![CDATA[<i>Copyright &#169; 2008 JBoss, a division of Red Hat, Inc.</i>]]></bottom>
             <link href="http://java.sun.com/j2se/1.5.0/docs/api/"/>
+            <link href="http://docs.jboss.org/xnio/1.0/api/"/>
             <classpath>
                 <path refid="core.classpath"/>
+                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javadoc>
     </target>
