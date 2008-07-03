@@ -19,7 +19,7 @@ public final class LocalBasicExampleMain {
         final StringRot13RequestListener listener = new StringRot13RequestListener();
         final Endpoint endpoint = Remoting.createEndpoint("simple");
         try {
-            final Client<String,String> client = endpoint.createClient(listener).getClient();
+            final Client<String,String> client = Remoting.createLocalClient(endpoint, listener);
             try {
                 final String original = "The Secret Message\n";
                 final String result = client.invoke(original);
