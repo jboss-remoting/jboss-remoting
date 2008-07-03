@@ -74,6 +74,7 @@ public final class FutureReplyImpl<O> implements FutureReply<O> {
             }
             state = State.WAITING;
             this.remoteRequestContext = remoteRequestContext;
+            lock.notifyAll();
         }
     }
 
