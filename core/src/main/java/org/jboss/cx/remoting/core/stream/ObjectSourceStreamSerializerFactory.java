@@ -1,11 +1,6 @@
 package org.jboss.cx.remoting.core.stream;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.NoSuchElementException;
-import java.util.Queue;
-import org.jboss.cx.remoting.util.ObjectMessageInput;
-import org.jboss.cx.remoting.util.ObjectMessageOutput;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
 import org.jboss.cx.remoting.spi.marshal.MarshallerFactory;
 import org.jboss.cx.remoting.stream.ObjectSource;
