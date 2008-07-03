@@ -45,14 +45,14 @@ public class EndpointWrapper implements Endpoint {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> RemoteClientEndpoint<I, O> createClient(final RequestListener<I, O> requestListener) {
+    public <I, O> RemoteClientEndpoint<I, O> createClient(final RequestListener<I, O> requestListener) throws RemotingException {
         return delegate.createClient(requestListener);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> RemoteServiceEndpoint<I,O> createService(final RequestListener<I, O> requestListener) {
+    public <I, O> RemoteServiceEndpoint<I, O> createService(final RequestListener<I, O> requestListener) throws RemotingException {
         return delegate.createService(requestListener);
     }
 

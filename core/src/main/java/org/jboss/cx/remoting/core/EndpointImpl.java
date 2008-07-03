@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.SessionListener;
+import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.core.util.OrderedExecutorFactory;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
@@ -112,12 +113,16 @@ public class EndpointImpl implements Endpoint {
         return endpointMap;
     }
 
-    public <I, O> RemoteClientEndpoint<I, O> createClient(final RequestListener<I, O> requestListener) {
-        return new RemoteClientEndpointLocalImpl<I, O>(this, requestListener);
+    public <I, O> RemoteClientEndpoint<I, O> createClient(final RequestListener<I, O> requestListener) throws RemotingException {
+        final RemoteClientEndpointLocalImpl<I, O> clientEndpoint = new RemoteClientEndpointLocalImpl<I, O>(executor, requestListener);
+        clientEndpoint.open();
+        return clientEndpoint;
     }
 
-    public <I, O> RemoteServiceEndpoint<I, O> createService(final RequestListener<I, O> requestListener) {
-        return new RemoteServiceEndpointLocalImpl<I, O>(this, requestListener);
+    public <I, O> RemoteServiceEndpoint<I, O> createService(final RequestListener<I, O> requestListener) throws RemotingException {
+        final RemoteServiceEndpointLocalImpl<I, O> serviceEndpoint = new RemoteServiceEndpointLocalImpl<I, O>(executor, requestListener);
+        serviceEndpoint.open();
+        return serviceEndpoint;
     }
 
     public void addSessionListener(final SessionListener sessionListener) {

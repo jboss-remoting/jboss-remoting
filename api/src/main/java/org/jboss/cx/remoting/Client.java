@@ -61,12 +61,4 @@ public interface Client<I, O> extends Closeable<Client<I, O>> {
      * @return the attribute map
      */
     ConcurrentMap<Object, Object> getAttributes();
-
-    /**
-     * Get the classloader associated with this client.  This is the classloader that will be used to resolve any
-     * remote classes.
-     *
-     * @return the classloader
-     */
-    ClassLoader getClassLoader();
 }

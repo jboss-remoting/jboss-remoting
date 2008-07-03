@@ -34,6 +34,14 @@ import org.jboss.cx.remoting.Client;
 public interface RemoteClientEndpoint<I, O> extends Closeable<RemoteClientEndpoint<I, O>> {
 
     /**
+     * Receive a one-way request from a remote system.  This method is intended to be called by protocol handlers.  No
+     * reply will be sent back to the client.
+     *
+     * @param request the request
+     */
+    void receiveRequest(I request);
+
+    /**
      * Receive a request from a remote system.  This method is intended to be called by protocol handlers.  If the
      * request cannot be accepted for some reason, the
      * {@link ReplyHandler#handleException(String, Throwable)}
@@ -67,7 +75,7 @@ public interface RemoteClientEndpoint<I, O> extends Closeable<RemoteClientEndpoi
     /**
      * Automatically close this client endpoint when all handles and local client instances are closed.
      */
-    void autoClose();
+    void autoClose() throws RemotingException;
 
     /**
      * Close this client endpoint.  The outcome of any outstanding requests is not defined, though implementations

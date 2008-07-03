@@ -31,7 +31,7 @@ public interface FutureReply<T> extends Future<T> {
 
     /**
      * Asynchronously send a request to cancel this request.  Does not block the current method.  Use the
-     * {@link #addCompletionNotifier(RequestCompletionHandler)} method to add a notifier to be called upon completion.
+     * {@link #addCompletionHandler(RequestCompletionHandler)} method to add a notifier to be called upon completion.
      *
      * @param mayInterruptIfRunning
      */
@@ -117,5 +117,5 @@ public interface FutureReply<T> extends Future<T> {
      *
      * @return this future reply
      */
-    FutureReply<T> addCompletionNotifier(RequestCompletionHandler<T> handler);
+    FutureReply<T> addCompletionHandler(RequestCompletionHandler<T> handler);
 }

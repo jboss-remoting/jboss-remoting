@@ -32,6 +32,7 @@ public final class QueueExecutor implements Executor {
                     state = State.RUNNING;
                     queue.notify();
                     // fall thru
+                case STOPPING:
                 case RUNNING:
                     queue.add(command);
                     break;
@@ -51,7 +52,7 @@ public final class QueueExecutor implements Executor {
                         try {
                             queue.wait();
                         } catch (InterruptedException e) {
-                            e.printStackTrace();
+                            intr = true;
                         }
                     }
                     if (state == State.DOWN) {

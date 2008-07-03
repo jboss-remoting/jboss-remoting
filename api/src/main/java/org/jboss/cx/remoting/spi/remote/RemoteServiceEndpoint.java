@@ -63,7 +63,7 @@ public interface RemoteServiceEndpoint<I, O> extends Closeable<RemoteServiceEndp
      * Automatically close this service endpoint when all handles and local client source instances
      * are closed.
      */
-    void autoClose();
+    void autoClose() throws RemotingException;
 
     /**
      * Close this service endpoint immediately.

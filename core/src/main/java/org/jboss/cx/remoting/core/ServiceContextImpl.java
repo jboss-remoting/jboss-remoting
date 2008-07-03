@@ -25,20 +25,15 @@ package org.jboss.cx.remoting.core;
 import org.jboss.cx.remoting.ServiceContext;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
+import org.jboss.cx.remoting.ClientContext;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 
 /**
  *
  */
-public final class ServiceContextImpl implements ServiceContext {
-
-    public ConcurrentMap<Object, Object> getAttributes() {
-        return null;
-    }
-
-    public void close() throws RemotingException {
-    }
-
-    public void addCloseHandler(final CloseHandler<ServiceContext> serviceContextCloseHandler) {
+public final class ServiceContextImpl extends AbstractContextImpl<ServiceContext> implements ServiceContext {
+    protected ServiceContextImpl(final Executor executor) {
+        super(executor);
     }
 }

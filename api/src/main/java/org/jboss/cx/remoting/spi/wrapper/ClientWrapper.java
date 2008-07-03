@@ -70,11 +70,4 @@ public class ClientWrapper<I, O> implements Client<I, O> {
     public ConcurrentMap<Object, Object> getAttributes() {
         return delegate.getAttributes();
     }
-
-    /**
-     * {@inheritDoc}  This implementation calls the same method on the delegate object.
-     */
-    public ClassLoader getClassLoader() {
-        return delegate.getClassLoader();
-    }
 }

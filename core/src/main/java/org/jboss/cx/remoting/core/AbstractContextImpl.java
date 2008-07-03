@@ -20,18 +20,24 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.cx.remoting.spi.remote;
+package org.jboss.cx.remoting.core;
+
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
+import org.jboss.cx.remoting.util.CollectionUtil;
 
 /**
- * The context of an outstanding remote request.  This instance should be discarded when a reply (of any sort)
- * is received for the request.
+ *
  */
-public interface RemoteRequestContext {
+public abstract class AbstractContextImpl<T> extends AbstractCloseable<T> {
 
-    /**
-     * Signal that the request should be cancelled, if possible.
-     *
-     * @param mayInterrupt {@code true} if the task can be interrupted (advisory)
-     */
-    void cancel(final boolean mayInterrupt);
+    private final ConcurrentMap<Object, Object> attributes = CollectionUtil.concurrentMap();
+
+    protected AbstractContextImpl(final Executor executor) {
+        super(executor);
+    }
+
+    public ConcurrentMap<Object, Object> getAttributes() {
+        return attributes;
+    }
 }

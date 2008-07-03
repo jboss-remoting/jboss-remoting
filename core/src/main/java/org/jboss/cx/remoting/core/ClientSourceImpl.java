@@ -22,36 +22,31 @@
 
 package org.jboss.cx.remoting.core;
 
-import org.jboss.cx.remoting.ClientContext;
-import org.jboss.cx.remoting.ServiceContext;
+import org.jboss.cx.remoting.ClientSource;
+import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.spi.SpiUtils;
-import org.jboss.cx.remoting.util.CollectionUtil;
-import java.util.concurrent.ConcurrentMap;
+import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.Set;
-import java.util.HashSet;
 
 /**
  *
  */
-public final class ClientContextImpl extends AbstractContextImpl<ClientContext> implements ClientContext {
+public final class ClientSourceImpl<I, O> extends AbstractCloseable<ClientSource<I, O>> implements ClientSource<I, O> {
 
-    private final ServiceContextImpl serviceContext;
+    private final RemoteServiceEndpointLocalImpl<I, O> serviceEndpoint;
 
-    ClientContextImpl(final Executor executor) {
+    ClientSourceImpl(final RemoteServiceEndpointLocalImpl<I, O> serviceEndpoint, final Executor executor) {
         super(executor);
-        serviceContext = null;
+        this.serviceEndpoint = serviceEndpoint;
     }
 
-    ClientContextImpl(final ServiceContextImpl serviceContext) {
-        super(serviceContext.getExecutor());
-        this.serviceContext = serviceContext;
-    }
-
-    public ServiceContext getServiceContext() {
-        return serviceContext;
+    public Client<I, O> createContext() throws RemotingException {
+        if (! isOpen()) {
+            throw new RemotingException("Client source is not open");
+        }
+        final RemoteClientEndpoint<I,O> clientEndpoint = serviceEndpoint.openClient();
+        final Client<I, O> client = clientEndpoint.getClient();
+        clientEndpoint.autoClose();
+        return client;
     }
 }

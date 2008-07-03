@@ -38,7 +38,7 @@ public interface Endpoint {
      * @param requestListener the request listener
      * @return the client
      */
-    <I, O> RemoteClientEndpoint<I, O> createClient(RequestListener<I, O> requestListener);
+    <I, O> RemoteClientEndpoint<I, O> createClient(RequestListener<I, O> requestListener) throws RemotingException;
 
     /**
      * Create a client source that can be used to acquire clients associated with a request listener on this endpoint.
@@ -52,7 +52,7 @@ public interface Endpoint {
      * @param requestListener the request listener
      * @return the context source
      */
-    <I, O> RemoteServiceEndpoint<I, O> createService(RequestListener<I, O> requestListener);
+    <I, O> RemoteServiceEndpoint<I, O> createService(RequestListener<I, O> requestListener) throws RemotingException;
 
     /**
      * Add a listener that is notified when a session is created.

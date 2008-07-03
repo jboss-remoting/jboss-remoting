@@ -24,43 +24,78 @@ package org.jboss.cx.remoting.core;
 
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
-import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.CloseHandler;
+import org.jboss.xnio.log.Logger;
+import java.util.concurrent.Executor;
 
 /**
  *
  */
-public final class RemoteServiceEndpointLocalImpl<I, O> implements RemoteServiceEndpoint<I, O> {
+public final class RemoteServiceEndpointLocalImpl<I, O> extends AbstractAutoCloseable<RemoteServiceEndpoint<I, O>> implements RemoteServiceEndpoint<I, O> {
 
-    private final EndpointImpl endpointImpl;
     private final RequestListener<I, O> requestListener;
+    private final ServiceContextImpl serviceContext;
+    private final Executor executor;
 
-    public RemoteServiceEndpointLocalImpl(final EndpointImpl endpointImpl, final RequestListener<I, O> requestListener) {
-        this.endpointImpl = endpointImpl;
+    private static final Logger log = Logger.getLogger(RemoteServiceEndpointLocalImpl.class);
+
+    RemoteServiceEndpointLocalImpl(final Executor executor, final RequestListener<I, O> requestListener) {
+        super(executor);
         this.requestListener = requestListener;
+        this.executor = executor;
+        serviceContext = new ServiceContextImpl(executor);
     }
 
     public RemoteClientEndpoint<I, O> openClient() throws RemotingException {
-        return new RemoteClientEndpointLocalImpl<I, O>(endpointImpl, this, requestListener);
-    }
-
-    public Handle<RemoteServiceEndpoint<I, O>> getHandle() throws RemotingException {
-        return null;
+        if (isOpen()) {
+            final RemoteClientEndpointLocalImpl<I, O> clientEndpoint = new RemoteClientEndpointLocalImpl<I, O>(executor, this, requestListener);
+            clientEndpoint.open();
+            return clientEndpoint;
+        } else {
+            throw new RemotingException("RemotingServiceEndpoint is closed");
+        }
     }
 
     public ClientSource<I, O> getClientSource() throws RemotingException {
-        return null;
+        inc();
+        boolean ok = false;
+        try {
+            final ClientSourceImpl<I, O> clientSource = new ClientSourceImpl<I, O>(this, executor);
+            clientSource.addCloseHandler(new CloseHandler<ClientSource<I, O>>() {
+                public void handleClose(final ClientSource<I, O> closed) {
+                    safeDec();
+                }
+            });
+            ok = true;
+            return clientSource;
+        } finally {
+            if (! ok) {
+                safeDec();
+            }
+        }
     }
 
-    public void autoClose() {
+    void open() throws RemotingException {
+        try {
+            requestListener.handleServiceOpen(serviceContext);
+            addCloseHandler(new CloseHandler<RemoteServiceEndpoint<I, O>>() {
+                public void handleClose(final RemoteServiceEndpoint<I, O> closed) {
+                    try {
+                        requestListener.handleServiceClose(serviceContext);
+                    } catch (Throwable t) {
+                        log.error(t, "Unexpected exception in request listener client close handler method");
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            throw new RemotingException("Failed to open client context", t);
+        }
     }
 
-    public void close() throws RemotingException {
-    }
-
-    public void addCloseHandler(final CloseHandler<RemoteServiceEndpoint<I, O>> handler) {
+    ServiceContextImpl getServiceContext() {
+        return serviceContext;
     }
 }

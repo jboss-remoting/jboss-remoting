@@ -54,6 +54,12 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
         executor = new TaggingExecutor(clientContext.getExecutor());
     }
 
+    RequestContextImpl(final ClientContextImpl clientContext) {
+        this.clientContext = clientContext;
+        executor = new TaggingExecutor(clientContext.getExecutor());
+        replyHandler = null;
+    }
+
     public ClientContext getContext() {
         return clientContext;
     }
@@ -64,7 +70,9 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
 
     public void sendReply(final O reply) throws RemotingException, IllegalStateException {
         if (! closed.getAndSet(true)) {
-            replyHandler.handleReply(reply);
+            if (replyHandler != null) {
+                replyHandler.handleReply(reply);
+            }
         } else {
             throw new IllegalStateException("Reply already sent");
         }
@@ -72,7 +80,9 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
 
     public void sendFailure(final String msg, final Throwable cause) throws RemotingException, IllegalStateException {
         if (! closed.getAndSet(true)) {
-            replyHandler.handleException(msg, cause);
+            if (replyHandler != null) {
+                replyHandler.handleException(msg, cause);
+            }
         } else {
             throw new IllegalStateException("Reply already sent");
         }
@@ -80,7 +90,9 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
 
     public void sendCancelled() throws RemotingException, IllegalStateException {
         if (! closed.getAndSet(true)) {
-            replyHandler.handleCancellation();
+            if (replyHandler != null) {
+                replyHandler.handleCancellation();
+            }
         } else {
             throw new IllegalStateException("Reply already sent");
         }
@@ -103,17 +115,23 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
         executor.execute(command);
     }
 
-    protected void cancel() {
+    protected void cancel(final boolean mayInterrupt) {
         if (! cancelled.getAndSet(true)) {
             synchronized (cancelLock) {
                 if (cancelHandlers != null) {
-                    for (RequestCancelHandler<O> handler : cancelHandlers) {
-                        SpiUtils.safeNotifyCancellation(handler, this, false);
+                    for (final RequestCancelHandler<O> handler : cancelHandlers) {
+                        executor.execute(new Runnable() {
+                            public void run() {
+                                SpiUtils.safeNotifyCancellation(handler, RequestContextImpl.this, mayInterrupt);
+                            }
+                        });
                     }
                     cancelHandlers = null;
                 }
             }
-            executor.interruptAll();
+            if (mayInterrupt) {
+                executor.interruptAll();
+            }
         }
     }
 }
