@@ -19,6 +19,7 @@ public final class Remoting {
             endpointImpl.create();
             try {
                 endpointImpl.start();
+                ok = true;
                 return endpointImpl;
             } finally {
                 if (! ok) {

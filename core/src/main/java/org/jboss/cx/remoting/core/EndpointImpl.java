@@ -88,7 +88,7 @@ public class EndpointImpl implements Endpoint {
     public void start() {
         // todo security check
         if (executor == null) {
-            executorService = Executors.newCachedThreadPool(new NamingThreadFactory(Executors.defaultThreadFactory(), "Remoting endpoint %s"));
+            executor = executorService = Executors.newCachedThreadPool(new NamingThreadFactory(Executors.defaultThreadFactory(), "Remoting endpoint %s"));
             setExecutor(executorService);
         }
         state.requireTransition(State.INITIAL, State.UP);
@@ -99,6 +99,7 @@ public class EndpointImpl implements Endpoint {
         if (executorService != null) {
             executorService.shutdown();
             executorService = null;
+            executor = null;
         }
         // todo
     }

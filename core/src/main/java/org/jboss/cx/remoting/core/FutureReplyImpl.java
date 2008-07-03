@@ -43,7 +43,7 @@ public final class FutureReplyImpl<O> implements FutureReply<O> {
     private final ReplyHandler<O> replyHandler = new Handler();
     private final Object lock = new Object();
     // @protectedby lock
-    private State state = State.WAITING;
+    private State state = State.NEW;
     // @protectedby lock
     private RemoteRequestContext remoteRequestContext;
     // @protectedby lock

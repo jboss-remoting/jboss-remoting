@@ -42,6 +42,9 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
     private Set<CloseHandler<T>> closeHandlers;
 
     protected AbstractCloseable(final Executor executor) {
+        if (executor == null) {
+            throw new NullPointerException("executor is null");
+        }
         this.executor = executor;
     }
 
