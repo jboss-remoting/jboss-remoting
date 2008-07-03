@@ -305,6 +305,7 @@ public final class FutureReplyImpl<O> implements FutureReply<O> {
                     state = State.DONE;
                     result = reply;
                     runCompletionHandlers();
+                    lock.notifyAll();
                 }
             }
         }
@@ -330,6 +331,7 @@ public final class FutureReplyImpl<O> implements FutureReply<O> {
                     msg = exMsg;
                     cause = exCause;
                     runCompletionHandlers();
+                    lock.notifyAll();
                 }
             }
         }
@@ -353,6 +355,7 @@ public final class FutureReplyImpl<O> implements FutureReply<O> {
                 if (state == State.WAITING) {
                     state = State.CANCELLED;
                     runCompletionHandlers();
+                    lock.notifyAll();
                 }
             }
         }
