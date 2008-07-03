@@ -26,6 +26,8 @@ import org.jboss.cx.remoting.Closeable;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.spi.SpiUtils;
+import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -35,6 +37,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  */
 public abstract class AbstractCloseable<T> implements Closeable<T> {
+
+    private static final Logger log = Logger.getLogger(AbstractCloseable.class);
 
     protected final Executor executor;
     private final Object closeLock = new Object();
@@ -81,5 +85,16 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
 
     protected Executor getExecutor() {
         return executor;
+    }
+
+    protected void finalize() throws Throwable {
+        try {
+            super.finalize();
+        } finally {
+            if (isOpen()) {
+                log.warn("Leaked a %s instance!", getClass().getName());
+                IoUtils.safeClose(this);
+            }
+        }
     }
 }

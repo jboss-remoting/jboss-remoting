@@ -38,7 +38,7 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
     private final AtomicInteger refcount = new AtomicInteger(1);
     private final Executor executor;
 
-    private static Logger log = Logger.getLogger(AbstractAutoCloseable.class);
+    private static final Logger log = Logger.getLogger(AbstractAutoCloseable.class);
 
     protected AbstractAutoCloseable(final Executor executor) {
         super(executor);

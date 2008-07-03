@@ -81,10 +81,6 @@ public class EndpointImpl implements Endpoint {
 
     // Lifecycle
 
-    public void create() {
-        // todo security check
-    }
-
     public void start() {
         // todo security check
         if (executor == null) {
@@ -102,10 +98,6 @@ public class EndpointImpl implements Endpoint {
             executor = null;
         }
         // todo
-    }
-
-    public void destroy() {
-        executor = null;
     }
 
     // Endpoint implementation
