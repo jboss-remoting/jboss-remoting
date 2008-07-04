@@ -32,6 +32,7 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.test.support.LoggingHelper;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.xnio.IoUtils;
 
@@ -39,6 +40,10 @@ import org.jboss.xnio.IoUtils;
  *
  */
 public final class EndpointTestCase extends TestCase {
+    static {
+        LoggingHelper.init();
+    }
+
     private static void safeStop(EndpointImpl endpoint) {
         try {
             endpoint.stop();

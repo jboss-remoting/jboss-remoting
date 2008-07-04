@@ -28,11 +28,16 @@ import java.util.Iterator;
 import java.util.Arrays;
 import java.util.Vector;
 import java.io.EOFException;
+import org.jboss.cx.remoting.test.support.LoggingHelper;
 
 /**
  *
  */
 public final class StreamsTestCase extends TestCase {
+    static {
+        LoggingHelper.init();
+    }
+
     public void testCollectionObjectSink() throws Throwable {
         final ArrayList<String> strings = new ArrayList<String>();
         final ObjectSink<String> sink = Streams.getCollectionObjectSink(strings);

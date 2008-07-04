@@ -24,6 +24,7 @@ package org.jboss.cx.remoting.stream;
 
 import junit.framework.TestCase;
 import org.jboss.cx.remoting.test.support.TestByteBufferAllocator;
+import org.jboss.cx.remoting.test.support.LoggingHelper;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,10 @@ import java.util.List;
  *
  */
 public final class ByteBufferOutputStreamTestCase extends TestCase {
+    static {
+        LoggingHelper.init();
+    }
+
     public void testBasic() throws Throwable {
         final TestByteBufferAllocator allocator = new TestByteBufferAllocator(4);
         final List<ByteBuffer> list = new ArrayList<ByteBuffer>();

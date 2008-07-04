@@ -24,6 +24,7 @@ package org.jboss.cx.remoting.stream;
 
 import junit.framework.TestCase;
 import org.jboss.cx.remoting.test.support.TestCharBufferAllocator;
+import org.jboss.cx.remoting.test.support.LoggingHelper;
 import java.util.Arrays;
 import java.nio.CharBuffer;
 
@@ -31,6 +32,10 @@ import java.nio.CharBuffer;
  *
  */
 public final class CharBufferReaderTestCase extends TestCase {
+    static {
+        LoggingHelper.init();
+    }
+
     public void testBasic() throws Throwable {
         final TestCharBufferAllocator allocator = new TestCharBufferAllocator(10);
         final ObjectSource<CharBuffer> source = Streams.getIteratorObjectSource(Arrays.asList(

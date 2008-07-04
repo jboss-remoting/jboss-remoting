@@ -26,11 +26,16 @@ import junit.framework.TestCase;
 import java.util.Arrays;
 import java.nio.ByteBuffer;
 import org.jboss.cx.remoting.test.support.TestByteBufferAllocator;
+import org.jboss.cx.remoting.test.support.LoggingHelper;
 
 /**
  *
  */
 public final class ByteBufferInputStreamTestCase extends TestCase {
+    static {
+        LoggingHelper.init();
+    }
+
     public void testBasic() throws Throwable {
         final TestByteBufferAllocator allocator = new TestByteBufferAllocator(3);
         final ByteBufferInputStream stream = new ByteBufferInputStream(Streams.<ByteBuffer>getIteratorObjectSource(Arrays.<ByteBuffer>asList(

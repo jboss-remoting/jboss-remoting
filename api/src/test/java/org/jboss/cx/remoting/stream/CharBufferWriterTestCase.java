@@ -27,11 +27,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.nio.CharBuffer;
 import org.jboss.cx.remoting.test.support.TestCharBufferAllocator;
+import org.jboss.cx.remoting.test.support.LoggingHelper;
 
 /**
  *
  */
 public final class CharBufferWriterTestCase extends TestCase {
+    static {
+        LoggingHelper.init();
+    }
+
     public void testBasic() throws Throwable {
         final TestCharBufferAllocator allocator = new TestCharBufferAllocator(7);
         final List<CharBuffer> list = new ArrayList<CharBuffer>();
