@@ -25,6 +25,7 @@ package org.jboss.cx.remoting.core;
 import junit.framework.TestCase;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.cx.remoting.AbstractRequestListener;
 import org.jboss.cx.remoting.RequestContext;
@@ -65,7 +66,7 @@ public final class EndpointTestCase extends TestCase {
         }
     }
 
-    public void testLocalClient() throws Throwable {
+    public void testLocalClientInvoke() throws Throwable {
         final AtomicBoolean clientEndpointClosed = new AtomicBoolean(false);
         final AtomicBoolean clientClosed = new AtomicBoolean(false);
         final EndpointImpl endpoint = new EndpointImpl();
@@ -115,6 +116,67 @@ public final class EndpointTestCase extends TestCase {
             } finally {
                 safeStop(endpoint);
             }
+            executorService.shutdown();
+            executorService.awaitTermination(1L, TimeUnit.SECONDS);
+            assertTrue(clientEndpointClosed.get());
+            assertTrue(clientClosed.get());
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    public void testLocalClientSend() throws Throwable {
+        final AtomicBoolean clientEndpointClosed = new AtomicBoolean(false);
+        final AtomicBoolean clientClosed = new AtomicBoolean(false);
+        final EndpointImpl endpoint = new EndpointImpl();
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final Object requestObj = new Object();
+        final Object replyObj = new Object();
+        try {
+            endpoint.setExecutor(executorService);
+            endpoint.start();
+            try {
+                final RemoteClientEndpoint<Object,Object> clientEndpoint = endpoint.createClient(new AbstractRequestListener<Object, Object>() {
+                    public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
+                        assertEquals(request, requestObj);
+                        try {
+                            context.sendReply(replyObj);
+                        } catch (RemotingException e) {
+                            try {
+                                context.sendFailure(e.getMessage(), e);
+                            } catch (RemotingException e1) {
+                                fail("double fault");
+                            }
+                        }
+                    }
+                });
+                try {
+                    clientEndpoint.addCloseHandler(new CloseHandler<RemoteClientEndpoint<Object, Object>>() {
+                        public void handleClose(final RemoteClientEndpoint<Object, Object> closed) {
+                            clientEndpointClosed.set(true);
+                        }
+                    });
+                    final Client<Object,Object> client = clientEndpoint.getClient();
+                    try {
+                        client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
+                            public void handleClose(final Client<Object, Object> closed) {
+                                clientClosed.set(true);
+                            }
+                        });
+                        assertEquals(replyObj, client.send(requestObj).get());
+                        clientEndpoint.autoClose();
+                        client.close();
+                    } finally {
+                        IoUtils.safeClose(client);
+                    }
+                } finally {
+                    IoUtils.safeClose(clientEndpoint);
+                }
+            } finally {
+                safeStop(endpoint);
+            }
+            executorService.shutdown();
+            executorService.awaitTermination(1L, TimeUnit.SECONDS);
             assertTrue(clientEndpointClosed.get());
             assertTrue(clientClosed.get());
         } finally {
