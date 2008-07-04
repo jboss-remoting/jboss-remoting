@@ -99,6 +99,7 @@ public final class EndpointTestCase extends TestCase {
                             }
                         });
                         assertEquals(replyObj, client.invoke(requestObj));
+                        clientEndpoint.autoClose();
                         client.close();
                     } finally {
                         IoUtils.safeClose(client);
