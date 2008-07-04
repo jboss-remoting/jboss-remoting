@@ -7,6 +7,18 @@
     <!-- LIBRARIES - Keep in alpha order by target name -->
     <!-- ============================================== -->
 
+    <!-- External library: apiviz -->
+
+    <target name="lib.apiviz-check">
+        <available property="lib.apiviz.exists" file="${lib.apiviz.local}"/>
+    </target>
+
+    <target name="lib.apiviz" depends="lib.apiviz-check" unless="lib.apiviz.exists">
+        <mkdir dir="${local.repository}/${lib.apiviz.dir}"/>
+        <get src="${lib.apiviz.remote}" dest="${lib.apiviz.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.apiviz.license}.txt" dest="${lib.apiviz.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
     <!-- External library: JAXB API -->
 
     <target name="lib.jaxb-api-check">
@@ -1136,10 +1148,11 @@
     <!-- JAVADOCS                                       -->
     <!-- ============================================== -->
 
-    <target name="api-javadoc" depends="api,core,standalone,util">
+    <target name="api-javadoc" depends="api,core,standalone,util,lib.apiviz">
         <delete dir="api/target/main/docs"/>
         <mkdir dir="api/target/main/docs"/>
         <javadoc destdir="api/target/main/docs" author="false" version="false" use="false" windowtitle="JBoss Remoting API">
+            <doclet name="net.gleamynode.apiviz.APIviz" path="${lib.apiviz.local}"/>
             <packageset dir="api/src/main/java"/>
             <packageset dir="util/src/main/java"/>
             <packageset dir="standalone/src/main/java"/>
