@@ -1,14 +1,9 @@
 
-// Permissions to grant to modules
+// Permissions for the core tests
 
-grant codeBase "file:${build.home}/api/target/main/classes/-"
+grant codeBase "file:${build.home}/core/target/test/classes/-"
 {
-};
-
-// Permissions to run the api test suite
-
-grant codeBase "file:${build.home}/api/target/main/classes/-"
-{
+    permission java.lang.RuntimePermission "modifyThread"; // for executor control
 };
 
 // Support classes

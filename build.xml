@@ -373,6 +373,81 @@
         <touch file="core/target/main/.lastcompile" verbose="false"/>
     </target>
 
+    <target name="core.test.compile.depcheck">
+        <mkdir dir="core/target/test"/>
+        <uptodate property="core.compile.uptodate" targetfile="core/target/test/.lastcompile">
+            <srcfiles dir="core/src/test/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="core.test.compile" depends="lib.junit,core.compile,core.test.compile.depcheck" unless="core.test.compile.uptodate">
+        <mkdir dir="core/target/test/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="core/src/test/java"
+                destdir="core/target/test/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="core.classpath"/>
+                <path refid="util.classpath"/>
+                <path refid="testing-support.classpath"/>
+                <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
+            </classpath>
+        </javac>
+        <touch file="core/target/test/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="core.test.pseudotarget">
+        <echo message="============================================="/>
+        <echo message="${message}"/>
+        <echo message="============================================="/>
+        <mkdir dir="core/target/test-results"/>
+        <junit printsummary="true" fork="yes" includeantruntime="true">
+            <sysproperty key="build.home" value="${basedir}"/>
+            <sysproperty key="ant.library.dir" value="${ant.home}/lib"/>
+            <sysproperty key="lib.junit.local" value="${lib.junit.local}"/>
+            <sysproperty key="lib.xnio-api.local" value="${lib.xnio-api.local}"/>
+            <jvmarg line="${test.jvmargs}"/>
+            <formatter type="plain" extension="${extension}"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="core.classpath"/>
+                <path refid="testing-support.classpath"/>
+                <path refid="util.classpath"/>
+                <pathelement location="core/target/test/classes"/>
+                <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
+            </classpath>
+            <batchtest fork="yes" todir="core/target/test-results"
+                       haltonfailure="no">
+               <fileset dir="core/target/test/classes">
+                   <include name="**/*TestCase.class"/>
+               </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="core.test" depends="api,core,testing-support,util,core.test.compile">
+        <antcall inheritall="true" inheritrefs="true" target="core.test.pseudotarget">
+            <param name="extension" value=".txt"/>
+            <param name="message" value="Running with no security manager"/>
+            <param name="test.jvmargs" value="-Ddummy=dummy"/>
+        </antcall>
+        <antcall inheritall="true" inheritrefs="true" target="core.test.pseudotarget">
+            <param name="extension" value="-security.txt"/>
+            <param name="message" value="Running with security manager"/>
+            <param name="test.jvmargs" value="-Djava.security.manager=org.jboss.cx.remoting.test.support.LoggingSecurityManager -Djava.security.policy=${basedir}/testing-support/src/main/resources/testing.policy"/>
+        </antcall>
+    </target>
+
     <target name="core.clean">
         <delete dir="core/target"/>
     </target>
@@ -1108,6 +1183,6 @@
 
     <target name="clean" description="Clean out all build files" depends="clean-core,clean-http"/>
 
-    <target name="test" description="Run all tests" depends="api.test"/>
+    <target name="test" description="Run all tests" depends="api.test,core.test"/>
 
 </project>
