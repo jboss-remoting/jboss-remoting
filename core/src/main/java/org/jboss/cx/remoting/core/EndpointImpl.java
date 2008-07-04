@@ -10,7 +10,6 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.core.util.OrderedExecutorFactory;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
-import org.jboss.cx.remoting.util.AtomicStateMachine;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.util.NamingThreadFactory;
 import org.jboss.cx.remoting.version.Version;
@@ -26,19 +25,7 @@ public class EndpointImpl implements Endpoint {
         Logger.getLogger("org.jboss.cx.remoting").info("JBoss Remoting version %s", Version.VERSION);
     }
 
-    private enum State implements org.jboss.cx.remoting.util.State<State> {
-        INITIAL,
-        UP,
-        DOWN;
-
-        public boolean isReachable(final State dest) {
-            return compareTo(dest) < 0;
-        }
-    }
-
     private String name;
-
-    private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
 
     private OrderedExecutorFactory orderedExecutorFactory;
     private ExecutorService executorService;
@@ -83,7 +70,6 @@ public class EndpointImpl implements Endpoint {
             executor = executorService = Executors.newCachedThreadPool(new NamingThreadFactory(Executors.defaultThreadFactory(), "Remoting endpoint %s"));
             setExecutor(executorService);
         }
-        state.requireTransition(State.INITIAL, State.UP);
     }
 
     public void stop() {
