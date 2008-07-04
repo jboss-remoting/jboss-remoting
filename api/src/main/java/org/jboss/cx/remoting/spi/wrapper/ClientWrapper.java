@@ -35,7 +35,7 @@ public class ClientWrapper<I, O> implements Client<I, O> {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public void addCloseHandler(final CloseHandler<Client<I, O>> closeHandler) {
+    public void addCloseHandler(final CloseHandler<? super Client<I, O>> closeHandler) {
         delegate.addCloseHandler(new CloseHandler<Client<I, O>>() {
             public void handleClose(final Client<I, O> closed) {
                 closeHandler.handleClose(ClientWrapper.this);

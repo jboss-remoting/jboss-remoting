@@ -20,5 +20,5 @@ public interface Closeable<T> extends java.io.Closeable {
      *
      * @param handler the close handler
      */
-    void addCloseHandler(CloseHandler<T> handler);
+    void addCloseHandler(CloseHandler<? super T> handler);
 }

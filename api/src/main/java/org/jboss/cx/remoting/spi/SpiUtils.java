@@ -104,7 +104,7 @@ public final class SpiUtils {
      * @param handler the close handler
      * @param closed the object that was closed
      */
-    public static <T> void safeHandleClose(final CloseHandler<T> handler, final T closed) {
+    public static <T> void safeHandleClose(final CloseHandler<? super T> handler, final T closed) {
         try {
             handler.handleClose(closed);
         } catch (Throwable t) {

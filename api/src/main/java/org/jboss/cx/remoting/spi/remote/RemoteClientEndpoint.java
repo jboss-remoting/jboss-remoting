@@ -90,5 +90,5 @@ public interface RemoteClientEndpoint<I, O> extends Closeable<RemoteClientEndpoi
      *
      * @param handler the handler to be called
      */
-    void addCloseHandler(final CloseHandler<RemoteClientEndpoint<I, O>> handler);
+    void addCloseHandler(final CloseHandler<? super RemoteClientEndpoint<I, O>> handler);
 }

@@ -4,9 +4,13 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.Set;
+import java.io.Closeable;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.core.util.OrderedExecutorFactory;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
@@ -14,6 +18,7 @@ import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.util.NamingThreadFactory;
 import org.jboss.cx.remoting.version.Version;
 import org.jboss.xnio.log.Logger;
+import org.jboss.xnio.IoUtils;
 
 /**
  *
@@ -30,6 +35,7 @@ public class EndpointImpl implements Endpoint {
     private OrderedExecutorFactory orderedExecutorFactory;
     private ExecutorService executorService;
 
+    private final Set<Closeable> resources = CollectionUtil.synchronizedWeakHashSet();
     private final ConcurrentMap<Object, Object> endpointMap = CollectionUtil.concurrentMap();
 
     public EndpointImpl() {
@@ -43,7 +49,7 @@ public class EndpointImpl implements Endpoint {
         return executor;
     }
 
-    public Executor getOrderedExecutor() {
+    Executor getOrderedExecutor() {
         return orderedExecutorFactory.getOrderedExecutor();
     }
 
@@ -74,12 +80,36 @@ public class EndpointImpl implements Endpoint {
 
     public void stop() {
         // todo security check
-        if (executorService != null) {
-            executorService.shutdown();
-            executorService = null;
-            executor = null;
+        boolean intr = false;
+        try {
+            for (Closeable resource : resources) {
+                IoUtils.safeClose(resource);
+            }
+            synchronized (resources) {
+                while (! resources.isEmpty()) {
+                    try {
+                        resources.wait();
+                    } catch (InterruptedException e) {
+                        intr = true;
+                    }
+                }
+            }
+            if (executorService != null) {
+                executorService.shutdown();
+                boolean done = false;
+                do try {
+                    done = executorService.awaitTermination(30L, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    intr = true;
+                } while (! done);
+                executorService = null;
+                executor = null;
+            }
+        } finally {
+            if (intr) {
+                Thread.currentThread().interrupt();
+            }
         }
-        // todo
     }
 
     // Endpoint implementation
@@ -90,13 +120,24 @@ public class EndpointImpl implements Endpoint {
 
     public <I, O> RemoteClientEndpoint<I, O> createClient(final RequestListener<I, O> requestListener) throws RemotingException {
         final RemoteClientEndpointLocalImpl<I, O> clientEndpoint = new RemoteClientEndpointLocalImpl<I, O>(executor, requestListener);
+        clientEndpoint.addCloseHandler(remover);
         clientEndpoint.open();
         return clientEndpoint;
     }
 
     public <I, O> RemoteServiceEndpoint<I, O> createService(final RequestListener<I, O> requestListener) throws RemotingException {
         final RemoteServiceEndpointLocalImpl<I, O> serviceEndpoint = new RemoteServiceEndpointLocalImpl<I, O>(executor, requestListener);
+        serviceEndpoint.addCloseHandler(remover);
         serviceEndpoint.open();
         return serviceEndpoint;
+    }
+
+    private final ResourceRemover remover = new ResourceRemover();
+
+    private final class ResourceRemover implements CloseHandler<Closeable> {
+        public void handleClose(final Closeable closed) {
+            resources.remove(closed);
+            resources.notifyAll();
+        }
     }
 }

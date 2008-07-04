@@ -61,6 +61,7 @@ public final class EndpointTestCase extends TestCase {
             endpoint.start();
             endpoint.stop();
             executorService.shutdown();
+            assertTrue(executorService.awaitTermination(1L, TimeUnit.SECONDS));
         } finally {
             executorService.shutdownNow();
         }
@@ -117,7 +118,7 @@ public final class EndpointTestCase extends TestCase {
                 safeStop(endpoint);
             }
             executorService.shutdown();
-            executorService.awaitTermination(1L, TimeUnit.SECONDS);
+            assertTrue(executorService.awaitTermination(1L, TimeUnit.SECONDS));
             assertTrue(clientEndpointClosed.get());
             assertTrue(clientClosed.get());
         } finally {
@@ -176,7 +177,7 @@ public final class EndpointTestCase extends TestCase {
                 safeStop(endpoint);
             }
             executorService.shutdown();
-            executorService.awaitTermination(1L, TimeUnit.SECONDS);
+            assertTrue(executorService.awaitTermination(1L, TimeUnit.SECONDS));
             assertTrue(clientEndpointClosed.get());
             assertTrue(clientClosed.get());
         } finally {

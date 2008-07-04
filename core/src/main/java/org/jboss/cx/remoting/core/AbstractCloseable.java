@@ -43,7 +43,7 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
     protected final Executor executor;
     private final Object closeLock = new Object();
     private final AtomicBoolean closed = new AtomicBoolean();
-    private Set<CloseHandler<T>> closeHandlers;
+    private Set<CloseHandler<? super T>> closeHandlers;
 
     protected AbstractCloseable(final Executor executor) {
         if (executor == null) {
@@ -60,7 +60,7 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
         if (! closed.getAndSet(true)) {
             synchronized (closeLock) {
                 if (closeHandlers != null) {
-                    for (final CloseHandler<T> handler : closeHandlers) {
+                    for (final CloseHandler<? super T> handler : closeHandlers) {
                         executor.execute(new Runnable() {
                             @SuppressWarnings({ "unchecked" })
                             public void run() {
@@ -74,10 +74,10 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
         }
     }
 
-    public void addCloseHandler(final CloseHandler<T> handler) {
+    public void addCloseHandler(final CloseHandler<? super T> handler) {
         synchronized (closeLock) {
             if (closeHandlers == null) {
-                closeHandlers = new HashSet<CloseHandler<T>>();
+                closeHandlers = new HashSet<CloseHandler<? super T>>();
             }
             closeHandlers.add(handler);
         }
