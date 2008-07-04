@@ -1,14 +1,11 @@
 package org.jboss.cx.remoting.core;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RequestListener;
-import org.jboss.cx.remoting.SessionListener;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.core.util.OrderedExecutorFactory;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
@@ -42,7 +39,6 @@ public class EndpointImpl implements Endpoint {
     private String name;
 
     private final AtomicStateMachine<State> state = AtomicStateMachine.start(State.INITIAL);
-    private final Set<SessionListener> sessionListeners = CollectionUtil.synchronizedSet(new LinkedHashSet<SessionListener>());
 
     private OrderedExecutorFactory orderedExecutorFactory;
     private ExecutorService executorService;
@@ -116,15 +112,5 @@ public class EndpointImpl implements Endpoint {
         final RemoteServiceEndpointLocalImpl<I, O> serviceEndpoint = new RemoteServiceEndpointLocalImpl<I, O>(executor, requestListener);
         serviceEndpoint.open();
         return serviceEndpoint;
-    }
-
-    public void addSessionListener(final SessionListener sessionListener) {
-        // TODO security check
-        sessionListeners.add(sessionListener);
-    }
-
-    public void removeSessionListener(final SessionListener sessionListener) {
-        // TODO security check
-        sessionListeners.remove(sessionListener);
     }
 }
