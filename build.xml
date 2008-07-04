@@ -1152,7 +1152,7 @@
         <delete dir="api/target/main/docs"/>
         <mkdir dir="api/target/main/docs"/>
         <javadoc destdir="api/target/main/docs" author="false" version="false" use="false" windowtitle="JBoss Remoting API">
-            <doclet name="net.gleamynode.apiviz.APIviz" path="${lib.apiviz.local}"/>
+            <doclet name="${lib.apiviz.doclet}" path="${lib.apiviz.local}"/>
             <packageset dir="api/src/main/java"/>
             <packageset dir="util/src/main/java"/>
             <packageset dir="standalone/src/main/java"/>
