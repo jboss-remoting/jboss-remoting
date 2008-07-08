@@ -10,7 +10,7 @@ import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.channels.StreamSourceChannel;
 import org.jboss.xnio.channels.StreamSinkChannel;
 import org.jboss.xnio.IoHandler;
-import org.jboss.xnio.Client;
+import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.IoFuture;
@@ -36,7 +36,7 @@ public final class OutputStreamStreamSerailizerFactory implements StreamSerializ
         });
     }
 
-    public Object getRemoteSide(final Client<StreamChannel> remoteClient) throws IOException {
+    public Object getRemoteSide(final ChannelSource<StreamChannel> remoteClient) throws IOException {
         final RemoteHandler handler = new RemoteHandler(new BufferAllocator<ByteBuffer>() {
             public ByteBuffer allocate() {
                 return ByteBuffer.allocate(512);
@@ -45,7 +45,7 @@ public final class OutputStreamStreamSerailizerFactory implements StreamSerializ
             public void free(final ByteBuffer byteBuffer) {
             }
         });
-        final IoFuture<StreamChannel> futureChannel = remoteClient.connect(handler);
+        final IoFuture<StreamChannel> futureChannel = remoteClient.open(handler);
         return new RemoteOutputStream(handler, futureChannel);
     }
 

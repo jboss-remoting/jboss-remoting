@@ -12,7 +12,7 @@ import org.jboss.xnio.channels.StreamSinkChannel;
 import org.jboss.xnio.channels.CommonOptions;
 import org.jboss.xnio.channels.StreamSourceChannel;
 import org.jboss.xnio.IoHandler;
-import org.jboss.xnio.Client;
+import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.xnio.IoFuture;
@@ -43,7 +43,7 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
         return new LocalHandler((InputStream) localSide, allocator);
     }
 
-    public Object getRemoteSide(final Client<StreamChannel> remoteClient) throws IOException {
+    public Object getRemoteSide(final ChannelSource<StreamChannel> remoteClient) throws IOException {
 //        return new RemoteInputStream(taskList, futureChannel);
         return null;
     }
