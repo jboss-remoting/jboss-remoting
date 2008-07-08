@@ -1,7 +1,7 @@
 package org.jboss.cx.remoting.spi.stream;
 
 /**
- *
+ * A class that can detect whether an object is streamable.
  */
 public interface StreamDetector {
     /**
