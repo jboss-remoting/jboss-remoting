@@ -23,6 +23,7 @@
 package org.jboss.cx.remoting.spi;
 
 import org.jboss.cx.remoting.spi.remote.ReplyHandler;
+import org.jboss.cx.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.CloseHandler;
@@ -124,6 +125,17 @@ public final class SpiUtils {
             handler.notifyComplete(futureReply);
         } catch (Throwable t) {
             log.error(t, "Request completion handler failed unexpectedly");
+        }
+    }
+
+    public static RemoteRequestContext getBlankRemoteRequestContext() {
+        return BLANK_REMOTE_REQUEST_CONTEXT;
+    }
+
+    private static final RemoteRequestContext BLANK_REMOTE_REQUEST_CONTEXT = new BlankRemoteRequestContext();
+
+    private static final class BlankRemoteRequestContext implements RemoteRequestContext {
+        public void cancel(final boolean mayInterrupt) {
         }
     }
 }

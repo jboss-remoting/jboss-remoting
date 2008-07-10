@@ -158,7 +158,7 @@ public class EndpointImpl implements Endpoint {
         boolean ok = false;
         final Handle<RemoteServiceEndpoint<I,O>> handle = endpoint.getHandle();
         try {
-            final ClientSourceImpl<I, O> client = new ClientSourceImpl<I, O>(endpoint, executor);
+            final ClientSourceImpl<I, O> client = new ClientSourceImpl<I, O>(endpoint, this);
             client.addCloseHandler(new CloseHandler<ClientSource<I, O>>() {
                 public void handleClose(final ClientSource<I, O> closed) {
                     IoUtils.safeClose(handle);

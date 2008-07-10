@@ -169,7 +169,7 @@ public final class LoggingSecurityManager extends SecurityManager {
         }
     }
 
-    /** @noinspection deprecation*/
+    @SuppressWarnings({"deprecation"})
     public void checkMulticast(final InetAddress maddr, final byte ttl) {
         try {
             super.checkMulticast(maddr, ttl);

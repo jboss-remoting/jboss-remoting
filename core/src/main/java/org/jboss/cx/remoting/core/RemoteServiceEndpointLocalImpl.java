@@ -24,6 +24,7 @@ package org.jboss.cx.remoting.core;
 
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
+import org.jboss.cx.remoting.spi.AbstractAutoCloseable;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;

@@ -26,6 +26,7 @@ import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.cx.remoting.spi.remote.ReplyHandler;
 import org.jboss.cx.remoting.spi.SpiUtils;
+import org.jboss.cx.remoting.spi.AbstractAutoCloseable;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.RemoteExecutionException;

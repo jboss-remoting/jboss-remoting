@@ -28,6 +28,7 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.AbstractCloseable;
 
 /**
  *
