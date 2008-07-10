@@ -11,9 +11,12 @@ import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
+import org.jboss.cx.remoting.Client;
+import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.core.util.OrderedExecutorFactory;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import org.jboss.cx.remoting.util.NamingThreadFactory;
 import org.jboss.cx.remoting.version.Version;
@@ -118,18 +121,56 @@ public class EndpointImpl implements Endpoint {
         return endpointMap;
     }
 
-    public <I, O> RemoteClientEndpoint<I, O> createClient(final RequestListener<I, O> requestListener) throws RemotingException {
+    public <I, O> RemoteClientEndpoint<I, O> createClientEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
         final RemoteClientEndpointLocalImpl<I, O> clientEndpoint = new RemoteClientEndpointLocalImpl<I, O>(executor, requestListener);
         clientEndpoint.addCloseHandler(remover);
         clientEndpoint.open();
         return clientEndpoint;
     }
 
-    public <I, O> RemoteServiceEndpoint<I, O> createService(final RequestListener<I, O> requestListener) throws RemotingException {
+    public <I, O> RemoteServiceEndpoint<I, O> createServiceEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
         final RemoteServiceEndpointLocalImpl<I, O> serviceEndpoint = new RemoteServiceEndpointLocalImpl<I, O>(executor, requestListener);
         serviceEndpoint.addCloseHandler(remover);
         serviceEndpoint.open();
         return serviceEndpoint;
+    }
+
+    public <I, O> Client<I, O> createClient(final RemoteClientEndpoint<I, O> endpoint) throws RemotingException {
+        boolean ok = false;
+        final Handle<RemoteClientEndpoint<I,O>> handle = endpoint.getHandle();
+        try {
+            final ClientImpl<I, O> client = new ClientImpl<I, O>(endpoint, executor);
+            client.addCloseHandler(new CloseHandler<Client<I, O>>() {
+                public void handleClose(final Client<I, O> closed) {
+                    IoUtils.safeClose(handle);
+                }
+            });
+            ok = true;
+            return client;
+        } finally {
+            if (! ok) {
+                IoUtils.safeClose(handle);
+            }
+        }
+    }
+
+    public <I, O> ClientSource<I, O> createClientSource(final RemoteServiceEndpoint<I, O> endpoint) throws RemotingException {
+        boolean ok = false;
+        final Handle<RemoteServiceEndpoint<I,O>> handle = endpoint.getHandle();
+        try {
+            final ClientSourceImpl<I, O> client = new ClientSourceImpl<I, O>(endpoint, executor);
+            client.addCloseHandler(new CloseHandler<ClientSource<I, O>>() {
+                public void handleClose(final ClientSource<I, O> closed) {
+                    IoUtils.safeClose(handle);
+                }
+            });
+            ok = true;
+            return client;
+        } finally {
+            if (! ok) {
+                IoUtils.safeClose(handle);
+            }
+        }
     }
 
     private final ResourceRemover remover = new ResourceRemover();

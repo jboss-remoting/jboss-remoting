@@ -44,7 +44,7 @@ public class ClientSourceWrapper<I, O> implements ClientSource<I, O> {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public Client<I, O> createContext() throws RemotingException {
-        return delegate.createContext();
+    public Client<I, O> createClient() throws RemotingException {
+        return delegate.createClient();
     }
 }

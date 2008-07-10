@@ -31,20 +31,20 @@ public final class Remoting {
     }
 
     public static <I, O> Client<I, O> createLocalClient(Endpoint endpoint, RequestListener<I, O> requestListener) throws RemotingException {
-        final RemoteClientEndpoint<I, O> clientEndpoint = endpoint.createClient(requestListener);
+        final RemoteClientEndpoint<I, O> clientEndpoint = endpoint.createClientEndpoint(requestListener);
         try {
-            return clientEndpoint.getClient();
+            return endpoint.createClient(clientEndpoint);
         } finally {
             clientEndpoint.autoClose();
         }
     }
 
     public static <I, O> ClientSource<I, O> createLocalClientSource(Endpoint endpoint, RequestListener<I, O> requestListener) throws RemotingException {
-        final RemoteServiceEndpoint<I, O> clientEndpoint = endpoint.createService(requestListener);
+        final RemoteServiceEndpoint<I, O> serviceEndpoint = endpoint.createServiceEndpoint(requestListener);
         try {
-            return clientEndpoint.getClientSource();
+            return endpoint.createClientSource(serviceEndpoint);
         } finally {
-            clientEndpoint.autoClose();
+            serviceEndpoint.autoClose();
         }
     }
 

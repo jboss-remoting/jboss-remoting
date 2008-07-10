@@ -18,5 +18,5 @@ public interface ClientSource<I, O> extends Closeable<ClientSource<I, O>> {
      *
      * @return the new context
      */
-    Client<I, O> createContext() throws RemotingException;
+    Client<I, O> createClient() throws RemotingException;
 }

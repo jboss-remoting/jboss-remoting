@@ -29,7 +29,9 @@ import org.jboss.cx.remoting.ClientSource;
 
 /**
  * A remote service endpoint, which can be passed to remote endpoints.  Remote systems can then use the service endpoint
- * to acquire client endpoints, or they may pass it on to other systems.
+ * to acquire client endpoints, or they may pass it on to other systems.  Acquiring a client endpoint using this method
+ * has the advantage that a round trip to the remote side is not necessary; the local side can spawn a client endpoint
+ * and simply notify the remote side of the change.
  */
 public interface RemoteServiceEndpoint<I, O> extends Closeable<RemoteServiceEndpoint<I, O>> {
 
@@ -51,13 +53,6 @@ public interface RemoteServiceEndpoint<I, O> extends Closeable<RemoteServiceEndp
      * @throws RemotingException if a handle could not be acquired
      */
     Handle<RemoteServiceEndpoint<I, O>> getHandle() throws RemotingException;
-
-    /**
-     * Get a local client source which can be used to access this service.
-     *
-     * @return the client source
-     */
-    ClientSource<I, O> getClientSource() throws RemotingException;
 
     /**
      * Automatically close this service endpoint when all handles and local client source instances

@@ -27,7 +27,6 @@ import org.jboss.cx.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.cx.remoting.spi.remote.ReplyHandler;
 import org.jboss.cx.remoting.spi.SpiUtils;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.CloseHandler;
@@ -91,25 +90,6 @@ public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoClose
                 context.cancel(mayInterrupt);
             }
         };
-    }
-
-    public Client<I, O> getClient() throws RemotingException {
-        inc();
-        boolean ok = false;
-        try {
-            final ClientImpl<I, O> client = new ClientImpl<I, O>(this, executor);
-            client.addCloseHandler(new CloseHandler<Client<I, O>>() {
-                public void handleClose(final Client<I, O> closed) {
-                    safeDec();
-                }
-            });
-            ok = true;
-            return client;
-        } finally {
-            if (! ok) {
-                safeDec();
-            }
-        }
     }
 
     void open() throws RemotingException {

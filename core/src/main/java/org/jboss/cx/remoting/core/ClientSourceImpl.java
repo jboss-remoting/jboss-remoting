@@ -25,27 +25,30 @@ package org.jboss.cx.remoting.core;
 import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
-import java.util.concurrent.Executor;
+import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
 
 /**
  *
  */
 public final class ClientSourceImpl<I, O> extends AbstractCloseable<ClientSource<I, O>> implements ClientSource<I, O> {
 
-    private final RemoteServiceEndpointLocalImpl<I, O> serviceEndpoint;
+    private final RemoteServiceEndpoint<I, O> serviceEndpoint;
+    private final Endpoint endpoint;
 
-    ClientSourceImpl(final RemoteServiceEndpointLocalImpl<I, O> serviceEndpoint, final Executor executor) {
-        super(executor);
+    ClientSourceImpl(final RemoteServiceEndpoint<I, O> serviceEndpoint, final EndpointImpl endpoint) {
+        super(endpoint.getExecutor());
         this.serviceEndpoint = serviceEndpoint;
+        this.endpoint = endpoint;
     }
 
-    public Client<I, O> createContext() throws RemotingException {
+    public Client<I, O> createClient() throws RemotingException {
         if (! isOpen()) {
             throw new RemotingException("Client source is not open");
         }
         final RemoteClientEndpoint<I,O> clientEndpoint = serviceEndpoint.openClient();
-        final Client<I, O> client = clientEndpoint.getClient();
+        final Client<I, O> client = endpoint.createClient(clientEndpoint);
         clientEndpoint.autoClose();
         return client;
     }

@@ -78,7 +78,7 @@ public final class EndpointTestCase extends TestCase {
             endpoint.setExecutor(executorService);
             endpoint.start();
             try {
-                final RemoteClientEndpoint<Object,Object> clientEndpoint = endpoint.createClient(new AbstractRequestListener<Object, Object>() {
+                final RemoteClientEndpoint<Object,Object> clientEndpoint = endpoint.createClientEndpoint(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         try {
@@ -98,7 +98,7 @@ public final class EndpointTestCase extends TestCase {
                             clientEndpointClosed.set(true);
                         }
                     });
-                    final Client<Object,Object> client = clientEndpoint.getClient();
+                    final Client<Object,Object> client = endpoint.createClient(clientEndpoint);
                     try {
                         client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
                             public void handleClose(final Client<Object, Object> closed) {
@@ -137,7 +137,7 @@ public final class EndpointTestCase extends TestCase {
             endpoint.setExecutor(executorService);
             endpoint.start();
             try {
-                final RemoteClientEndpoint<Object,Object> clientEndpoint = endpoint.createClient(new AbstractRequestListener<Object, Object>() {
+                final RemoteClientEndpoint<Object,Object> clientEndpoint = endpoint.createClientEndpoint(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         try {
@@ -157,7 +157,7 @@ public final class EndpointTestCase extends TestCase {
                             clientEndpointClosed.set(true);
                         }
                     });
-                    final Client<Object,Object> client = clientEndpoint.getClient();
+                    final Client<Object,Object> client = endpoint.createClient(clientEndpoint);
                     try {
                         client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
                             public void handleClose(final Client<Object, Object> closed) {

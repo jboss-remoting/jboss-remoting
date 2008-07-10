@@ -4,6 +4,8 @@ import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
+import org.jboss.cx.remoting.Client;
+import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
 
@@ -39,14 +41,28 @@ public class EndpointWrapper implements Endpoint {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> RemoteClientEndpoint<I, O> createClient(final RequestListener<I, O> requestListener) throws RemotingException {
-        return delegate.createClient(requestListener);
+    public <I, O> RemoteClientEndpoint<I, O> createClientEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
+        return delegate.createClientEndpoint(requestListener);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> RemoteServiceEndpoint<I, O> createService(final RequestListener<I, O> requestListener) throws RemotingException {
-        return delegate.createService(requestListener);
+    public <I, O> RemoteServiceEndpoint<I, O> createServiceEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
+        return delegate.createServiceEndpoint(requestListener);
+    }
+
+    /**
+     * {@inheritDoc}  This implementation calls the same method on the delegate object.
+     */
+    public <I, O> Client<I, O> createClient(final RemoteClientEndpoint<I, O> endpoint) throws RemotingException {
+        return delegate.createClient(endpoint);
+    }
+
+    /**
+     * {@inheritDoc}  This implementation calls the same method on the delegate object.
+     */
+    public <I, O> ClientSource<I, O> createClientSource(final RemoteServiceEndpoint<I, O> endpoint) throws RemotingException {
+        return delegate.createClientSource(endpoint);
     }
 }

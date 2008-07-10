@@ -65,14 +65,6 @@ public interface RemoteClientEndpoint<I, O> extends Closeable<RemoteClientEndpoi
     Handle<RemoteClientEndpoint<I, O>> getHandle() throws RemotingException;
 
     /**
-     * Get a local client which can be used to make invocations.
-     *
-     * @return the client
-     * @throws RemotingException if a client could not be acquired
-     */
-    Client<I, O> getClient() throws RemotingException;
-
-    /**
      * Automatically close this client endpoint when all handles and local client instances are closed.
      */
     void autoClose() throws RemotingException;
