@@ -49,7 +49,7 @@ public final class RemoteServiceEndpointLocalImpl<I, O> extends AbstractAutoClos
         serviceContext = new ServiceContextImpl(executor);
     }
 
-    public RemoteClientEndpoint<I, O> openClient() throws RemotingException {
+    public RemoteClientEndpoint<I, O> createClientEndpoint() throws RemotingException {
         if (isOpen()) {
             final RemoteClientEndpointLocalImpl<I, O> clientEndpoint = new RemoteClientEndpointLocalImpl<I, O>(executor, this, requestListener);
             clientEndpoint.open();

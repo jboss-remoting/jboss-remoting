@@ -41,7 +41,7 @@ public interface RemoteServiceEndpoint<I, O> extends Closeable<RemoteServiceEndp
      * @return a client endpoint
      * @throws RemotingException if a client could not be opened
      */
-    RemoteClientEndpoint<I, O> openClient() throws RemotingException;
+    RemoteClientEndpoint<I, O> createClientEndpoint() throws RemotingException;
 
     /**
      * Get a handle to this service endpoint.  The service endpoint will not auto-close as long as there is at least

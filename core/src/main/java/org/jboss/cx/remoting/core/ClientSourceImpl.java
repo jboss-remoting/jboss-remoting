@@ -48,7 +48,7 @@ public final class ClientSourceImpl<I, O> extends AbstractCloseable<ClientSource
         if (! isOpen()) {
             throw new RemotingException("Client source is not open");
         }
-        final RemoteClientEndpoint<I,O> clientEndpoint = serviceEndpoint.openClient();
+        final RemoteClientEndpoint<I,O> clientEndpoint = serviceEndpoint.createClientEndpoint();
         final Client<I, O> client = endpoint.createClient(clientEndpoint);
         clientEndpoint.autoClose();
         return client;
