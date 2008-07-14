@@ -24,6 +24,7 @@ package org.jboss.cx.remoting.spi;
 
 import org.jboss.cx.remoting.spi.remote.ReplyHandler;
 import org.jboss.cx.remoting.spi.remote.RemoteRequestContext;
+import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.CloseHandler;
@@ -133,6 +134,14 @@ public final class SpiUtils {
     }
 
     private static final RemoteRequestContext BLANK_REMOTE_REQUEST_CONTEXT = new BlankRemoteRequestContext();
+
+    public static void safeAutoClose(final RemoteClientEndpoint<?, ?> remoteClientEndpoint) {
+        try {
+            remoteClientEndpoint.autoClose();
+        } catch (Throwable t) {
+            log.error("Failed to set autoClose on %s: %s", remoteClientEndpoint, t);
+        }
+    }
 
     private static final class BlankRemoteRequestContext implements RemoteRequestContext {
         public void cancel(final boolean mayInterrupt) {
