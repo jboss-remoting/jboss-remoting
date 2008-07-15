@@ -11,19 +11,19 @@ import org.jboss.cx.remoting.spi.marshal.Unmarshaller;
 /**
  *
  */
-public class JBossSerializationMarshallerFactory implements MarshallerFactory<ByteBuffer> {
+public class JavaSerializationMarshallerFactory implements MarshallerFactory<ByteBuffer> {
 
     private final Executor executor;
 
-    public JBossSerializationMarshallerFactory(final Executor executor) {
+    public JavaSerializationMarshallerFactory(final Executor executor) {
         this.executor = executor;
     }
 
     public Marshaller<ByteBuffer> createMarshaller(final ObjectResolver resolver) throws IOException {
-        return new JBossSerializationMarhsaller(executor, resolver);
+        return new JavaSerializationMarhsaller(executor, resolver);
     }
 
     public Unmarshaller<ByteBuffer> createUnmarshaller(final ObjectResolver resolver, final ClassLoader classLoader) throws IOException {
-        return new JBossSerializationUnmarshaller(executor, resolver, classLoader);
+        return new JavaSerializationUnmarshaller(executor, resolver, classLoader);
     }
 }

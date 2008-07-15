@@ -22,24 +22,24 @@
 
 package org.jboss.cx.remoting.core.marshal;
 
-import org.jboss.cx.remoting.spi.marshal.ObjectResolver;
-import org.jboss.serial.io.JBossObjectInputStream;
-import java.io.IOException;
-import java.io.ObjectStreamClass;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
-import java.lang.reflect.Proxy;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectStreamClass;
+import java.util.concurrent.Executor;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.concurrent.Executor;
+import java.lang.reflect.Proxy;
+import org.jboss.cx.remoting.spi.marshal.ObjectResolver;
 
 /**
  *
  */
-public final class JBossSerializationUnmarshaller extends AbstractSerializationUnmarshaller {
+public final class JavaSerializationUnmarshaller extends AbstractSerializationUnmarshaller {
+
     private final ClassLoader classLoader;
 
-    public JBossSerializationUnmarshaller(final Executor executor, final ObjectResolver resolver, final ClassLoader classLoader) throws IOException {
+    public JavaSerializationUnmarshaller(final Executor executor, final ObjectResolver resolver, final ClassLoader classLoader) throws IOException {
         super(executor, resolver);
         this.classLoader = classLoader;
     }
@@ -48,12 +48,12 @@ public final class JBossSerializationUnmarshaller extends AbstractSerializationU
         return new OurObjectInputStream(inputStream, resolver, classLoader);
     }
 
-    private static final class OurObjectInputStream extends JBossObjectInputStream {
+    private static final class OurObjectInputStream extends ObjectInputStream {
         private final ClassLoader classLoader;
         private final ObjectResolver resolver;
 
         private OurObjectInputStream(final InputStream inputStream, final ObjectResolver resolver, final ClassLoader classLoader) throws IOException {
-            super(inputStream, classLoader);
+            super(inputStream);
             this.classLoader = classLoader;
             this.resolver = resolver;
         }

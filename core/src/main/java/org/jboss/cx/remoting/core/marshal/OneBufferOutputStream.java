@@ -55,8 +55,8 @@ public final class OneBufferOutputStream extends OutputStream {
                 final ByteBuffer buffer = this.buffer;
                 if (buffer != null) {
                     if (! buffer.hasRemaining()) {
-                        lock.notify();
                         this.buffer = null;
+                        lock.notify();
                     } else {
                         return buffer;
                     }

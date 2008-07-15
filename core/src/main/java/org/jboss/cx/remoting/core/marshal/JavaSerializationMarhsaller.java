@@ -5,25 +5,25 @@ import java.io.OutputStream;
 import java.io.ObjectOutputStream;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.spi.marshal.ObjectResolver;
-import org.jboss.serial.io.JBossObjectOutputStream;
+import org.jboss.cx.remoting.spi.marshal.IdentityResolver;
 import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
-public class JBossSerializationMarhsaller extends AbstractSerializationMarshaller {
+public class JavaSerializationMarhsaller extends AbstractSerializationMarshaller {
 
     private static final Logger log = Logger.getLogger(JBossSerializationMarhsaller.class);
 
-    public JBossSerializationMarhsaller(final Executor executor, final ObjectResolver resolver) throws IOException {
+    public JavaSerializationMarhsaller(final Executor executor, final ObjectResolver resolver) throws IOException {
         super(executor, resolver);
     }
 
     protected ObjectOutputStream getObjectOutputStream() throws IOException {
-        return new OurObjectOutputStream(outputStream, resolver);
+        return new OurObjectOutputStream(outputStream, resolver == null ? IdentityResolver.getInstance() : resolver);
     }
 
-    private static final class OurObjectOutputStream extends JBossObjectOutputStream {
+    private static final class OurObjectOutputStream extends ObjectOutputStream {
         private final ObjectResolver resolver;
 
         private OurObjectOutputStream(final OutputStream outputStream, final ObjectResolver resolver) throws IOException {
@@ -34,6 +34,10 @@ public class JBossSerializationMarhsaller extends AbstractSerializationMarshalle
 
         protected Object replaceObject(final Object obj) throws IOException {
             return resolver.writeReplace(obj);
+        }
+
+        protected void writeStreamHeader() throws IOException {
+            // no headers
         }
     }
 }

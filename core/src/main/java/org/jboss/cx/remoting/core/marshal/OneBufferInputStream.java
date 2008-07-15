@@ -32,8 +32,13 @@ import java.nio.ByteBuffer;
  */
 public final class OneBufferInputStream extends InputStream {
 
-    private final Object lock = new Object();
+    private final Object lock;
     private ByteBuffer buffer;
+    private boolean eof;
+
+    public OneBufferInputStream(final Object lock) {
+        this.lock = lock;
+    }
 
     private ByteBuffer getBuffer() throws InterruptedIOException {
         synchronized (lock) {
@@ -41,6 +46,9 @@ public final class OneBufferInputStream extends InputStream {
                 final ByteBuffer buffer = this.buffer;
                 if (buffer != null) {
                     if (! buffer.hasRemaining()) {
+                        if (eof) {
+                            return null;
+                        }
                         lock.notify();
                         this.buffer = null;
                     } else {
@@ -57,15 +65,38 @@ public final class OneBufferInputStream extends InputStream {
         }
     }
 
+    public void setBuffer(ByteBuffer buffer, boolean eof) {
+        synchronized (lock) {
+            if (this.buffer != null) {
+                throw new IllegalStateException("Buffer already set");
+            }
+            this.buffer = buffer;
+            this.eof = eof;
+            lock.notify();
+        }
+    }
+
     public int read() throws IOException {
         synchronized (lock) {
-            return getBuffer().get() & 0xff;
+            final ByteBuffer buffer = getBuffer();
+            return buffer == null ? -1 : buffer.get() & 0xff;
         }
     }
 
     public int read(final byte[] b, int off, int len) throws IOException {
+        int c = 0;
         synchronized (lock) {
-            return 0;
+            while (len > 0) {
+                final ByteBuffer buffer = getBuffer();
+                if (buffer == null) {
+                    return c == 0 ? -1 : c;
+                }
+                int rem = Math.min(len, buffer.remaining());
+                buffer.get(b, off, rem);
+                off += rem;
+                len -= rem;
+            }
+            return c;
         }
     }
 }
