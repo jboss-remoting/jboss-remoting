@@ -65,6 +65,12 @@ public final class OneBufferInputStream extends InputStream {
         }
     }
 
+    public boolean isWaiting() {
+        synchronized (lock) {
+            return buffer == null;
+        }
+    }
+
     public void setBuffer(ByteBuffer buffer, boolean eof) {
         synchronized (lock) {
             if (this.buffer != null) {

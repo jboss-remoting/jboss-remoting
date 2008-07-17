@@ -58,6 +58,10 @@ public final class JavaSerializationUnmarshaller extends AbstractSerializationUn
             this.resolver = resolver;
         }
 
+        protected final void readStreamHeader() {
+            // no headers
+        }
+
         protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
             final String name = desc.getName();
             if (primitiveTypes.containsKey(name)) {

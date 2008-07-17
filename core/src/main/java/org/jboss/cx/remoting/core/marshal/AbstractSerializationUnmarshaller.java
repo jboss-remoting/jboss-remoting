@@ -29,11 +29,14 @@ import java.io.InterruptedIOException;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.spi.marshal.Unmarshaller;
 import org.jboss.cx.remoting.spi.marshal.ObjectResolver;
+import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
 public abstract class AbstractSerializationUnmarshaller implements Unmarshaller<ByteBuffer> {
+    private static final Logger log = Logger.getLogger(AbstractSerializationUnmarshaller.class);
+
     private final Executor executor;
     private final ObjectInputStream objectInputStream;
     private final Object resultLock = new Object();
@@ -41,7 +44,7 @@ public abstract class AbstractSerializationUnmarshaller implements Unmarshaller<
     protected final ObjectResolver resolver;
     protected final OneBufferInputStream inputStream = new OneBufferInputStream(resultLock);
 
-    private boolean done;
+    private boolean done = true;
     private Object result;
     private Throwable cause;
 
@@ -54,19 +57,35 @@ public abstract class AbstractSerializationUnmarshaller implements Unmarshaller<
     protected abstract ObjectInputStream getObjectInputStream() throws IOException;
 
     public boolean unmarshal(final ByteBuffer buffer) throws IOException {
-        executor.execute(new Runnable() {
-            public void run() {
-                synchronized (resultLock) {
-                    try {
-                        result = objectInputStream.readObject();
-                    } catch (Throwable t) {
-                        cause = t;
+        synchronized (resultLock) {
+            if (done) {
+                done = false;
+                executor.execute(new Runnable() {
+                    public void run() {
+                        synchronized (resultLock) {
+                            try {
+                                result = objectInputStream.readObject();
+                                log.trace("Successfully unmarshalled object %s", result);
+                            } catch (Throwable t) {
+                                cause = t;
+                                log.trace(t, "Failed to unmarshal an object");
+                            }
+                            done = true;
+                        }
                     }
-                    done = true;
-                }
+                });
             }
-        });
-        return false;
+            inputStream.setBuffer(buffer, false);
+            try {
+                while (! inputStream.isWaiting() && ! done) {
+                    resultLock.wait();
+                }
+                return done;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new InterruptedIOException("unmarshal operation was interrupted");
+            }
+        }
     }
 
     public Object get() throws IOException, IllegalStateException, ClassNotFoundException {
