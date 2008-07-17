@@ -71,6 +71,7 @@ public abstract class AbstractSerializationUnmarshaller implements Unmarshaller<
                                 log.trace(t, "Failed to unmarshal an object");
                             }
                             done = true;
+                            resultLock.notify();
                         }
                     }
                 });
