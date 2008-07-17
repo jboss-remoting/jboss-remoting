@@ -55,8 +55,10 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
 
     protected void dec() throws RemotingException {
         final int v = refcount.decrementAndGet();
+        log.trace("Clearing reference to %s to %d", this, Integer.valueOf(v));
         if (v == 0) {
             // we dropped the refcount to zero
+            log.trace("Refcount of %s dropped to zero, closing", this);
             if (refcount.compareAndSet(0, -65536)) {
                 // we are closing
                 close();
@@ -71,6 +73,7 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
 
     protected void inc() throws RemotingException {
         final int v = refcount.getAndIncrement();
+        log.trace("Adding reference to %s to %d", this, Integer.valueOf(v + 1));
         if (v < 0) {
             // was already closed
             refcount.decrementAndGet();
@@ -93,6 +96,10 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
         private HandleImpl() throws RemotingException {
             super(AbstractAutoCloseable.this.executor);
             inc();
+        }
+
+        public void close() throws RemotingException {
+            dec();
         }
 
         @SuppressWarnings({ "unchecked" })

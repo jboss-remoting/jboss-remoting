@@ -58,6 +58,7 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
 
     public void close() throws RemotingException {
         if (! closed.getAndSet(true)) {
+            log.trace("Closed %s", this);
             synchronized (closeLock) {
                 if (closeHandlers != null) {
                     for (final CloseHandler<? super T> handler : closeHandlers) {
