@@ -26,11 +26,14 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
 public final class OneBufferInputStream extends InputStream {
+
+    private static final Logger log = Logger.getLogger(OneBufferInputStream.class);
 
     private final Object lock;
     private ByteBuffer buffer;
@@ -101,6 +104,7 @@ public final class OneBufferInputStream extends InputStream {
                 buffer.get(b, off, rem);
                 off += rem;
                 len -= rem;
+                c += rem;
             }
             return c;
         }
