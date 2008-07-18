@@ -36,6 +36,7 @@ import java.util.logging.LogRecord;
  */
 public final class LoggingHelper {
     private static final class Once {
+        private static final long startTime = System.currentTimeMillis();
         static {
             AccessController.doPrivileged(new PrivilegedAction<Void>() {
                 public Void run() {
@@ -47,6 +48,12 @@ public final class LoggingHelper {
                         handler.setFormatter(new Formatter() {
                             public String format(final LogRecord record) {
                                 StringBuilder builder = new StringBuilder();
+                                long offs = record.getMillis() - startTime;
+                                final String sign = offs < 0 ? "-" : "+";
+                                offs = Math.abs(offs);
+                                int ms = (int) (offs % 1000L);
+                                long s = offs / 1000L;
+                                builder.append(String.format("%s%04d.%03d ", sign, Long.valueOf(s), Long.valueOf(ms)));
                                 builder.append(record.getLevel().toString());
                                 builder.append(" [").append(record.getLoggerName()).append("] ");
                                 builder.append(String.format(record.getMessage(), record.getParameters()));
