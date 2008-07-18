@@ -25,7 +25,6 @@ package org.jboss.cx.remoting.spi.remote;
 import org.jboss.cx.remoting.Closeable;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.ClientSource;
 
 /**
  * A remote service endpoint, which can be passed to remote endpoints.  Remote systems can then use the service endpoint
@@ -33,7 +32,7 @@ import org.jboss.cx.remoting.ClientSource;
  * has the advantage that a round trip to the remote side is not necessary; the local side can spawn a client endpoint
  * and simply notify the remote side of the change.
  */
-public interface RemoteServiceEndpoint<I, O> extends Closeable<RemoteServiceEndpoint<I, O>> {
+public interface RemoteServiceEndpoint extends Closeable<RemoteServiceEndpoint> {
 
     /**
      * Create a client endpoint for the service corresponding to this service endpoint.
@@ -41,7 +40,7 @@ public interface RemoteServiceEndpoint<I, O> extends Closeable<RemoteServiceEndp
      * @return a client endpoint
      * @throws RemotingException if a client could not be opened
      */
-    RemoteClientEndpoint<I, O> createClientEndpoint() throws RemotingException;
+    RemoteClientEndpoint createClientEndpoint() throws RemotingException;
 
     /**
      * Get a handle to this service endpoint.  The service endpoint will not auto-close as long as there is at least
@@ -52,7 +51,7 @@ public interface RemoteServiceEndpoint<I, O> extends Closeable<RemoteServiceEndp
      * @return the handle
      * @throws RemotingException if a handle could not be acquired
      */
-    Handle<RemoteServiceEndpoint<I, O>> getHandle() throws RemotingException;
+    Handle<RemoteServiceEndpoint> getHandle() throws RemotingException;
 
     /**
      * Automatically close this service endpoint when all handles and local client source instances
@@ -70,5 +69,5 @@ public interface RemoteServiceEndpoint<I, O> extends Closeable<RemoteServiceEndp
      *
      * @param handler the handler to be called
      */
-    void addCloseHandler(final CloseHandler<? super RemoteServiceEndpoint<I, O>> handler);
+    void addCloseHandler(final CloseHandler<? super RemoteServiceEndpoint> handler);
 }

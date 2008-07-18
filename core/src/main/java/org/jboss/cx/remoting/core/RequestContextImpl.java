@@ -40,7 +40,7 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
 
     private final AtomicBoolean closed = new AtomicBoolean();
     private final Object cancelLock = new Object();
-    private final ReplyHandler<O> replyHandler;
+    private final ReplyHandler replyHandler;
     private final ClientContextImpl clientContext;
 
     private final AtomicBoolean cancelled = new AtomicBoolean();
@@ -48,7 +48,7 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
     private Set<RequestCancelHandler<O>> cancelHandlers;
     private final TaggingExecutor executor;
 
-    RequestContextImpl(final ReplyHandler<O> replyHandler, final ClientContextImpl clientContext) {
+    RequestContextImpl(final ReplyHandler replyHandler, final ClientContextImpl clientContext) {
         this.replyHandler = replyHandler;
         this.clientContext = clientContext;
         executor = new TaggingExecutor(clientContext.getExecutor());

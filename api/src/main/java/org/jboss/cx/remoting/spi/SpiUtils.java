@@ -48,7 +48,7 @@ public final class SpiUtils {
      * @param msg the message
      * @param cause the cause
      */
-    public static void safeHandleException(final ReplyHandler<?> replyHandler, final String msg, final Throwable cause) {
+    public static void safeHandleException(final ReplyHandler replyHandler, final String msg, final Throwable cause) {
         try {
             replyHandler.handleException(msg, cause);
         } catch (Throwable t) {
@@ -63,7 +63,7 @@ public final class SpiUtils {
      * @param replyHandler the reply handler
      * @param reply the reply
      */
-    public static <O> void safeHandleReply(final ReplyHandler<O> replyHandler, final O reply) {
+    public static <O> void safeHandleReply(final ReplyHandler replyHandler, final O reply) {
         try {
             replyHandler.handleReply(reply);
         } catch (Throwable t) {
@@ -76,7 +76,7 @@ public final class SpiUtils {
      *
      * @param replyHandler the reply handler
      */
-    public static void safeHandleCancellation(final ReplyHandler<?> replyHandler) {
+    public static void safeHandleCancellation(final ReplyHandler replyHandler) {
         try {
             replyHandler.handleCancellation();
         } catch (Throwable t) {
@@ -136,7 +136,7 @@ public final class SpiUtils {
 
     private static final RemoteRequestContext BLANK_REMOTE_REQUEST_CONTEXT = new BlankRemoteRequestContext();
 
-    public static void safeAutoClose(final RemoteClientEndpoint<?, ?> remoteClientEndpoint) {
+    public static void safeAutoClose(final RemoteClientEndpoint remoteClientEndpoint) {
         try {
             remoteClientEndpoint.autoClose();
         } catch (Throwable t) {
@@ -144,7 +144,7 @@ public final class SpiUtils {
         }
     }
 
-    public static void safeAutoClose(final RemoteServiceEndpoint<Object, Object> remoteServiceEndpoint) {
+    public static void safeAutoClose(final RemoteServiceEndpoint remoteServiceEndpoint) {
         try {
             remoteServiceEndpoint.autoClose();
         } catch (Throwable t) {

@@ -37,7 +37,7 @@ import java.util.concurrent.Executor;
 /**
  *
  */
-public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoCloseable<RemoteClientEndpoint<I, O>> implements RemoteClientEndpoint<I, O> {
+public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoCloseable<RemoteClientEndpoint> implements RemoteClientEndpoint {
 
     private final RequestListener<I, O> requestListener;
     private final Executor executor;
@@ -60,12 +60,13 @@ public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoClose
         this(executor, requestListener, new ClientContextImpl(executor));
     }
 
-    public void receiveRequest(final I request) {
+    public void receiveRequest(final Object request) {
         final RequestContextImpl<O> context = new RequestContextImpl<O>(clientContext);
         executor.execute(new Runnable() {
+            @SuppressWarnings({ "unchecked" })
             public void run() {
                 try {
-                    requestListener.handleRequest(context, request);
+                    requestListener.handleRequest(context, (I) request);
                 } catch (Throwable t) {
                     log.error(t, "Unexpected exception in request listener");
                 }
@@ -73,12 +74,13 @@ public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoClose
         });
     }
 
-    public RemoteRequestContext receiveRequest(final I request, final ReplyHandler<O> replyHandler) {
+    public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler replyHandler) {
         final RequestContextImpl<O> context = new RequestContextImpl<O>(replyHandler, clientContext);
         executor.execute(new Runnable() {
+            @SuppressWarnings({ "unchecked" })
             public void run() {
                 try {
-                    requestListener.handleRequest(context, request);
+                    requestListener.handleRequest(context, (I) request);
                 } catch (RemoteExecutionException e) {
                     SpiUtils.safeHandleException(replyHandler, e.getMessage(), e.getCause());
                 } catch (Throwable t) {
@@ -96,8 +98,8 @@ public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoClose
     void open() throws RemotingException {
         try {
             requestListener.handleClientOpen(clientContext);
-            addCloseHandler(new CloseHandler<RemoteClientEndpoint<I, O>>() {
-                public void handleClose(final RemoteClientEndpoint<I, O> closed) {
+            addCloseHandler(new CloseHandler<RemoteClientEndpoint>() {
+                public void handleClose(final RemoteClientEndpoint closed) {
                     try {
                         requestListener.handleClientClose(clientContext);
                     } catch (Throwable t) {

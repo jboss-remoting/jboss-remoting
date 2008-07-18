@@ -40,7 +40,7 @@ import java.util.List;
 public final class FutureReplyImpl<O> implements FutureReply<O> {
 
     private final Executor executor;
-    private final ReplyHandler<O> replyHandler = new Handler();
+    private final ReplyHandler replyHandler = new Handler();
     private final Object lock = new Object();
     // @protectedby lock
     private State state = State.NEW;
@@ -264,7 +264,7 @@ public final class FutureReplyImpl<O> implements FutureReply<O> {
         return this;
     }
 
-    ReplyHandler<O> getReplyHandler() {
+    ReplyHandler getReplyHandler() {
         return replyHandler;
     }
 
@@ -284,9 +284,10 @@ public final class FutureReplyImpl<O> implements FutureReply<O> {
         }
     }
 
-    private final class Handler implements ReplyHandler<O> {
+    private final class Handler implements ReplyHandler {
 
-        public void handleReply(final O reply) {
+        @SuppressWarnings({ "unchecked" })
+        public void handleReply(final Object reply) {
             synchronized (lock) {
                 while (state == State.NEW) {
                     boolean intr = false;
@@ -304,7 +305,7 @@ public final class FutureReplyImpl<O> implements FutureReply<O> {
                 }
                 if (state == State.WAITING) {
                     state = State.DONE;
-                    result = reply;
+                    result = (O) reply;
                     runCompletionHandlers();
                     lock.notifyAll();
                 }

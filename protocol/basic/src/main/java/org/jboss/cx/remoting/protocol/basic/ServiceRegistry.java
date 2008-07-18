@@ -20,31 +20,20 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.cx.remoting.spi.remote;
+package org.jboss.cx.remoting.protocol.basic;
+
+import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.RemotingException;
 
 /**
- * A handler for replies from a request.  The handler should respect the first invocation made on it, and ignore
- * any subsequent invocations.
+ *
  */
-public interface ReplyHandler {
+public interface ServiceRegistry {
+    int bind(RemoteServiceEndpoint remoteServiceEndpoint) throws RemotingException;
 
-    /**
-     * Handle a successful reply.
-     *
-     * @param reply the reply
-     */
-    void handleReply(Object reply);
+    void bind(RemoteServiceEndpoint remoteServiceEndpoint, int id) throws RemotingException;
 
-    /**
-     * Handle a remote exception.
-     *
-     * @param msg the message
-     * @param cause the cause
-     */
-    void handleException(final String msg, Throwable cause);
+    void unbind(int id) throws RemotingException;
 
-    /**
-     * Handle a cancellation request.
-     */
-    void handleCancellation();
+    RemoteServiceEndpoint
 }

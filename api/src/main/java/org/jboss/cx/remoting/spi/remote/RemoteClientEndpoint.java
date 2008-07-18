@@ -25,13 +25,12 @@ package org.jboss.cx.remoting.spi.remote;
 import org.jboss.cx.remoting.Closeable;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.Client;
 
 /**
  * A remote client endpoint, which can be passed to remote endpoints.  Remote systems can then use the client endpoint
  * to make invocations, or they may pass the client endpoint on to other remote systems.
  */
-public interface RemoteClientEndpoint<I, O> extends Closeable<RemoteClientEndpoint<I, O>> {
+public interface RemoteClientEndpoint extends Closeable<RemoteClientEndpoint> {
 
     /**
      * Receive a one-way request from a remote system.  This method is intended to be called by protocol handlers.  No
@@ -39,7 +38,7 @@ public interface RemoteClientEndpoint<I, O> extends Closeable<RemoteClientEndpoi
      *
      * @param request the request
      */
-    void receiveRequest(I request);
+    void receiveRequest(Object request);
 
     /**
      * Receive a request from a remote system.  This method is intended to be called by protocol handlers.  If the
@@ -51,7 +50,7 @@ public interface RemoteClientEndpoint<I, O> extends Closeable<RemoteClientEndpoi
      * @param replyHandler a handler for the reply
      * @return a context which may be used to cancel the request
      */
-    RemoteRequestContext receiveRequest(I request, ReplyHandler<O> replyHandler);
+    RemoteRequestContext receiveRequest(Object request, ReplyHandler replyHandler);
 
     /**
      * Get a handle to this client endpoint.  The client endpoint will not auto-close as long as there is at least
@@ -62,7 +61,7 @@ public interface RemoteClientEndpoint<I, O> extends Closeable<RemoteClientEndpoi
      * @return the handle
      * @throws RemotingException if a handle could not be acquired
      */
-    Handle<RemoteClientEndpoint<I, O>> getHandle() throws RemotingException;
+    Handle<RemoteClientEndpoint> getHandle() throws RemotingException;
 
     /**
      * Automatically close this client endpoint when all handles and local client instances are closed.
@@ -82,5 +81,5 @@ public interface RemoteClientEndpoint<I, O> extends Closeable<RemoteClientEndpoi
      *
      * @param handler the handler to be called
      */
-    void addCloseHandler(final CloseHandler<? super RemoteClientEndpoint<I, O>> handler);
+    void addCloseHandler(final CloseHandler<? super RemoteClientEndpoint> handler);
 }

@@ -121,23 +121,23 @@ public class EndpointImpl implements Endpoint {
         return endpointMap;
     }
 
-    public <I, O> RemoteClientEndpoint<I, O> createClientEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
+    public <I, O> RemoteClientEndpoint createClientEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
         final RemoteClientEndpointLocalImpl<I, O> clientEndpoint = new RemoteClientEndpointLocalImpl<I, O>(executor, requestListener);
         clientEndpoint.addCloseHandler(remover);
         clientEndpoint.open();
         return clientEndpoint;
     }
 
-    public <I, O> RemoteServiceEndpoint<I, O> createServiceEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
+    public <I, O> RemoteServiceEndpoint createServiceEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
         final RemoteServiceEndpointLocalImpl<I, O> serviceEndpoint = new RemoteServiceEndpointLocalImpl<I, O>(executor, requestListener);
         serviceEndpoint.addCloseHandler(remover);
         serviceEndpoint.open();
         return serviceEndpoint;
     }
 
-    public <I, O> Client<I, O> createClient(final RemoteClientEndpoint<I, O> endpoint) throws RemotingException {
+    public <I, O> Client<I, O> createClient(final RemoteClientEndpoint endpoint) throws RemotingException {
         boolean ok = false;
-        final Handle<RemoteClientEndpoint<I,O>> handle = endpoint.getHandle();
+        final Handle<RemoteClientEndpoint> handle = endpoint.getHandle();
         try {
             final ClientImpl<I, O> client = new ClientImpl<I, O>(endpoint, executor);
             client.addCloseHandler(new CloseHandler<Client<I, O>>() {
@@ -154,9 +154,9 @@ public class EndpointImpl implements Endpoint {
         }
     }
 
-    public <I, O> ClientSource<I, O> createClientSource(final RemoteServiceEndpoint<I, O> endpoint) throws RemotingException {
+    public <I, O> ClientSource<I, O> createClientSource(final RemoteServiceEndpoint endpoint) throws RemotingException {
         boolean ok = false;
-        final Handle<RemoteServiceEndpoint<I,O>> handle = endpoint.getHandle();
+        final Handle<RemoteServiceEndpoint> handle = endpoint.getHandle();
         try {
             final ClientSourceImpl<I, O> client = new ClientSourceImpl<I, O>(endpoint, this);
             client.addCloseHandler(new CloseHandler<ClientSource<I, O>>() {

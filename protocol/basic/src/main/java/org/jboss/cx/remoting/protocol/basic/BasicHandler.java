@@ -52,6 +52,7 @@ import static org.jboss.cx.remoting.protocol.basic.MessageType.SERVICE_CLOSE;
 import static org.jboss.cx.remoting.protocol.basic.MessageType.REQUEST_FAILED;
 import static org.jboss.cx.remoting.protocol.basic.MessageType.CANCEL_ACK;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.CloseHandler;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
@@ -71,13 +72,13 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     private static final Logger log = Logger.getLogger(BasicHandler.class);
 
     // clients whose requests get forwarded to the remote side
-    private final ConcurrentMap<Integer, RemoteClientEndpoint<?, ?>> remoteClients = concurrentMap();
+    private final ConcurrentMap<Integer, RemoteClientEndpoint> remoteClients = concurrentMap();
     // running on remote node
-    private final ConcurrentMap<Integer, ReplyHandler<?>> outstandingRequests = concurrentMap();
+    private final ConcurrentMap<Integer, ReplyHandler> outstandingRequests = concurrentMap();
     // forwarded to remote side
-    private final ConcurrentMap<Integer, Handle<RemoteClientEndpoint<?, ?>>> forwardedClients = concurrentMap();
+    private final ConcurrentMap<Integer, Handle<RemoteClientEndpoint>> forwardedClients = concurrentMap();
     // forwarded to remote side
-    private final ConcurrentMap<Integer, Handle<RemoteServiceEndpoint<?, ?>>> forwardedServices = concurrentMap();
+    private final ConcurrentMap<Integer, Handle<RemoteServiceEndpoint>> forwardedServices = concurrentMap();
 
     private final boolean server;
     private final BufferAllocator<ByteBuffer> allocator;
@@ -90,12 +91,12 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     private final ClassLoader classLoader;
 
     @SuppressWarnings({ "unchecked" })
-    public <I, O> BasicHandler(final boolean server, final BufferAllocator<ByteBuffer> allocator, final RemoteClientEndpoint<I, O> root, final Executor executor, final RemoteClientEndpointListener remoteListener, final MarshallerFactory<ByteBuffer> marshallerFactory) throws RemotingException {
+    public BasicHandler(final boolean server, final BufferAllocator<ByteBuffer> allocator, final RemoteClientEndpoint root, final Executor executor, final RemoteClientEndpointListener remoteListener, final MarshallerFactory<ByteBuffer> marshallerFactory) throws RemotingException {
         this.server = server;
         this.allocator = allocator;
         this.executor = executor;
         forwardedClients.put(Integer.valueOf(0), ((RemoteClientEndpoint)root).getHandle());
-        final RemoteClientEndpointImpl<Object, Object> endpoint = new RemoteClientEndpointImpl<Object, Object>(0, marshallerFactory, allocator);
+        final RemoteClientEndpointImpl endpoint = new RemoteClientEndpointImpl(0, marshallerFactory, allocator);
         remoteClients.put(Integer.valueOf(0), endpoint);
         if (remoteListener != null) {
             remoteListener.notifyCreated(endpoint);
@@ -148,7 +149,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             switch (msgType) {
                 case REQUEST_ONEWAY: {
                     final int clientId = buffer.getInt();
-                    final Handle<RemoteClientEndpoint<?, ?>> handle = getForwardedClient(clientId);
+                    final Handle<RemoteClientEndpoint> handle = getForwardedClient(clientId);
                     if (handle == null) {
                         log.trace("Request on invalid client ID %d", Integer.valueOf(clientId));
                         return;
@@ -165,13 +166,13 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         log.trace("Class not found in one-way request for client ID %d", Integer.valueOf(clientId));
                         break;
                     }
-                    final RemoteClientEndpoint<?, ?> clientEndpoint = handle.getResource();
-                    receiveRequest(clientEndpoint, payload);
+                    final RemoteClientEndpoint clientEndpoint = handle.getResource();
+                    clientEndpoint.receiveRequest(payload);
                     break;
                 }
                 case REQUEST: {
                     final int clientId = buffer.getInt();
-                    final Handle<RemoteClientEndpoint<?, ?>> handle = getForwardedClient(clientId);
+                    final Handle<RemoteClientEndpoint> handle = getForwardedClient(clientId);
                     if (handle == null) {
                         log.trace("Request on invalid client ID %d", Integer.valueOf(clientId));
                         break;
@@ -190,13 +191,13 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         log.trace("Class not found in request ID %d for client ID %d", Integer.valueOf(requestId), Integer.valueOf(clientId));
                         break;
                     }
-                    final RemoteClientEndpoint<?, ?> clientEndpoint = handle.getResource();
-                    receiveRequest(clientEndpoint, new ReplyHandlerImpl(channel, requestId, allocator), payload);
+                    final RemoteClientEndpoint clientEndpoint = handle.getResource();
+                    clientEndpoint.receiveRequest(payload, (ReplyHandler) new ReplyHandlerImpl(channel, requestId, allocator));
                     break;
                 }
                 case REPLY: {
                     final int requestId = buffer.getInt();
-                    final ReplyHandler<?> replyHandler = takeOutstandingReqeust(requestId);
+                    final ReplyHandler replyHandler = takeOutstandingReqeust(requestId);
                     if (replyHandler == null) {
                         log.trace("Got reply to unknown request %d", Integer.valueOf(requestId));
                         break;
@@ -215,12 +216,12 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         log.trace("Class not found in reply to request ID %d", Integer.valueOf(requestId));
                         break;
                     }
-                    handleReply(replyHandler, payload);
+                    SpiUtils.safeHandleReply(replyHandler, payload);
                     break;
                 }
                 case REQUEST_FAILED: {
                     final int requestId = buffer.getInt();
-                    final ReplyHandler<?> replyHandler = takeOutstandingReqeust(requestId);
+                    final ReplyHandler replyHandler = takeOutstandingReqeust(requestId);
                     if (replyHandler == null) {
                         log.trace("Got reply to unknown request %d", Integer.valueOf(requestId));
                         break;
@@ -247,26 +248,40 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         log.trace("Class not found in exception reply to request ID %d", Integer.valueOf(requestId));
                         break;
                     }
-                    handleException(replyHandler, message, cause);
+                    SpiUtils.safeHandleException(replyHandler, message == null ? null : message.toString(), cause instanceof Throwable ? (Throwable) cause : null);
                     break;
                 }
                 case CLIENT_CLOSE: {
+                    final int clientId = buffer.getInt();
+                    final Handle<RemoteClientEndpoint> handle = takeForwardedClient(clientId);
+                    if (handle == null) {
+                        log.warn("Got client close message for unknown client %d", Integer.valueOf(clientId));
+                        break;
+                    }
+                    IoUtils.safeClose(handle);
                     break;
                 }
                 case CLIENT_OPEN: {
                     final int serviceId = buffer.getInt();
                     final int clientId = buffer.getInt();
-                    final Handle<RemoteServiceEndpoint<?, ?>> handle = getForwardedService(serviceId);
+                    final Handle<RemoteServiceEndpoint> handle = getForwardedService(serviceId);
                     if (handle == null) {
                         // todo log invalid request
                         break;
                     }
-                    final RemoteServiceEndpoint<?, ?> serviceEndpoint = handle.getResource();
-                    final RemoteClientEndpoint<?, ?> clientEndpoint = serviceEndpoint.createClientEndpoint();
+                    final RemoteServiceEndpoint serviceEndpoint = handle.getResource();
+                    final RemoteClientEndpoint clientEndpoint = serviceEndpoint.createClientEndpoint();
 
                     break;
                 }
                 case SERVICE_CLOSE: {
+                    final int serviceId = buffer.getInt();
+                    final Handle<RemoteServiceEndpoint> handle = takeForwardedService(serviceId);
+                    if (handle == null) {
+                        log.warn("Got client close message for unknown service %d", Integer.valueOf(serviceId));
+                        break;
+                    }
+                    IoUtils.safeClose(handle);
                     break;
                 }
                 default: {
@@ -309,15 +324,11 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     public void handleClosed(final AllocatedMessageChannel channel) {
     }
 
-    private <I, O> ReplyHandler<O> createReplyHandler(final AllocatedMessageChannel channel, final int requestId) {
-        return new ReplyHandlerImpl<O>(channel, requestId, allocator);
-    }
-
-    RemoteClientEndpoint<?, ?> getRemoteClient(final int i) {
+    RemoteClientEndpoint getRemoteClient(final int i) {
         return remoteClients.get(Integer.valueOf(i));
     }
 
-    private final class ReplyHandlerImpl<O> implements ReplyHandler<O> {
+    private final class ReplyHandlerImpl implements ReplyHandler {
 
         private final AllocatedMessageChannel channel;
         private final int requestId;
@@ -335,7 +346,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             this.allocator = allocator;
         }
 
-        public void handleReply(final O reply) {
+        public void handleReply(final Object reply) {
             ByteBuffer buffer = allocator.allocate();
             buffer.put((byte) REPLY);
             buffer.putInt(requestId);
@@ -400,7 +411,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
 
     // Session mgmt
 
-    public int openRequest(ReplyHandler<?> handler) {
+    public int openRequest(ReplyHandler handler) {
         int id;
         do {
             id = localRequestIdSeq.getAndIncrement();
@@ -412,12 +423,12 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         int id;
         do {
             id = remoteClientIdSeq.getAndIncrement() << 1 | (server ? 1 : 0);
-        } while (remoteClients.putIfAbsent(Integer.valueOf(id), new RemoteClientEndpointImpl<Object, Object>(id, null, allocator)) != null);
+        } while (remoteClients.putIfAbsent(Integer.valueOf(id), new RemoteClientEndpointImpl(id, null, allocator)) != null);
         return id;
     }
 
     @SuppressWarnings({ "unchecked" })
-    public void openClientForForwardedService(int id, RemoteClientEndpoint<?, ?> clientEndpoint) {
+    public void openClientForForwardedService(int id, RemoteClientEndpoint clientEndpoint) {
         try {
             forwardedClients.put(Integer.valueOf(id), ((RemoteClientEndpoint)clientEndpoint).getHandle());
         } catch (RemotingException e) {
@@ -425,35 +436,24 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         }
     }
 
-    public Handle<RemoteClientEndpoint<?, ?>> getForwardedClient(int id) {
+    public Handle<RemoteClientEndpoint> getForwardedClient(int id) {
         return forwardedClients.get(Integer.valueOf(id));
     }
 
-    public ReplyHandler<?> takeOutstandingReqeust(int id) {
+    private Handle<RemoteClientEndpoint> takeForwardedClient(final int id) {
+        return forwardedClients.remove(Integer.valueOf(id));
+    }
+
+    public ReplyHandler takeOutstandingReqeust(int id) {
         return outstandingRequests.remove(Integer.valueOf(id));
     }
 
-    public Handle<RemoteServiceEndpoint<?, ?>> getForwardedService(final int id) {
+    public Handle<RemoteServiceEndpoint> getForwardedService(final int id) {
         return forwardedServices.get(Integer.valueOf(id));
     }
 
-    @SuppressWarnings({ "unchecked" })
-    private static <I, O> void receiveRequest(RemoteClientEndpoint<I, O> clientEndpoint, Object request) {
-        clientEndpoint.receiveRequest((I) request);
-    }
-
-    @SuppressWarnings({ "unchecked" })
-    private static <I, O> RemoteRequestContext receiveRequest(RemoteClientEndpoint<I, O> clientEndpoint, ReplyHandler<O> replyHandler, Object request) {
-        return clientEndpoint.receiveRequest((I) request, replyHandler);
-    }
-
-    @SuppressWarnings({ "unchecked" })
-    private static <O> void handleReply(final ReplyHandler<O> replyHandler, final Object reply) {
-        SpiUtils.safeHandleReply(replyHandler, (O) reply);
-    }
-
-    private static void handleException(final ReplyHandler<?> handler, final Object message, final Object cause) {
-        SpiUtils.safeHandleException(handler, message == null ? null : message.toString(), cause instanceof Throwable ? (Throwable) cause : null);
+    public Handle<RemoteServiceEndpoint> takeForwardedService(final int id) {
+        return forwardedServices.remove(Integer.valueOf(id));
     }
 
     // Writer members
@@ -470,7 +470,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
 
     // client endpoint
 
-    private final class RemoteClientEndpointImpl<I, O> extends AbstractAutoCloseable<RemoteClientEndpoint<I, O>> implements RemoteClientEndpoint<I, O> {
+    private final class RemoteClientEndpointImpl extends AbstractAutoCloseable<RemoteClientEndpoint> implements RemoteClientEndpoint {
 
         private final int identifier;
         private final MarshallerFactory<ByteBuffer> marshallerFactory;
@@ -487,9 +487,22 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             this.identifier = identifier;
             this.marshallerFactory = marshallerFactory;
             this.allocator = allocator;
+            addCloseHandler(new CloseHandler<RemoteClientEndpoint>() {
+                public void handleClose(final RemoteClientEndpoint closed) {
+                    ByteBuffer buffer = allocator.allocate();
+                    buffer.put((byte) MessageType.CLIENT_CLOSE);
+                    buffer.putInt(identifier);
+                    buffer.flip();
+                    try {
+                        registerWriter(channel, new SimpleWriteHandler(allocator, buffer));
+                    } catch (InterruptedException e) {
+                        log.warn("Client close notification was interrupted before it could be sent");
+                    }
+                }
+            });
         }
 
-        public void receiveRequest(final I request) {
+        public void receiveRequest(final Object request) {
             log.trace("Received one-way request of type %s", request == null ? "null" : request.getClass());
             try {
                 final Marshaller<ByteBuffer> marshaller = marshallerFactory.createMarshaller(null);
@@ -517,7 +530,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             }
         }
 
-        public RemoteRequestContext receiveRequest(final I request, final ReplyHandler<O> handler) {
+        public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler handler) {
             log.trace("Received request of type %s", request == null ? "null" : request.getClass());
             try {
                 final Marshaller<ByteBuffer> marshaller = marshallerFactory.createMarshaller(null);
@@ -579,7 +592,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         }
     }
 
-    public final class RemoteServiceEndpointImpl<I, O> extends AbstractAutoCloseable<RemoteServiceEndpoint<I, O>> implements RemoteServiceEndpoint<I, O> {
+    public final class RemoteServiceEndpointImpl extends AbstractAutoCloseable<RemoteServiceEndpoint> implements RemoteServiceEndpoint {
 
         private final MarshallerFactory<ByteBuffer> marshallerFactory;
         private final BufferAllocator<ByteBuffer> allocator;
@@ -590,20 +603,34 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             this.marshallerFactory = marshallerFactory;
             this.allocator = allocator;
             this.identifier = identifier;
+            addCloseHandler(new CloseHandler<RemoteServiceEndpoint>() {
+                public void handleClose(final RemoteServiceEndpoint closed) {
+                    ByteBuffer buffer = allocator.allocate();
+                    buffer.put((byte) MessageType.SERVICE_CLOSE);
+                    buffer.putInt(identifier);
+                    buffer.flip();
+                    try {
+                        registerWriter(channel, new SimpleWriteHandler(allocator, buffer));
+                    } catch (InterruptedException e) {
+                        log.warn("Service close notification was interrupted before it could be sent");
+                    }
+                }
+            });
         }
 
-        public RemoteClientEndpoint<I, O> createClientEndpoint() throws RemotingException {
+        public RemoteClientEndpoint createClientEndpoint() throws RemotingException {
             final int id = openClientFromService();
             final ByteBuffer buffer = allocator.allocate();
             buffer.putInt(identifier);
             buffer.putInt(openClientFromService());
             buffer.flip();
+            // todo - probably should bail out if we're interrupted?
             boolean intr = false;
             for (;;) {
                 try {
                     registerWriter(channel, new SimpleWriteHandler(allocator, buffer));
                     try {
-                        return new RemoteClientEndpointImpl<I,O>(id, marshallerFactory, allocator);
+                        return new RemoteClientEndpointImpl(id, marshallerFactory, allocator);
                     } finally {
                         if (intr) {
                             Thread.currentThread().interrupt();

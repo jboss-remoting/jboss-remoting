@@ -34,7 +34,7 @@ import java.util.concurrent.Executor;
 /**
  *
  */
-public final class RemoteServiceEndpointLocalImpl<I, O> extends AbstractAutoCloseable<RemoteServiceEndpoint<I, O>> implements RemoteServiceEndpoint<I, O> {
+public final class RemoteServiceEndpointLocalImpl<I, O> extends AbstractAutoCloseable<RemoteServiceEndpoint> implements RemoteServiceEndpoint {
 
     private final RequestListener<I, O> requestListener;
     private final ServiceContextImpl serviceContext;
@@ -49,7 +49,7 @@ public final class RemoteServiceEndpointLocalImpl<I, O> extends AbstractAutoClos
         serviceContext = new ServiceContextImpl(executor);
     }
 
-    public RemoteClientEndpoint<I, O> createClientEndpoint() throws RemotingException {
+    public RemoteClientEndpoint createClientEndpoint() throws RemotingException {
         if (isOpen()) {
             final RemoteClientEndpointLocalImpl<I, O> clientEndpoint = new RemoteClientEndpointLocalImpl<I, O>(executor, this, requestListener);
             clientEndpoint.open();
@@ -62,8 +62,8 @@ public final class RemoteServiceEndpointLocalImpl<I, O> extends AbstractAutoClos
     void open() throws RemotingException {
         try {
             requestListener.handleServiceOpen(serviceContext);
-            addCloseHandler(new CloseHandler<RemoteServiceEndpoint<I, O>>() {
-                public void handleClose(final RemoteServiceEndpoint<I, O> closed) {
+            addCloseHandler(new CloseHandler<RemoteServiceEndpoint>() {
+                public void handleClose(final RemoteServiceEndpoint closed) {
                     try {
                         requestListener.handleServiceClose(serviceContext);
                     } catch (Throwable t) {

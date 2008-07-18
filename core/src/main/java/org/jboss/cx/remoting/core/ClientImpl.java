@@ -38,9 +38,9 @@ import java.util.concurrent.Executor;
  */
 public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implements Client<I, O> {
 
-    private final RemoteClientEndpoint<I, O> remoteClientEndpoint;
+    private final RemoteClientEndpoint remoteClientEndpoint;
 
-    ClientImpl(final RemoteClientEndpoint<I, O> remoteClientEndpoint, final Executor executor) {
+    ClientImpl(final RemoteClientEndpoint remoteClientEndpoint, final Executor executor) {
         super(executor);
         this.remoteClientEndpoint = remoteClientEndpoint;
     }
@@ -51,7 +51,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         }
         final QueueExecutor executor = new QueueExecutor();
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor);
-        final ReplyHandler<O> replyHandler = futureReply.getReplyHandler();
+        final ReplyHandler replyHandler = futureReply.getReplyHandler();
         final RemoteRequestContext requestContext = remoteClientEndpoint.receiveRequest(request, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         futureReply.addCompletionHandler(new RequestCompletionHandler<O>() {
@@ -68,7 +68,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
             throw new RemotingException("Client is not open");
         }
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor);
-        final ReplyHandler<O> replyHandler = futureReply.getReplyHandler();
+        final ReplyHandler replyHandler = futureReply.getReplyHandler();
         final RemoteRequestContext requestContext = remoteClientEndpoint.receiveRequest(request, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         return futureReply;

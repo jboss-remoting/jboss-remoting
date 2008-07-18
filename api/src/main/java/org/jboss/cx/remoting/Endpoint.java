@@ -37,7 +37,7 @@ public interface Endpoint {
      * @return the client
      * @throws RemotingException if an error occurs
      */
-    <I, O> RemoteClientEndpoint<I, O> createClientEndpoint(RequestListener<I, O> requestListener) throws RemotingException;
+    <I, O> RemoteClientEndpoint createClientEndpoint(RequestListener<I, O> requestListener) throws RemotingException;
 
     /**
      * Create a client source that can be used to acquire clients associated with a request listener on this endpoint.
@@ -52,7 +52,7 @@ public interface Endpoint {
      * @return the context source
      * @throws RemotingException if an error occurs
      */
-    <I, O> RemoteServiceEndpoint<I, O> createServiceEndpoint(RequestListener<I, O> requestListener) throws RemotingException;
+    <I, O> RemoteServiceEndpoint createServiceEndpoint(RequestListener<I, O> requestListener) throws RemotingException;
 
     /**
      * Create a client from a remote client endpoint.
@@ -63,7 +63,7 @@ public interface Endpoint {
      * @return the client
      * @throws RemotingException if an error occurs
      */
-    <I, O> Client<I, O> createClient(RemoteClientEndpoint<I, O> endpoint) throws RemotingException;
+    <I, O> Client<I, O> createClient(RemoteClientEndpoint endpoint) throws RemotingException;
 
     /**
      * Create a client source from a remote service endpoint.
@@ -74,5 +74,5 @@ public interface Endpoint {
      * @return the client source
      * @throws RemotingException if an error occurs
      */
-    <I, O> ClientSource<I, O> createClientSource(RemoteServiceEndpoint<I, O> endpoint) throws RemotingException;
+    <I, O> ClientSource<I, O> createClientSource(RemoteServiceEndpoint endpoint) throws RemotingException;
 }

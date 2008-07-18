@@ -50,6 +50,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.Collections;
+import java.util.List;
+import java.util.LinkedList;
 import java.nio.ByteBuffer;
 import java.net.InetSocketAddress;
 import java.io.Closeable;
@@ -63,11 +66,13 @@ public final class ConnectionTestCase extends TestCase {
     }
 
     public void testConnection() throws Throwable {
+        final List<Throwable> problems = Collections.synchronizedList(new LinkedList<Throwable>());
         final AtomicBoolean clientOpened = new AtomicBoolean(false);
+        final AtomicBoolean client2Opened = new AtomicBoolean(false);
         final AtomicBoolean serviceOpened = new AtomicBoolean(false);
         final AtomicBoolean clientClosed = new AtomicBoolean(false);
         final AtomicBoolean serviceClosed = new AtomicBoolean(false);
-        final CountDownLatch clientCloseLatch = new CountDownLatch(1);
+        final CountDownLatch cleanupLatch = new CountDownLatch(2);
         final ExecutorService executorService = Executors.newCachedThreadPool();
         try {
             final BufferAllocator<ByteBuffer> allocator = new BufferAllocator<ByteBuffer>() {
@@ -84,13 +89,19 @@ public final class ConnectionTestCase extends TestCase {
                 endpoint.setExecutor(executorService);
                 endpoint.start();
                 try {
-                    final RemoteServiceEndpoint<Object,Object> serverServiceEndpoint = endpoint.createServiceEndpoint(new RequestListener<Object, Object>() {
+                    final RemoteServiceEndpoint serverServiceEndpoint = endpoint.createServiceEndpoint(new RequestListener<Object, Object>() {
                         public void handleClientOpen(final ClientContext context) {
-                            clientOpened.set(true);
+                            if (clientOpened.getAndSet(true)) {
+                                if (client2Opened.getAndSet(true)) {
+                                    problems.add(new IllegalStateException("Too many client opens"));
+                                }
+                            }
                         }
 
                         public void handleServiceOpen(final ServiceContext context) {
-                            serviceOpened.set(true);
+                            if (serviceOpened.getAndSet(true)) {
+                                problems.add(new IllegalStateException("Multiple service opens"));
+                            }
                         }
 
                         public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
@@ -101,61 +112,78 @@ public final class ConnectionTestCase extends TestCase {
                                 try {
                                     context.sendFailure("failed", e);
                                 } catch (RemotingException e1) {
-                                    System.out.println("Double fault!");
+                                    problems.add(e1);
                                 }
                             }
                         }
 
                         public void handleServiceClose(final ServiceContext context) {
-                            serviceClosed.set(true);
+                            if (serviceClosed.getAndSet(true)) {
+                                problems.add(new IllegalStateException("Multiple service closes"));
+                            }
+                            cleanupLatch.countDown();
                         }
 
                         public void handleClientClose(final ClientContext context) {
-                            clientClosed.set(true);
-                            clientCloseLatch.countDown();
+                            if (clientClosed.getAndSet(true)) {
+                                problems.add(new IllegalStateException("Multiple client closes"));
+                            }
+                            cleanupLatch.countDown();
                         }
                     });
                     try {
-                        final Handle<RemoteServiceEndpoint<Object,Object>> handle = serverServiceEndpoint.getHandle();
+                        final Handle<RemoteServiceEndpoint> serviceHandle = serverServiceEndpoint.getHandle();
                         serverServiceEndpoint.autoClose();
                         try {
                             final RemoteClientEndpointListener remoteListener = new RemoteClientEndpointListener() {
-
-                                public <I, O> void notifyCreated(final RemoteClientEndpoint<I, O> endpoint) {
-
+                                public <I, O> void notifyCreated(final RemoteClientEndpoint endpoint) {
                                 }
                             };
                             final ConfigurableFactory<Closeable> tcpServer = xnio.createTcpServer(executorService, Channels.convertStreamToAllocatedMessage(BasicProtocol.createServer(executorService, serverServiceEndpoint, allocator, remoteListener), 32768, 32768), new InetSocketAddress(12345));
                             final Closeable tcpServerCloseable = tcpServer.create();
                             try {
                                 // now create a client to connect to it
-                                final RemoteClientEndpoint<?,?> localRoot = serverServiceEndpoint.createClientEndpoint();
-                                final InetSocketAddress destAddr = new InetSocketAddress("localhost", 12345);
-                                final TcpClient tcpClient = xnio.createTcpConnector().create().createChannelSource(destAddr);
-                                final ChannelSource<AllocatedMessageChannel> messageChannelSource = Channels.convertStreamToAllocatedMessage(tcpClient, 32768, 32768);
-                                final IoFuture<RemoteClientEndpoint<Object,Object>> futureClient = BasicProtocol.connect(executorService, localRoot, messageChannelSource, allocator);
-                                final RemoteClientEndpoint<Object, Object> clientEndpoint = futureClient.get();
+                                final RemoteClientEndpoint localRoot = ;
                                 try {
-                                    final Client<Object,Object> client = endpoint.createClient(clientEndpoint);
+                                    serverServiceEndpoint.autoClose();
+                                    final InetSocketAddress destAddr = new InetSocketAddress("localhost", 12345);
+                                    final TcpClient tcpClient = xnio.createTcpConnector().create().createChannelSource(destAddr);
                                     try {
-                                        clientEndpoint.autoClose();
-                                        final Object result = client.send("Test").get();
-                                        assertEquals("response", result);
-                                        client.close();
-                                        tcpServerCloseable.close();
-                                        handle.close();
+                                        final ChannelSource<AllocatedMessageChannel> messageChannelSource = Channels.convertStreamToAllocatedMessage(tcpClient, 32768, 32768);
+                                        final IoFuture<RemoteClientEndpoint> futureClient = BasicProtocol.connect(executorService, localRoot, messageChannelSource, allocator);
+                                        final RemoteClientEndpoint clientEndpoint = futureClient.get();
+                                        try {
+                                            final Client<Object,Object> client = endpoint.createClient(clientEndpoint);
+                                            try {
+                                                clientEndpoint.autoClose();
+                                                final Object result = client.send("Test").get();
+                                                assertEquals("response", result);
+                                                client.close();
+                                                cleanupLatch.await(500L, TimeUnit.MILLISECONDS);
+                                                tcpServerCloseable.close();
+                                                serviceHandle.close();
+                                                assertTrue(serviceOpened.get());
+                                                assertTrue(clientOpened.get());
+                                                assertTrue(client2Opened.get());
+                                                assertTrue(clientClosed.get());
+                                                assertTrue(serviceClosed.get());
+                                            } finally {
+                                                IoUtils.safeClose(client);
+                                            }
+                                        } finally {
+                                            IoUtils.safeClose(clientEndpoint);
+                                        }
                                     } finally {
-                                        IoUtils.safeClose(client);
-                                        clientCloseLatch.await(500L, TimeUnit.MILLISECONDS);
+                                        // todo close tcpClient
                                     }
                                 } finally {
-                                    IoUtils.safeClose(clientEndpoint);
+                                    IoUtils.safeClose(localRoot);
                                 }
                             } finally {
                                 IoUtils.safeClose(tcpServerCloseable);
                             }
                         } finally {
-                            IoUtils.safeClose(handle);
+                            IoUtils.safeClose(serviceHandle);
                         }
                     } finally {
                         IoUtils.safeClose(serverServiceEndpoint);
@@ -169,9 +197,8 @@ public final class ConnectionTestCase extends TestCase {
         } finally {
             executorService.shutdownNow();
         }
-        assertTrue(serviceOpened.get());
-        assertTrue(clientOpened.get());
-        assertTrue(clientClosed.get());
-        assertTrue(serviceClosed.get());
+        for (Throwable t : problems) {
+            throw t;
+        }
     }
 }

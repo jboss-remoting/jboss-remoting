@@ -26,7 +26,6 @@ import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpointListener;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.core.marshal.JBossSerializationMarshallerFactory;
 import org.jboss.cx.remoting.core.marshal.JavaSerializationMarshallerFactory;
 import org.jboss.xnio.IoHandlerFactory;
 import org.jboss.xnio.ChannelSource;
@@ -59,11 +58,11 @@ public final class BasicProtocol {
      * @param remoteListener a listener which receives notification of the remote root client of the incoming connection
      * @return a handler factory for passing to an XNIO server
      */
-    public static IoHandlerFactory<AllocatedMessageChannel> createServer(final Executor executor, final RemoteServiceEndpoint<?, ?> localRootSource, final BufferAllocator<ByteBuffer> allocator, final RemoteClientEndpointListener remoteListener) {
+    public static IoHandlerFactory<AllocatedMessageChannel> createServer(final Executor executor, final RemoteServiceEndpoint localRootSource, final BufferAllocator<ByteBuffer> allocator, final RemoteClientEndpointListener remoteListener) {
         return new IoHandlerFactory<AllocatedMessageChannel>() {
             public IoHandler<? super AllocatedMessageChannel> createHandler() {
                 try {
-                    final RemoteClientEndpoint<?, ?> remoteClientEndpoint = localRootSource.createClientEndpoint();
+                    final RemoteClientEndpoint remoteClientEndpoint = localRootSource.createClientEndpoint();
                     try {
                         return new BasicHandler(true, allocator, remoteClientEndpoint, executor, remoteListener, new JavaSerializationMarshallerFactory(executor));
                     } finally {
@@ -92,13 +91,13 @@ public final class BasicProtocol {
      * @return the future client endpoint of the remote side's root client
      * @throws IOException if an error occurs
      */
-    public static <I, O> IoFuture<RemoteClientEndpoint<I, O>> connect(final Executor executor, final RemoteClientEndpoint<?, ?> localRoot, final ChannelSource<AllocatedMessageChannel> channelSource, final BufferAllocator<ByteBuffer> allocator) throws IOException {
+    public static <I, O> IoFuture<RemoteClientEndpoint> connect(final Executor executor, final RemoteClientEndpoint localRoot, final ChannelSource<AllocatedMessageChannel> channelSource, final BufferAllocator<ByteBuffer> allocator) throws IOException {
         final BasicHandler basicHandler = new BasicHandler(false, allocator, localRoot, executor, null, new JavaSerializationMarshallerFactory(executor));
         final IoFuture<AllocatedMessageChannel> futureChannel = channelSource.open(basicHandler);
-        return new AbstractConvertingIoFuture<RemoteClientEndpoint<I, O>, AllocatedMessageChannel>(futureChannel) {
+        return new AbstractConvertingIoFuture<RemoteClientEndpoint, AllocatedMessageChannel>(futureChannel) {
             @SuppressWarnings({ "unchecked" })
-            protected RemoteClientEndpoint<I, O> convert(final AllocatedMessageChannel channel) throws RemotingException {
-                final RemoteClientEndpoint<?, ?> remoteClientEndpoint = basicHandler.getRemoteClient(0);
+            protected RemoteClientEndpoint convert(final AllocatedMessageChannel channel) throws RemotingException {
+                final RemoteClientEndpoint remoteClientEndpoint = basicHandler.getRemoteClient(0);
                 return (RemoteClientEndpoint) remoteClientEndpoint;
             }
         };

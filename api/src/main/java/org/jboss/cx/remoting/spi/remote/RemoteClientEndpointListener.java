@@ -34,5 +34,5 @@ public interface RemoteClientEndpointListener {
      * @param <O> the reply type
      * @param endpoint the endpoint that was created
      */
-    <I, O> void notifyCreated(RemoteClientEndpoint<I, O> endpoint);
+    <I, O> void notifyCreated(RemoteClientEndpoint endpoint);
 }

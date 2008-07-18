@@ -31,7 +31,7 @@ public final class Remoting {
     }
 
     public static <I, O> Client<I, O> createLocalClient(Endpoint endpoint, RequestListener<I, O> requestListener) throws RemotingException {
-        final RemoteClientEndpoint<I, O> clientEndpoint = endpoint.createClientEndpoint(requestListener);
+        final RemoteClientEndpoint clientEndpoint = endpoint.createClientEndpoint(requestListener);
         try {
             return endpoint.createClient(clientEndpoint);
         } finally {
@@ -40,7 +40,7 @@ public final class Remoting {
     }
 
     public static <I, O> ClientSource<I, O> createLocalClientSource(Endpoint endpoint, RequestListener<I, O> requestListener) throws RemotingException {
-        final RemoteServiceEndpoint<I, O> serviceEndpoint = endpoint.createServiceEndpoint(requestListener);
+        final RemoteServiceEndpoint serviceEndpoint = endpoint.createServiceEndpoint(requestListener);
         try {
             return endpoint.createClientSource(serviceEndpoint);
         } finally {
