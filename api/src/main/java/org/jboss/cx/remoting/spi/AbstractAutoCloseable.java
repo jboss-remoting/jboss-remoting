@@ -55,7 +55,6 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
 
     protected void dec() throws RemotingException {
         final int v = refcount.decrementAndGet();
-        log.trace("Clearing reference to %s to %d", this, Integer.valueOf(v));
         if (v == 0) {
             // we dropped the refcount to zero
             log.trace("Refcount of %s dropped to zero, closing", this);
@@ -67,6 +66,8 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
         } else if (v < 0) {
             // was already closed; put the count back
             refcount.incrementAndGet();
+        } else {
+            log.trace("Clearing reference to %s to %d", this, Integer.valueOf(v));
         }
         // otherwise, the resource remains open
     }
