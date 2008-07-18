@@ -1,5 +1,10 @@
 
-// Permissions for the core tests
+// Permissions for the tests
+
+grant codeBase "file:${build.home}/api/target/test/classes/-"
+{
+    permission java.lang.RuntimePermission "modifyThread"; // for executor control
+};
 
 grant codeBase "file:${build.home}/core/target/test/classes/-"
 {
