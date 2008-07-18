@@ -90,7 +90,6 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     private final ObjectResolver resolver;
     private final ClassLoader classLoader;
 
-    @SuppressWarnings({ "unchecked" })
     public BasicHandler(final boolean server, final BufferAllocator<ByteBuffer> allocator, final RemoteClientEndpoint root, final Executor executor, final RemoteClientEndpointListener remoteListener, final MarshallerFactory<ByteBuffer> marshallerFactory) throws RemotingException {
         this.server = server;
         this.allocator = allocator;
@@ -427,11 +426,11 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         return id;
     }
 
-    @SuppressWarnings({ "unchecked" })
     public void openClientForForwardedService(int id, RemoteClientEndpoint clientEndpoint) {
         try {
-            forwardedClients.put(Integer.valueOf(id), ((RemoteClientEndpoint)clientEndpoint).getHandle());
+            forwardedClients.put(Integer.valueOf(id), clientEndpoint.getHandle());
         } catch (RemotingException e) {
+            // TODO fix
             e.printStackTrace();
         }
     }

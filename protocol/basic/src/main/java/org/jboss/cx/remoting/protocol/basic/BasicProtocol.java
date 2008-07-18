@@ -82,8 +82,6 @@ public final class BasicProtocol {
     /**
      * Create a request client for the basic protocol.
      *
-     * @param <I> the request type of the new remote root service endpoint
-     * @param <O> the reply type of the new remote root service endpoint
      * @param executor the executor to use for invocations
      * @param localRoot the client endpoint to use as the local root client
      * @param channelSource the XNIO channel source to use to establish the connection
@@ -91,11 +89,10 @@ public final class BasicProtocol {
      * @return the future client endpoint of the remote side's root client
      * @throws IOException if an error occurs
      */
-    public static <I, O> IoFuture<RemoteClientEndpoint> connect(final Executor executor, final RemoteClientEndpoint localRoot, final ChannelSource<AllocatedMessageChannel> channelSource, final BufferAllocator<ByteBuffer> allocator) throws IOException {
+    public static IoFuture<RemoteClientEndpoint> connect(final Executor executor, final RemoteClientEndpoint localRoot, final ChannelSource<AllocatedMessageChannel> channelSource, final BufferAllocator<ByteBuffer> allocator) throws IOException {
         final BasicHandler basicHandler = new BasicHandler(false, allocator, localRoot, executor, null, new JavaSerializationMarshallerFactory(executor));
         final IoFuture<AllocatedMessageChannel> futureChannel = channelSource.open(basicHandler);
         return new AbstractConvertingIoFuture<RemoteClientEndpoint, AllocatedMessageChannel>(futureChannel) {
-            @SuppressWarnings({ "unchecked" })
             protected RemoteClientEndpoint convert(final AllocatedMessageChannel channel) throws RemotingException {
                 final RemoteClientEndpoint remoteClientEndpoint = basicHandler.getRemoteClient(0);
                 return (RemoteClientEndpoint) remoteClientEndpoint;
