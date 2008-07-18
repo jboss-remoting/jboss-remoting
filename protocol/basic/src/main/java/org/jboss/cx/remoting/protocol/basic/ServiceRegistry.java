@@ -35,5 +35,5 @@ public interface ServiceRegistry {
 
     void unbind(int id) throws RemotingException;
 
-    RemoteServiceEndpoint
+    RemoteServiceEndpoint lookup(int id) throws RemotingException;
 }
