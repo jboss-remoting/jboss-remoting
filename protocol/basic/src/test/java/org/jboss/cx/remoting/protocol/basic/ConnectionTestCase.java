@@ -91,7 +91,7 @@ public final class ConnectionTestCase extends TestCase {
                                 try {
                                     context.sendReply(REPLY);
                                 } catch (RemotingException e) {
-                                    e.printStackTrace();
+                                    problems.add(e);
                                 }
                             }
                         });
