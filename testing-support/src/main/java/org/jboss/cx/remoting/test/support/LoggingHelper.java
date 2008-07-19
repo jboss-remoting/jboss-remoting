@@ -54,6 +54,7 @@ public final class LoggingHelper {
                                 int ms = (int) (offs % 1000L);
                                 long s = offs / 1000L;
                                 builder.append(String.format("%s%04d.%03d ", sign, Long.valueOf(s), Long.valueOf(ms)));
+                                builder.append(String.format("tid:%d ", Integer.valueOf(record.getThreadID())));
                                 builder.append(record.getLevel().toString());
                                 builder.append(" [").append(record.getLoggerName()).append("] ");
                                 builder.append(String.format(record.getMessage(), record.getParameters()));
