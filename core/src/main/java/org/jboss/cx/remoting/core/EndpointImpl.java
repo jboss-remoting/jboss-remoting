@@ -177,10 +177,12 @@ public class EndpointImpl implements Endpoint {
 
     private final class ResourceRemover implements CloseHandler<Closeable> {
         public void handleClose(final Closeable closed) {
-            resources.remove(closed);
             synchronized (resources)
             {
-               resources.notifyAll();
+                resources.remove(closed);
+                if (resources.isEmpty()) {
+                    resources.notifyAll();
+                }
             }
         }
     }
