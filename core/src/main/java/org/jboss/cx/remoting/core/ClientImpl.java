@@ -31,6 +31,7 @@ import org.jboss.cx.remoting.core.util.QueueExecutor;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.ReplyHandler;
 import org.jboss.cx.remoting.spi.remote.RemoteRequestContext;
+import org.jboss.cx.remoting.spi.remote.Handle;
 import java.util.concurrent.Executor;
 
 /**
@@ -38,11 +39,15 @@ import java.util.concurrent.Executor;
  */
 public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implements Client<I, O> {
 
-    private final RemoteClientEndpoint remoteClientEndpoint;
+    private final Handle<RemoteClientEndpoint> handle;
 
-    ClientImpl(final RemoteClientEndpoint remoteClientEndpoint, final Executor executor) {
+    ClientImpl(final Handle<RemoteClientEndpoint> handle, final Executor executor) {
         super(executor);
-        this.remoteClientEndpoint = remoteClientEndpoint;
+        this.handle = handle;
+    }
+
+    protected void closeAction() throws RemotingException {
+        handle.close();
     }
 
     public O invoke(final I request) throws RemotingException, RemoteExecutionException {
@@ -52,7 +57,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         final QueueExecutor executor = new QueueExecutor();
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor);
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
-        final RemoteRequestContext requestContext = remoteClientEndpoint.receiveRequest(request, replyHandler);
+        final RemoteRequestContext requestContext = handle.getResource().receiveRequest(request, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         futureReply.addCompletionHandler(new RequestCompletionHandler<O>() {
             public void notifyComplete(final FutureReply<O> reply) {
@@ -69,7 +74,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         }
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor);
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
-        final RemoteRequestContext requestContext = remoteClientEndpoint.receiveRequest(request, replyHandler);
+        final RemoteRequestContext requestContext = handle.getResource().receiveRequest(request, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         return futureReply;
     }
@@ -78,7 +83,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         if (! isOpen()) {
             throw new RemotingException("Client is not open");
         }
-        remoteClientEndpoint.receiveRequest(request);
+        handle.getResource().receiveRequest(request);
     }
 
     public String toString() {

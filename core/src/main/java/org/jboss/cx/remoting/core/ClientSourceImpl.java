@@ -37,25 +37,28 @@ import org.jboss.xnio.IoUtils;
  */
 public final class ClientSourceImpl<I, O> extends AbstractCloseable<ClientSource<I, O>> implements ClientSource<I, O> {
 
-    private final RemoteServiceEndpoint serviceEndpoint;
+    private final Handle<RemoteServiceEndpoint> handle;
     private final Endpoint endpoint;
 
-    ClientSourceImpl(final RemoteServiceEndpoint serviceEndpoint, final EndpointImpl endpoint) {
+    ClientSourceImpl(final Handle<RemoteServiceEndpoint> handle, final EndpointImpl endpoint) {
         super(endpoint.getExecutor());
-        this.serviceEndpoint = serviceEndpoint;
+        this.handle = handle;
         this.endpoint = endpoint;
+    }
+
+    protected void closeAction() throws RemotingException {
+        handle.close();
     }
 
     public Client<I, O> createClient() throws RemotingException {
         if (! isOpen()) {
             throw new RemotingException("Client source is not open");
         }
-        final Handle<RemoteClientEndpoint> handle = serviceEndpoint.createClientEndpoint();
+        final Handle<RemoteClientEndpoint> clientHandle = handle.getResource().createClientEndpoint();
         try {
-            final Client<I, O> client = endpoint.createClient(handle.getResource());
-            return client;
+            return endpoint.createClient(clientHandle.getResource());
         } finally {
-            IoUtils.safeClose(handle);
+            IoUtils.safeClose(clientHandle);
         }
     }
 

@@ -195,6 +195,9 @@ public final class FutureReplyImpl<O> implements FutureReply<O> {
                 }
                 while (state == State.WAITING || state == State.NEW) {
                     try {
+                        if (now >= deadline) {
+                            return null;
+                        }
                         lock.wait(deadline - now);
                     } catch (InterruptedException e) {
                         intr = true;

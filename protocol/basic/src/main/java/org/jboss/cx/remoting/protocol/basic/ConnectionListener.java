@@ -22,21 +22,9 @@
 
 package org.jboss.cx.remoting.protocol.basic;
 
-import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
-import org.jboss.cx.remoting.spi.remote.Handle;
-import org.jboss.cx.remoting.RemotingException;
-
 /**
  *
  */
-public interface ServiceRegistry {
-    int bind(RemoteServiceEndpoint remoteServiceEndpoint) throws RemotingException;
-
-    void bind(RemoteServiceEndpoint remoteServiceEndpoint, int id) throws RemotingException;
-
-    void unbind(int id) throws RemotingException;
-
-    void clear();
-
-    Handle<RemoteServiceEndpoint> lookup(int id) throws RemotingException;
+public interface ConnectionListener {
+    void handleOpened(Connection connection);
 }

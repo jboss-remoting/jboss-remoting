@@ -22,40 +22,42 @@
 
 package org.jboss.cx.remoting.protocol.basic;
 
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.net.InetSocketAddress;
+import java.io.Closeable;
 import junit.framework.TestCase;
-import org.jboss.xnio.Xnio;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.BufferAllocator;
-import org.jboss.xnio.ConfigurableFactory;
-import org.jboss.xnio.ChannelSource;
-import org.jboss.xnio.TcpClient;
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.channels.Channels;
-import org.jboss.xnio.channels.AllocatedMessageChannel;
 import org.jboss.cx.remoting.core.EndpointImpl;
-import org.jboss.cx.remoting.RequestContext;
-import org.jboss.cx.remoting.RemoteExecutionException;
+import org.jboss.cx.remoting.test.support.LoggingHelper;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.ClientContext;
 import org.jboss.cx.remoting.ServiceContext;
+import org.jboss.cx.remoting.RequestContext;
+import org.jboss.cx.remoting.RemoteExecutionException;
+import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.test.support.LoggingHelper;
+import org.jboss.cx.remoting.FutureReply;
+import org.jboss.cx.remoting.AbstractRequestListener;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
-import org.jboss.cx.remoting.spi.remote.RemoteClientEndpointListener;
 import org.jboss.cx.remoting.spi.remote.Handle;
-import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.Collections;
-import java.util.List;
-import java.util.LinkedList;
-import java.nio.ByteBuffer;
-import java.net.InetSocketAddress;
-import java.io.Closeable;
+import org.jboss.xnio.BufferAllocator;
+import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.Xnio;
+import org.jboss.xnio.IoHandlerFactory;
+import org.jboss.xnio.ConfigurableFactory;
+import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.TcpConnector;
+import org.jboss.xnio.TcpClient;
+import org.jboss.xnio.ChannelSource;
+import org.jboss.xnio.channels.AllocatedMessageChannel;
+import org.jboss.xnio.channels.Channels;
+import org.jboss.xnio.channels.StreamChannel;
 
 /**
  *
@@ -66,13 +68,9 @@ public final class ConnectionTestCase extends TestCase {
     }
 
     public void testConnection() throws Throwable {
+        final String REQUEST = "request";
+        final String REPLY = "reply";
         final List<Throwable> problems = Collections.synchronizedList(new LinkedList<Throwable>());
-        final AtomicBoolean clientOpened = new AtomicBoolean(false);
-        final AtomicBoolean client2Opened = new AtomicBoolean(false);
-        final AtomicBoolean serviceOpened = new AtomicBoolean(false);
-        final AtomicBoolean clientClosed = new AtomicBoolean(false);
-        final AtomicBoolean serviceClosed = new AtomicBoolean(false);
-        final CountDownLatch cleanupLatch = new CountDownLatch(2);
         final ExecutorService executorService = Executors.newCachedThreadPool();
         try {
             final BufferAllocator<ByteBuffer> allocator = new BufferAllocator<ByteBuffer>() {
@@ -88,6 +86,69 @@ public final class ConnectionTestCase extends TestCase {
                 final EndpointImpl endpoint = new EndpointImpl();
                 endpoint.setExecutor(executorService);
                 endpoint.start();
+                try {
+                    final ServiceRegistry serviceRegistry = new ServiceRegistryImpl();
+                    try {
+                        final Handle<RemoteServiceEndpoint> serviceEndpointHandle = endpoint.createServiceEndpoint(new AbstractRequestListener<Object, Object>() {
+                            public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
+                                try {
+                                    context.sendReply(REPLY);
+                                } catch (RemotingException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        });
+                        try {
+                            serviceRegistry.bind(serviceEndpointHandle.getResource(), 13);
+                            final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = BasicProtocol.createServer(executorService, allocator, serviceRegistry);
+                            final IoHandlerFactory<StreamChannel> newHandlerFactory = Channels.convertStreamToAllocatedMessage(handlerFactory, 32768, 32768);
+                            final ConfigurableFactory<Closeable> tcpServerFactory = xnio.createTcpServer(newHandlerFactory, new InetSocketAddress(12345));
+                            final Closeable tcpServerCloseable = tcpServerFactory.create();
+                            try {
+                                final ConfigurableFactory<TcpConnector> connectorFactory = xnio.createTcpConnector();
+                                final TcpConnector connector = connectorFactory.create();
+                                try {
+                                    final TcpClient tcpClient = connector.createChannelSource(new InetSocketAddress("localhost", 12345));
+                                    final ChannelSource<AllocatedMessageChannel> channelSource = Channels.convertStreamToAllocatedMessage(tcpClient, 32768, 32768);
+                                    final IoFuture<Connection> futureCloseable = BasicProtocol.connect(executorService, channelSource, allocator, serviceRegistry);
+                                    final Connection connection = futureCloseable.get();
+                                    try {
+                                        final Handle<RemoteServiceEndpoint> handleThirteen = connection.getServiceForId(13);
+                                        try {
+                                            final RemoteServiceEndpoint serviceThirteen = handleThirteen.getResource();
+                                            final ClientSource<Object,Object> clientSource = endpoint.createClientSource(serviceThirteen);
+                                            try {
+                                                final Client<Object,Object> client = clientSource.createClient();
+                                                try {
+                                                    final FutureReply<Object> future = client.send(REQUEST);
+                                                    assertEquals(REPLY, future.get(500L, TimeUnit.MILLISECONDS));
+                                                } finally {
+                                                    IoUtils.safeClose(client);
+                                                }
+                                            } finally {
+                                                IoUtils.safeClose(clientSource);
+                                            }
+                                        } finally {
+                                            IoUtils.safeClose(handleThirteen);
+                                        }
+                                    } finally {
+                                        IoUtils.safeClose(connection);
+                                    }
+                                } finally {
+                                    // todo close connector
+                                }
+                            } finally {
+                                IoUtils.safeClose(tcpServerCloseable);
+                            }
+                        } finally {
+                            IoUtils.safeClose(serviceEndpointHandle);
+                        }
+                    } finally {
+                        serviceRegistry.clear();
+                    }
+                } finally {
+                    endpoint.stop();
+                }
             } finally {
                 IoUtils.safeClose(xnio);
             }

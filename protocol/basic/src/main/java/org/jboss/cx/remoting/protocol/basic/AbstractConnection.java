@@ -22,21 +22,23 @@
 
 package org.jboss.cx.remoting.protocol.basic;
 
-import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
-import org.jboss.cx.remoting.spi.remote.Handle;
-import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.spi.AbstractCloseable;
+import java.util.concurrent.Executor;
 
 /**
  *
  */
-public interface ServiceRegistry {
-    int bind(RemoteServiceEndpoint remoteServiceEndpoint) throws RemotingException;
+public abstract class AbstractConnection extends AbstractCloseable<Connection> implements Connection {
+    /**
+     * Basic constructor.
+     *
+     * @param executor the executor used to execute the close notification handlers
+     */
+    protected AbstractConnection(final Executor executor) {
+        super(executor);
+    }
 
-    void bind(RemoteServiceEndpoint remoteServiceEndpoint, int id) throws RemotingException;
-
-    void unbind(int id) throws RemotingException;
-
-    void clear();
-
-    Handle<RemoteServiceEndpoint> lookup(int id) throws RemotingException;
+    public String toString() {
+        return "connection <" + Integer.toString(hashCode()) + ">";
+    }
 }

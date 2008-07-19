@@ -139,7 +139,7 @@ public class EndpointImpl implements Endpoint {
         boolean ok = false;
         final Handle<RemoteClientEndpoint> handle = endpoint.getHandle();
         try {
-            final ClientImpl<I, O> client = new ClientImpl<I, O>(endpoint, executor);
+            final ClientImpl<I, O> client = new ClientImpl<I, O>(handle, executor);
             client.addCloseHandler(new CloseHandler<Client<I, O>>() {
                 public void handleClose(final Client<I, O> closed) {
                     IoUtils.safeClose(handle);
@@ -154,16 +154,11 @@ public class EndpointImpl implements Endpoint {
         }
     }
 
-    public <I, O> ClientSource<I, O> createClientSource(final RemoteServiceEndpoint endpoint) throws RemotingException {
+    public <I, O> ClientSource<I, O> createClientSource(final RemoteServiceEndpoint remoteServiceEndpoint) throws RemotingException {
         boolean ok = false;
-        final Handle<RemoteServiceEndpoint> handle = endpoint.getHandle();
+        final Handle<RemoteServiceEndpoint> handle = remoteServiceEndpoint.getHandle();
         try {
-            final ClientSourceImpl<I, O> client = new ClientSourceImpl<I, O>(endpoint, this);
-            client.addCloseHandler(new CloseHandler<ClientSource<I, O>>() {
-                public void handleClose(final ClientSource<I, O> closed) {
-                    IoUtils.safeClose(handle);
-                }
-            });
+            final ClientSourceImpl<I, O> client = new ClientSourceImpl<I, O>(handle, this);
             ok = true;
             return client;
         } finally {

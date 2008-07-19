@@ -56,7 +56,6 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
             throw new NullPointerException("executor is null");
         }
         this.executor = executor;
-        log.trace("Opened %s", this);
     }
 
     /**

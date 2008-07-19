@@ -20,19 +20,16 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.cx.remoting.spi.remote;
+package org.jboss.cx.remoting.protocol.basic;
+
+import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.Handle;
+import org.jboss.cx.remoting.Closeable;
+import org.jboss.cx.remoting.RemotingException;
 
 /**
- * A listener that watches for creation of remote client endpoints.
+ *
  */
-public interface RemoteClientEndpointListener {
-
-    /**
-     * Receive notification of the creation of a new endpoint.
-     *
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @param endpoint the endpoint that was created
-     */
-    <I, O> void notifyCreated(RemoteClientEndpoint endpoint);
+public interface Connection extends Closeable<Connection> {
+    Handle<RemoteServiceEndpoint> getServiceForId(int id) throws RemotingException;
 }
