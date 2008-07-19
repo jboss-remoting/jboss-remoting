@@ -559,6 +559,10 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                 return SpiUtils.getBlankRemoteRequestContext();
             }
         }
+
+        public String toString() {
+            return "forwarded client endpoint (id = " + identifier + ")";
+        }
     }
 
     public final class RemoteRequestContextImpl implements RemoteRequestContext {
@@ -638,6 +642,10 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     intr = true;
                 }
             }
+        }
+
+        public String toString() {
+            return "forwarded service endpoint (id = " + identifier + ")";
         }
     }
 }

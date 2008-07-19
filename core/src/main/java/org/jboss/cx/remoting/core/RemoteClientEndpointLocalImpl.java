@@ -111,4 +111,8 @@ public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoClose
             throw new RemotingException("Failed to open client context", t);
         }
     }
+
+    public String toString() {
+        return "local client endpoint (request listener = " + String.valueOf(requestListener) + ")";
+    }
 }

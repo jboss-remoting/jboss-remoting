@@ -60,7 +60,7 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
         final int v = refcount.decrementAndGet();
         if (v == 0) {
             // we dropped the refcount to zero
-            log.trace("Refcount of %s dropped to zero, closing", this);
+            log.trace("Lowering reference count of %s to 0 (closing)", this);
             if (refcount.compareAndSet(0, -65536)) {
                 // we are closing
                 close();
@@ -70,7 +70,7 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
             // was already closed; put the count back
             refcount.incrementAndGet();
         } else {
-            log.trace("Clearing reference to %s to %d", this, Integer.valueOf(v));
+            log.trace("Lowering reference count of %s to %d", this, Integer.valueOf(v));
         }
         // otherwise, the resource remains open
     }
@@ -82,7 +82,7 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
      */
     protected void inc() throws RemotingException {
         final int v = refcount.getAndIncrement();
-        log.trace("Adding reference to %s to %d", this, Integer.valueOf(v + 1));
+        log.trace("Raising reference count of %s to %d", this, Integer.valueOf(v + 1));
         if (v < 0) {
             // was already closed
             refcount.decrementAndGet();
@@ -115,5 +115,13 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
         public T getResource() {
             return (T) AbstractAutoCloseable.this;
         }
+
+        public String toString() {
+            return "handle to " + String.valueOf(AbstractAutoCloseable.this);
+        }
+    }
+
+    public String toString() {
+        return "generic resource <" + Integer.toString(hashCode(), 16) + ">";
     }
 }

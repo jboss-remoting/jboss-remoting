@@ -80,4 +80,8 @@ public final class RemoteServiceEndpointLocalImpl<I, O> extends AbstractAutoClos
     ServiceContextImpl getServiceContext() {
         return serviceContext;
     }
+
+    public String toString() {
+        return "local service endpoint (request listener = " + String.valueOf(requestListener) + ")";
+    }
 }
