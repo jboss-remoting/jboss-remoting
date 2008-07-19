@@ -24,6 +24,7 @@ package org.jboss.cx.remoting.core;
 
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
+import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.spi.AbstractAutoCloseable;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.RemotingException;
@@ -49,11 +50,11 @@ public final class RemoteServiceEndpointLocalImpl<I, O> extends AbstractAutoClos
         serviceContext = new ServiceContextImpl(executor);
     }
 
-    public RemoteClientEndpoint createClientEndpoint() throws RemotingException {
+    public Handle<RemoteClientEndpoint> createClientEndpoint() throws RemotingException {
         if (isOpen()) {
             final RemoteClientEndpointLocalImpl<I, O> clientEndpoint = new RemoteClientEndpointLocalImpl<I, O>(executor, this, requestListener);
             clientEndpoint.open();
-            return clientEndpoint;
+            return clientEndpoint.getHandle();
         } else {
             throw new RemotingException("RemotingServiceEndpoint is closed");
         }

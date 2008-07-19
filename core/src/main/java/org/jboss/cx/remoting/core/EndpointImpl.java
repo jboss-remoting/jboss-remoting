@@ -121,18 +121,18 @@ public class EndpointImpl implements Endpoint {
         return endpointMap;
     }
 
-    public <I, O> RemoteClientEndpoint createClientEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
+    public <I, O> Handle<RemoteClientEndpoint> createClientEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
         final RemoteClientEndpointLocalImpl<I, O> clientEndpoint = new RemoteClientEndpointLocalImpl<I, O>(executor, requestListener);
         clientEndpoint.addCloseHandler(remover);
         clientEndpoint.open();
-        return clientEndpoint;
+        return clientEndpoint.getHandle();
     }
 
-    public <I, O> RemoteServiceEndpoint createServiceEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
+    public <I, O> Handle<RemoteServiceEndpoint> createServiceEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
         final RemoteServiceEndpointLocalImpl<I, O> serviceEndpoint = new RemoteServiceEndpointLocalImpl<I, O>(executor, requestListener);
         serviceEndpoint.addCloseHandler(remover);
         serviceEndpoint.open();
-        return serviceEndpoint;
+        return serviceEndpoint.getHandle();
     }
 
     public <I, O> Client<I, O> createClient(final RemoteClientEndpoint endpoint) throws RemotingException {

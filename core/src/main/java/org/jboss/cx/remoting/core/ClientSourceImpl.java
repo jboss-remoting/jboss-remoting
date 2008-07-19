@@ -28,7 +28,9 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.spi.AbstractCloseable;
+import org.jboss.xnio.IoUtils;
 
 /**
  *
@@ -48,9 +50,12 @@ public final class ClientSourceImpl<I, O> extends AbstractCloseable<ClientSource
         if (! isOpen()) {
             throw new RemotingException("Client source is not open");
         }
-        final RemoteClientEndpoint clientEndpoint = serviceEndpoint.createClientEndpoint();
-        final Client<I, O> client = endpoint.createClient(clientEndpoint);
-        clientEndpoint.autoClose();
-        return client;
+        final Handle<RemoteClientEndpoint> handle = serviceEndpoint.createClientEndpoint();
+        try {
+            final Client<I, O> client = endpoint.createClient(handle.getResource());
+            return client;
+        } finally {
+            IoUtils.safeClose(handle);
+        }
     }
 }

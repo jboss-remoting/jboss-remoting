@@ -64,11 +64,6 @@ public interface RemoteClientEndpoint extends Closeable<RemoteClientEndpoint> {
     Handle<RemoteClientEndpoint> getHandle() throws RemotingException;
 
     /**
-     * Automatically close this client endpoint when all handles and local client instances are closed.
-     */
-    void autoClose() throws RemotingException;
-
-    /**
      * Close this client endpoint.  The outcome of any outstanding requests is not defined, though implementations
      * should make an effort to cancel any outstanding requests.
      *

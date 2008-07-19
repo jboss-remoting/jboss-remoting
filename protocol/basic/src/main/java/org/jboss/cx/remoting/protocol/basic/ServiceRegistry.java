@@ -23,6 +23,7 @@
 package org.jboss.cx.remoting.protocol.basic;
 
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.RemotingException;
 
 /**
@@ -35,5 +36,5 @@ public interface ServiceRegistry {
 
     void unbind(int id) throws RemotingException;
 
-    RemoteServiceEndpoint lookup(int id) throws RemotingException;
+    Handle<RemoteServiceEndpoint> lookup(int id) throws RemotingException;
 }

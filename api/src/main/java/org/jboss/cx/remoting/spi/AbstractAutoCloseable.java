@@ -26,6 +26,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.xnio.log.Logger;
 
@@ -34,8 +35,7 @@ import org.jboss.xnio.log.Logger;
  */
 public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
 
-    private final AtomicBoolean autoClose = new AtomicBoolean();
-    private final AtomicInteger refcount = new AtomicInteger(1);
+    private final AtomicInteger refcount = new AtomicInteger(0);
     private final Executor executor;
 
     private static final Logger log = Logger.getLogger(AbstractAutoCloseable.class);
@@ -82,24 +82,17 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
         }
     }
 
-    public void autoClose() throws RemotingException {
-        if (! autoClose.getAndSet(true)) {
-            dec();
-        }
-    }
-
     public Handle<T> getHandle() throws RemotingException {
         return new HandleImpl();
     }
 
     private final class HandleImpl extends AbstractCloseable<Handle<T>> implements Handle<T> {
-
         private HandleImpl() throws RemotingException {
             super(AbstractAutoCloseable.this.executor);
             inc();
         }
 
-        public void close() throws RemotingException {
+        protected void closeAction() throws RemotingException {
             dec();
         }
 

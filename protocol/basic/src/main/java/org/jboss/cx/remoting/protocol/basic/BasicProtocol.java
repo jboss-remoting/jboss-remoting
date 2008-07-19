@@ -62,16 +62,8 @@ public final class BasicProtocol {
         return new IoHandlerFactory<AllocatedMessageChannel>() {
             public IoHandler<? super AllocatedMessageChannel> createHandler() {
                 try {
-                    final RemoteClientEndpoint remoteClientEndpoint = localRootSource.createClientEndpoint();
-                    try {
-                        return new BasicHandler(true, allocator, remoteClientEndpoint, executor, remoteListener, new JavaSerializationMarshallerFactory(executor));
-                    } finally {
-                        try {
-                            remoteClientEndpoint.autoClose();
-                        } catch (RemotingException e) {
-                            log.error(e, "Error setting auto-close mode");
-                        }
-                    }
+                    final RemoteClientEndpoint remoteClientEndpoint = localRootSource.createClientEndpoint().getResource();
+                    return new BasicHandler(true, allocator, remoteClientEndpoint, executor, remoteListener, new JavaSerializationMarshallerFactory(executor));
                 } catch (RemotingException e) {
                     throw new IllegalStateException("The local root endpoint is unusable", e);
                 }
@@ -95,7 +87,7 @@ public final class BasicProtocol {
         return new AbstractConvertingIoFuture<RemoteClientEndpoint, AllocatedMessageChannel>(futureChannel) {
             protected RemoteClientEndpoint convert(final AllocatedMessageChannel channel) throws RemotingException {
                 final RemoteClientEndpoint remoteClientEndpoint = basicHandler.getRemoteClient(0);
-                return (RemoteClientEndpoint) remoteClientEndpoint;
+                return remoteClientEndpoint;
             }
         };
     }

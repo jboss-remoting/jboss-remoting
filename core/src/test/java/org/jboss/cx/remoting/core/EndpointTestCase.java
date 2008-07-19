@@ -35,6 +35,7 @@ import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.test.support.LoggingHelper;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
+import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.xnio.IoUtils;
 
 /**
@@ -78,7 +79,7 @@ public final class EndpointTestCase extends TestCase {
             endpoint.setExecutor(executorService);
             endpoint.start();
             try {
-                final RemoteClientEndpoint clientEndpoint = endpoint.createClientEndpoint(new AbstractRequestListener<Object, Object>() {
+                final Handle<RemoteClientEndpoint> handle = endpoint.createClientEndpoint(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         try {
@@ -92,6 +93,7 @@ public final class EndpointTestCase extends TestCase {
                         }
                     }
                 });
+                final RemoteClientEndpoint clientEndpoint = handle.getResource();
                 try {
                     clientEndpoint.addCloseHandler(new CloseHandler<RemoteClientEndpoint>() {
                         public void handleClose(final RemoteClientEndpoint closed) {
@@ -106,7 +108,6 @@ public final class EndpointTestCase extends TestCase {
                             }
                         });
                         assertEquals(replyObj, client.invoke(requestObj));
-                        clientEndpoint.autoClose();
                         client.close();
                     } finally {
                         IoUtils.safeClose(client);
@@ -137,7 +138,7 @@ public final class EndpointTestCase extends TestCase {
             endpoint.setExecutor(executorService);
             endpoint.start();
             try {
-                final RemoteClientEndpoint clientEndpoint = endpoint.createClientEndpoint(new AbstractRequestListener<Object, Object>() {
+                final Handle<RemoteClientEndpoint> handle = endpoint.createClientEndpoint(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         try {
@@ -151,6 +152,7 @@ public final class EndpointTestCase extends TestCase {
                         }
                     }
                 });
+                final RemoteClientEndpoint clientEndpoint = handle.getResource();
                 try {
                     clientEndpoint.addCloseHandler(new CloseHandler<RemoteClientEndpoint>() {
                         public void handleClose(final RemoteClientEndpoint closed) {
@@ -165,7 +167,6 @@ public final class EndpointTestCase extends TestCase {
                             }
                         });
                         assertEquals(replyObj, client.send(requestObj).get());
-                        clientEndpoint.autoClose();
                         client.close();
                     } finally {
                         IoUtils.safeClose(client);

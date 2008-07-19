@@ -269,7 +269,6 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         break;
                     }
                     final RemoteServiceEndpoint serviceEndpoint = handle.getResource();
-                    final RemoteClientEndpoint clientEndpoint = serviceEndpoint.createClientEndpoint();
 
                     break;
                 }
@@ -617,7 +616,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             });
         }
 
-        public RemoteClientEndpoint createClientEndpoint() throws RemotingException {
+        public Handle<RemoteClientEndpoint> createClientEndpoint() throws RemotingException {
             final int id = openClientFromService();
             final ByteBuffer buffer = allocator.allocate();
             buffer.putInt(identifier);
@@ -629,7 +628,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                 try {
                     registerWriter(channel, new SimpleWriteHandler(allocator, buffer));
                     try {
-                        return new RemoteClientEndpointImpl(id, marshallerFactory, allocator);
+                        return new RemoteClientEndpointImpl(id, marshallerFactory, allocator).getHandle();
                     } finally {
                         if (intr) {
                             Thread.currentThread().interrupt();

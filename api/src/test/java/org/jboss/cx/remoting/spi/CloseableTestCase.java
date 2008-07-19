@@ -78,6 +78,7 @@ public final class CloseableTestCase extends TestCase {
             final AbstractAutoCloseable<Object> closeable = new AbstractAutoCloseable<Object>(executorService) {
                 // empty
             };
+            final Handle<Object> rootHandle = closeable.getHandle();
             try {
                 closeable.addCloseHandler(new CloseHandler<Object>() {
                     public void handleClose(final Object x) {
@@ -87,7 +88,7 @@ public final class CloseableTestCase extends TestCase {
                 });
                 assertTrue(closeable.isOpen());
                 assertFalse(closed.get());
-                closeable.autoClose();
+                rootHandle.close();
                 assertTrue(latch.await(500L, TimeUnit.MILLISECONDS));
                 assertFalse(closeable.isOpen());
                 assertTrue(closed.get());
@@ -107,6 +108,7 @@ public final class CloseableTestCase extends TestCase {
             final AbstractAutoCloseable<Object> closeable = new AbstractAutoCloseable<Object>(executorService) {
                 // empty
             };
+            final Handle<Object> rootHandle = closeable.getHandle();
             try {
                 closeable.addCloseHandler(new CloseHandler<Object>() {
                     public void handleClose(final Object x) {
@@ -119,7 +121,7 @@ public final class CloseableTestCase extends TestCase {
                 final Handle<Object> h1 = closeable.getHandle();
                 assertTrue(closeable.isOpen());
                 assertFalse(closed.get());
-                closeable.autoClose();
+                rootHandle.close();
                 assertTrue(closeable.isOpen());
                 assertFalse(closed.get());
                 h1.close();
@@ -142,6 +144,7 @@ public final class CloseableTestCase extends TestCase {
             final AbstractAutoCloseable<Object> closeable = new AbstractAutoCloseable<Object>(executorService) {
                 // empty
             };
+            final Handle<Object> rootHandle = closeable.getHandle();
             try {
                 closeable.addCloseHandler(new CloseHandler<Object>() {
                     public void handleClose(final Object x) {
@@ -156,7 +159,7 @@ public final class CloseableTestCase extends TestCase {
                 final Handle<Object> h3 = closeable.getHandle();
                 assertTrue(closeable.isOpen());
                 assertFalse(closed.get());
-                closeable.autoClose();
+                rootHandle.close();
                 assertTrue(closeable.isOpen());
                 assertFalse(closed.get());
                 h1.close();

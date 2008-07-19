@@ -8,6 +8,7 @@ import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.Handle;
 
 /**
  * A simple delegating wrapper for endpoints.
@@ -41,14 +42,14 @@ public class EndpointWrapper implements Endpoint {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> RemoteClientEndpoint createClientEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
+    public <I, O> Handle<RemoteClientEndpoint> createClientEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
         return delegate.createClientEndpoint(requestListener);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> RemoteServiceEndpoint createServiceEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
+    public <I, O> Handle<RemoteServiceEndpoint> createServiceEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
         return delegate.createServiceEndpoint(requestListener);
     }
 

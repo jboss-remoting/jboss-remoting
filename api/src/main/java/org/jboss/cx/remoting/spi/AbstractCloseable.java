@@ -34,7 +34,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- *
+ * A basic implementation of a closeable resource.  Use as a convenient base class for your closeable resources.
+ * Ensures that the {@code close()} method is idempotent; implements the registry of close handlers.
  */
 public abstract class AbstractCloseable<T> implements Closeable<T> {
 
@@ -45,6 +46,11 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
     private final AtomicBoolean closed = new AtomicBoolean();
     private Set<CloseHandler<? super T>> closeHandlers;
 
+    /**
+     * Basic constructor.
+     *
+     * @param executor the executor used to execute the close notification handlers
+     */
     protected AbstractCloseable(final Executor executor) {
         if (executor == null) {
             throw new NullPointerException("executor is null");
@@ -52,11 +58,27 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
         this.executor = executor;
     }
 
+    /**
+     * Read the status of this resource.  This is just a snapshot in time; there is no guarantee that the resource
+     * will remain open for any amount of time, even if this method returns {@code true}.
+     *
+     * @return {@code true} if the resource is still open
+     */
     protected boolean isOpen() {
         return ! closed.get();
     }
 
-    public void close() throws RemotingException {
+    /**
+     * Called exactly once when the {@code close()} method is invoked; the actual close operation should take place here.
+     *
+     * @throws RemotingException if the close failed
+     */
+    protected void closeAction() throws RemotingException {}
+
+    /**
+     * {@inheritDoc}
+     */
+    public final void close() throws RemotingException {
         if (! closed.getAndSet(true)) {
             log.trace("Closed %s", this);
             synchronized (closeLock) {
@@ -72,9 +94,13 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
                     closeHandlers = null;
                 }
             }
+            closeAction();
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public void addCloseHandler(final CloseHandler<? super T> handler) {
         synchronized (closeLock) {
             if (closeHandlers == null) {
@@ -84,10 +110,18 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
         }
     }
 
+    /**
+     * Get the executor to use for handler invocation.
+     *
+     * @return the executor
+     */
     protected Executor getExecutor() {
         return executor;
     }
 
+    /**
+     * Finalize this closeable instance.  If the instance hasn't been closed, it is closed and a warning is logged.
+     */
     protected void finalize() throws Throwable {
         try {
             super.finalize();

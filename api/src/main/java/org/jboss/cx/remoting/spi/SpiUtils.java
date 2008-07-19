@@ -136,22 +136,6 @@ public final class SpiUtils {
 
     private static final RemoteRequestContext BLANK_REMOTE_REQUEST_CONTEXT = new BlankRemoteRequestContext();
 
-    public static void safeAutoClose(final RemoteClientEndpoint remoteClientEndpoint) {
-        try {
-            remoteClientEndpoint.autoClose();
-        } catch (Throwable t) {
-            log.error("Failed to set autoClose on %s: %s", remoteClientEndpoint, t);
-        }
-    }
-
-    public static void safeAutoClose(final RemoteServiceEndpoint remoteServiceEndpoint) {
-        try {
-            remoteServiceEndpoint.autoClose();
-        } catch (Throwable t) {
-            log.error("Failed to set autoClose on %s: %s", remoteServiceEndpoint, t);
-        }
-    }
-
     private static final class BlankRemoteRequestContext implements RemoteRequestContext {
         public void cancel(final boolean mayInterrupt) {
         }

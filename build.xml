@@ -849,6 +849,7 @@
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
                 <path refid="util.classpath"/>
+                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="standalone/target/main/.lastcompile" verbose="false"/>
@@ -858,7 +859,7 @@
         <delete dir="standalone/target"/>
     </target>
 
-    <target name="standalone" description="Build the standalone module" depends="api,core,util,standalone.compile">
+    <target name="standalone" description="Build the standalone module" depends="lib.xnio-api,api,core,util,standalone.compile">
         <path id="standalone.classpath">
             <pathelement location="standalone/target/main/classes"/>
         </path>

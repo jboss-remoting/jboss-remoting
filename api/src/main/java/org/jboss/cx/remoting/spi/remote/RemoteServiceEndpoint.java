@@ -40,7 +40,7 @@ public interface RemoteServiceEndpoint extends Closeable<RemoteServiceEndpoint> 
      * @return a client endpoint
      * @throws RemotingException if a client could not be opened
      */
-    RemoteClientEndpoint createClientEndpoint() throws RemotingException;
+    Handle<RemoteClientEndpoint> createClientEndpoint() throws RemotingException;
 
     /**
      * Get a handle to this service endpoint.  The service endpoint will not auto-close as long as there is at least
@@ -52,12 +52,6 @@ public interface RemoteServiceEndpoint extends Closeable<RemoteServiceEndpoint> 
      * @throws RemotingException if a handle could not be acquired
      */
     Handle<RemoteServiceEndpoint> getHandle() throws RemotingException;
-
-    /**
-     * Automatically close this service endpoint when all handles and local client source instances
-     * are closed.
-     */
-    void autoClose() throws RemotingException;
 
     /**
      * Close this service endpoint immediately.

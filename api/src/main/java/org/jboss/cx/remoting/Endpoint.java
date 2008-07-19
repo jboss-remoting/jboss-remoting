@@ -3,6 +3,7 @@ package org.jboss.cx.remoting;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
 import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.Handle;
 
 /**
  * A potential participant in a JBoss Remoting communications relationship.
@@ -34,10 +35,10 @@ public interface Endpoint {
      * @param <I> the request type
      * @param <O> the reply type
      * @param requestListener the request listener
-     * @return the client
+     * @return a handle for the client
      * @throws RemotingException if an error occurs
      */
-    <I, O> RemoteClientEndpoint createClientEndpoint(RequestListener<I, O> requestListener) throws RemotingException;
+    <I, O> Handle<RemoteClientEndpoint> createClientEndpoint(RequestListener<I, O> requestListener) throws RemotingException;
 
     /**
      * Create a client source that can be used to acquire clients associated with a request listener on this endpoint.
@@ -49,10 +50,10 @@ public interface Endpoint {
      * @param <I> the request type
      * @param <O> the reply type
      * @param requestListener the request listener
-     * @return the context source
+     * @return a handle for the client source
      * @throws RemotingException if an error occurs
      */
-    <I, O> RemoteServiceEndpoint createServiceEndpoint(RequestListener<I, O> requestListener) throws RemotingException;
+    <I, O> Handle<RemoteServiceEndpoint> createServiceEndpoint(RequestListener<I, O> requestListener) throws RemotingException;
 
     /**
      * Create a client from a remote client endpoint.
