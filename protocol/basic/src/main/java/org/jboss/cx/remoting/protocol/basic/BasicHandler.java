@@ -561,7 +561,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         }
 
         public String toString() {
-            return "forwarded client endpoint (id = " + identifier + ")";
+            return "forwarded client endpoint <" + Integer.toString(hashCode(), 16) + "> (id = " + identifier + ")";
         }
     }
 
@@ -645,7 +645,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         }
 
         public String toString() {
-            return "forwarded service endpoint (id = " + identifier + ")";
+            return "forwarded service endpoint <" + Integer.toString(hashCode(), 16) + "> (id = " + identifier + ")";
         }
     }
 }

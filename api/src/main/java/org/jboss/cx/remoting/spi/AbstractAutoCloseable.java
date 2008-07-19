@@ -117,7 +117,7 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
         }
 
         public String toString() {
-            return "handle to " + String.valueOf(AbstractAutoCloseable.this);
+            return "handle <" + Integer.toString(hashCode(), 16) + "> to " + String.valueOf(AbstractAutoCloseable.this);
         }
     }
 

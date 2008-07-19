@@ -113,6 +113,6 @@ public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoClose
     }
 
     public String toString() {
-        return "local client endpoint (request listener = " + String.valueOf(requestListener) + ")";
+        return "local client endpoint <" + Integer.toString(hashCode(), 16) + "> (request listener = " + String.valueOf(requestListener) + ")";
     }
 }
