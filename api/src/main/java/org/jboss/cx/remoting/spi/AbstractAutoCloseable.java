@@ -31,7 +31,8 @@ import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.xnio.log.Logger;
 
 /**
- *
+ * A closeable implementation that supports reference counting.  Since the initial reference count is zero, implementors
+ * must be careful to ensure that the first operation invoked is a call to {@link #getHandle()}.
  */
 public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
 
@@ -40,19 +41,21 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
 
     private static final Logger log = Logger.getLogger(AbstractAutoCloseable.class);
 
+    /**
+     * Basic constructor.
+     *
+     * @param executor the executor used to execute the close notification handlers
+     */
     protected AbstractAutoCloseable(final Executor executor) {
         super(executor);
         this.executor = executor;
     }
 
-    protected void safeDec() {
-        try {
-            dec();
-        } catch (Throwable t) {
-            log.trace("Failed to decrement reference count: %s", t);
-        }
-    }
-
+    /**
+     * Decrement the reference count by one.  If the count drops to zero, the resource is closed.
+     *
+     * @throws RemotingException if the reference count dropped to zero and the close operation threw an exception
+     */
     protected void dec() throws RemotingException {
         final int v = refcount.decrementAndGet();
         if (v == 0) {
@@ -72,6 +75,11 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
         // otherwise, the resource remains open
     }
 
+    /**
+     * Increment the reference count by one.  If the resource is closed, an exception is thrown.
+     *
+     * @throws RemotingException if the resource is closed
+     */
     protected void inc() throws RemotingException {
         final int v = refcount.getAndIncrement();
         log.trace("Adding reference to %s to %d", this, Integer.valueOf(v + 1));
@@ -82,6 +90,13 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
         }
     }
 
+    /**
+     * Get a handle to this resource.  Increments the reference count by one.  If the resource is closed, an exception
+     * is thrown.
+     *
+     * @return the handle
+     * @throws RemotingException if the resource is closed
+     */
     public Handle<T> getHandle() throws RemotingException {
         return new HandleImpl();
     }
