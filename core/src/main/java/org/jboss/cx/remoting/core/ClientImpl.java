@@ -80,4 +80,8 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         }
         remoteClientEndpoint.receiveRequest(request);
     }
+
+    public String toString() {
+        return "client instance <" + Integer.toString(hashCode()) + ">";
+    }
 }

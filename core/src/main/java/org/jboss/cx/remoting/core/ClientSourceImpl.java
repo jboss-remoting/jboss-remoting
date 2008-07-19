@@ -58,4 +58,8 @@ public final class ClientSourceImpl<I, O> extends AbstractCloseable<ClientSource
             IoUtils.safeClose(handle);
         }
     }
+
+    public String toString() {
+        return "client source instance <" + Integer.toString(hashCode()) + ">";
+    }
 }

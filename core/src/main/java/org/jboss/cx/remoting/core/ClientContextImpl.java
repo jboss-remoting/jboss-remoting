@@ -54,4 +54,8 @@ public final class ClientContextImpl extends AbstractContextImpl<ClientContext> 
     public ServiceContext getServiceContext() {
         return serviceContext;
     }
+
+    public String toString() {
+        return "client context instance <" + Integer.toString(hashCode()) + ">";
+    }
 }

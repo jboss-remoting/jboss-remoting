@@ -184,4 +184,8 @@ public class EndpointImpl implements Endpoint {
             }
         }
     }
+
+    public String toString() {
+        return "endpoint instance <" + Integer.toString(hashCode()) + ">";
+    }
 }

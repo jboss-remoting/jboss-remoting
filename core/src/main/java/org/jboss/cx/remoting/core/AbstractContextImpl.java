@@ -49,4 +49,8 @@ public abstract class AbstractContextImpl<T> extends AbstractCloseable<T> {
     protected boolean isOpen() {
         return super.isOpen();
     }
+
+    public String toString() {
+        return "generic context instance <" + Integer.toString(hashCode()) + ">";
+    }
 }

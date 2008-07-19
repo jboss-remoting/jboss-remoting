@@ -36,4 +36,8 @@ public final class ServiceContextImpl extends AbstractContextImpl<ServiceContext
     protected ServiceContextImpl(final Executor executor) {
         super(executor);
     }
+
+    public String toString() {
+        return "service context instance <" + Integer.toString(hashCode()) + ">";
+    }
 }
