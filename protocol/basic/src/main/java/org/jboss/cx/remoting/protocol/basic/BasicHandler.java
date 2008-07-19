@@ -256,11 +256,11 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     final int serviceId = buffer.getInt();
                     final int clientId = buffer.getInt();
                     final Handle<RemoteServiceEndpoint> handle = registry.lookup(serviceId);
+                    if (handle == null) {
+                        log.warn("Received client open message for unknown service %d", Integer.valueOf(serviceId));
+                        break;
+                    }
                     try {
-                        if (handle == null) {
-                            log.warn("Received client open message for unknown service %d", Integer.valueOf(serviceId));
-                            break;
-                        }
                         final RemoteServiceEndpoint serviceEndpoint = handle.getResource();
                         final Handle<RemoteClientEndpoint> clientHandle = serviceEndpoint.createClientEndpoint();
                         // todo check for duplicate
