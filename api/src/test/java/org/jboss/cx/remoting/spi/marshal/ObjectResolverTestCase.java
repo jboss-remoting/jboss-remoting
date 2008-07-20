@@ -26,11 +26,16 @@ import junit.framework.TestCase;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Arrays;
+import org.jboss.cx.remoting.test.support.LoggingHelper;
 
 /**
  *
  */
 public final class ObjectResolverTestCase extends TestCase {
+    static {
+        LoggingHelper.init();
+    }
+
     public static final class ThingOne {
 
     }
