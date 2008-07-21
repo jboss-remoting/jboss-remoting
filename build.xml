@@ -1308,7 +1308,7 @@
 
     <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,samples,standalone,testing-support,tools,util"/>
 
-    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,samples.clean,standalone.clean,testing-support.clean,tools.clean,util.clean"/>
+    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,samples.clean,standalone.clean,testing-support.clean,tools.clean,util.clean"/>
 
     <!-- http -->
 
