@@ -679,14 +679,22 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    SpiUtils.safeHandleCancellation(handler);
+                    executor.execute(new Runnable() {
+                        public void run() {
+                            SpiUtils.safeHandleCancellation(handler);
+                        }
+                    });
                     return SpiUtils.getBlankRemoteRequestContext();
                 }
                 log.trace("Sent request %s", request);
                 return new RemoteRequestContextImpl(id, allocator, channel);
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
                 log.trace(t, "receiveRequest failed with an exception");
-                SpiUtils.safeHandleException(handler, "Failed to build request", t);
+                executor.execute(new Runnable() {
+                    public void run() {
+                        SpiUtils.safeHandleException(handler, "Failed to build request", t);
+                    }
+                });
                 return SpiUtils.getBlankRemoteRequestContext();
             }
         }
