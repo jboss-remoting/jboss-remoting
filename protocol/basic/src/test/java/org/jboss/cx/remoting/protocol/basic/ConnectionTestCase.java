@@ -26,7 +26,6 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.net.InetSocketAddress;
@@ -47,7 +46,6 @@ import org.jboss.xnio.BufferAllocator;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.IoHandlerFactory;
-import org.jboss.xnio.ConfigurableFactory;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.TcpClient;
 import org.jboss.xnio.ChannelSource;
@@ -100,11 +98,9 @@ public final class ConnectionTestCase extends TestCase {
                             serviceRegistry.bind(serviceEndpointHandle.getResource(), 13);
                             final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = BasicProtocol.createServer(closeableExecutor, allocator, serviceRegistry);
                             final IoHandlerFactory<StreamChannel> newHandlerFactory = Channels.convertStreamToAllocatedMessage(handlerFactory, 32768, 32768);
-                            final ConfigurableFactory<Closeable> tcpServerFactory = xnio.createTcpServer(newHandlerFactory, new InetSocketAddress(12345));
-                            final Closeable tcpServerCloseable = tcpServerFactory.create();
+                            final Closeable tcpServerCloseable = xnio.createTcpServer(newHandlerFactory, new InetSocketAddress(12345)).create();
                             try {
-                                final ConfigurableFactory<CloseableTcpConnector> connectorFactory = xnio.createTcpConnector();
-                                final CloseableTcpConnector connector = connectorFactory.create();
+                                final CloseableTcpConnector connector = xnio.createTcpConnector().create();
                                 try {
                                     final TcpClient tcpClient = connector.createChannelSource(new InetSocketAddress("localhost", 12345));
                                     final ChannelSource<AllocatedMessageChannel> channelSource = Channels.convertStreamToAllocatedMessage(tcpClient, 32768, 32768);
@@ -113,8 +109,7 @@ public final class ConnectionTestCase extends TestCase {
                                     try {
                                         final Handle<RemoteServiceEndpoint> handleThirteen = connection.getServiceForId(13);
                                         try {
-                                            final RemoteServiceEndpoint serviceThirteen = handleThirteen.getResource();
-                                            final ClientSource<Object,Object> clientSource = endpoint.createClientSource(serviceThirteen);
+                                            final ClientSource<Object,Object> clientSource = endpoint.createClientSource(handleThirteen.getResource());
                                             try {
                                                 final Client<Object,Object> client = clientSource.createClient();
                                                 try {
