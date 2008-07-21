@@ -22,7 +22,7 @@
 
 package org.jboss.cx.remoting.protocol.basic;
 
-import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.util.CollectionUtil;
@@ -38,7 +38,7 @@ public final class ServiceRegistryImpl implements ServiceRegistry {
 
     private static final int START = 32768;
 
-    private final ConcurrentMap<Integer, Handle<RemoteServiceEndpoint>> map = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<Integer, Handle<RequestHandlerSource>> map = CollectionUtil.concurrentMap();
     private final AtomicInteger dynamicSequence = new AtomicInteger(START);
     private final ServiceRegistry parent;
 
@@ -50,8 +50,8 @@ public final class ServiceRegistryImpl implements ServiceRegistry {
         parent = null;
     }
 
-    public int bind(final RemoteServiceEndpoint remoteServiceEndpoint) throws RemotingException {
-        final Handle<RemoteServiceEndpoint> handle = remoteServiceEndpoint.getHandle();
+    public int bind(final RequestHandlerSource requestHandlerSource) throws RemotingException {
+        final Handle<RequestHandlerSource> handle = requestHandlerSource.getHandle();
         boolean ok = false;
         try {
             for (;;) {
@@ -72,8 +72,8 @@ public final class ServiceRegistryImpl implements ServiceRegistry {
         }
     }
 
-    public void bind(final RemoteServiceEndpoint remoteServiceEndpoint, final int id) throws RemotingException {
-        final Handle<RemoteServiceEndpoint> handle = remoteServiceEndpoint.getHandle();
+    public void bind(final RequestHandlerSource requestHandlerSource, final int id) throws RemotingException {
+        final Handle<RequestHandlerSource> handle = requestHandlerSource.getHandle();
         boolean ok = false;
         try {
             if (map.putIfAbsent(Integer.valueOf(id), handle) != null) {
@@ -92,15 +92,15 @@ public final class ServiceRegistryImpl implements ServiceRegistry {
     }
 
     public void clear() {
-        Iterator<Handle<RemoteServiceEndpoint>> it = map.values().iterator();
+        Iterator<Handle<RequestHandlerSource>> it = map.values().iterator();
         while (it.hasNext()) {
             IoUtils.safeClose(it.next());
             it.remove();
         }
     }
 
-    public Handle<RemoteServiceEndpoint> lookup(final int id) throws RemotingException {
-        final Handle<RemoteServiceEndpoint> handle = map.get(Integer.valueOf(id));
+    public Handle<RequestHandlerSource> lookup(final int id) throws RemotingException {
+        final Handle<RequestHandlerSource> handle = map.get(Integer.valueOf(id));
         return handle != null || parent == null ? handle.getResource().getHandle() : parent.lookup(id);
     }
 

@@ -40,7 +40,7 @@ import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.AbstractRequestListener;
-import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.xnio.IoUtils;
@@ -85,7 +85,7 @@ public final class ConnectionTestCase extends TestCase {
                 try {
                     final ServiceRegistry serviceRegistry = new ServiceRegistryImpl();
                     try {
-                        final Handle<RemoteServiceEndpoint> serviceEndpointHandle = endpoint.createServiceEndpoint(new AbstractRequestListener<Object, Object>() {
+                        final Handle<RequestHandlerSource> requestHandlerSourceHandle = endpoint.createRequestHandlerSource(new AbstractRequestListener<Object, Object>() {
                             public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                                 try {
                                     context.sendReply(REPLY);
@@ -95,7 +95,7 @@ public final class ConnectionTestCase extends TestCase {
                             }
                         });
                         try {
-                            serviceRegistry.bind(serviceEndpointHandle.getResource(), 13);
+                            serviceRegistry.bind(requestHandlerSourceHandle.getResource(), 13);
                             final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = BasicProtocol.createServer(closeableExecutor, allocator, serviceRegistry);
                             final IoHandlerFactory<StreamChannel> newHandlerFactory = Channels.convertStreamToAllocatedMessage(handlerFactory, 32768, 32768);
                             final Closeable tcpServerCloseable = xnio.createTcpServer(newHandlerFactory, new InetSocketAddress(12345)).create();
@@ -107,7 +107,7 @@ public final class ConnectionTestCase extends TestCase {
                                     final IoFuture<Connection> futureCloseable = BasicProtocol.connect(closeableExecutor, channelSource, allocator, serviceRegistry);
                                     final Connection connection = futureCloseable.get();
                                     try {
-                                        final Handle<RemoteServiceEndpoint> handleThirteen = connection.getServiceForId(13);
+                                        final Handle<RequestHandlerSource> handleThirteen = connection.getServiceForId(13);
                                         try {
                                             final ClientSource<Object,Object> clientSource = endpoint.createClientSource(handleThirteen.getResource());
                                             try {
@@ -121,7 +121,7 @@ public final class ConnectionTestCase extends TestCase {
                                                     connection.close();
                                                     connector.close();
                                                     tcpServerCloseable.close();
-                                                    serviceEndpointHandle.close();
+                                                    requestHandlerSourceHandle.close();
                                                     serviceRegistry.clear();
                                                     endpoint.stop();
                                                     xnio.close();
@@ -145,7 +145,7 @@ public final class ConnectionTestCase extends TestCase {
                                 IoUtils.safeClose(tcpServerCloseable);
                             }
                         } finally {
-                            IoUtils.safeClose(serviceEndpointHandle);
+                            IoUtils.safeClose(requestHandlerSourceHandle);
                         }
                     } finally {
                         serviceRegistry.clear();

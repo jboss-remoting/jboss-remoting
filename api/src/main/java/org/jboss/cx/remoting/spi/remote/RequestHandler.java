@@ -27,10 +27,10 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
 
 /**
- * A remote client endpoint, which can be passed to remote endpoints.  Remote systems can then use the client endpoint
- * to make invocations, or they may pass the client endpoint on to other remote systems.
+ * A request handler, which can be passed to remote endpoints.  Remote systems can then use the handler
+ * to make invocations, or they may forward a handler on to other remote systems.
  */
-public interface RemoteClientEndpoint extends Closeable<RemoteClientEndpoint> {
+public interface RequestHandler extends Closeable<RequestHandler> {
 
     /**
      * Receive a one-way request from a remote system.  This method is intended to be called by protocol handlers.  No
@@ -53,18 +53,18 @@ public interface RemoteClientEndpoint extends Closeable<RemoteClientEndpoint> {
     RemoteRequestContext receiveRequest(Object request, ReplyHandler replyHandler);
 
     /**
-     * Get a handle to this client endpoint.  The client endpoint will not auto-close as long as there is at least
-     * one open handle or local client instance.  If a handle is "leaked", it will be closed
+     * Get a handle to this request handler.  The request handler will not auto-close as long as there is at least
+     * one open handle.  If a handle is "leaked", it will be closed
      * automatically if/when the garbage collector invokes its {@link Object#finalize()} method, with a log message
      * warning of the leak.
      *
      * @return the handle
      * @throws RemotingException if a handle could not be acquired
      */
-    Handle<RemoteClientEndpoint> getHandle() throws RemotingException;
+    Handle<RequestHandler> getHandle() throws RemotingException;
 
     /**
-     * Close this client endpoint.  The outcome of any outstanding requests is not defined, though implementations
+     * Close this request handler.  The outcome of any outstanding requests is not defined, though implementations
      * should make an effort to cancel any outstanding requests.
      *
      * @throws RemotingException if the client endpoint could not be closed
@@ -72,9 +72,9 @@ public interface RemoteClientEndpoint extends Closeable<RemoteClientEndpoint> {
     void close() throws RemotingException;
 
     /**
-     * Add a handler that is called when the client endpoint is closed.
+     * Add a handler that is called when the request handler is closed.
      *
      * @param handler the handler to be called
      */
-    void addCloseHandler(final CloseHandler<? super RemoteClientEndpoint> handler);
+    void addCloseHandler(final CloseHandler<? super RequestHandler> handler);
 }

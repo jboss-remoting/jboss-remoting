@@ -28,7 +28,7 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.core.util.QueueExecutor;
-import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
+import org.jboss.cx.remoting.spi.remote.RequestHandler;
 import org.jboss.cx.remoting.spi.remote.ReplyHandler;
 import org.jboss.cx.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.cx.remoting.spi.remote.Handle;
@@ -39,9 +39,9 @@ import java.util.concurrent.Executor;
  */
 public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implements Client<I, O> {
 
-    private final Handle<RemoteClientEndpoint> handle;
+    private final Handle<RequestHandler> handle;
 
-    ClientImpl(final Handle<RemoteClientEndpoint> handle, final Executor executor) {
+    ClientImpl(final Handle<RequestHandler> handle, final Executor executor) {
         super(executor);
         this.handle = handle;
     }

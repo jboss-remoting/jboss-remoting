@@ -27,41 +27,41 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
 
 /**
- * A remote service endpoint, which can be passed to remote endpoints.  Remote systems can then use the service endpoint
- * to acquire client endpoints, or they may pass it on to other systems.  Acquiring a client endpoint using this method
- * has the advantage that a round trip to the remote side is not necessary; the local side can spawn a client endpoint
+ * A request handler source, which can be passed to remote endpoints.  Remote systems can then use the handler source
+ * to acquire request handlers, or they may pass it on to other systems.  Acquiring a request handler using this method
+ * has the advantage that a round trip to the remote side is not necessary; the local side can spawn a request handler
  * and simply notify the remote side of the change.
  */
-public interface RemoteServiceEndpoint extends Closeable<RemoteServiceEndpoint> {
+public interface RequestHandlerSource extends Closeable<RequestHandlerSource> {
 
     /**
-     * Create a client endpoint for the service corresponding to this service endpoint.
+     * Create a request handler for the service corresponding to this request handler source.
      *
-     * @return a client endpoint
+     * @return a request handler
      * @throws RemotingException if a client could not be opened
      */
-    Handle<RemoteClientEndpoint> createClientEndpoint() throws RemotingException;
+    Handle<RequestHandler> createRequestHandler() throws RemotingException;
 
     /**
-     * Get a handle to this service endpoint.  The service endpoint will not auto-close as long as there is at least
-     * one open handle,remote client endpoint, or client source.  If a handle is "leaked", it will be closed
+     * Get a handle to this request handler source.  The request handler source will not auto-close as long as there is at least
+     * one open handle, or request handler.  If a handle is "leaked", it will be closed
      * automatically if/when the garbage collector invokes its {@link Object#finalize()} method, with a log message
      * warning of the leak.
      *
      * @return the handle
      * @throws RemotingException if a handle could not be acquired
      */
-    Handle<RemoteServiceEndpoint> getHandle() throws RemotingException;
+    Handle<RequestHandlerSource> getHandle() throws RemotingException;
 
     /**
-     * Close this service endpoint immediately.
+     * Close this request handler source immediately.
      */
     void close() throws RemotingException;
 
     /**
-     * Add a handler that is called when the service endpoint is closed.
+     * Add a handler that is called when the request handler source is closed.
      *
      * @param handler the handler to be called
      */
-    void addCloseHandler(final CloseHandler<? super RemoteServiceEndpoint> handler);
+    void addCloseHandler(final CloseHandler<? super RequestHandlerSource> handler);
 }

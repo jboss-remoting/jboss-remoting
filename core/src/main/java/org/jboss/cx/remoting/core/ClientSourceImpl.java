@@ -26,8 +26,8 @@ import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.Endpoint;
-import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
-import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.RequestHandler;
+import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.spi.AbstractCloseable;
 import org.jboss.xnio.IoUtils;
@@ -37,10 +37,10 @@ import org.jboss.xnio.IoUtils;
  */
 public final class ClientSourceImpl<I, O> extends AbstractCloseable<ClientSource<I, O>> implements ClientSource<I, O> {
 
-    private final Handle<RemoteServiceEndpoint> handle;
+    private final Handle<RequestHandlerSource> handle;
     private final Endpoint endpoint;
 
-    ClientSourceImpl(final Handle<RemoteServiceEndpoint> handle, final EndpointImpl endpoint) {
+    ClientSourceImpl(final Handle<RequestHandlerSource> handle, final EndpointImpl endpoint) {
         super(endpoint.getExecutor());
         this.handle = handle;
         this.endpoint = endpoint;
@@ -54,7 +54,7 @@ public final class ClientSourceImpl<I, O> extends AbstractCloseable<ClientSource
         if (! isOpen()) {
             throw new RemotingException("Client source is not open");
         }
-        final Handle<RemoteClientEndpoint> clientHandle = handle.getResource().createClientEndpoint();
+        final Handle<RequestHandler> clientHandle = handle.getResource().createRequestHandler();
         try {
             return endpoint.createClient(clientHandle.getResource());
         } finally {

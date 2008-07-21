@@ -6,8 +6,8 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestListener;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.ClientSource;
-import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
-import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.RequestHandler;
+import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 
 /**
@@ -42,28 +42,28 @@ public class EndpointWrapper implements Endpoint {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> Handle<RemoteClientEndpoint> createClientEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
-        return delegate.createClientEndpoint(requestListener);
+    public <I, O> Handle<RequestHandler> createRequestHandler(final RequestListener<I, O> requestListener) throws RemotingException {
+        return delegate.createRequestHandler(requestListener);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> Handle<RemoteServiceEndpoint> createServiceEndpoint(final RequestListener<I, O> requestListener) throws RemotingException {
-        return delegate.createServiceEndpoint(requestListener);
+    public <I, O> Handle<RequestHandlerSource> createRequestHandlerSource(final RequestListener<I, O> requestListener) throws RemotingException {
+        return delegate.createRequestHandlerSource(requestListener);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> Client<I, O> createClient(final RemoteClientEndpoint endpoint) throws RemotingException {
-        return delegate.createClient(endpoint);
+    public <I, O> Client<I, O> createClient(final RequestHandler handler) throws RemotingException {
+        return delegate.createClient(handler);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public <I, O> ClientSource<I, O> createClientSource(final RemoteServiceEndpoint endpoint) throws RemotingException {
-        return delegate.createClientSource(endpoint);
+    public <I, O> ClientSource<I, O> createClientSource(final RequestHandlerSource handlerSource) throws RemotingException {
+        return delegate.createClientSource(handlerSource);
     }
 }

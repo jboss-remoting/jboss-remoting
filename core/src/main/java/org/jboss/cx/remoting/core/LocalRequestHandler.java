@@ -22,7 +22,7 @@
 
 package org.jboss.cx.remoting.core;
 
-import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
+import org.jboss.cx.remoting.spi.remote.RequestHandler;
 import org.jboss.cx.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.cx.remoting.spi.remote.ReplyHandler;
 import org.jboss.cx.remoting.spi.SpiUtils;
@@ -37,26 +37,26 @@ import java.util.concurrent.Executor;
 /**
  *
  */
-public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoCloseable<RemoteClientEndpoint> implements RemoteClientEndpoint {
+public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<RequestHandler> implements RequestHandler {
 
     private final RequestListener<I, O> requestListener;
     private final Executor executor;
     private final ClientContextImpl clientContext;
 
-    private static final Logger log = Logger.getLogger(RemoteClientEndpointLocalImpl.class);
+    private static final Logger log = Logger.getLogger(LocalRequestHandler.class);
 
-    private RemoteClientEndpointLocalImpl(final Executor executor, final RequestListener<I, O> requestListener, final ClientContextImpl clientContext) {
+    private LocalRequestHandler(final Executor executor, final RequestListener<I, O> requestListener, final ClientContextImpl clientContext) {
         super(executor);
         this.executor = executor;
         this.requestListener = requestListener;
         this.clientContext = clientContext;
     }
 
-    RemoteClientEndpointLocalImpl(final Executor executor, final RemoteServiceEndpointLocalImpl<I, O> service, final RequestListener<I, O> requestListener) {
+    LocalRequestHandler(final Executor executor, final LocalRequestHandlerSource<I, O> service, final RequestListener<I, O> requestListener) {
         this(executor, requestListener, new ClientContextImpl(service.getServiceContext()));
     }
 
-    RemoteClientEndpointLocalImpl(final Executor executor, final RequestListener<I, O> requestListener) {
+    LocalRequestHandler(final Executor executor, final RequestListener<I, O> requestListener) {
         this(executor, requestListener, new ClientContextImpl(executor));
     }
 
@@ -98,8 +98,8 @@ public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoClose
     void open() throws RemotingException {
         try {
             requestListener.handleClientOpen(clientContext);
-            addCloseHandler(new CloseHandler<RemoteClientEndpoint>() {
-                public void handleClose(final RemoteClientEndpoint closed) {
+            addCloseHandler(new CloseHandler<RequestHandler>() {
+                public void handleClose(final RequestHandler closed) {
                     try {
                         requestListener.handleClientClose(clientContext);
                     } catch (Throwable t) {
@@ -113,6 +113,6 @@ public final class RemoteClientEndpointLocalImpl<I, O> extends AbstractAutoClose
     }
 
     public String toString() {
-        return "local client endpoint <" + Integer.toString(hashCode(), 16) + "> (request listener = " + String.valueOf(requestListener) + ")";
+        return "local request handler <" + Integer.toString(hashCode(), 16) + "> (request listener = " + String.valueOf(requestListener) + ")";
     }
 }

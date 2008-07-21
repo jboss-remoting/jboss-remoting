@@ -34,7 +34,7 @@ import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.test.support.LoggingHelper;
-import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
+import org.jboss.cx.remoting.spi.remote.RequestHandler;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.xnio.IoUtils;
 
@@ -79,7 +79,7 @@ public final class EndpointTestCase extends TestCase {
             endpoint.setExecutor(executorService);
             endpoint.start();
             try {
-                final Handle<RemoteClientEndpoint> handle = endpoint.createClientEndpoint(new AbstractRequestListener<Object, Object>() {
+                final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         try {
@@ -93,14 +93,14 @@ public final class EndpointTestCase extends TestCase {
                         }
                     }
                 });
-                final RemoteClientEndpoint clientEndpoint = handle.getResource();
+                final RequestHandler requestHandler = handle.getResource();
                 try {
-                    clientEndpoint.addCloseHandler(new CloseHandler<RemoteClientEndpoint>() {
-                        public void handleClose(final RemoteClientEndpoint closed) {
+                    requestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
+                        public void handleClose(final RequestHandler closed) {
                             clientEndpointClosed.set(true);
                         }
                     });
-                    final Client<Object,Object> client = endpoint.createClient(clientEndpoint);
+                    final Client<Object,Object> client = endpoint.createClient(requestHandler);
                     try {
                         client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
                             public void handleClose(final Client<Object, Object> closed) {
@@ -113,7 +113,7 @@ public final class EndpointTestCase extends TestCase {
                         IoUtils.safeClose(client);
                     }
                 } finally {
-                    IoUtils.safeClose(clientEndpoint);
+                    IoUtils.safeClose(requestHandler);
                 }
             } finally {
                 safeStop(endpoint);
@@ -138,7 +138,7 @@ public final class EndpointTestCase extends TestCase {
             endpoint.setExecutor(executorService);
             endpoint.start();
             try {
-                final Handle<RemoteClientEndpoint> handle = endpoint.createClientEndpoint(new AbstractRequestListener<Object, Object>() {
+                final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         try {
@@ -152,14 +152,14 @@ public final class EndpointTestCase extends TestCase {
                         }
                     }
                 });
-                final RemoteClientEndpoint clientEndpoint = handle.getResource();
+                final RequestHandler requestHandler = handle.getResource();
                 try {
-                    clientEndpoint.addCloseHandler(new CloseHandler<RemoteClientEndpoint>() {
-                        public void handleClose(final RemoteClientEndpoint closed) {
+                    requestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
+                        public void handleClose(final RequestHandler closed) {
                             clientEndpointClosed.set(true);
                         }
                     });
-                    final Client<Object,Object> client = endpoint.createClient(clientEndpoint);
+                    final Client<Object,Object> client = endpoint.createClient(requestHandler);
                     try {
                         client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
                             public void handleClose(final Client<Object, Object> closed) {
@@ -172,7 +172,7 @@ public final class EndpointTestCase extends TestCase {
                         IoUtils.safeClose(client);
                     }
                 } finally {
-                    IoUtils.safeClose(clientEndpoint);
+                    IoUtils.safeClose(requestHandler);
                 }
             } finally {
                 safeStop(endpoint);

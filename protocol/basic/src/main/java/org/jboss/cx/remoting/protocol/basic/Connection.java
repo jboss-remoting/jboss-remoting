@@ -22,7 +22,7 @@
 
 package org.jboss.cx.remoting.protocol.basic;
 
-import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.Closeable;
 import org.jboss.cx.remoting.RemotingException;
@@ -31,5 +31,5 @@ import org.jboss.cx.remoting.RemotingException;
  *
  */
 public interface Connection extends Closeable<Connection> {
-    Handle<RemoteServiceEndpoint> getServiceForId(int id) throws RemotingException;
+    Handle<RequestHandlerSource> getServiceForId(int id) throws RemotingException;
 }

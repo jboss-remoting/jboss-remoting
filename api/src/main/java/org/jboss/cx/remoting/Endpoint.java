@@ -1,8 +1,8 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.ConcurrentMap;
-import org.jboss.cx.remoting.spi.remote.RemoteClientEndpoint;
-import org.jboss.cx.remoting.spi.remote.RemoteServiceEndpoint;
+import org.jboss.cx.remoting.spi.remote.RequestHandler;
+import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 
 /**
@@ -27,7 +27,7 @@ public interface Endpoint {
     String getName();
 
     /**
-     * Create a client endpoint that can be used to receive incoming requests on this endpoint.  The client may be passed to a
+     * Create a request handler that can be used to receive incoming requests on this endpoint.  The client may be passed to a
      * remote endpoint as part of a request or a reply, or it may be used locally.
      *
      * You must have the TODO permission to invoke this method.
@@ -38,12 +38,12 @@ public interface Endpoint {
      * @return a handle for the client
      * @throws RemotingException if an error occurs
      */
-    <I, O> Handle<RemoteClientEndpoint> createClientEndpoint(RequestListener<I, O> requestListener) throws RemotingException;
+    <I, O> Handle<RequestHandler> createRequestHandler(RequestListener<I, O> requestListener) throws RemotingException;
 
     /**
-     * Create a client source that can be used to acquire clients associated with a request listener on this endpoint.
-     * The client source may be passed to a remote endpoint as part of a request or a reply, or it may be used locally.
-     * The objects that are produced by this method may be used to mass-produce {@code Client} instances.
+     * Create a request handler source that can be used to acquire clients associated with a request listener on this endpoint.
+     * The request handler source may be passed to a remote endpoint as part of a request or a reply, or it may be used locally.
+     * The objects that are produced by this method may be used to mass-produce {@code RequestHandler} instances.
      *
      * You must have the TODO permission to invoke this method.
      *
@@ -53,27 +53,27 @@ public interface Endpoint {
      * @return a handle for the client source
      * @throws RemotingException if an error occurs
      */
-    <I, O> Handle<RemoteServiceEndpoint> createServiceEndpoint(RequestListener<I, O> requestListener) throws RemotingException;
+    <I, O> Handle<RequestHandlerSource> createRequestHandlerSource(RequestListener<I, O> requestListener) throws RemotingException;
 
     /**
-     * Create a client from a remote client endpoint.
+     * Create a client that uses the given request handler to handle its requests.
      *
      * @param <I> the request type
      * @param <O> the reply type
-     * @param endpoint the remote client endpoint
+     * @param handler the request handler
      * @return the client
      * @throws RemotingException if an error occurs
      */
-    <I, O> Client<I, O> createClient(RemoteClientEndpoint endpoint) throws RemotingException;
+    <I, O> Client<I, O> createClient(RequestHandler handler) throws RemotingException;
 
     /**
-     * Create a client source from a remote service endpoint.
+     * Create a client source that uses the given request handler source to generate clients.
      *
      * @param <I> the request type
      * @param <O> the reply type
-     * @param endpoint the remote service endpoint
+     * @param handlerSource the request handler source
      * @return the client source
      * @throws RemotingException if an error occurs
      */
-    <I, O> ClientSource<I, O> createClientSource(RemoteServiceEndpoint endpoint) throws RemotingException;
+    <I, O> ClientSource<I, O> createClientSource(RequestHandlerSource handlerSource) throws RemotingException;
 }
