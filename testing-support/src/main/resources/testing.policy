@@ -11,6 +11,24 @@ grant codeBase "file:${build.home}/core/target/test/classes/-"
     permission java.lang.RuntimePermission "modifyThread"; // for executor control
 };
 
+grant codeBase "file:${build.home}/protocol/basic/target/test/classes/-"
+{
+    permission java.lang.RuntimePermission "modifyThread"; // for executor control
+    permission java.net.SocketPermission "*:*", "accept, connect, resolve";
+};
+
+grant codeBase "file:${build.home}/protocol/basic/target/main/classes/-"
+{
+    permission java.net.SocketPermission "*:*", "accept, connect, resolve";
+};
+
+// TODO: this is for the marshallers, which ought to be in their own module/module set
+
+grant codeBase "file:${build.home}/core/target/main/classes/-"
+{
+    permission java.io.SerializablePermission "enableSubstitution";
+};
+
 // Support classes
 
 grant codeBase "file:${build.home}/testing-support/target/main/classes/-"
@@ -34,6 +52,11 @@ grant codeBase "file:${ant.library.dir}/-"
 };
 
 grant codeBase "file:${lib.xnio-api.local}"
+{
+    permission java.security.AllPermission;
+};
+
+grant codeBase "file:${lib.xnio-standalone.local}"
 {
     permission java.security.AllPermission;
 };
