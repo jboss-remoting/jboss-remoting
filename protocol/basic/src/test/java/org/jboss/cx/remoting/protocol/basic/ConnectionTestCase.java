@@ -49,9 +49,10 @@ import org.jboss.xnio.Xnio;
 import org.jboss.xnio.IoHandlerFactory;
 import org.jboss.xnio.ConfigurableFactory;
 import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.TcpConnector;
 import org.jboss.xnio.TcpClient;
 import org.jboss.xnio.ChannelSource;
+import org.jboss.xnio.CloseableTcpConnector;
+import org.jboss.xnio.CloseableExecutor;
 import org.jboss.xnio.channels.AllocatedMessageChannel;
 import org.jboss.xnio.channels.Channels;
 import org.jboss.xnio.channels.StreamChannel;
@@ -68,7 +69,7 @@ public final class ConnectionTestCase extends TestCase {
         final String REQUEST = "request";
         final String REPLY = "reply";
         final List<Throwable> problems = Collections.synchronizedList(new LinkedList<Throwable>());
-        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final CloseableExecutor closeableExecutor = IoUtils.closeableExecutor(Executors.newCachedThreadPool(), 500L, TimeUnit.MILLISECONDS);
         try {
             final BufferAllocator<ByteBuffer> allocator = new BufferAllocator<ByteBuffer>() {
                 public ByteBuffer allocate() {
@@ -81,7 +82,7 @@ public final class ConnectionTestCase extends TestCase {
             final Xnio xnio = Xnio.createNio();
             try {
                 final EndpointImpl endpoint = new EndpointImpl();
-                endpoint.setExecutor(executorService);
+                endpoint.setExecutor(closeableExecutor);
                 endpoint.start();
                 try {
                     final ServiceRegistry serviceRegistry = new ServiceRegistryImpl();
@@ -97,17 +98,17 @@ public final class ConnectionTestCase extends TestCase {
                         });
                         try {
                             serviceRegistry.bind(serviceEndpointHandle.getResource(), 13);
-                            final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = BasicProtocol.createServer(executorService, allocator, serviceRegistry);
+                            final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = BasicProtocol.createServer(closeableExecutor, allocator, serviceRegistry);
                             final IoHandlerFactory<StreamChannel> newHandlerFactory = Channels.convertStreamToAllocatedMessage(handlerFactory, 32768, 32768);
                             final ConfigurableFactory<Closeable> tcpServerFactory = xnio.createTcpServer(newHandlerFactory, new InetSocketAddress(12345));
                             final Closeable tcpServerCloseable = tcpServerFactory.create();
                             try {
-                                final ConfigurableFactory<TcpConnector> connectorFactory = xnio.createTcpConnector();
-                                final TcpConnector connector = connectorFactory.create();
+                                final ConfigurableFactory<CloseableTcpConnector> connectorFactory = xnio.createTcpConnector();
+                                final CloseableTcpConnector connector = connectorFactory.create();
                                 try {
                                     final TcpClient tcpClient = connector.createChannelSource(new InetSocketAddress("localhost", 12345));
                                     final ChannelSource<AllocatedMessageChannel> channelSource = Channels.convertStreamToAllocatedMessage(tcpClient, 32768, 32768);
-                                    final IoFuture<Connection> futureCloseable = BasicProtocol.connect(executorService, channelSource, allocator, serviceRegistry);
+                                    final IoFuture<Connection> futureCloseable = BasicProtocol.connect(closeableExecutor, channelSource, allocator, serviceRegistry);
                                     final Connection connection = futureCloseable.get();
                                     try {
                                         final Handle<RemoteServiceEndpoint> handleThirteen = connection.getServiceForId(13);
@@ -132,7 +133,7 @@ public final class ConnectionTestCase extends TestCase {
                                         IoUtils.safeClose(connection);
                                     }
                                 } finally {
-                                    // todo close connector
+                                    IoUtils.safeClose(connector);
                                 }
                             } finally {
                                 IoUtils.safeClose(tcpServerCloseable);
@@ -150,7 +151,7 @@ public final class ConnectionTestCase extends TestCase {
                 IoUtils.safeClose(xnio);
             }
         } finally {
-            executorService.shutdownNow();
+            IoUtils.safeClose(closeableExecutor);
         }
         for (Throwable t : problems) {
             throw t;
