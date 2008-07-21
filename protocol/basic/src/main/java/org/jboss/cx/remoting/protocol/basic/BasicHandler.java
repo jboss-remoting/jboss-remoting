@@ -41,6 +41,7 @@ import org.jboss.cx.remoting.spi.marshal.IdentityResolver;
 import org.jboss.cx.remoting.spi.SpiUtils;
 import org.jboss.cx.remoting.spi.AbstractAutoCloseable;
 import static org.jboss.cx.remoting.util.CollectionUtil.concurrentMap;
+import static org.jboss.cx.remoting.util.CollectionUtil.arrayList;
 import org.jboss.cx.remoting.util.CollectionUtil;
 import static org.jboss.cx.remoting.protocol.basic.MessageType.REQUEST_ONEWAY;
 import static org.jboss.cx.remoting.protocol.basic.MessageType.REQUEST;
@@ -126,13 +127,23 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         if (isnew.getAndSet(false)) {
             this.channel = channel;
         }
-        final ByteBuffer buffer = allocator.allocate();
+        final List<ByteBuffer> bufferList = arrayList();
+        ByteBuffer buffer = allocator.allocate();
         buffer.put((byte) VERSION);
         buffer.putInt(LOCAL_VERSION);
-        writeUTFZ(buffer, CollectionUtil.join(",", localMarshallerList));
-        buffer.flip();
+        String joinedList = CollectionUtil.join(",", localMarshallerList);
+        for (;;) {
+            int i = writeUTFZ(buffer, joinedList);
+            if (i == -1) {
+                break;
+            }
+            bufferList.add(flip(buffer));
+            joinedList = joinedList.substring(i);
+            buffer = allocator.allocate();
+        }
+        bufferList.add(flip(buffer));
         try {
-            registerWriter(channel, new SimpleWriteHandler(allocator, buffer));
+            registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
         } catch (InterruptedException e) {
             log.error("Interrupted while sending intial version message");
             IoUtils.safeClose(channel);
