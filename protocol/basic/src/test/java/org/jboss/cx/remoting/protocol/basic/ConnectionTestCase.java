@@ -120,6 +120,17 @@ public final class ConnectionTestCase extends TestCase {
                                                 try {
                                                     final FutureReply<Object> future = client.send(REQUEST);
                                                     assertEquals(REPLY, future.get(500L, TimeUnit.MILLISECONDS));
+                                                    client.close();
+                                                    clientSource.close();
+                                                    handleThirteen.close();
+                                                    connection.close();
+                                                    connector.close();
+                                                    tcpServerCloseable.close();
+                                                    serviceEndpointHandle.close();
+                                                    serviceRegistry.clear();
+                                                    endpoint.stop();
+                                                    xnio.close();
+                                                    closeableExecutor.close();
                                                 } finally {
                                                     IoUtils.safeClose(client);
                                                 }
