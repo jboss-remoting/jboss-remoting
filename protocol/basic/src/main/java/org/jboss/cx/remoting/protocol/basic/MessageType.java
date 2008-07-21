@@ -26,18 +26,18 @@ package org.jboss.cx.remoting.protocol.basic;
  *
  */
 public final class MessageType {
-    //
-    public static final int REQUEST_ONEWAY     = 0;
-    public static final int REQUEST            = 1;
-    public static final int REPLY              = 2;
-    public static final int CANCEL_REQUEST     = 3;
-    public static final int CANCEL_ACK         = 4;
-    public static final int REQUEST_FAILED     = 5;
+    public static final int VERSION            = 0;
+    public static final int REQUEST_ONEWAY     = 1;
+    public static final int REQUEST            = 2;
+    public static final int REPLY              = 3;
+    public static final int CANCEL_REQUEST     = 4;
+    public static final int CANCEL_ACK         = 5;
+    public static final int REQUEST_FAILED     = 6;
     // Remote side called .close() on a forwarded RemoteClientEndpoint
-    public static final int CLIENT_CLOSE       = 6;
+    public static final int CLIENT_CLOSE       = 7;
     // Remote side called .close() on a forwarded RemoteClientEndpoint
-    public static final int CLIENT_OPEN        = 7;
-    public static final int SERVICE_CLOSE      = 8;
+    public static final int CLIENT_OPEN        = 8;
+    public static final int SERVICE_CLOSE      = 9;
 
     private MessageType() {
     }

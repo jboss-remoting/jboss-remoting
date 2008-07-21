@@ -395,6 +395,26 @@ public final class CollectionUtil {
         };
     }
 
+    /**
+     * Join a series of character sequences using a delimiter.
+     *
+     * @param delimiter the delimiter
+     * @param strings the strings
+     * @return a joined string
+     */
+    public static String join(final CharSequence delimiter, final Iterable<? extends CharSequence> strings) {
+        StringBuilder builder = new StringBuilder();
+        Iterator<? extends CharSequence> it = strings.iterator();
+        while (it.hasNext()) {
+            CharSequence s = it.next();
+            builder.append(s);
+            if (it.hasNext()) {
+                builder.append(delimiter);
+            }
+        }
+        return builder.toString();
+    }
+
     @SuppressWarnings({ "unchecked" })
     private static <T> T[] unroll(final Iterator<? extends T> iterator, final Class<T> type, final int c) {
         if (iterator.hasNext()) {
