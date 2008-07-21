@@ -30,6 +30,8 @@ import java.util.concurrent.Executor;
 import java.util.Map;
 import java.util.HashMap;
 import java.lang.reflect.Proxy;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import org.jboss.cx.remoting.spi.marshal.ObjectResolver;
 
 /**
@@ -54,6 +56,12 @@ public final class JavaSerializationUnmarshaller extends AbstractSerializationUn
 
         private OurObjectInputStream(final InputStream inputStream, final ObjectResolver resolver, final ClassLoader classLoader) throws IOException {
             super(inputStream);
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                public Void run() {
+                    enableResolveObject(true);
+                    return null;
+                }
+            });
             this.classLoader = classLoader;
             this.resolver = resolver;
         }

@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.ObjectOutputStream;
 import java.util.concurrent.Executor;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import org.jboss.cx.remoting.spi.marshal.ObjectResolver;
 import org.jboss.cx.remoting.spi.marshal.IdentityResolver;
 import org.jboss.xnio.log.Logger;
@@ -28,7 +30,12 @@ public class JavaSerializationMarhsaller extends AbstractSerializationMarshaller
 
         private OurObjectOutputStream(final OutputStream outputStream, final ObjectResolver resolver) throws IOException {
             super(outputStream);
-            enableReplaceObject(true);
+            AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                public Void run() {
+                    enableReplaceObject(true);
+                    return null;
+                }
+            });
             this.resolver = resolver;
         }
 
