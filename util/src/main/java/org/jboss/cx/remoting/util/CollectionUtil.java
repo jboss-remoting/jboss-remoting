@@ -451,6 +451,14 @@ public final class CollectionUtil {
         return unroll(iterator, type, 0);
     }
 
+    /**
+     * Convert an iterator to an array in reverse order.  The iterator should be relatively short to avoid blowing out the
+     * stack.
+     *
+     * @param iterator the iterator
+     * @param type the array element type
+     * @return the array
+     */
     public static <T> T[] toArrayReversed(final Iterator<? extends T> iterator, final Class<T> type) {
         return unrollReversed(iterator, type, 0);
     }
@@ -647,5 +655,118 @@ public final class CollectionUtil {
             original.add(o);
             original.previous();
         }
+    }
+
+    /**
+     * Combine two {@code Iterator}s into one.
+     *
+     * @param first the first {@code Iterator}
+     * @param second the second {@code Iterator}
+     * @return a combined {@code Iterator}
+     */
+    public static <T> Iterator<T> combine(final Iterator<? extends T> first, final Iterator<? extends T> second) {
+        if (first == null) {
+            throw new NullPointerException("first is null");
+        }
+        if (second == null) {
+            throw new NullPointerException("second is null");
+        }
+        return new Iterator<T>() {
+            private Iterator<? extends T> current = first;
+            private Iterator<? extends T> next = second;
+
+            public boolean hasNext() {
+                if (current == null) {
+                    return false;
+                }
+                if (! current.hasNext()) {
+                    current = next;
+                    next = null;
+                }
+                return current != null && current.hasNext();
+            }
+
+            public T next() {
+                if (current == null) {
+                    throw new NoSuchElementException("next() past end of iterator");
+                }
+                return current.next();
+            }
+
+            public void remove() {
+                current.remove();
+            }
+        };
+    }
+
+    /**
+     * Combine three {@code Iterator}s into one.
+     *
+     * @param first the first {@code Iterator}
+     * @param second the second {@code Iterator}
+     * @param third the third {@code Iterator}
+     * @return a new combined {@code Iterator}
+     */
+    public static <T> Iterator<T> combine(final Iterator<? extends T> first, final Iterator<? extends T> second, final Iterator<? extends T> third) {
+        return combine(combine(first, second), third);
+    }
+
+    /**
+     * Combine four {@code Iterator}s into one.
+     *
+     * @param first the first {@code Iterator}
+     * @param second the second {@code Iterator}
+     * @param third the third {@code Iterator}
+     * @param fourth the fourth {@code Iterator}
+     * @return a new combined {@code Iterator}
+     */
+    public static <T> Iterator<T> combine(final Iterator<? extends T> first, final Iterator<? extends T> second, final Iterator<? extends T> third, final Iterator<? extends T> fourth) {
+        return combine(combine(first, second), combine(third, fourth));
+    }
+
+    /**
+     * Combine two {@code Iterable}s into one.
+     *
+     * @param first the first {@code Iterable}
+     * @param second the second {@code Iterable}
+     * @return a new combined {@code Iterable}
+     */
+    public static <T> Iterable<T> combine(final Iterable<? extends T> first, final Iterable<? extends T> second) {
+        if (first == null) {
+            throw new NullPointerException("first is null");
+        }
+        if (second == null) {
+            throw new NullPointerException("second is null");
+        }
+        return new Iterable<T>() {
+            public Iterator<T> iterator() {
+                return combine(first.iterator(), second.iterator());
+            }
+        };
+    }
+
+    /**
+     * Combine three {@code Iterable}s into one.
+     *
+     * @param first the first {@code Iterable}
+     * @param second the second {@code Iterable}
+     * @param third the third {@code Iterable}
+     * @return a new combined {@code Iterable}
+     */
+    public static <T> Iterable<T> combine(final Iterable<? extends T> first, final Iterable<? extends T> second, final Iterable<? extends T> third) {
+        return combine(combine(first, second), third);
+    }
+
+    /**
+     * Combine four {@code Iterable}s into one.
+     *
+     * @param first the first {@code Iterable}
+     * @param second the second {@code Iterable}
+     * @param third the third {@code Iterable}
+     * @param fourth the fourth {@code Iterable}
+     * @return a new combined {@code Iterable}
+     */
+    public static <T> Iterable<T> combine(final Iterable<? extends T> first, final Iterable<? extends T> second, final Iterable<? extends T> third, final Iterable<? extends T> fourth) {
+        return combine(combine(first, second), combine(third, fourth));
     }
 }
