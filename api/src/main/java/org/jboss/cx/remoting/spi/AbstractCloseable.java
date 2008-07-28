@@ -31,6 +31,7 @@ import org.jboss.xnio.log.Logger;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -46,6 +47,19 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
     private final AtomicBoolean closed = new AtomicBoolean();
     private Set<CloseHandler<? super T>> closeHandlers;
 
+    private static final boolean LEAK_DEBUGGING;
+    private final StackTraceElement[] backtrace;
+
+    static {
+        boolean b = false;
+        try {
+            b = Boolean.parseBoolean(System.getProperty("jboss.remoting.leakdebugging", "false"));
+        } catch (SecurityException se) {
+            b = false;
+        }
+        LEAK_DEBUGGING = b;
+    }
+
     /**
      * Basic constructor.
      *
@@ -56,6 +70,7 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
             throw new NullPointerException("executor is null");
         }
         this.executor = executor;
+        backtrace = LEAK_DEBUGGING ? new Throwable().getStackTrace() : null;
     }
 
     /**
@@ -84,12 +99,16 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
             synchronized (closeLock) {
                 if (closeHandlers != null) {
                     for (final CloseHandler<? super T> handler : closeHandlers) {
-                        executor.execute(new Runnable() {
-                            @SuppressWarnings({ "unchecked" })
-                            public void run() {
-                                SpiUtils.safeHandleClose(handler, (T) AbstractCloseable.this);
-                            }
-                        });
+                        try {
+                            executor.execute(new Runnable() {
+                                @SuppressWarnings({ "unchecked" })
+                                public void run() {
+                                    SpiUtils.safeHandleClose(handler, (T) AbstractCloseable.this);
+                                }
+                            });
+                        } catch (RejectedExecutionException ree) {
+                            log.warn("Unable to execute close handler (execution rejected) for %s (%s)", this, ree.getMessage());
+                        }
                     }
                     closeHandlers = null;
                 }
@@ -127,9 +146,26 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
             super.finalize();
         } finally {
             if (isOpen()) {
-                log.warn("Leaked a %s instance!", getClass().getName());
+                if (LEAK_DEBUGGING) {
+                    final Throwable t = new LeakThrowable();
+                    t.setStackTrace(backtrace);
+                    log.warn(t, "Leaked a %s instance: %s", getClass().getName(), this);
+                } else {
+                    log.warn("Leaked a %s instance: %s", getClass().getName(), this);
+                }
                 IoUtils.safeClose(this);
             }
+        }
+    }
+
+    @SuppressWarnings({ "serial" })
+    private static final class LeakThrowable extends Throwable {
+
+        public LeakThrowable() {
+        }
+
+        public String toString() {
+            return "a leaked reference";
         }
     }
 }
