@@ -61,9 +61,7 @@ public final class LoggingHelper {
                                 Throwable t = record.getThrown();
                                 while (t != null) {
                                     builder.append("\n    Caused by: ");
-                                    builder.append(t.getClass().getName());
-                                    builder.append(": ");
-                                    builder.append(t.getMessage());
+                                    builder.append(t.toString());
                                     for (StackTraceElement e : t.getStackTrace()) {
                                         builder.append("\n        at ");
                                         builder.append(e.getClassName()).append('.').append(e.getMethodName());
