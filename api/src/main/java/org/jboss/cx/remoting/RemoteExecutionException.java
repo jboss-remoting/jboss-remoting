@@ -1,11 +1,9 @@
 package org.jboss.cx.remoting;
 
-import java.util.concurrent.ExecutionException;
-
 /**
  * Exception thrown when execution of a remote operation fails for some reason.
  */
-public class RemoteExecutionException extends ExecutionException {
+public class RemoteExecutionException extends RemotingException {
 
     private static final long serialVersionUID = 3580395686019440048L;
 

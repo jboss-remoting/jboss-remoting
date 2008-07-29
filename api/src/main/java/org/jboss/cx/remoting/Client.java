@@ -1,6 +1,8 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.ConcurrentMap;
+import java.io.IOException;
+import org.jboss.xnio.IoFuture;
 
 /**
  * A communications client.  The client may be associated with state maintained by the local and/or remote side.
@@ -24,7 +26,7 @@ public interface Client<I, O> extends Closeable<Client<I, O>> {
      * @throws RemotingException if the request could not be sent
      * @throws RemoteExecutionException if the remote handler threw an exception
      */
-    O invoke(I request) throws RemotingException, RemoteExecutionException;
+    O invoke(I request) throws IOException;
 
     /**
      * Send a request asynchronously.
@@ -38,9 +40,9 @@ public interface Client<I, O> extends Closeable<Client<I, O>> {
      *
      * @return a future representing the result of the request
      *
-     * @throws RemotingException if the request could not be sent
+     * @throws IOException if the request could not be sent
      */
-    FutureReply<O> send(I request) throws RemotingException;
+    IoFuture<O> send(I request) throws IOException;
 
     /**
      * Send a request asynchronously, ignoring the reply.
@@ -51,9 +53,9 @@ public interface Client<I, O> extends Closeable<Client<I, O>> {
      * Returns immediately.
      *
      * @param request the request to send
-     * @throws RemotingException if the request could not be sent
+     * @throws IOException if the request could not be sent
      */
-    void sendOneWay(I request) throws RemotingException;
+    void sendOneWay(I request) throws IOException;
 
     /**
      * Get the attribute map.  This map holds metadata about the current clinet.

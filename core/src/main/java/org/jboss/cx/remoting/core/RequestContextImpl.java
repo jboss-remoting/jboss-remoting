@@ -101,7 +101,7 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
     public void addCancelHandler(final RequestCancelHandler<O> handler) {
         synchronized (cancelLock) {
             if (cancelled.get()) {
-                SpiUtils.safeNotifyCancellation(handler, this, false);
+                SpiUtils.safeNotifyCancellation(handler, this);
             } else {
                 if (cancelHandlers == null) {
                     cancelHandlers = new HashSet<RequestCancelHandler<O>>();
@@ -115,23 +115,21 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
         executor.execute(command);
     }
 
-    protected void cancel(final boolean mayInterrupt) {
+    protected void cancel() {
         if (! cancelled.getAndSet(true)) {
             synchronized (cancelLock) {
                 if (cancelHandlers != null) {
                     for (final RequestCancelHandler<O> handler : cancelHandlers) {
                         executor.execute(new Runnable() {
                             public void run() {
-                                SpiUtils.safeNotifyCancellation(handler, RequestContextImpl.this, mayInterrupt);
+                                SpiUtils.safeNotifyCancellation(handler, RequestContextImpl.this);
                             }
                         });
                     }
                     cancelHandlers = null;
                 }
             }
-            if (mayInterrupt) {
-                executor.interruptAll();
-            }
+            executor.interruptAll();
         }
     }
 }

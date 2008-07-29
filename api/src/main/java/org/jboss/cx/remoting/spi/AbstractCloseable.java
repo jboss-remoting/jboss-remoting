@@ -33,6 +33,8 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 /**
  * A basic implementation of a closeable resource.  Use as a convenient base class for your closeable resources.
@@ -53,7 +55,11 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
     static {
         boolean b = false;
         try {
-            b = Boolean.parseBoolean(System.getProperty("jboss.remoting.leakdebugging", "false"));
+            b = Boolean.parseBoolean(AccessController.doPrivileged(new PrivilegedAction<String>() {
+                public String run() {
+                    return System.getProperty("jboss.remoting.leakdebugging", "false");
+                }
+            }));
         } catch (SecurityException se) {
             b = false;
         }

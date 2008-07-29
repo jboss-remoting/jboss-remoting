@@ -38,7 +38,6 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.FutureReply;
 import org.jboss.cx.remoting.AbstractRequestListener;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
@@ -51,6 +50,7 @@ import org.jboss.xnio.TcpClient;
 import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.CloseableTcpConnector;
 import org.jboss.xnio.CloseableExecutor;
+import org.jboss.xnio.nio.NioXnio;
 import org.jboss.xnio.channels.AllocatedMessageChannel;
 import org.jboss.xnio.channels.Channels;
 import org.jboss.xnio.channels.StreamChannel;
@@ -77,7 +77,7 @@ public final class ConnectionTestCase extends TestCase {
                 public void free(final ByteBuffer buffer) {
                 }
             };
-            final Xnio xnio = Xnio.createNio();
+            final Xnio xnio = NioXnio.create();
             try {
                 final EndpointImpl endpoint = new EndpointImpl();
                 endpoint.setExecutor(closeableExecutor);
@@ -113,8 +113,9 @@ public final class ConnectionTestCase extends TestCase {
                                             try {
                                                 final Client<Object,Object> client = clientSource.createClient();
                                                 try {
-                                                    final FutureReply<Object> future = client.send(REQUEST);
-                                                    assertEquals(REPLY, future.get(500L, TimeUnit.MILLISECONDS));
+                                                    final IoFuture<Object> future = client.send(REQUEST);
+                                                    assertEquals(IoFuture.Status.DONE, future.await(TimeUnit.MILLISECONDS, 500L));
+                                                    assertEquals(REPLY, future.get());
                                                     client.close();
                                                     clientSource.close();
                                                     handleThirteen.close();

@@ -30,8 +30,6 @@ public interface RemoteRequestContext {
 
     /**
      * Signal that the request should be cancelled, if possible.
-     *
-     * @param mayInterrupt {@code true} if the task can be interrupted (advisory)
      */
-    void cancel(final boolean mayInterrupt);
+    void cancel();
 }

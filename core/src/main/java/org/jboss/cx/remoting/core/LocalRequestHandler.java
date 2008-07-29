@@ -89,8 +89,8 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
             }
         });
         return new RemoteRequestContext() {
-            public void cancel(final boolean mayInterrupt) {
-                context.cancel(mayInterrupt);
+            public void cancel() {
+                context.cancel();
             }
         };
     }

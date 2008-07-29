@@ -727,12 +727,11 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             this.channel = channel;
         }
 
-        public void cancel(final boolean mayInterrupt) {
+        public void cancel() {
             try {
                 final ByteBuffer buffer = allocator.allocate();
                 buffer.put((byte) MessageType.CANCEL_REQUEST);
                 buffer.putInt(id);
-                buffer.put((byte) (mayInterrupt ? 1 : 0));
                 buffer.flip();
                 registerWriter(channel, new SimpleWriteHandler(allocator, buffer));
             } catch (InterruptedException e) {

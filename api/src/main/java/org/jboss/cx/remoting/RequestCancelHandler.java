@@ -11,7 +11,6 @@ public interface RequestCancelHandler<O> {
      * Receive notification that the request was cancelled.
      *
      * @param requestContext the request context
-     * @param mayInterrupt the value of the cancellation {@code mayInterrupt} flag
      */
-    void notifyCancel(RequestContext<O> requestContext, boolean mayInterrupt);
+    void notifyCancel(RequestContext<O> requestContext);
 }

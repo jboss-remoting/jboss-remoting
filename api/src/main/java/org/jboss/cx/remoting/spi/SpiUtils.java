@@ -27,8 +27,6 @@ import org.jboss.cx.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.CloseHandler;
-import org.jboss.cx.remoting.RequestCompletionHandler;
-import org.jboss.cx.remoting.FutureReply;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -85,14 +83,12 @@ public final class SpiUtils {
     /**
      * Safely notify a request listener's cancel handler of cancellation.
      *
-     * @param <O> the reply
      * @param handler the request cancel handler
      * @param requestContext the request context
-     * @param mayInterrupt {@code true} if the request listener threads may be interrupted
      */
-    public static <O> void safeNotifyCancellation(final RequestCancelHandler<O> handler, final RequestContext<O> requestContext, boolean mayInterrupt) {
+    public static <O> void safeNotifyCancellation(final RequestCancelHandler<O> handler, final RequestContext<O> requestContext) {
         try {
-            handler.notifyCancel(requestContext, mayInterrupt);
+            handler.notifyCancel(requestContext);
         } catch (Throwable t) {
             log.error(t, "Request cancel handler threw an exception when calling notifyCancel()");
         }
@@ -113,21 +109,6 @@ public final class SpiUtils {
         }
     }
 
-    /**
-     * Safely handle a future request completion.
-     *
-     * @param <O> the reply type
-     * @param handler
-     * @param futureReply
-     */
-    public static <O> void safeHandleRequestCompletion(final RequestCompletionHandler<O> handler, final FutureReply<O> futureReply) {
-        try {
-            handler.notifyComplete(futureReply);
-        } catch (Throwable t) {
-            log.error(t, "Request completion handler failed unexpectedly");
-        }
-    }
-
     public static RemoteRequestContext getBlankRemoteRequestContext() {
         return BLANK_REMOTE_REQUEST_CONTEXT;
     }
@@ -135,7 +116,7 @@ public final class SpiUtils {
     private static final RemoteRequestContext BLANK_REMOTE_REQUEST_CONTEXT = new BlankRemoteRequestContext();
 
     private static final class BlankRemoteRequestContext implements RemoteRequestContext {
-        public void cancel(final boolean mayInterrupt) {
+        public void cancel() {
         }
     }
 }

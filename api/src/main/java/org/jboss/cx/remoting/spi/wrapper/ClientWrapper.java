@@ -1,11 +1,10 @@
 package org.jboss.cx.remoting.spi.wrapper;
 
 import java.util.concurrent.ConcurrentMap;
+import java.io.IOException;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Client;
-import org.jboss.cx.remoting.FutureReply;
-import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.RemotingException;
+import org.jboss.xnio.IoFuture;
 
 /**
  * A simple delegating wrapper for clients.
@@ -28,7 +27,7 @@ public class ClientWrapper<I, O> implements Client<I, O> {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public void close() throws RemotingException {
+    public void close() throws IOException {
         delegate.close();
     }
 
@@ -46,21 +45,21 @@ public class ClientWrapper<I, O> implements Client<I, O> {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public O invoke(final I request) throws RemotingException, RemoteExecutionException {
+    public O invoke(final I request) throws IOException {
         return delegate.invoke(request);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public FutureReply<O> send(final I request) throws RemotingException {
+    public IoFuture<O> send(final I request) throws IOException {
         return delegate.send(request);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public void sendOneWay(final I request) throws RemotingException {
+    public void sendOneWay(final I request) throws IOException {
         delegate.sendOneWay(request);
     }
 

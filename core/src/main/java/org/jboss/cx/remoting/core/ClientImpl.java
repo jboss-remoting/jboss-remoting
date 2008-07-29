@@ -24,15 +24,14 @@ package org.jboss.cx.remoting.core;
 
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.FutureReply;
-import org.jboss.cx.remoting.RequestCompletionHandler;
 import org.jboss.cx.remoting.core.util.QueueExecutor;
 import org.jboss.cx.remoting.spi.remote.RequestHandler;
 import org.jboss.cx.remoting.spi.remote.ReplyHandler;
 import org.jboss.cx.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.cx.remoting.spi.remote.Handle;
+import org.jboss.xnio.IoFuture;
 import java.util.concurrent.Executor;
+import java.io.IOException;
 
 /**
  *
@@ -50,7 +49,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         handle.close();
     }
 
-    public O invoke(final I request) throws RemotingException, RemoteExecutionException {
+    public O invoke(final I request) throws IOException {
         if (! isOpen()) {
             throw new RemotingException("Client is not open");
         }
@@ -59,8 +58,8 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
         final RemoteRequestContext requestContext = handle.getResource().receiveRequest(request, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
-        futureReply.addCompletionHandler(new RequestCompletionHandler<O>() {
-            public void notifyComplete(final FutureReply<O> reply) {
+        futureReply.addNotifier(new IoFuture.Notifier<O>() {
+            public void notify(final IoFuture<O> future) {
                 executor.shutdown();
             }
         });
@@ -68,7 +67,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         return futureReply.get();
     }
 
-    public FutureReply<O> send(final I request) throws RemotingException {
+    public IoFuture<O> send(final I request) throws IOException {
         if (! isOpen()) {
             throw new RemotingException("Client is not open");
         }
