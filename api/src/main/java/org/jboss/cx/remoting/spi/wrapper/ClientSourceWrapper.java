@@ -4,6 +4,7 @@ import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.RemotingException;
+import java.io.IOException;
 
 /**
  * A simple delegating wrapper for client sources.
@@ -26,7 +27,7 @@ public class ClientSourceWrapper<I, O> implements ClientSource<I, O> {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public void close() throws RemotingException {
+    public void close() throws IOException {
         delegate.close();
     }
 
@@ -44,7 +45,7 @@ public class ClientSourceWrapper<I, O> implements ClientSource<I, O> {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public Client<I, O> createClient() throws RemotingException {
+    public Client<I, O> createClient() throws IOException {
         return delegate.createClient();
     }
 }
