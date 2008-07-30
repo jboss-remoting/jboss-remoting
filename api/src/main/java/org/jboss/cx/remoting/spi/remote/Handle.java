@@ -23,8 +23,8 @@
 package org.jboss.cx.remoting.spi.remote;
 
 import org.jboss.cx.remoting.Closeable;
-import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
+import java.io.IOException;
 
 /**
  * A handle to a local resource.
@@ -41,9 +41,9 @@ public interface Handle<T> extends Closeable<Handle<T>> {
     /**
      * Close this reference.
      *
-     * @throws RemotingException if the close failed
+     * @throws IOException if the close failed
      */
-    void close() throws RemotingException;
+    void close() throws IOException;
 
     /**
      * Add a handler that is invoked when this handle is closed.

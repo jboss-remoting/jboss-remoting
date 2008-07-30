@@ -31,6 +31,7 @@ import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.spi.AbstractCloseable;
 import org.jboss.xnio.IoUtils;
+import java.io.IOException;
 
 /**
  *
@@ -46,11 +47,11 @@ public final class ClientSourceImpl<I, O> extends AbstractCloseable<ClientSource
         this.endpoint = endpoint;
     }
 
-    protected void closeAction() throws RemotingException {
+    protected void closeAction() throws IOException {
         handle.close();
     }
 
-    public Client<I, O> createClient() throws RemotingException {
+    public Client<I, O> createClient() throws IOException {
         if (! isOpen()) {
             throw new RemotingException("Client source is not open");
         }

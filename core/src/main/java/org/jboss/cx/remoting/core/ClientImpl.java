@@ -45,7 +45,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         this.handle = handle;
     }
 
-    protected void closeAction() throws RemotingException {
+    protected void closeAction() throws IOException {
         handle.close();
     }
 

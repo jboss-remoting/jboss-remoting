@@ -1,6 +1,7 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.Executor;
+import java.io.IOException;
 
 /**
  * The context of a single request.
@@ -26,10 +27,10 @@ public interface RequestContext<O> extends Executor {
      * Send a reply back to the caller.
      *
      * @param reply the reply to send
-     * @throws RemotingException if the transmission failed
+     * @throws IOException if the transmission failed
      * @throws IllegalStateException if a reply was already sent
      */
-    void sendReply(O reply) throws RemotingException, IllegalStateException;
+    void sendReply(O reply) throws IOException, IllegalStateException;
 
     /**
      * Send a failure message back to the caller.
@@ -37,18 +38,18 @@ public interface RequestContext<O> extends Executor {
      * @param msg a message describing the failure, if any (can be {@code null})
      * @param cause the failure cause, if any (can be {@code null})
      *
-     * @throws RemotingException if the transmission failed
+     * @throws IOException if the transmission failed
      * @throws IllegalStateException if a reply was already sent
      */
-    void sendFailure(String msg, Throwable cause) throws RemotingException, IllegalStateException;
+    void sendFailure(String msg, Throwable cause) throws IOException, IllegalStateException;
 
     /**
      * Send a cancellation message back to the client.
      *
-     * @throws RemotingException if the message could not be sent (the client could not be notified about the cancellation)
+     * @throws IOException if the message could not be sent (the client could not be notified about the cancellation)
      * @throws IllegalStateException if a reply was already sent
      */
-    void sendCancelled() throws RemotingException, IllegalStateException;
+    void sendCancelled() throws IOException, IllegalStateException;
 
     /**
      * Add a notifier to be called if a cancel request is received.  The notifier may be called from the current thread

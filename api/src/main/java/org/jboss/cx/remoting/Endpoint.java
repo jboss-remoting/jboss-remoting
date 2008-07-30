@@ -1,6 +1,7 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.ConcurrentMap;
+import java.io.IOException;
 import org.jboss.cx.remoting.spi.remote.RequestHandler;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
@@ -36,9 +37,9 @@ public interface Endpoint {
      * @param <O> the reply type
      * @param requestListener the request listener
      * @return a handle for the client
-     * @throws RemotingException if an error occurs
+     * @throws IOException if an error occurs
      */
-    <I, O> Handle<RequestHandler> createRequestHandler(RequestListener<I, O> requestListener) throws RemotingException;
+    <I, O> Handle<RequestHandler> createRequestHandler(RequestListener<I, O> requestListener) throws IOException;
 
     /**
      * Create a request handler source that can be used to acquire clients associated with a request listener on this endpoint.
@@ -51,9 +52,9 @@ public interface Endpoint {
      * @param <O> the reply type
      * @param requestListener the request listener
      * @return a handle for the client source
-     * @throws RemotingException if an error occurs
+     * @throws IOException if an error occurs
      */
-    <I, O> Handle<RequestHandlerSource> createRequestHandlerSource(RequestListener<I, O> requestListener) throws RemotingException;
+    <I, O> Handle<RequestHandlerSource> createRequestHandlerSource(RequestListener<I, O> requestListener) throws IOException;
 
     /**
      * Create a client that uses the given request handler to handle its requests.
@@ -62,9 +63,9 @@ public interface Endpoint {
      * @param <O> the reply type
      * @param handler the request handler
      * @return the client
-     * @throws RemotingException if an error occurs
+     * @throws IOException if an error occurs
      */
-    <I, O> Client<I, O> createClient(RequestHandler handler) throws RemotingException;
+    <I, O> Client<I, O> createClient(RequestHandler handler) throws IOException;
 
     /**
      * Create a client source that uses the given request handler source to generate clients.
@@ -73,7 +74,7 @@ public interface Endpoint {
      * @param <O> the reply type
      * @param handlerSource the request handler source
      * @return the client source
-     * @throws RemotingException if an error occurs
+     * @throws IOException if an error occurs
      */
-    <I, O> ClientSource<I, O> createClientSource(RequestHandlerSource handlerSource) throws RemotingException;
+    <I, O> ClientSource<I, O> createClientSource(RequestHandlerSource handlerSource) throws IOException;
 }

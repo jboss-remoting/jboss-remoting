@@ -31,6 +31,7 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.xnio.log.Logger;
 import java.util.concurrent.Executor;
+import java.io.IOException;
 
 /**
  *
@@ -50,7 +51,7 @@ public final class LocalRequestHandlerSource<I, O> extends AbstractAutoCloseable
         serviceContext = new ServiceContextImpl(executor);
     }
 
-    public Handle<RequestHandler> createRequestHandler() throws RemotingException {
+    public Handle<RequestHandler> createRequestHandler() throws IOException {
         if (isOpen()) {
             final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(executor, this, requestListener);
             localRequestHandler.open();

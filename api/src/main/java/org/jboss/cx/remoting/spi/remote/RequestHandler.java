@@ -25,6 +25,7 @@ package org.jboss.cx.remoting.spi.remote;
 import org.jboss.cx.remoting.Closeable;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
+import java.io.IOException;
 
 /**
  * A request handler, which can be passed to remote endpoints.  Remote systems can then use the handler
@@ -59,9 +60,9 @@ public interface RequestHandler extends Closeable<RequestHandler> {
      * warning of the leak.
      *
      * @return the handle
-     * @throws RemotingException if a handle could not be acquired
+     * @throws IOException if a handle could not be acquired
      */
-    Handle<RequestHandler> getHandle() throws RemotingException;
+    Handle<RequestHandler> getHandle() throws IOException;
 
     /**
      * Close this request handler.  The outcome of any outstanding requests is not defined, though implementations
@@ -69,7 +70,7 @@ public interface RequestHandler extends Closeable<RequestHandler> {
      *
      * @throws RemotingException if the client endpoint could not be closed
      */
-    void close() throws RemotingException;
+    void close() throws IOException;
 
     /**
      * Add a handler that is called when the request handler is closed.

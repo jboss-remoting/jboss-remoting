@@ -25,6 +25,7 @@ package org.jboss.cx.remoting.spi.remote;
 import org.jboss.cx.remoting.Closeable;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
+import java.io.IOException;
 
 /**
  * A request handler source, which can be passed to remote endpoints.  Remote systems can then use the handler source
@@ -40,7 +41,7 @@ public interface RequestHandlerSource extends Closeable<RequestHandlerSource> {
      * @return a request handler
      * @throws RemotingException if a client could not be opened
      */
-    Handle<RequestHandler> createRequestHandler() throws RemotingException;
+    Handle<RequestHandler> createRequestHandler() throws IOException;
 
     /**
      * Get a handle to this request handler source.  The request handler source will not auto-close as long as there is at least
@@ -51,12 +52,12 @@ public interface RequestHandlerSource extends Closeable<RequestHandlerSource> {
      * @return the handle
      * @throws RemotingException if a handle could not be acquired
      */
-    Handle<RequestHandlerSource> getHandle() throws RemotingException;
+    Handle<RequestHandlerSource> getHandle() throws IOException;
 
     /**
      * Close this request handler source immediately.
      */
-    void close() throws RemotingException;
+    void close() throws IOException;
 
     /**
      * Add a handler that is called when the request handler source is closed.

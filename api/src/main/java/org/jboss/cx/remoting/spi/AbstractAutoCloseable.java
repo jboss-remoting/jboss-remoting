@@ -23,10 +23,9 @@
 package org.jboss.cx.remoting.spi;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.io.IOException;
 import org.jboss.cx.remoting.RemotingException;
-import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.xnio.log.Logger;
 
@@ -54,9 +53,9 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
     /**
      * Decrement the reference count by one.  If the count drops to zero, the resource is closed.
      *
-     * @throws RemotingException if the reference count dropped to zero and the close operation threw an exception
+     * @throws IOException if the reference count dropped to zero and the close operation threw an exception
      */
-    protected void dec() throws RemotingException {
+    protected void dec() throws IOException {
         final int v = refcount.decrementAndGet();
         if (v == 0) {
             // we dropped the refcount to zero
@@ -80,13 +79,13 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
      *
      * @throws RemotingException if the resource is closed
      */
-    protected void inc() throws RemotingException {
+    protected void inc() throws IOException {
         final int v = refcount.getAndIncrement();
         log.trace("Raising reference count of %s to %d", this, Integer.valueOf(v + 1));
         if (v < 0) {
             // was already closed
             refcount.decrementAndGet();
-            throw new RemotingException("Resource is closed");
+            throw new IOException("Resource is closed");
         }
     }
 
@@ -97,17 +96,17 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
      * @return the handle
      * @throws RemotingException if the resource is closed
      */
-    public Handle<T> getHandle() throws RemotingException {
+    public Handle<T> getHandle() throws IOException {
         return new HandleImpl();
     }
 
     private final class HandleImpl extends AbstractCloseable<Handle<T>> implements Handle<T> {
-        private HandleImpl() throws RemotingException {
+        private HandleImpl() throws IOException {
             super(AbstractAutoCloseable.this.executor);
             inc();
         }
 
-        protected void closeAction() throws RemotingException {
+        protected void closeAction() throws IOException {
             dec();
         }
 

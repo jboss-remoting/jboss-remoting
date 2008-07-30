@@ -35,6 +35,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.io.IOException;
 
 /**
  * A basic implementation of a closeable resource.  Use as a convenient base class for your closeable resources.
@@ -94,12 +95,12 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
      *
      * @throws RemotingException if the close failed
      */
-    protected void closeAction() throws RemotingException {}
+    protected void closeAction() throws IOException {}
 
     /**
      * {@inheritDoc}
      */
-    public final void close() throws RemotingException {
+    public final void close() throws IOException {
         if (! closed.getAndSet(true)) {
             log.trace("Closed %s", this);
             synchronized (closeLock) {

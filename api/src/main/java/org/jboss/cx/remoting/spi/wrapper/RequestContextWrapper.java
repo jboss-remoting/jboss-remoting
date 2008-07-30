@@ -4,6 +4,7 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestCancelHandler;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.ClientContext;
+import java.io.IOException;
 
 /**
  * A simple delegating wrapper for request context instances.
@@ -39,21 +40,21 @@ public class RequestContextWrapper<O> implements RequestContext<O> {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public void sendReply(O reply) throws RemotingException, IllegalStateException {
+    public void sendReply(O reply) throws IOException, IllegalStateException {
         delegate.sendReply(reply);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public void sendFailure(String msg, Throwable cause) throws RemotingException, IllegalStateException {
+    public void sendFailure(String msg, Throwable cause) throws IOException, IllegalStateException {
         delegate.sendFailure(msg, cause);
     }
 
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public void sendCancelled() throws RemotingException, IllegalStateException {
+    public void sendCancelled() throws IOException, IllegalStateException {
         delegate.sendCancelled();
     }
 

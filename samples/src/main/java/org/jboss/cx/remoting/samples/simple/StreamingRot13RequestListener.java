@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.Reader;
 import org.jboss.cx.remoting.AbstractRequestListener;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestContext;
 
 /**
@@ -40,7 +39,7 @@ public final class StreamingRot13RequestListener extends AbstractRequestListener
                     request.close();
                 }
             });
-        } catch (RemotingException e) {
+        } catch (IOException e) {
             throw new RemoteExecutionException("Failed to send reply", e);
         }
     }

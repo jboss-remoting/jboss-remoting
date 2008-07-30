@@ -2,8 +2,8 @@ package org.jboss.cx.remoting.samples.simple;
 
 import org.jboss.cx.remoting.AbstractRequestListener;
 import org.jboss.cx.remoting.RemoteExecutionException;
-import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.RequestContext;
+import java.io.IOException;
 
 /**
  *
@@ -17,7 +17,7 @@ public final class StringRot13RequestListener extends AbstractRequestListener<St
                 b.append(rot13(request.charAt(i)));
             }
             readerRequestContext.sendReply(b.toString());
-        } catch (RemotingException e) {
+        } catch (IOException e) {
             throw new RemoteExecutionException("Failed to send reply", e);
         }
     }

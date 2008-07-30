@@ -27,12 +27,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.io.IOException;
 import org.jboss.cx.remoting.AbstractRequestListener;
 import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Client;
-import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.test.support.LoggingHelper;
 import org.jboss.cx.remoting.spi.remote.RequestHandler;
 import org.jboss.cx.remoting.spi.remote.Handle;
@@ -84,10 +84,10 @@ public final class EndpointTestCase extends TestCase {
                         assertEquals(request, requestObj);
                         try {
                             context.sendReply(replyObj);
-                        } catch (RemotingException e) {
+                        } catch (IOException e) {
                             try {
                                 context.sendFailure(e.getMessage(), e);
-                            } catch (RemotingException e1) {
+                            } catch (IOException e1) {
                                 fail("double fault");
                             }
                         }
@@ -143,10 +143,10 @@ public final class EndpointTestCase extends TestCase {
                         assertEquals(request, requestObj);
                         try {
                             context.sendReply(replyObj);
-                        } catch (RemotingException e) {
+                        } catch (IOException e) {
                             try {
                                 context.sendFailure(e.getMessage(), e);
-                            } catch (RemotingException e1) {
+                            } catch (IOException e1) {
                                 fail("double fault");
                             }
                         }

@@ -7,9 +7,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.Set;
 import java.io.Closeable;
+import java.io.IOException;
 import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.RequestListener;
-import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.ClientSource;
@@ -121,23 +121,23 @@ public class EndpointImpl implements Endpoint {
         return endpointMap;
     }
 
-    public <I, O> Handle<RequestHandler> createRequestHandler(final RequestListener<I, O> requestListener) throws RemotingException {
+    public <I, O> Handle<RequestHandler> createRequestHandler(final RequestListener<I, O> requestListener) throws IOException {
         final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(executor, requestListener);
         localRequestHandler.addCloseHandler(remover);
         localRequestHandler.open();
         return localRequestHandler.getHandle();
     }
 
-    public <I, O> Handle<RequestHandlerSource> createRequestHandlerSource(final RequestListener<I, O> requestListener) throws RemotingException {
+    public <I, O> Handle<RequestHandlerSource> createRequestHandlerSource(final RequestListener<I, O> requestListener) throws IOException {
         final LocalRequestHandlerSource<I, O> localRequestHandlerSource = new LocalRequestHandlerSource<I, O>(executor, requestListener);
         localRequestHandlerSource.addCloseHandler(remover);
         localRequestHandlerSource.open();
         return localRequestHandlerSource.getHandle();
     }
 
-    public <I, O> Client<I, O> createClient(final RequestHandler endpoint) throws RemotingException {
+    public <I, O> Client<I, O> createClient(final RequestHandler requestHandler) throws IOException {
         boolean ok = false;
-        final Handle<RequestHandler> handle = endpoint.getHandle();
+        final Handle<RequestHandler> handle = requestHandler.getHandle();
         try {
             final ClientImpl<I, O> client = new ClientImpl<I, O>(handle, executor);
             client.addCloseHandler(new CloseHandler<Client<I, O>>() {
@@ -154,7 +154,7 @@ public class EndpointImpl implements Endpoint {
         }
     }
 
-    public <I, O> ClientSource<I, O> createClientSource(final RequestHandlerSource requestHandlerSource) throws RemotingException {
+    public <I, O> ClientSource<I, O> createClientSource(final RequestHandlerSource requestHandlerSource) throws IOException {
         boolean ok = false;
         final Handle<RequestHandlerSource> handle = requestHandlerSource.getHandle();
         try {
