@@ -13,13 +13,13 @@ public final class ServiceURI {
     }
 
     /**
-     * Determine if this URI is for a Remoting service.
+     * Determine if this URI is a valid Remoting service URI.
      *
      * @param uri the URI
-     * @return {@code true} if the given URI is a Remoting service URI
+     * @return {@code true} if the given URI is a valid Remoting service URI
      */
     public static boolean isRemotingServiceUri(final URI uri) {
-        return SCHEME.equals(uri.getScheme());
+        return SCHEME.equals(uri.getScheme()) && uri.isOpaque();
     }
 
     /**
@@ -31,7 +31,7 @@ public final class ServiceURI {
      */
     public static String getServiceType(final URI uri) throws IllegalArgumentException {
         if (! isRemotingServiceUri(uri)) {
-            throw new IllegalArgumentException("Not a remoting service URI");
+            throw new IllegalArgumentException("Not a valid remoting service URI");
         }
         final String ssp = uri.getSchemeSpecificPart();
         final int firstColon = ssp.indexOf(':');
@@ -53,7 +53,7 @@ public final class ServiceURI {
      */
     public static String getGroupName(final URI uri) throws IllegalArgumentException {
         if (! isRemotingServiceUri(uri)) {
-            throw new IllegalArgumentException("Not a remoting service URI");
+            throw new IllegalArgumentException("Not a valid remoting service URI");
         }
         final String ssp = uri.getSchemeSpecificPart();
         final int firstColon = ssp.indexOf(':');
@@ -79,7 +79,7 @@ public final class ServiceURI {
      */
     public static String getEndpointName(final URI uri) throws IllegalArgumentException {
         if (! isRemotingServiceUri(uri)) {
-            throw new IllegalArgumentException("Not a remoting service URI");
+            throw new IllegalArgumentException("Not a valid remoting service URI");
         }
         final String ssp = uri.getSchemeSpecificPart();
         final int firstColon = ssp.indexOf(':');
