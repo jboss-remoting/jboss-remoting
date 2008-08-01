@@ -115,13 +115,13 @@ public final class ServiceURI {
             if (serviceType != null && serviceType.length() > 0) {
                 builder.append(serviceType);
             }
+            builder.append(':');
             if (groupName != null && groupName.length() > 0) {
-                builder.append(':').append(groupName);
-                if (endpointName != null && endpointName.length() > 0) {
-                    builder.append(':').append(groupName);
-                }
-            } else if (endpointName != null && endpointName.length() > 0) {
-                builder.append(':').append(':').append(groupName);
+                builder.append(groupName);
+            }
+            builder.append(':');
+            if (endpointName != null && endpointName.length() > 0) {
+                builder.append(endpointName);
             }
             return new URI(SCHEME, builder.toString(), null);
         } catch (URISyntaxException e) {
