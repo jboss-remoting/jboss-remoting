@@ -2,8 +2,6 @@ package org.jboss.cx.remoting.util;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * A parser for JBoss Remoting URI types.
@@ -11,77 +9,123 @@ import java.util.regex.Pattern;
 public final class ServiceURI {
     public static final String SCHEME = "jrs";
 
-    private static final String FIRST_CHAR = "[$_a-zA-Z]";
-    private static final String SUBSEQUENT_CHAR = "[-+$_a-zA-Z0-9]*";
-    private static final String ID = FIRST_CHAR + SUBSEQUENT_CHAR;
-    private static final String SEPARATOR = "[./]";
-
-    private static final Pattern VALID_PATTERN = Pattern.compile("^(?:" + ID + "(?:" + SEPARATOR + ID + ")*)*$");
-
-    private final URI uri;
-    private final String serviceType;
-    private final String groupName;
-    private final String endpointName;
-
-    public ServiceURI(final String str) throws URISyntaxException {
-        this(new URI(str));
+    private ServiceURI() {
     }
 
-    public ServiceURI(final URI uri) {
-        this.uri = uri;
-        if (! uri.getScheme().equals(SCHEME)) {
-            throw new IllegalArgumentException("Invalid URI scheme for service");
+    /**
+     * Determine if this URI is for a Remoting service.
+     *
+     * @param uri the URI
+     * @return {@code true} if the given URI is a Remoting service URI
+     */
+    public static boolean isRemotingServiceUri(final URI uri) {
+        return SCHEME.equals(uri.getScheme());
+    }
+
+    /**
+     * Get the service type from a Remoting service URI.
+     *
+     * @param uri the URI
+     * @return the service type
+     * @throws IllegalArgumentException if the given URI is not for a remoting service
+     */
+    public static String getServiceType(final URI uri) throws IllegalArgumentException {
+        if (! isRemotingServiceUri(uri)) {
+            throw new IllegalArgumentException("Not a remoting service URI");
         }
         final String ssp = uri.getSchemeSpecificPart();
-        final int stcp = ssp.indexOf(':');
-        if (stcp == -1) {
+        final int firstColon = ssp.indexOf(':');
+        final String serviceType;
+        if (firstColon == -1) {
             serviceType = ssp;
-            groupName = "";
-            endpointName = "";
         } else {
-            serviceType = ssp.substring(0, stcp).trim();
-            final int gncp = ssp.indexOf(':', stcp + 1);
-            if (gncp == -1) {
-                groupName = ssp.substring(stcp + 1).trim();
-                endpointName = "";
-            } else {
-                groupName = ssp.substring(stcp + 1, gncp).trim();
-                // ignore everything after the last :
-                final int encp = ssp.indexOf(':', gncp + 1);
-                if (encp == -1) {
-                    endpointName = ssp.substring(gncp + 1).trim();
-                } else {
-                    endpointName = ssp.substring(gncp + 1, encp).trim();
-                }
-            }
+            serviceType = ssp.substring(0, firstColon);
         }
-        final Matcher matcher = VALID_PATTERN.matcher(serviceType);
-        if (! matcher.matches()) {
-            throw new IllegalArgumentException("Syntax error in service type URI part");
-        }
-        matcher.reset(groupName);
-        if (! matcher.matches()) {
-            throw new IllegalArgumentException("Syntax error in group name URI part");
-        }
-        matcher.reset(endpointName);
-        if (! matcher.matches()) {
-            throw new IllegalArgumentException("Syntax error in endpoint name URI part");
-        }
-    }
-
-    public URI getUri() {
-        return uri;
-    }
-
-    public String getServiceType() {
         return serviceType;
     }
 
-    public String getGroupName() {
+    /**
+     * Get the group name from a Remoting service URI.
+     *
+     * @param uri the URI
+     * @return the group name
+     * @throws IllegalArgumentException if the given URI is not for a remoting service
+     */
+    public static String getGroupName(final URI uri) throws IllegalArgumentException {
+        if (! isRemotingServiceUri(uri)) {
+            throw new IllegalArgumentException("Not a remoting service URI");
+        }
+        final String ssp = uri.getSchemeSpecificPart();
+        final int firstColon = ssp.indexOf(':');
+        final String groupName;
+        if (firstColon == -1) {
+            return "";
+        }
+        final int secondColon = ssp.indexOf(':', firstColon + 1);
+        if (secondColon == -1) {
+            groupName = ssp.substring(firstColon + 1);
+        } else {
+            groupName = ssp.substring(firstColon + 1, secondColon);
+        }
         return groupName;
     }
 
-    public String getEndpointName() {
+    /**
+     * Get the endpoint name from a Remoting service URI.
+     *
+     * @param uri the URI
+     * @return the endpoint name
+     * @throws IllegalArgumentException if the given URI is not for a remoting service
+     */
+    public static String getEndpointName(final URI uri) throws IllegalArgumentException {
+        if (! isRemotingServiceUri(uri)) {
+            throw new IllegalArgumentException("Not a remoting service URI");
+        }
+        final String ssp = uri.getSchemeSpecificPart();
+        final int firstColon = ssp.indexOf(':');
+        final String endpointName;
+        if (firstColon == -1) {
+            return "";
+        }
+        final int secondColon = ssp.indexOf(':', firstColon + 1);
+        if (secondColon == -1) {
+            return "";
+        }
+        // ::: is not officially supported, but this leaves room for extensions
+        final int thirdColon = ssp.indexOf(':', secondColon + 1);
+        if (thirdColon == -1) {
+            endpointName = ssp.substring(secondColon + 1);
+        } else {
+            endpointName = ssp.substring(secondColon + 1, thirdColon);
+        }
         return endpointName;
+    }
+
+    /**
+     * Create a Remoting service URI.
+     *
+     * @param serviceType the service type, if any
+     * @param groupName the group name, if any
+     * @param endpointName the endpoint name, if any
+     * @return the URI
+     */
+    public static URI create(String serviceType, String groupName, String endpointName) {
+        try {
+            StringBuilder builder = new StringBuilder(serviceType.length() + groupName.length() + endpointName.length() + 2);
+            if (serviceType != null && serviceType.length() > 0) {
+                builder.append(serviceType);
+            }
+            if (groupName != null && groupName.length() > 0) {
+                builder.append(':').append(groupName);
+                if (endpointName != null && endpointName.length() > 0) {
+                    builder.append(':').append(groupName);
+                }
+            } else if (endpointName != null && endpointName.length() > 0) {
+                builder.append(':').append(':').append(groupName);
+            }
+            return new URI(SCHEME, builder.toString(), null);
+        } catch (URISyntaxException e) {
+            throw new IllegalStateException("URI syntax exception should not be possible here", e);
+        }
     }
 }
