@@ -25,18 +25,19 @@ package org.jboss.cx.remoting.protocol.basic;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.RemotingException;
+import java.io.IOException;
 
 /**
  *
  */
 public interface ServiceRegistry {
-    int bind(RequestHandlerSource requestHandlerSource) throws RemotingException;
+    int bind(RequestHandlerSource requestHandlerSource) throws IOException;
 
-    void bind(RequestHandlerSource requestHandlerSource, int id) throws RemotingException;
+    void bind(RequestHandlerSource requestHandlerSource, int id) throws IOException;
 
     void unbind(int id) throws RemotingException;
 
     void clear();
 
-    Handle<RequestHandlerSource> lookup(int id) throws RemotingException;
+    Handle<RequestHandlerSource> lookup(int id) throws IOException;
 }

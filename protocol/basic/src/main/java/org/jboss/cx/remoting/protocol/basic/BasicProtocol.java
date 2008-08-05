@@ -79,7 +79,7 @@ public final class BasicProtocol {
         return new AbstractConvertingIoFuture<Connection, AllocatedMessageChannel>(futureChannel) {
             protected Connection convert(final AllocatedMessageChannel channel) throws RemotingException {
                 return new AbstractConnection(executor) {
-                    public Handle<RequestHandlerSource> getServiceForId(final int id) throws RemotingException {
+                    public Handle<RequestHandlerSource> getServiceForId(final int id) throws IOException {
                         return basicHandler.getRemoteService(id).getHandle();
                     }
                 };

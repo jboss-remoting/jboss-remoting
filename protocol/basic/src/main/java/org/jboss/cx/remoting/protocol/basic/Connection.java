@@ -26,10 +26,11 @@ import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.HandleableCloseable;
 import org.jboss.cx.remoting.RemotingException;
+import java.io.IOException;
 
 /**
  *
  */
 public interface Connection extends HandleableCloseable<Connection> {
-    Handle<RequestHandlerSource> getServiceForId(int id) throws RemotingException;
+    Handle<RequestHandlerSource> getServiceForId(int id) throws IOException;
 }

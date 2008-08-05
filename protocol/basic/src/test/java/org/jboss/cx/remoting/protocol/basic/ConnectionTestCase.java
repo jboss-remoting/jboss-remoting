@@ -30,6 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.net.InetSocketAddress;
 import java.io.Closeable;
+import java.io.IOException;
 import junit.framework.TestCase;
 import org.jboss.cx.remoting.core.EndpointImpl;
 import org.jboss.cx.remoting.test.support.LoggingHelper;
@@ -37,7 +38,6 @@ import org.jboss.cx.remoting.RequestContext;
 import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.Client;
-import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.AbstractRequestListener;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
@@ -89,11 +89,11 @@ public final class ConnectionTestCase extends TestCase {
                             public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                                 try {
                                     context.sendReply(REPLY);
-                                } catch (RemotingException e) {
+                                } catch (IOException e) {
                                     problems.add(e);
                                 }
                             }
-                        }, INIT_ME, INIT_ME);
+                        }, null, null);
                         try {
                             serviceRegistry.bind(requestHandlerSourceHandle.getResource(), 13);
                             final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = BasicProtocol.createServer(closeableExecutor, allocator, serviceRegistry);

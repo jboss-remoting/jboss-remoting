@@ -30,6 +30,7 @@ import org.jboss.xnio.IoUtils;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Iterator;
+import java.io.IOException;
 
 /**
  *
@@ -50,7 +51,7 @@ public final class ServiceRegistryImpl implements ServiceRegistry {
         parent = null;
     }
 
-    public int bind(final RequestHandlerSource requestHandlerSource) throws RemotingException {
+    public int bind(final RequestHandlerSource requestHandlerSource) throws IOException {
         final Handle<RequestHandlerSource> handle = requestHandlerSource.getHandle();
         boolean ok = false;
         try {
@@ -72,7 +73,7 @@ public final class ServiceRegistryImpl implements ServiceRegistry {
         }
     }
 
-    public void bind(final RequestHandlerSource requestHandlerSource, final int id) throws RemotingException {
+    public void bind(final RequestHandlerSource requestHandlerSource, final int id) throws IOException {
         final Handle<RequestHandlerSource> handle = requestHandlerSource.getHandle();
         boolean ok = false;
         try {
@@ -99,7 +100,7 @@ public final class ServiceRegistryImpl implements ServiceRegistry {
         }
     }
 
-    public Handle<RequestHandlerSource> lookup(final int id) throws RemotingException {
+    public Handle<RequestHandlerSource> lookup(final int id) throws IOException {
         final Handle<RequestHandlerSource> handle = map.get(Integer.valueOf(id));
         return handle != null || parent == null ? handle.getResource().getHandle() : parent.lookup(id);
     }
