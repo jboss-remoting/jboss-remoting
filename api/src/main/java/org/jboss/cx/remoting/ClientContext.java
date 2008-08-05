@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * The server context for a single remote client instance.
  */
-public interface ClientContext extends Closeable<ClientContext> {
+public interface ClientContext extends HandleableCloseable<ClientContext> {
     /**
      * Get the attributes for this end of the channel as a map.
      *

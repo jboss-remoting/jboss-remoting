@@ -8,7 +8,7 @@ import java.io.IOException;
  * @param <I> the request type
  * @param <O> the reply type
  */
-public interface ClientSource<I, O> extends Closeable<ClientSource<I, O>> {
+public interface ClientSource<I, O> extends HandleableCloseable<ClientSource<I, O>> {
     /**
      * Close the context source.  New contexts may no longer be created after this
      * method is called.  Subsequent calls to this method have no additional effect.

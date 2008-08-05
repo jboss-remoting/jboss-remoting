@@ -1,13 +1,14 @@
 package org.jboss.cx.remoting;
 
 import java.io.IOException;
+import java.io.Closeable;
 
 /**
  * A Remoting resource that can be closed.
  *
  * @param <T> the type that is passed to the close handler
  */
-public interface Closeable<T> extends java.io.Closeable {
+public interface HandleableCloseable<T> extends Closeable {
 
     /**
      * Close, waiting for any outstanding processing to finish.

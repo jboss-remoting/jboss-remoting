@@ -22,14 +22,14 @@
 
 package org.jboss.cx.remoting.spi.remote;
 
-import org.jboss.cx.remoting.Closeable;
+import org.jboss.cx.remoting.HandleableCloseable;
 import org.jboss.cx.remoting.CloseHandler;
 import java.io.IOException;
 
 /**
  * A handle to a local resource.
  */
-public interface Handle<T> extends Closeable<Handle<T>> {
+public interface Handle<T> extends HandleableCloseable<Handle<T>> {
 
     /**
      * Get the resource.

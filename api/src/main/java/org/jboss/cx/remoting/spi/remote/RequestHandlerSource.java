@@ -22,7 +22,7 @@
 
 package org.jboss.cx.remoting.spi.remote;
 
-import org.jboss.cx.remoting.Closeable;
+import org.jboss.cx.remoting.HandleableCloseable;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
 import java.io.IOException;
@@ -33,7 +33,7 @@ import java.io.IOException;
  * has the advantage that a round trip to the remote side is not necessary; the local side can spawn a request handler
  * and simply notify the remote side of the change.
  */
-public interface RequestHandlerSource extends Closeable<RequestHandlerSource> {
+public interface RequestHandlerSource extends HandleableCloseable<RequestHandlerSource> {
 
     /**
      * Create a request handler for the service corresponding to this request handler source.

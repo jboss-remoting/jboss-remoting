@@ -33,7 +33,7 @@ import org.jboss.xnio.log.Logger;
  * A closeable implementation that supports reference counting.  Since the initial reference count is zero, implementors
  * must be careful to ensure that the first operation invoked is a call to {@link #getHandle()}.
  */
-public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
+public abstract class AbstractAutoCloseable<T> extends AbstractHandleableCloseable<T> {
 
     private final AtomicInteger refcount = new AtomicInteger(0);
     private final Executor executor;
@@ -100,7 +100,7 @@ public abstract class AbstractAutoCloseable<T> extends AbstractCloseable<T> {
         return new HandleImpl();
     }
 
-    private final class HandleImpl extends AbstractCloseable<Handle<T>> implements Handle<T> {
+    private final class HandleImpl extends AbstractHandleableCloseable<Handle<T>> implements Handle<T> {
         private HandleImpl() throws IOException {
             super(AbstractAutoCloseable.this.executor);
             inc();

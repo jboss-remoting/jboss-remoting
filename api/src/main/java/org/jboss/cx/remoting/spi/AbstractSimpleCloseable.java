@@ -20,25 +20,22 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.cx.remoting.protocol.basic;
+package org.jboss.cx.remoting.spi;
 
-import org.jboss.cx.remoting.spi.AbstractHandleableCloseable;
+import org.jboss.cx.remoting.SimpleCloseable;
 import java.util.concurrent.Executor;
 
 /**
- *
+ * An abstract simple closeable implementation.
  */
-public abstract class AbstractConnection extends AbstractHandleableCloseable<Connection> implements Connection {
+public abstract class AbstractSimpleCloseable extends AbstractHandleableCloseable<SimpleCloseable> implements SimpleCloseable {
+
     /**
      * Basic constructor.
      *
      * @param executor the executor used to execute the close notification handlers
      */
-    protected AbstractConnection(final Executor executor) {
+    protected AbstractSimpleCloseable(final Executor executor) {
         super(executor);
-    }
-
-    public String toString() {
-        return "connection <" + Integer.toString(hashCode()) + ">";
     }
 }

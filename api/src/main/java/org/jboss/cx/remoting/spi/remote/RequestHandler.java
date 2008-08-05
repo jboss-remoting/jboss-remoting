@@ -22,7 +22,7 @@
 
 package org.jboss.cx.remoting.spi.remote;
 
-import org.jboss.cx.remoting.Closeable;
+import org.jboss.cx.remoting.HandleableCloseable;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
 import java.io.IOException;
@@ -31,7 +31,7 @@ import java.io.IOException;
  * A request handler, which can be passed to remote endpoints.  Remote systems can then use the handler
  * to make invocations, or they may forward a handler on to other remote systems.
  */
-public interface RequestHandler extends Closeable<RequestHandler> {
+public interface RequestHandler extends HandleableCloseable<RequestHandler> {
 
     /**
      * Receive a one-way request from a remote system.  This method is intended to be called by protocol handlers.  No

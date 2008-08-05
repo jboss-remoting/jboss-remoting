@@ -22,7 +22,7 @@
 
 package org.jboss.cx.remoting.spi;
 
-import org.jboss.cx.remoting.Closeable;
+import org.jboss.cx.remoting.HandleableCloseable;
 import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.spi.SpiUtils;
@@ -41,9 +41,9 @@ import java.io.IOException;
  * A basic implementation of a closeable resource.  Use as a convenient base class for your closeable resources.
  * Ensures that the {@code close()} method is idempotent; implements the registry of close handlers.
  */
-public abstract class AbstractCloseable<T> implements Closeable<T> {
+public abstract class AbstractHandleableCloseable<T> implements HandleableCloseable<T> {
 
-    private static final Logger log = Logger.getLogger(AbstractCloseable.class);
+    private static final Logger log = Logger.getLogger(AbstractHandleableCloseable.class);
 
     protected final Executor executor;
     private final Object closeLock = new Object();
@@ -72,7 +72,7 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
      *
      * @param executor the executor used to execute the close notification handlers
      */
-    protected AbstractCloseable(final Executor executor) {
+    protected AbstractHandleableCloseable(final Executor executor) {
         if (executor == null) {
             throw new NullPointerException("executor is null");
         }
@@ -110,7 +110,7 @@ public abstract class AbstractCloseable<T> implements Closeable<T> {
                             executor.execute(new Runnable() {
                                 @SuppressWarnings({ "unchecked" })
                                 public void run() {
-                                    SpiUtils.safeHandleClose(handler, (T) AbstractCloseable.this);
+                                    SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this);
                                 }
                             });
                         } catch (RejectedExecutionException ree) {

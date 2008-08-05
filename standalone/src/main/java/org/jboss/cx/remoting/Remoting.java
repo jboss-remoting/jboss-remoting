@@ -42,7 +42,7 @@ public final class Remoting {
     }
 
     public static <I, O> ClientSource<I, O> createLocalClientSource(Endpoint endpoint, RequestListener<I, O> requestListener) throws IOException {
-        final Handle<RequestHandlerSource> handle = endpoint.createRequestHandlerSource(requestListener);
+        final Handle<RequestHandlerSource> handle = endpoint.createRequestHandlerSource(requestListener, INIT_ME, INIT_ME);
         try {
             return endpoint.createClientSource(handle.getResource());
         } finally {

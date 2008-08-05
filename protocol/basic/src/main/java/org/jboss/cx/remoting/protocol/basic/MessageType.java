@@ -33,11 +33,16 @@ public final class MessageType {
     public static final int CANCEL_REQUEST     = 4;
     public static final int CANCEL_ACK         = 5;
     public static final int REQUEST_FAILED     = 6;
-    // Remote side called .close() on a forwarded RemoteClientEndpoint
+    // Remote side called .close() on a forwarded RequestHandler
     public static final int CLIENT_CLOSE       = 7;
-    // Remote side called .close() on a forwarded RemoteClientEndpoint
+    // Remote side pulled a new RequestHandler off of a forwarded RequestHandlerSource
     public static final int CLIENT_OPEN        = 8;
+    // Remote side called .close() on a forwarded RequestHandlerSource
     public static final int SERVICE_CLOSE      = 9;
+    // Remote side brought a new service online
+    public static final int SERVICE_ADVERTISE  = 10;
+    // Remote side's service is no longer available
+    public static final int SERVICE_UNADVERTISE= 11;
 
     private MessageType() {
     }

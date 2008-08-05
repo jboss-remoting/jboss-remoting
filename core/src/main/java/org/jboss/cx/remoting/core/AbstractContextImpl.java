@@ -25,12 +25,12 @@ package org.jboss.cx.remoting.core;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import org.jboss.cx.remoting.util.CollectionUtil;
-import org.jboss.cx.remoting.spi.AbstractCloseable;
+import org.jboss.cx.remoting.spi.AbstractHandleableCloseable;
 
 /**
  *
  */
-public abstract class AbstractContextImpl<T> extends AbstractCloseable<T> {
+public abstract class AbstractContextImpl<T> extends AbstractHandleableCloseable<T> {
 
     private final ConcurrentMap<Object, Object> attributes = CollectionUtil.concurrentMap();
 

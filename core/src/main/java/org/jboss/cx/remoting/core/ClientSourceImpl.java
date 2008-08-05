@@ -29,14 +29,14 @@ import org.jboss.cx.remoting.Endpoint;
 import org.jboss.cx.remoting.spi.remote.RequestHandler;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
-import org.jboss.cx.remoting.spi.AbstractCloseable;
+import org.jboss.cx.remoting.spi.AbstractHandleableCloseable;
 import org.jboss.xnio.IoUtils;
 import java.io.IOException;
 
 /**
  *
  */
-public final class ClientSourceImpl<I, O> extends AbstractCloseable<ClientSource<I, O>> implements ClientSource<I, O> {
+public final class ClientSourceImpl<I, O> extends AbstractHandleableCloseable<ClientSource<I, O>> implements ClientSource<I, O> {
 
     private final Handle<RequestHandlerSource> handle;
     private final Endpoint endpoint;

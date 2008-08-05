@@ -20,25 +20,36 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.cx.remoting.protocol.basic;
+package org.jboss.cx.remoting.core;
 
-import org.jboss.cx.remoting.spi.AbstractHandleableCloseable;
-import java.util.concurrent.Executor;
+import org.jboss.xnio.AbstractIoFuture;
+import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.IoUtils;
+import org.jboss.cx.remoting.ClientSource;
+import org.jboss.cx.remoting.SimpleCloseable;
+import java.io.IOException;
 
 /**
  *
  */
-public abstract class AbstractConnection extends AbstractHandleableCloseable<Connection> implements Connection {
-    /**
-     * Basic constructor.
-     *
-     * @param executor the executor used to execute the close notification handlers
-     */
-    protected AbstractConnection(final Executor executor) {
-        super(executor);
+public final class FutureClientSource<I, O> extends AbstractIoFuture<ClientSource<I, O>> {
+
+    private volatile SimpleCloseable listenerHandle;
+
+    protected boolean setException(final IOException exception) {
+        return super.setException(exception);
     }
 
-    public String toString() {
-        return "connection <" + Integer.toString(hashCode()) + ">";
+    protected boolean setResult(final ClientSource<I, O> result) {
+        return super.setResult(result);
+    }
+
+    public IoFuture<ClientSource<I, O>> cancel() {
+        IoUtils.safeClose(listenerHandle);
+        return this;
+    }
+
+    void setListenerHandle(final SimpleCloseable listenerHandle) {
+        this.listenerHandle = listenerHandle;
     }
 }

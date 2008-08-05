@@ -1,10 +1,12 @@
 package org.jboss.cx.remoting;
 
 import java.util.concurrent.ConcurrentMap;
+import java.net.URI;
 import java.io.IOException;
 import org.jboss.cx.remoting.spi.remote.RequestHandler;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
+import org.jboss.xnio.IoFuture;
 
 /**
  * A potential participant in a JBoss Remoting communications relationship.
@@ -51,10 +53,12 @@ public interface Endpoint {
      * @param <I> the request type
      * @param <O> the reply type
      * @param requestListener the request listener
+     * @param serviceType the type of service to advertise
+     * @param groupName the name of the group of this type to be part of
      * @return a handle for the client source
      * @throws IOException if an error occurs
      */
-    <I, O> Handle<RequestHandlerSource> createRequestHandlerSource(RequestListener<I, O> requestListener) throws IOException;
+    <I, O> Handle<RequestHandlerSource> createRequestHandlerSource(RequestListener<I, O> requestListener, String serviceType, String groupName) throws IOException;
 
     /**
      * Create a client that uses the given request handler to handle its requests.
@@ -77,4 +81,42 @@ public interface Endpoint {
      * @throws IOException if an error occurs
      */
     <I, O> ClientSource<I, O> createClientSource(RequestHandlerSource handlerSource) throws IOException;
+
+    /**
+     * Attempt to locate a service.  The return value then be queried for the service's {@code ClientSource}.
+     *
+     * @param <I> the request type
+     * @param <O> the reply type
+     * @param serviceUri the URI of the service
+     * @return the future service
+     * @throws IllegalArgumentException if the given URI is not a valid Remoting service URI
+     */
+    <I, O> IoFuture<ClientSource<I, O>> locateService(URI serviceUri) throws IllegalArgumentException;
+
+    /**
+     * Register a remotely available service.<p>
+     * The remote endpoint may not have the same name as this endpoint.  The group name and service type must be
+     * non-{@code null} and non-empty.  The metric must be greater than zero.
+     *
+     * @param serviceType the service type string
+     * @param groupName the group name
+     * @param endpointName the name of the remote endpoint
+     * @param handlerSource the remote handler source
+     * @param metric the preference metric, lower is more preferred
+     * @return a handle corresponding to the registration
+     * @throws IllegalArgumentException if one of the given arguments was not valid
+     * @throws IOException if an error occurs with the registration
+     */
+    SimpleCloseable registerRemoteService(String serviceType, String groupName, String endpointName, RequestHandlerSource handlerSource, int metric) throws IllegalArgumentException, IOException;
+
+    /**
+     * Add a listener for observing when local and remote services are added.  The caller may specify whether the listener
+     * should be notified of the complete list of currently registered services (set {@code onlyNew} to {@code false})
+     * or only services registered after the time of calling this method (set {@code onlyNew} to {@code true}).
+     *
+     * @param serviceListener the listener
+     * @param onlyNew {@code true} if only new registrations should be sent to the listener
+     * @return a handle which may be used to unregister the listener
+     */
+    SimpleCloseable addServiceListener(ServiceListener serviceListener, boolean onlyNew);
 }

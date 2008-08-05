@@ -93,7 +93,7 @@ public final class ConnectionTestCase extends TestCase {
                                     problems.add(e);
                                 }
                             }
-                        });
+                        }, INIT_ME, INIT_ME);
                         try {
                             serviceRegistry.bind(requestHandlerSourceHandle.getResource(), 13);
                             final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = BasicProtocol.createServer(closeableExecutor, allocator, serviceRegistry);

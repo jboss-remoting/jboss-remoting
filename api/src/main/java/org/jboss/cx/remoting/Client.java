@@ -10,7 +10,7 @@ import org.jboss.xnio.IoFuture;
  * @param <I> the request type
  * @param <O> the reply type
  */
-public interface Client<I, O> extends Closeable<Client<I, O>> {
+public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
     /**
      * Send a request and block until a reply is received.
      * <p/>
