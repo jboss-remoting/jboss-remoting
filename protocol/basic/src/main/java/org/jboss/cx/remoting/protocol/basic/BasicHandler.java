@@ -52,7 +52,6 @@ import static org.jboss.cx.remoting.protocol.basic.MessageType.SERVICE_CLOSE;
 import static org.jboss.cx.remoting.protocol.basic.MessageType.REQUEST_FAILED;
 import static org.jboss.cx.remoting.protocol.basic.MessageType.CANCEL_ACK;
 import static org.jboss.cx.remoting.protocol.basic.MessageType.VERSION;
-import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.CloseHandler;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.BlockingQueue;
@@ -491,7 +490,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     public void openClientForForwardedService(int id, RequestHandler clientEndpoint) {
         try {
             forwardedClients.put(Integer.valueOf(id), clientEndpoint.getHandle());
-        } catch (RemotingException e) {
+        } catch (IOException e) {
             // TODO fix
             e.printStackTrace();
         }
@@ -767,7 +766,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             });
         }
 
-        public Handle<RequestHandler> createRequestHandler() throws RemotingException {
+        public Handle<RequestHandler> createRequestHandler() throws IOException {
             final int clientId = openClientFromService();
             final ByteBuffer buffer = allocator.allocate();
             buffer.put((byte) MessageType.CLIENT_OPEN);
