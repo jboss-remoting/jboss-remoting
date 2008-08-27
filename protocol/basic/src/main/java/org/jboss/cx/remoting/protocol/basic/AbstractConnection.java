@@ -22,13 +22,13 @@
 
 package org.jboss.cx.remoting.protocol.basic;
 
-import org.jboss.cx.remoting.spi.AbstractHandleableCloseable;
+import org.jboss.cx.remoting.spi.AbstractSimpleCloseable;
 import java.util.concurrent.Executor;
 
 /**
  *
  */
-public abstract class AbstractConnection extends AbstractHandleableCloseable<Connection> implements Connection {
+public abstract class AbstractConnection extends AbstractSimpleCloseable {
     /**
      * Basic constructor.
      *

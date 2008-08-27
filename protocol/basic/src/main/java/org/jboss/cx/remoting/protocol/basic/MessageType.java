@@ -26,12 +26,19 @@ package org.jboss.cx.remoting.protocol.basic;
  *
  */
 public final class MessageType {
+    // Initial version & marshaller negotiation
     public static final int VERSION            = 0;
+    // One-way request, no return value may be sent
     public static final int REQUEST_ONEWAY     = 1;
+    // Two-way request, return value is expected
     public static final int REQUEST            = 2;
+    // Reply
     public static final int REPLY              = 3;
+    // Attempt to cancel a request
     public static final int CANCEL_REQUEST     = 4;
+    // Acknowledge that a request was cancelled
     public static final int CANCEL_ACK         = 5;
+    // Request failed due to exception
     public static final int REQUEST_FAILED     = 6;
     // Remote side called .close() on a forwarded RequestHandler
     public static final int CLIENT_CLOSE       = 7;

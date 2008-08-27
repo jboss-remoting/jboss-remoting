@@ -22,9 +22,11 @@
 
 package org.jboss.cx.remoting.protocol.basic;
 
+import org.jboss.cx.remoting.SimpleCloseable;
+
 /**
  *
  */
 public interface ConnectionListener {
-    void handleOpened(Connection connection);
+    void handleOpened(SimpleCloseable connection);
 }

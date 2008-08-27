@@ -52,7 +52,10 @@ import static org.jboss.cx.remoting.protocol.basic.MessageType.SERVICE_CLOSE;
 import static org.jboss.cx.remoting.protocol.basic.MessageType.REQUEST_FAILED;
 import static org.jboss.cx.remoting.protocol.basic.MessageType.CANCEL_ACK;
 import static org.jboss.cx.remoting.protocol.basic.MessageType.VERSION;
+import static org.jboss.cx.remoting.protocol.basic.MessageType.SERVICE_ADVERTISE;
+import static org.jboss.cx.remoting.protocol.basic.MessageType.SERVICE_UNADVERTISE;
 import org.jboss.cx.remoting.CloseHandler;
+import org.jboss.cx.remoting.Endpoint;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
@@ -71,16 +74,20 @@ import java.io.IOException;
 public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
 
     private static final Logger log = Logger.getLogger(BasicHandler.class);
-    private static final int LOCAL_VERSION = 1;
+    private static final int LOCAL_VERSION = 0x00000100;
+
+    // running on remote node
+    private final ConcurrentMap<Integer, ReplyHandler> outstandingRequests = concurrentMap();
 
     // clients whose requests get forwarded to the remote side
     private final ConcurrentMap<Integer, RequestHandler> remoteClients = concurrentMap();
-    // running on remote node
-    private final ConcurrentMap<Integer, ReplyHandler> outstandingRequests = concurrentMap();
     // forwarded to remote side (handled on this side)
     private final ConcurrentMap<Integer, Handle<RequestHandler>> forwardedClients = concurrentMap();
 
-    private final ServiceRegistry registry;
+    // services forwarded to us
+    private final ConcurrentMap<Integer, RequestHandlerSource> remoteServices = concurrentMap();
+    // forwarded to remote side (handled on this side)
+    private final ConcurrentMap<Integer, Handle<RequestHandlerSource>> forwardedServices = concurrentMap();
 
     private final boolean server;
     private final BufferAllocator<ByteBuffer> allocator;
@@ -94,13 +101,13 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     private final ClassLoader classLoader;
     private List<String> localMarshallerList = Collections.singletonList("java-serialization");
     private volatile String marshallerType;
+    private volatile int metric;
     private final AtomicBoolean initialized = new AtomicBoolean(false);
 
-    public BasicHandler(final boolean server, final BufferAllocator<ByteBuffer> allocator, final Executor executor, final MarshallerFactory<ByteBuffer> marshallerFactory, final ServiceRegistry registry) {
+    public BasicHandler(final boolean server, final BufferAllocator<ByteBuffer> allocator, final Executor executor, final MarshallerFactory<ByteBuffer> marshallerFactory) {
         this.server = server;
         this.allocator = allocator;
         this.executor = executor;
-        this.registry = registry;
         final RequestHandlerImpl endpoint = new RequestHandlerImpl(0, allocator);
         remoteClients.put(Integer.valueOf(0), endpoint);
         this.marshallerFactory = marshallerFactory;
@@ -116,11 +123,11 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     /**
      * Sequence number of local clients forwarded to the remote side.
      */
-    private final AtomicInteger localClientIdSeq = new AtomicInteger(1);
+    private final AtomicInteger localClientIdSeq = new AtomicInteger();
     /**
      * Sequence number of remote clients opened locally from services from the remote side.
      */
-    private final AtomicInteger remoteClientIdSeq = new AtomicInteger(1);
+    private final AtomicInteger remoteClientIdSeq = new AtomicInteger();
 
     public void handleOpened(final AllocatedMessageChannel channel) {
         if (isnew.getAndSet(false)) {
@@ -333,6 +340,26 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                 }
                 case SERVICE_CLOSE: {
                     registry.unbind(buffer.getInt());
+                    break;
+                }
+                case SERVICE_ADVERTISE: {
+                    final int serviceId = buffer.getInt();
+                    final String serviceType = readUTFZ(buffer);
+                    final String groupName = readUTFZ(buffer);
+                    final String endpointName = readUTFZ(buffer);
+                    final int baseMetric = buffer.getInt();
+                    Endpoint endpoint;
+                    int id;
+                    final RequestHandlerSource handlerSource = new RequestHandlerSourceImpl(allocator, id);
+                    final int calcMetric = baseMetric + metric;
+                    if (calcMetric > 0) {
+                        endpoint.registerRemoteService(serviceType, groupName, endpointName, handlerSource, calcMetric);
+                    }
+                    break;
+                }
+                case SERVICE_UNADVERTISE: {
+                    final int serviceId = buffer.getInt();
+                    IoUtils.safeClose(remoteServices.get(Integer.valueOf(serviceId)));
                     break;
                 }
                 default: {

@@ -39,6 +39,7 @@ import org.jboss.cx.remoting.RemoteExecutionException;
 import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.AbstractRequestListener;
+import org.jboss.cx.remoting.SimpleCloseable;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.xnio.BufferAllocator;
@@ -83,7 +84,6 @@ public final class ConnectionTestCase extends TestCase {
                 endpoint.setExecutor(closeableExecutor);
                 endpoint.start();
                 try {
-                    final ServiceRegistry serviceRegistry = new ServiceRegistryImpl();
                     try {
                         final Handle<RequestHandlerSource> requestHandlerSourceHandle = endpoint.createRequestHandlerSource(new AbstractRequestListener<Object, Object>() {
                             public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
@@ -96,7 +96,7 @@ public final class ConnectionTestCase extends TestCase {
                         }, null, null);
                         try {
                             serviceRegistry.bind(requestHandlerSourceHandle.getResource(), 13);
-                            final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = BasicProtocol.createServer(closeableExecutor, allocator, serviceRegistry);
+                            final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = BasicProtocol.createServer(closeableExecutor, allocator);
                             final IoHandlerFactory<StreamChannel> newHandlerFactory = Channels.convertStreamToAllocatedMessage(handlerFactory, 32768, 32768);
                             final Closeable tcpServerCloseable = xnio.createTcpServer(newHandlerFactory, new InetSocketAddress(12345)).create();
                             try {
@@ -104,8 +104,8 @@ public final class ConnectionTestCase extends TestCase {
                                 try {
                                     final TcpClient tcpClient = connector.createChannelSource(new InetSocketAddress("localhost", 12345));
                                     final ChannelSource<AllocatedMessageChannel> channelSource = Channels.convertStreamToAllocatedMessage(tcpClient, 32768, 32768);
-                                    final IoFuture<Connection> futureCloseable = BasicProtocol.connect(closeableExecutor, channelSource, allocator, serviceRegistry);
-                                    final Connection connection = futureCloseable.get();
+                                    final IoFuture<SimpleCloseable> futureCloseable = BasicProtocol.connect(closeableExecutor, channelSource, allocator);
+                                    final SimpleCloseable connection = futureCloseable.get();
                                     try {
                                         final Handle<RequestHandlerSource> handleThirteen = connection.getServiceForId(13);
                                         try {

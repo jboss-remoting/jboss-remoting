@@ -23,6 +23,7 @@
 package org.jboss.cx.remoting.protocol.basic;
 
 import org.jboss.cx.remoting.RemotingException;
+import org.jboss.cx.remoting.SimpleCloseable;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
 import org.jboss.cx.remoting.core.marshal.JavaSerializationMarshallerFactory;
@@ -55,10 +56,10 @@ public final class BasicProtocol {
      * @param allocator the buffer allocator to use
      * @return a handler factory for passing to an XNIO server
      */
-    public static IoHandlerFactory<AllocatedMessageChannel> createServer(final Executor executor, final BufferAllocator<ByteBuffer> allocator, final ServiceRegistry serviceRegistry) {
+    public static IoHandlerFactory<AllocatedMessageChannel> createServer(final Executor executor, final BufferAllocator<ByteBuffer> allocator) {
         return new IoHandlerFactory<AllocatedMessageChannel>() {
             public IoHandler<? super AllocatedMessageChannel> createHandler() {
-                return new BasicHandler(true, allocator, executor, new JavaSerializationMarshallerFactory(executor), serviceRegistry);
+                return new BasicHandler(true, allocator, executor, new JavaSerializationMarshallerFactory(executor));
             }
         };
     }
@@ -69,15 +70,14 @@ public final class BasicProtocol {
      * @param executor the executor to use for invocations
      * @param channelSource the XNIO channel source to use to establish the connection
      * @param allocator the buffer allocator to use
-     * @param serviceRegistry the service registry
      * @return a handle which may be used to close the connection
      * @throws IOException if an error occurs
      */
-    public static IoFuture<Connection> connect(final Executor executor, final ChannelSource<AllocatedMessageChannel> channelSource, final BufferAllocator<ByteBuffer> allocator, final ServiceRegistry serviceRegistry) throws IOException {
-        final BasicHandler basicHandler = new BasicHandler(false, allocator, executor, new JavaSerializationMarshallerFactory(executor), serviceRegistry);
+    public static IoFuture<SimpleCloseable> connect(final Executor executor, final ChannelSource<AllocatedMessageChannel> channelSource, final BufferAllocator<ByteBuffer> allocator) throws IOException {
+        final BasicHandler basicHandler = new BasicHandler(false, allocator, executor, new JavaSerializationMarshallerFactory(executor));
         final IoFuture<AllocatedMessageChannel> futureChannel = channelSource.open(basicHandler);
-        return new AbstractConvertingIoFuture<Connection, AllocatedMessageChannel>(futureChannel) {
-            protected Connection convert(final AllocatedMessageChannel channel) throws RemotingException {
+        return new AbstractConvertingIoFuture<SimpleCloseable, AllocatedMessageChannel>(futureChannel) {
+            protected SimpleCloseable convert(final AllocatedMessageChannel channel) throws RemotingException {
                 return new AbstractConnection(executor) {
                     public Handle<RequestHandlerSource> getServiceForId(final int id) throws IOException {
                         return basicHandler.getRemoteService(id).getHandle();
