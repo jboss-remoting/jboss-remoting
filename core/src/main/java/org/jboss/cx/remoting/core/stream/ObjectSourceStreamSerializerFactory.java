@@ -2,7 +2,6 @@ package org.jboss.cx.remoting.core.stream;
 
 import java.io.IOException;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
-import org.jboss.cx.remoting.spi.marshal.MarshallerFactory;
 import org.jboss.cx.remoting.stream.ObjectSource;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.channels.StreamSourceChannel;
@@ -12,6 +11,7 @@ import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
+import org.jboss.marshalling.MarshallerFactory;
 
 /**
  *

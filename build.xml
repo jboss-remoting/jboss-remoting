@@ -127,6 +127,18 @@
         <get src="${remote.license.dir}/${lib.jboss-managed.license}.txt" dest="${lib.jboss-managed.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
+    <!-- External library: JBoss Marshalling -->
+
+    <target name="lib.jboss-marshalling-api-check">
+        <available property="lib.jboss-marshalling-api.exists" file="${lib.jboss-marshalling-api.local}"/>
+    </target>
+
+    <target name="lib.jboss-marshalling-api" depends="lib.jboss-marshalling-api-check" unless="lib.jboss-marshalling-api.exists">
+        <mkdir dir="${local.repository}/${lib.jboss-marshalling-api.dir}"/>
+        <get src="${lib.jboss-marshalling-api.remote}" dest="${lib.jboss-marshalling-api.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.jboss-marshalling-api.license}.txt" dest="${lib.jboss-marshalling-api.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
     <!-- External library: JBoss Serialization -->
 
     <target name="lib.jboss-serialization-check">
@@ -236,6 +248,7 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
+                <pathelement location="${lib.jboss-marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
                 <path refid="util.classpath"/>
             </classpath>
@@ -267,6 +280,7 @@
                 <path refid="api.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.jboss-marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
@@ -319,7 +333,7 @@
         <delete dir="api/target"/>
     </target>
 
-    <target name="api" description="Build the API module" depends="lib.xnio-api,util,api.compile">
+    <target name="api" description="Build the API module" depends="lib.jboss-marshalling-api-check,lib.xnio-api,util,api.compile">
         <path id="api.classpath">
             <pathelement location="api/target/main/classes"/>
         </path>
@@ -390,7 +404,7 @@
                 <path refid="api.classpath"/>
                 <path refid="util.classpath"/>
                 <path refid="version.classpath"/>
-                <pathelement location="${lib.jboss-serialization.local}"/>
+                <pathelement location="${lib.jboss-marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
@@ -422,6 +436,7 @@
                 <path refid="core.classpath"/>
                 <path refid="util.classpath"/>
                 <path refid="testing-support.classpath"/>
+                <pathelement location="${lib.jboss-marshalling-api.local}"/>
                 <pathelement location="${lib.junit.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
@@ -476,7 +491,7 @@
         <delete dir="core/target"/>
     </target>
 
-    <target name="core" description="Build the core module" depends="lib.jboss-serialization,api,util,version,core.compile">
+    <target name="core" description="Build the core module" depends="api,util,version,core.compile">
         <path id="core.classpath">
             <pathelement location="core/target/main/classes"/>
         </path>
@@ -743,6 +758,7 @@
                 <!-- TODO: marshallers should be moved to their own module -->
                 <path refid="core.classpath"/>
                 <path refid="util.classpath"/>
+                <pathelement location="${lib.jboss-marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
@@ -776,6 +792,7 @@
                 <path refid="util.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.jboss-marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-standalone.local}"/>
             </classpath>
         </javac>
@@ -802,6 +819,7 @@
                 <path refid="util.classpath"/>
                 <pathelement location="protocol/basic/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.jboss-marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-standalone.local}"/>
             </classpath>
             <batchtest fork="yes" todir="protocol/basic/target/test-results"
@@ -830,7 +848,7 @@
         <delete dir="protocol.basic/target"/>
     </target>
 
-    <target name="protocol.basic" description="Build the protocol.basic module" depends="lib.xnio-api,api,core,util,protocol.basic.compile">
+    <target name="protocol.basic" description="Build the protocol.basic module" depends="lib.jboss-marshalling-api,lib.xnio-api,api,core,util,protocol.basic.compile">
         <path id="protocol.basic.classpath">
             <pathelement location="protocol/basic/target/main/classes"/>
         </path>

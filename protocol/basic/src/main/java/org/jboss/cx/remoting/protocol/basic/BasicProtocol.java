@@ -26,7 +26,6 @@ import org.jboss.cx.remoting.RemotingException;
 import org.jboss.cx.remoting.SimpleCloseable;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
-import org.jboss.cx.remoting.core.marshal.JavaSerializationMarshallerFactory;
 import org.jboss.xnio.IoHandlerFactory;
 import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.IoFuture;
@@ -59,7 +58,11 @@ public final class BasicProtocol {
     public static IoHandlerFactory<AllocatedMessageChannel> createServer(final Executor executor, final BufferAllocator<ByteBuffer> allocator) {
         return new IoHandlerFactory<AllocatedMessageChannel>() {
             public IoHandler<? super AllocatedMessageChannel> createHandler() {
-                return new BasicHandler(true, allocator, executor, new JavaSerializationMarshallerFactory(executor));
+                final RemotingChannelConfiguration configuration = new RemotingChannelConfiguration();
+                configuration.setAllocator(allocator);
+                configuration.setExecutor(executor);
+                // todo marshaller factory... etc
+                return new BasicHandler(configuration);
             }
         };
     }
@@ -74,7 +77,11 @@ public final class BasicProtocol {
      * @throws IOException if an error occurs
      */
     public static IoFuture<SimpleCloseable> connect(final Executor executor, final ChannelSource<AllocatedMessageChannel> channelSource, final BufferAllocator<ByteBuffer> allocator) throws IOException {
-        final BasicHandler basicHandler = new BasicHandler(false, allocator, executor, new JavaSerializationMarshallerFactory(executor));
+        final RemotingChannelConfiguration configuration = new RemotingChannelConfiguration();
+        configuration.setAllocator(allocator);
+        configuration.setExecutor(executor);
+        // todo marshaller factory... etc
+        final BasicHandler basicHandler = new BasicHandler(configuration);
         final IoFuture<AllocatedMessageChannel> futureChannel = channelSource.open(basicHandler);
         return new AbstractConvertingIoFuture<SimpleCloseable, AllocatedMessageChannel>(futureChannel) {
             protected SimpleCloseable convert(final AllocatedMessageChannel channel) throws RemotingException {

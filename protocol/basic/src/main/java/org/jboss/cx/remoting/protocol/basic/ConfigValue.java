@@ -20,16 +20,48 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.cx.remoting.spi.marshal;
-
-import java.nio.Buffer;
-import java.io.IOException;
+package org.jboss.cx.remoting.protocol.basic;
 
 /**
  *
  */
-public interface Unmarshaller<T extends Buffer>  {
-    boolean unmarshal(T buffer) throws IOException;
+public enum ConfigValue {
 
-    Object get() throws IOException, IllegalStateException, ClassNotFoundException;
+    /**
+     * The protocol version to use.  Value type is {@code int}.
+     */
+    PROTOCOL_VERSION(0),
+    /**
+     * The name of the marshaller to use.  Value type is {@code String}.
+     */
+    MARSHALLER_NAME(1),
+    ;
+    private final int id;
+
+    private ConfigValue(final int id) {
+        this.id = id;
+    }
+
+    /**
+     * Get the integer ID for this config value.
+     *
+     * @return the integer ID
+     */
+    public int getId() {
+        return id;
+    }
+
+    /**
+     * Get the config value for an integer ID.
+     *
+     * @param id the integer ID
+     * @return the config value instance
+     */
+    public static ConfigValue getConfigValue(final int id) {
+        switch (id) {
+            case 0: return PROTOCOL_VERSION;
+            case 1: return MARSHALLER_NAME;
+            default: throw new IllegalArgumentException("Invalid config value ID");
+        }
+    }
 }

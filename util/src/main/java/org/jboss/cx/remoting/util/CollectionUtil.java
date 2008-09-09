@@ -63,6 +63,10 @@ public final class CollectionUtil {
         return new ConcurrentReferenceHashMap<K, V>(16, STRONG, WEAK);
     }
 
+    public static <V> ConcurrentIntegerMap<V> concurrentIntegerMap() {
+        return new EmulatedConcurrentIntegerHashMap<V>(CollectionUtil.<Integer, V>concurrentMap());
+    }
+
     /**
      * Create a synchronized map that obeys the contract for {@code ConcurrentMap}.
      *

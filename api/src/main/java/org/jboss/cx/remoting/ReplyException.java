@@ -20,29 +20,27 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.cx.remoting.spi.marshal;
-
-import java.io.IOException;
+package org.jboss.cx.remoting;
 
 /**
  *
  */
-public final class IdentityResolver implements ObjectResolver {
+public class ReplyException extends RemotingException {
 
-    private static final long serialVersionUID = -6980574391387456877L;
-    private static final IdentityResolver INSTANCE = new IdentityResolver();
+    private static final long serialVersionUID = 5562116026829381932L;
 
-    private IdentityResolver() {}
-
-    public Object writeReplace(final Object original) throws IOException {
-        return original;
+    public ReplyException() {
     }
 
-    public Object readResolve(final Object original) throws IOException {
-        return original;
+    public ReplyException(final String msg) {
+        super(msg);
     }
 
-    public static IdentityResolver getInstance() {
-        return INSTANCE;
+    public ReplyException(final Throwable cause) {
+        super(cause);
+    }
+
+    public ReplyException(final String msg, final Throwable cause) {
+        super(msg, cause);
     }
 }

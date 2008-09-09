@@ -41,6 +41,7 @@ public interface ReplyHandler {
      * @param msg the message
      * @param cause the cause
      */
+    // TODO - change to accept a RemotingException instead?
     void handleException(final String msg, Throwable cause);
 
     /**

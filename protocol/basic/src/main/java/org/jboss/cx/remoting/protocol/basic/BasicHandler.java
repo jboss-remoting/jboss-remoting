@@ -27,43 +27,30 @@ import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
-import static org.jboss.xnio.Buffers.*;
 import org.jboss.cx.remoting.spi.remote.RequestHandler;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.ReplyHandler;
 import org.jboss.cx.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.cx.remoting.spi.remote.Handle;
-import org.jboss.cx.remoting.spi.marshal.Unmarshaller;
-import org.jboss.cx.remoting.spi.marshal.Marshaller;
-import org.jboss.cx.remoting.spi.marshal.MarshallerFactory;
-import org.jboss.cx.remoting.spi.marshal.ObjectResolver;
-import org.jboss.cx.remoting.spi.marshal.IdentityResolver;
 import org.jboss.cx.remoting.spi.SpiUtils;
 import org.jboss.cx.remoting.spi.AbstractAutoCloseable;
-import static org.jboss.cx.remoting.util.CollectionUtil.concurrentMap;
-import static org.jboss.cx.remoting.util.CollectionUtil.arrayList;
+import static org.jboss.cx.remoting.util.CollectionUtil.concurrentIntegerMap;
 import org.jboss.cx.remoting.util.CollectionUtil;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.REQUEST_ONEWAY;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.REQUEST;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.REPLY;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.CLIENT_CLOSE;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.CLIENT_OPEN;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.SERVICE_CLOSE;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.REQUEST_FAILED;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.CANCEL_ACK;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.VERSION;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.SERVICE_ADVERTISE;
-import static org.jboss.cx.remoting.protocol.basic.MessageType.SERVICE_UNADVERTISE;
+import org.jboss.cx.remoting.util.ConcurrentIntegerMap;
 import org.jboss.cx.remoting.CloseHandler;
 import org.jboss.cx.remoting.Endpoint;
-import java.util.concurrent.ConcurrentMap;
+import org.jboss.cx.remoting.SimpleCloseable;
+import org.jboss.marshalling.MarshallerFactory;
+import org.jboss.marshalling.ByteInput;
+import org.jboss.marshalling.Unmarshaller;
+import org.jboss.marshalling.ByteOutput;
+import org.jboss.marshalling.Marshaller;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Collection;
 import java.nio.ByteBuffer;
 import java.nio.BufferUnderflowException;
 import java.io.IOException;
@@ -74,96 +61,67 @@ import java.io.IOException;
 public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
 
     private static final Logger log = Logger.getLogger(BasicHandler.class);
-    private static final int LOCAL_VERSION = 0x00000100;
 
-    // running on remote node
-    private final ConcurrentMap<Integer, ReplyHandler> outstandingRequests = concurrentMap();
-
-    // clients whose requests get forwarded to the remote side
-    private final ConcurrentMap<Integer, RequestHandler> remoteClients = concurrentMap();
-    // forwarded to remote side (handled on this side)
-    private final ConcurrentMap<Integer, Handle<RequestHandler>> forwardedClients = concurrentMap();
-
-    // services forwarded to us
-    private final ConcurrentMap<Integer, RequestHandlerSource> remoteServices = concurrentMap();
-    // forwarded to remote side (handled on this side)
-    private final ConcurrentMap<Integer, Handle<RequestHandlerSource>> forwardedServices = concurrentMap();
-
-    private final boolean server;
+    //--== Connection configuration items ==--
+    private final MarshallerFactory marshallerFactory;
+    private final int linkMetric;
+    private final Executor executor;
+    private final ClassLoader classLoader;
+    // buffer allocator for outbound message assembly
     private final BufferAllocator<ByteBuffer> allocator;
 
-    private final AtomicBoolean isnew = new AtomicBoolean(true);
-    private volatile AllocatedMessageChannel channel;
-    private volatile int remoteVersion;
-    private final Executor executor;
-    private final MarshallerFactory<ByteBuffer> marshallerFactory;
-    private final ObjectResolver resolver;
-    private final ClassLoader classLoader;
-    private List<String> localMarshallerList = Collections.singletonList("java-serialization");
-    private volatile String marshallerType;
-    private volatile int metric;
-    private final AtomicBoolean initialized = new AtomicBoolean(false);
+    // running on remote node
+    private final ConcurrentIntegerMap<ReplyHandler> remoteRequests = concurrentIntegerMap();
+    // running on local node
+    private final ConcurrentIntegerMap<RemoteRequestContext> localRequests = concurrentIntegerMap();
+    // sequence for remote requests
+    private final AtomicInteger requestSequence = new AtomicInteger();
 
-    public BasicHandler(final boolean server, final BufferAllocator<ByteBuffer> allocator, final Executor executor, final MarshallerFactory<ByteBuffer> marshallerFactory) {
-        this.server = server;
-        this.allocator = allocator;
-        this.executor = executor;
-        final RequestHandlerImpl endpoint = new RequestHandlerImpl(0, allocator);
-        remoteClients.put(Integer.valueOf(0), endpoint);
-        this.marshallerFactory = marshallerFactory;
-        // todo
-        resolver = IdentityResolver.getInstance();
-        classLoader = getClass().getClassLoader();
+    // clients whose requests get forwarded to the remote side
+    // even #s were opened from services forwarded to us (our sequence)
+    // odd #s were forwarded directly to us (remote sequence)
+    private final ConcurrentIntegerMap<RequestHandler> remoteClients = concurrentIntegerMap();
+    // forwarded to remote side (handled on this side)
+    private final ConcurrentIntegerMap<Handle<RequestHandler>> forwardedClients = concurrentIntegerMap();
+    // sequence for forwarded clients
+    private final AtomicInteger forwardedClientSequence = new AtomicInteger();
+    // sequence for clients created from services forwarded to us
+    private final AtomicInteger remoteClientSequence = new AtomicInteger();
+
+    // services forwarded to us
+    private final ConcurrentIntegerMap<RequestHandlerSource> remoteServices = concurrentIntegerMap();
+    // forwarded to remote side (handled on this side)
+    private final ConcurrentIntegerMap<Handle<RequestHandlerSource>> forwardedServices = concurrentIntegerMap();
+    // sequence for forwarded services
+    private final AtomicInteger serviceSequence = new AtomicInteger();
+
+    private volatile AllocatedMessageChannel channel;
+
+    public BasicHandler(final RemotingChannelConfiguration configuration) {
+        allocator = configuration.getAllocator();
+        executor = configuration.getExecutor();
+        classLoader = configuration.getClassLoader();
+        marshallerFactory = configuration.getMarshallerFactory();
+        linkMetric = configuration.getLinkMetric();
     }
 
-    /**
-     * Sequence number of requests originating locally.
-     */
-    private final AtomicInteger localRequestIdSeq = new AtomicInteger();
-    /**
-     * Sequence number of local clients forwarded to the remote side.
-     */
-    private final AtomicInteger localClientIdSeq = new AtomicInteger();
-    /**
-     * Sequence number of remote clients opened locally from services from the remote side.
-     */
-    private final AtomicInteger remoteClientIdSeq = new AtomicInteger();
-
     public void handleOpened(final AllocatedMessageChannel channel) {
-        if (isnew.getAndSet(false)) {
-            this.channel = channel;
-        }
-        final List<ByteBuffer> bufferList = arrayList();
-        ByteBuffer buffer = allocator.allocate();
-        buffer.put((byte) VERSION);
-        buffer.putInt(LOCAL_VERSION);
-        String joinedList = CollectionUtil.join(",", localMarshallerList);
-        for (;;) {
-            int i = writeUTFZ(buffer, joinedList);
-            if (i == -1) {
-                break;
-            }
-            bufferList.add(flip(buffer));
-            joinedList = joinedList.substring(i);
-            buffer = allocator.allocate();
-        }
-        bufferList.add(flip(buffer));
-        try {
-            registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
-        } catch (InterruptedException e) {
-            log.error("Interrupted while sending intial version message");
-            IoUtils.safeClose(channel);
-            Thread.currentThread().interrupt();
-            return;
-        }
         channel.resumeReads();
     }
 
     public void handleReadable(final AllocatedMessageChannel channel) {
         for (;;) try {
-            final ByteBuffer buffer = channel.receive();
+            final ByteBuffer buffer;
+            try {
+                buffer = channel.receive();
+            } catch (IOException e) {
+                log.error(e, "I/O error in protocol channel; closing channel");
+                IoUtils.safeClose(channel);
+                return;
+            }
             if (buffer == null) {
                 // todo release all handles...
+                // todo what if the write queue is not empty?
                 IoUtils.safeClose(channel);
                 return;
             }
@@ -172,145 +130,188 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                 channel.resumeReads();
                 return;
             }
-            int msgType = buffer.get() & 0xff;
-            if (initialized.getAndSet(true) != (msgType != 0)) {
-                log.error("Expected a version message; closing connection");
-                IoUtils.safeClose(channel);
+            final MessageType msgType;
+            try {
+                msgType = MessageType.getMessageType(buffer.get() & 0xff);
+            } catch (IllegalArgumentException ex) {
+                log.trace("Received invalid message type");
                 return;
             }
-            log.trace("Received message %s, type %d", buffer, Integer.valueOf(msgType));
+            log.trace("Received message %s, type %s", buffer, msgType);
             switch (msgType) {
-                case VERSION: {
-                    // participants always choose the lowest version number
-                    // since we only support one version (0), we don't do anything with the value
-                    buffer.getInt();
-                    // Select the client's most preferred marshaling method that the server supports
-                    final String marshallerList = readUTFZ(buffer);
-                    final Iterable<String> remoteMarshallerList = CollectionUtil.split(",", marshallerList);
-                    final Iterable<String> clientList = server ? remoteMarshallerList : localMarshallerList;
-                    final Iterable<String> serverList = server ? localMarshallerList : remoteMarshallerList;
-                    for (final String clientSuggestion : clientList) {
-                        for (final String serverSuggestion : serverList) {
-                            if (clientSuggestion.equals(serverSuggestion)) {
-                                marshallerType = clientSuggestion;
-                                log.trace("Chose marshaller type '%s'", marshallerType);
-                            }
-                        }
-                    }
-                    if (marshallerType == null) {
-                        log.error("Could not agree on a marshaller type; closing connection");
-                        IoUtils.safeClose(channel);
-                        return;
-                    }
-                    break;
-                }
                 case REQUEST_ONEWAY: {
                     final int clientId = buffer.getInt();
-                    final Handle<RequestHandler> handle = getForwardedClient(clientId);
+                    final Handle<RequestHandler> handle = forwardedClients.get(clientId);
                     if (handle == null) {
                         log.trace("Request on invalid client ID %d", Integer.valueOf(clientId));
                         return;
                     }
-                    final Unmarshaller<ByteBuffer> unmarshaller = marshallerFactory.createUnmarshaller(resolver, classLoader);
-                    if (! unmarshaller.unmarshal(buffer)) {
-                        log.trace("Incomplete one-way request for client ID %d", Integer.valueOf(clientId));
-                        break;
-                    }
                     final Object payload;
                     try {
-                        payload = unmarshaller.get();
-                    } catch (ClassNotFoundException e) {
-                        log.trace("Class not found in one-way request for client ID %d", Integer.valueOf(clientId));
+                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller();
+                        try {
+                            unmarshaller.start(createByteInput(buffer, true));
+                            try {
+                                payload = unmarshaller.readObject();
+                            } catch (ClassNotFoundException e) {
+                                log.trace("Class not found in one-way request for client ID %d", Integer.valueOf(clientId));
+                                break;
+                            }
+                        } finally {
+                            IoUtils.safeClose(unmarshaller);
+                        }
+                    } catch (IOException ex) {
+                        log.error(ex, "Failed to unmarshal a one-way request");
                         break;
                     }
                     final RequestHandler requestHandler = handle.getResource();
-                    requestHandler.receiveRequest(payload);
+                    try {
+                        requestHandler.receiveRequest(payload);
+                    } catch (Throwable t) {
+                        log.error(t, "One-way request handler unexpectedly threw an exception");
+                    }
                     break;
                 }
                 case REQUEST: {
                     final int clientId = buffer.getInt();
-                    final Handle<RequestHandler> handle = getForwardedClient(clientId);
+                    final Handle<RequestHandler> handle = forwardedClients.get(clientId);
                     if (handle == null) {
                         log.trace("Request on invalid client ID %d", Integer.valueOf(clientId));
                         break;
                     }
                     final int requestId = buffer.getInt();
-                    final Unmarshaller<ByteBuffer> unmarshaller = marshallerFactory.createUnmarshaller(resolver, classLoader);
-                    if (! unmarshaller.unmarshal(buffer)) {
-                        log.trace("Incomplete request ID %d for client ID %d", Integer.valueOf(requestId), Integer.valueOf(clientId));
-                        new ReplyHandlerImpl(channel, requestId, allocator).handleException("Incomplete request", null);
-                        break;
-                    }
                     final Object payload;
                     try {
-                        payload = unmarshaller.get();
-                    } catch (ClassNotFoundException e) {
-                        log.trace("Class not found in request ID %d for client ID %d", Integer.valueOf(requestId), Integer.valueOf(clientId));
+                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller();
+                        try {
+                            unmarshaller.start(createByteInput(buffer, true));
+                            try {
+                                payload = unmarshaller.readObject();
+                            } catch (ClassNotFoundException e) {
+                                log.trace("Class not found in request ID %d for client ID %d", Integer.valueOf(requestId), Integer.valueOf(clientId));
+                                // todo - send request receive failed message
+                                break;
+                            }
+                        } finally {
+                            IoUtils.safeClose(unmarshaller);
+                        }
+                    } catch (IOException ex) {
+                        log.trace("Failed to unmarshal a request (%s), sending %s", ex, MessageType.REQUEST_RECEIVE_FAILED);
+                        // todo send a request failure message
                         break;
                     }
                     final RequestHandler requestHandler = handle.getResource();
-                    requestHandler.receiveRequest(payload, (ReplyHandler) new ReplyHandlerImpl(channel, requestId, allocator));
+                    requestHandler.receiveRequest(payload, new ReplyHandlerImpl(channel, requestId, allocator));
                     break;
                 }
                 case REPLY: {
                     final int requestId = buffer.getInt();
-                    final ReplyHandler replyHandler = takeOutstandingReqeust(requestId);
+                    final ReplyHandler replyHandler = remoteRequests.remove(requestId);
                     if (replyHandler == null) {
                         log.trace("Got reply to unknown request %d", Integer.valueOf(requestId));
                         break;
                     }
-                    final Unmarshaller<ByteBuffer> unmarshaller = marshallerFactory.createUnmarshaller(resolver, classLoader);
-                    if (! unmarshaller.unmarshal(buffer)) {
-                        replyHandler.handleException("Incomplete reply", null);
-                        log.trace("Incomplete reply to request ID %d", Integer.valueOf(requestId));
-                        break;
-                    }
                     final Object payload;
                     try {
-                        payload = unmarshaller.get();
-                    } catch (ClassNotFoundException e) {
-                        replyHandler.handleException("Reply unmarshalling failed", e);
-                        log.trace("Class not found in reply to request ID %d", Integer.valueOf(requestId));
+                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller();
+                        try {
+                            unmarshaller.start(createByteInput(buffer, true));
+                            try {
+                                payload = unmarshaller.readObject();
+                            } catch (ClassNotFoundException e) {
+                                replyHandler.handleException("Reply unmarshalling failed", e);
+                                log.trace("Class not found in reply to request ID %d", Integer.valueOf(requestId));
+                                break;
+                            }
+                        } finally {
+                            IoUtils.safeClose(unmarshaller);
+                        }
+                    } catch (IOException ex) {
+                        log.trace("Failed to unmarshal a reply (%s), sending a ReplyException");
+                        // todo
+                        SpiUtils.safeHandleException(replyHandler, null, null);
                         break;
                     }
                     SpiUtils.safeHandleReply(replyHandler, payload);
                     break;
                 }
-                case REQUEST_FAILED: {
+                case CANCEL_REQUEST: {
                     final int requestId = buffer.getInt();
-                    final ReplyHandler replyHandler = takeOutstandingReqeust(requestId);
+                    final RemoteRequestContext context = localRequests.get(requestId);
+                    if (context != null) {
+                        context.cancel();
+                    }
+                    break;
+                }
+                case CANCEL_ACK: {
+                    final int requestId = buffer.getInt();
+                    final ReplyHandler replyHandler = remoteRequests.get(requestId);
+                    if (replyHandler != null) {
+                        replyHandler.handleCancellation();
+                    }
+                    break;
+                }
+                case REQUEST_RECEIVE_FAILED: {
+                    final int requestId = buffer.getInt();
+                    final ReplyHandler replyHandler = remoteRequests.remove(requestId);
                     if (replyHandler == null) {
                         log.trace("Got reply to unknown request %d", Integer.valueOf(requestId));
                         break;
                     }
-                    final Unmarshaller<ByteBuffer> unmarshaller = marshallerFactory.createUnmarshaller(resolver, classLoader);
-                    if (! unmarshaller.unmarshal(buffer)) {
-                        replyHandler.handleException("Incomplete exception reply", null);
-                        log.trace("Incomplete exception reply to request ID %d", Integer.valueOf(requestId));
+                    final String reason = readUTFZ(buffer);
+                    // todo - throw a new ReplyException
+                    break;
+                }
+                case REQUEST_FAILED: {
+                    final int requestId = buffer.getInt();
+                    final ReplyHandler replyHandler = remoteRequests.remove(requestId);
+                    if (replyHandler == null) {
+                        log.trace("Got reply to unknown request %d", Integer.valueOf(requestId));
                         break;
                     }
-                    final Object message;
+                    final Throwable cause;
                     try {
-                        message = unmarshaller.get();
-                    } catch (ClassNotFoundException e) {
-                        replyHandler.handleException("Exception reply unmarshalling failed", e);
-                        log.trace("Class not found in exception reply to request ID %d", Integer.valueOf(requestId));
+                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller();
+                        try {
+                            unmarshaller.start(createByteInput(buffer, true));
+                            try {
+                                cause = (Throwable) unmarshaller.readObject();
+                            } catch (ClassNotFoundException e) {
+                                replyHandler.handleException("Exception reply unmarshalling failed", e);
+                                log.trace("Class not found in exception reply to request ID %d", Integer.valueOf(requestId));
+                                break;
+                            } catch (ClassCastException e) {
+                                // todo - report a generic exception
+                                SpiUtils.safeHandleException(replyHandler, null, null);
+                                break;
+                            }
+                        } finally {
+                            IoUtils.safeClose(unmarshaller);
+                        }
+                    } catch (IOException ex) {
+                        log.trace("Failed to unmarshal an exception reply (%s), sending a generic execution exception");
+                        // todo
+                        SpiUtils.safeHandleException(replyHandler, null, null);
                         break;
                     }
-                    final Object cause;
-                    try {
-                        cause = unmarshaller.get();
-                    } catch (ClassNotFoundException e) {
-                        replyHandler.handleException("Exception reply unmarshalling failed", e);
-                        log.trace("Class not found in exception reply to request ID %d", Integer.valueOf(requestId));
+                    // todo - wrap with REE
+                    SpiUtils.safeHandleException(replyHandler, null, cause);
+                    break;
+                }
+                case REQUEST_OUTCOME_UNKNOWN: {
+                    final int requestId = buffer.getInt();
+                    final ReplyHandler replyHandler = remoteRequests.remove(requestId);
+                    if (replyHandler == null) {
+                        log.trace("Got reply to unknown request %d", Integer.valueOf(requestId));
                         break;
                     }
-                    SpiUtils.safeHandleException(replyHandler, message == null ? null : message.toString(), cause instanceof Throwable ? (Throwable) cause : null);
+                    final String reason = readUTFZ(buffer);
+                    // todo - throw a new IndetermOutcomeEx
                     break;
                 }
                 case CLIENT_CLOSE: {
                     final int clientId = buffer.getInt();
-                    final Handle<RequestHandler> handle = takeForwardedClient(clientId);
+                    final Handle<RequestHandler> handle = forwardedClients.remove(clientId);
                     if (handle == null) {
                         log.warn("Got client close message for unknown client %d", Integer.valueOf(clientId));
                         break;
@@ -321,7 +322,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                 case CLIENT_OPEN: {
                     final int serviceId = buffer.getInt();
                     final int clientId = buffer.getInt();
-                    final Handle<RequestHandlerSource> handle = registry.lookup(serviceId);
+                    final Handle<RequestHandlerSource> handle = forwardedServices.get(serviceId);
                     if (handle == null) {
                         log.warn("Received client open message for unknown service %d", Integer.valueOf(serviceId));
                         break;
@@ -332,14 +333,21 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         // todo check for duplicate
                         // todo validate the client ID
                         log.trace("Opening client %d from service %d", Integer.valueOf(clientId), Integer.valueOf(serviceId));
-                        forwardedClients.put(Integer.valueOf(clientId), clientHandle);
+                        forwardedClients.put(clientId, clientHandle);
+                    } catch (IOException ex) {
+                        log.error(ex, "Failed to create a request handler for client ID %d", Integer.valueOf(clientId));
+                        break;
                     } finally {
                         IoUtils.safeClose(handle);
                     }
                     break;
                 }
                 case SERVICE_CLOSE: {
-                    registry.unbind(buffer.getInt());
+                    final Handle<RequestHandlerSource> handle = forwardedServices.remove(buffer.getInt());
+                    if (handle == null) {
+                        break;
+                    }
+                    IoUtils.safeClose(handle);
                     break;
                 }
                 case SERVICE_ADVERTISE: {
@@ -348,37 +356,31 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     final String groupName = readUTFZ(buffer);
                     final String endpointName = readUTFZ(buffer);
                     final int baseMetric = buffer.getInt();
-                    Endpoint endpoint;
-                    int id;
+                    Endpoint endpoint = null;
+                    int id = -1;
                     final RequestHandlerSource handlerSource = new RequestHandlerSourceImpl(allocator, id);
-                    final int calcMetric = baseMetric + metric;
+                    final int calcMetric = baseMetric + linkMetric;
                     if (calcMetric > 0) {
-                        endpoint.registerRemoteService(serviceType, groupName, endpointName, handlerSource, calcMetric);
+                        try {
+                            final SimpleCloseable closeable = endpoint.registerRemoteService(serviceType, groupName, endpointName, handlerSource, calcMetric);
+                            // todo - something with that closeable
+                        } catch (IOException e) {
+                            log.error(e, "Unable to register remote service");
+                        }
                     }
                     break;
                 }
                 case SERVICE_UNADVERTISE: {
                     final int serviceId = buffer.getInt();
-                    IoUtils.safeClose(remoteServices.get(Integer.valueOf(serviceId)));
+                    IoUtils.safeClose(remoteServices.get(serviceId));
                     break;
                 }
                 default: {
-                    log.trace("Received invalid message type %d", Integer.valueOf(msgType));
+                    log.trace("Received invalid message type %s", msgType);
                 }
             }
-        } catch (IOException e) {
-            log.error(e, "I/O error in protocol channel");
-            IoUtils.safeClose(channel);
-            return;
         } catch (BufferUnderflowException e) {
             log.error(e, "Malformed packet");
-//        } catch (InterruptedException e) {
-//            log.error(e, "Read thread interrupted, closing channel");
-//            IoUtils.safeClose(channel);
-//            Thread.currentThread().interrupt();
-//            return;
-        } catch (Throwable t) {
-            log.error(t, "Handler failed");
         }
     }
 
@@ -407,10 +409,6 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     public void handleClosed(final AllocatedMessageChannel channel) {
     }
 
-    RequestHandler getRemoteClient(final int i) {
-        return remoteClients.get(Integer.valueOf(i));
-    }
-
     RequestHandlerSource getRemoteService(final int id) {
         return new RequestHandlerSourceImpl(allocator, id);
     }
@@ -435,56 +433,65 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
 
         public void handleReply(final Object reply) {
             ByteBuffer buffer = allocator.allocate();
-            buffer.put((byte) REPLY);
+            buffer.put((byte) MessageType.REPLY.getId());
             buffer.putInt(requestId);
             try {
-                final Marshaller<ByteBuffer> marshaller = marshallerFactory.createMarshaller(resolver);
-                marshaller.start(reply);
-                final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
-                while (! marshaller.marshal(buffer)) {
-                    bufferList.add(flip(buffer));
-                    buffer = allocator.allocate();
+                final org.jboss.marshalling.Marshaller marshaller = marshallerFactory.createMarshaller();
+                try {
+                    final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
+                    final ByteOutput output = createByteOutput(allocator, bufferList);
+                    try {
+                        marshaller.start(output);
+                        marshaller.writeObject(reply);
+                        marshaller.close();
+                        output.close();
+                        registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
+                    } finally {
+                        IoUtils.safeClose(output);
+                    }
+                } finally {
+                    IoUtils.safeClose(marshaller);
                 }
-                bufferList.add(flip(buffer));
-                registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
             } catch (IOException e) {
-                // todo log
+                log.error(e, "Failed to send a reply to the remote side");
             } catch (InterruptedException e) {
-                // todo log
+                log.error(e, "Reply handler thread interrupted before a reply could be sent");
                 Thread.currentThread().interrupt();
             }
         }
 
         public void handleException(final String msg, final Throwable cause) {
             ByteBuffer buffer = allocator.allocate();
-            buffer.put((byte) REQUEST_FAILED);
+            buffer.put((byte) MessageType.REQUEST_FAILED.getId());
             buffer.putInt(requestId);
             try {
-                final Marshaller<ByteBuffer> marshaller = marshallerFactory.createMarshaller(resolver);
-                final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
-                marshaller.start(msg);
-                while (! marshaller.marshal(buffer)) {
-                    bufferList.add(flip(buffer));
-                    buffer = allocator.allocate();
+                final org.jboss.marshalling.Marshaller marshaller = marshallerFactory.createMarshaller();
+                try {
+                    final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
+                    final ByteOutput output = createByteOutput(allocator, bufferList);
+                    try {
+                        marshaller.start(output);
+                        marshaller.writeObject(cause);
+                        marshaller.close();
+                        output.close();
+                        registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
+                    } finally {
+                        IoUtils.safeClose(output);
+                    }
+                } finally {
+                    IoUtils.safeClose(marshaller);
                 }
-                marshaller.start(cause);
-                while (! marshaller.marshal(buffer)) {
-                    bufferList.add(flip(buffer));
-                    buffer = allocator.allocate();
-                }
-                bufferList.add(flip(buffer));
-                registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
             } catch (IOException e) {
-                // todo log
+                log.error(e, "Failed to send an exception to the remote side");
             } catch (InterruptedException e) {
-                // todo log
+                log.error(e, "Reply handler thread interrupted before an exception could be sent");
                 Thread.currentThread().interrupt();
             }
         }
 
         public void handleCancellation() {
             final ByteBuffer buffer = allocator.allocate();
-            buffer.put((byte) CANCEL_ACK);
+            buffer.put((byte) MessageType.CANCEL_ACK.getId());
             buffer.putInt(requestId);
             buffer.flip();
             try {
@@ -494,45 +501,6 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                 Thread.currentThread().interrupt();
             }
         }
-    }
-
-    // Session mgmt
-
-    public int openRequest(ReplyHandler handler) {
-        int id;
-        do {
-            id = localRequestIdSeq.getAndIncrement();
-        } while (outstandingRequests.putIfAbsent(Integer.valueOf(id), handler) != null);
-        return id;
-    }
-
-    public int openClientFromService() {
-        int id;
-        do {
-            id = remoteClientIdSeq.getAndIncrement() << 1 | (server ? 1 : 0);
-        } while (remoteClients.putIfAbsent(Integer.valueOf(id), new RequestHandlerImpl(id, allocator)) != null);
-        return id;
-    }
-
-    public void openClientForForwardedService(int id, RequestHandler clientEndpoint) {
-        try {
-            forwardedClients.put(Integer.valueOf(id), clientEndpoint.getHandle());
-        } catch (IOException e) {
-            // TODO fix
-            e.printStackTrace();
-        }
-    }
-
-    public Handle<RequestHandler> getForwardedClient(int id) {
-        return forwardedClients.get(Integer.valueOf(id));
-    }
-
-    private Handle<RequestHandler> takeForwardedClient(final int id) {
-        return forwardedClients.remove(Integer.valueOf(id));
-    }
-
-    public ReplyHandler takeOutstandingReqeust(int id) {
-        return outstandingRequests.remove(Integer.valueOf(id));
     }
 
     // Writer members
@@ -655,8 +623,9 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             this.allocator = allocator;
             addCloseHandler(new CloseHandler<RequestHandler>() {
                 public void handleClose(final RequestHandler closed) {
+                    remoteClients.remove(identifier, this);
                     ByteBuffer buffer = allocator.allocate();
-                    buffer.put((byte) MessageType.CLIENT_CLOSE);
+                    buffer.put((byte) MessageType.CLIENT_CLOSE.getId());
                     buffer.putInt(identifier);
                     buffer.flip();
                     try {
@@ -671,17 +640,23 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         public void receiveRequest(final Object request) {
             log.trace("Sending outbound one-way request of type %s", request == null ? "null" : request.getClass());
             try {
-                final Marshaller<ByteBuffer> marshaller = marshallerFactory.createMarshaller(null);
-                final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
-                ByteBuffer buffer = allocator.allocate();
-                buffer.put((byte) MessageType.REQUEST_ONEWAY);
-                buffer.putInt(identifier);
-                marshaller.start(request);
-                while (! marshaller.marshal(buffer)) {
-                    bufferList.add(flip(buffer));
-                    buffer = allocator.allocate();
+                final List<ByteBuffer> bufferList;
+                final Marshaller marshaller = marshallerFactory.createMarshaller();
+                try {
+                    bufferList = new ArrayList<ByteBuffer>();
+                    final ByteOutput output = createByteOutput(allocator, bufferList);
+                    try {
+                        marshaller.write(MessageType.REQUEST_ONEWAY.getId());
+                        marshaller.writeInt(identifier);
+                        marshaller.writeObject(request);
+                        marshaller.close();
+                        output.close();
+                    } finally {
+                        IoUtils.safeClose(output);
+                    }
+                } finally {
+                    IoUtils.safeClose(marshaller);
                 }
-                bufferList.add(flip(buffer));
                 try {
                     registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
                 } catch (InterruptedException e) {
@@ -699,33 +674,43 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler handler) {
             log.trace("Sending outbound request of type %s", request == null ? "null" : request.getClass());
             try {
-                final Marshaller<ByteBuffer> marshaller = marshallerFactory.createMarshaller(null);
-                final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
-                ByteBuffer buffer = allocator.allocate();
-                buffer.put((byte) MessageType.REQUEST);
-                buffer.putInt(identifier);
-                final int id = openRequest(handler);
-                buffer.putInt(id);
-                marshaller.start(request);
-                while (! marshaller.marshal(buffer)) {
-                    bufferList.add(flip(buffer));
-                    buffer = allocator.allocate();
-                }
-                bufferList.add(flip(buffer));
+                final List<ByteBuffer> bufferList;
+                final Marshaller marshaller = marshallerFactory.createMarshaller();
                 try {
-                    registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    executor.execute(new Runnable() {
-                        public void run() {
-                            SpiUtils.safeHandleCancellation(handler);
+                    bufferList = new ArrayList<ByteBuffer>();
+                    final ByteOutput output = createByteOutput(allocator, bufferList);
+                    try {
+                        marshaller.write(MessageType.REQUEST.getId());
+                        marshaller.writeInt(identifier);
+
+                        int id;
+                        do {
+                            id = requestSequence.getAndIncrement();
+                        } while (remoteRequests.putIfAbsent(id, handler) != null);
+                        marshaller.writeInt(id);
+                        marshaller.writeObject(request);
+                        marshaller.close();
+                        output.close();
+                        try {
+                            registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            executor.execute(new Runnable() {
+                                public void run() {
+                                    SpiUtils.safeHandleCancellation(handler);
+                                }
+                            });
+                            return SpiUtils.getBlankRemoteRequestContext();
                         }
-                    });
-                    return SpiUtils.getBlankRemoteRequestContext();
+                        log.trace("Sent request %s", request);
+                        return new RemoteRequestContextImpl(id, allocator, channel);
+                    } finally {
+                        IoUtils.safeClose(output);
+                    }
+                } finally {
+                    IoUtils.safeClose(marshaller);
                 }
-                log.trace("Sent request %s", request);
-                return new RemoteRequestContextImpl(id, allocator, channel);
-            } catch (final Throwable t) {
+            } catch (final IOException t) {
                 log.trace(t, "receiveRequest failed with an exception");
                 executor.execute(new Runnable() {
                     public void run() {
@@ -756,7 +741,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         public void cancel() {
             try {
                 final ByteBuffer buffer = allocator.allocate();
-                buffer.put((byte) MessageType.CANCEL_REQUEST);
+                buffer.put((byte) MessageType.CANCEL_REQUEST.getId());
                 buffer.putInt(id);
                 buffer.flip();
                 registerWriter(channel, new SimpleWriteHandler(allocator, buffer));
@@ -781,7 +766,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             addCloseHandler(new CloseHandler<RequestHandlerSource>() {
                 public void handleClose(final RequestHandlerSource closed) {
                     ByteBuffer buffer = allocator.allocate();
-                    buffer.put((byte) MessageType.SERVICE_CLOSE);
+                    buffer.put((byte) MessageType.SERVICE_CLOSE.getId());
                     buffer.putInt(identifier);
                     buffer.flip();
                     try {
@@ -794,9 +779,13 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         }
 
         public Handle<RequestHandler> createRequestHandler() throws IOException {
-            final int clientId = openClientFromService();
+            int id;
+            do {
+                id = remoteClientSequence.getAndIncrement() << 1;
+            } while (remoteClients.putIfAbsent(id, new RequestHandlerImpl(id, BasicHandler.this.allocator)) != null);
+            final int clientId = id;
             final ByteBuffer buffer = allocator.allocate();
-            buffer.put((byte) MessageType.CLIENT_OPEN);
+            buffer.put((byte) MessageType.CLIENT_OPEN.getId());
             buffer.putInt(identifier);
             buffer.putInt(clientId);
             buffer.flip();
@@ -821,5 +810,106 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         public String toString() {
             return "forwarding request handler source <" + Integer.toString(hashCode(), 16) + "> (id = " + identifier + ")";
         }
+    }
+
+    public static ByteInput createByteInput(final ByteBuffer buffer, final boolean eof) {
+        return new ByteInput() {
+            public int read() throws IOException {
+                if (buffer.hasRemaining()) {
+                    return buffer.get() & 0xff;
+                } else {
+                    return eof ? -1 : 0;
+                }
+            }
+
+            public int read(final byte[] b) throws IOException {
+                return read(b, 0, b.length);
+            }
+
+            public int read(final byte[] b, final int off, final int len) throws IOException {
+                int r = Math.min(buffer.remaining(), len);
+                if (r > 0) {
+                    buffer.get(b, off, r);
+                    return r;
+                } else {
+                    return eof ? -1 : 0;
+                }
+            }
+
+            public int available() throws IOException {
+                return buffer.remaining();
+            }
+
+            public long skip(final long n) throws IOException {
+                final int cnt = n > (long) Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) n;
+                int r = Math.min(buffer.remaining(), cnt);
+                if (r > 0) {
+                    final int oldPos = buffer.position();
+                    final int newPos = oldPos + r;
+                    if (newPos < 0) {
+                        final int lim = buffer.limit();
+                        buffer.position(lim);
+                        return lim - oldPos;
+                    }
+                }
+                return r;
+            }
+
+            public void close() {
+            }
+        };
+    }
+
+    public static ByteOutput createByteOutput(final BufferAllocator<ByteBuffer> allocator, final Collection<ByteBuffer> target) {
+        return new ByteOutput() {
+            private ByteBuffer current;
+
+            private ByteBuffer getCurrent() {
+                final ByteBuffer buffer = current;
+                return buffer == null ? (current = allocator.allocate()) : buffer;
+            }
+
+            public void write(final int i) throws IOException {
+                final ByteBuffer buffer = getCurrent();
+                buffer.put((byte) i);
+                if (! buffer.hasRemaining()) {
+                    buffer.flip();
+                    target.add(buffer);
+                    current = null;
+                }
+            }
+
+            public void write(final byte[] bytes) throws IOException {
+                write(bytes, 0, bytes.length);
+            }
+
+            public void write(final byte[] bytes, int offs, int len) throws IOException {
+                while (len > 0) {
+                    final ByteBuffer buffer = getCurrent();
+                    final int c = Math.min(len, buffer.remaining());
+                    buffer.put(bytes, offs, c);
+                    offs += c;
+                    len -= c;
+                    if (! buffer.hasRemaining()) {
+                        buffer.flip();
+                        target.add(buffer);
+                        current = null;
+                    }
+                }
+            }
+
+            public void close() throws IOException {
+                flush();
+            }
+
+            public void flush() throws IOException {
+                final ByteBuffer buffer = current;
+                if (buffer != null) {
+                    buffer.flip();
+                    target.add(buffer);
+                    current = null;
+                }
+            }
+        };
     }
 }
