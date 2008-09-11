@@ -3,14 +3,15 @@ package org.jboss.cx.remoting.core.stream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.Executor;
 import org.jboss.xnio.log.Logger;
 import org.jboss.cx.remoting.spi.stream.StreamSerializerFactory;
-import org.jboss.cx.remoting.core.util.DecodingBuilder;
-import org.jboss.xnio.channels.StreamChannel;
-import org.jboss.xnio.channels.StreamSinkChannel;
-import org.jboss.xnio.channels.CommonOptions;
-import org.jboss.xnio.channels.StreamSourceChannel;
+import org.jboss.cx.remoting.spi.stream.StreamContext;
+import org.jboss.xnio.channels.AllocatedMessageChannel;
+import org.jboss.xnio.channels.WritableMessageChannel;
+import org.jboss.xnio.channels.ReadableAllocatedMessageChannel;
 import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.IoUtils;
@@ -21,9 +22,9 @@ import static org.jboss.xnio.Buffers.flip;
 
 /**
  * An input stream serializer.  The input stream transfer protocol consists of two types of "chunks": data and error.
- * A data chunk starts with an ASCII {@code 'd'}, followed by a two-byte (unsigned) length field (a value of
- * {@code 0x0000} indicates a 65536-byte chunk), followed by the actual data.  An error chunk consists of a series of
- * UTF-8 bytes representing a description of the error, followed by the end of the stream.
+ * A data chunk starts with an ASCII {@code 'd'}, followed by the actual data.  An error chunk starts with an ASCII
+ * {@code 'e'} followed by a series of UTF-8 bytes representing a description of the error, followed by the end of
+ * the stream.
  *
  * Normally data chunks are transferred over the stream until the original {@link InputStream} is exhausted, at which time
  * the proxy stream will return a {@code -1} for the EOF condition.
@@ -39,13 +40,13 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
         // no-arg constructor required
     }
 
-    public IoHandler<StreamSinkChannel> getLocalSide(final Object localSide) throws IOException {
-        return new LocalHandler((InputStream) localSide, allocator);
+    public IoHandler<? super AllocatedMessageChannel> getLocalSide(final Object localSide, final StreamContext streamContext) throws IOException {
+        return new LocalHandler((InputStream) localSide, allocator, streamContext.getExecutor());
     }
 
-    public Object getRemoteSide(final ChannelSource<StreamChannel> remoteClient) throws IOException {
-//        return new RemoteInputStream(taskList, futureChannel);
-        return null;
+    public Object getRemoteSide(final ChannelSource<AllocatedMessageChannel> remoteClient, final StreamContext streamContext) throws IOException {
+        final RemoteHandler handler = new RemoteHandler();
+        return new RemoteInputStream(remoteClient.open(handler), allocator, handler);
     }
 
     public BufferAllocator<ByteBuffer> getAllocator() {
@@ -56,345 +57,273 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
         this.allocator = allocator;
     }
 
-    private static final byte DATA_CHUNK = (byte) 'd';
-    private static final byte ERROR = (byte) 'e';
+    private static final int DATA_CHUNK = 'd';
+    private static final int ERROR = 'e';
 
-    public static final class LocalHandler implements IoHandler<StreamSinkChannel> {
+    public static final class LocalHandler implements IoHandler<WritableMessageChannel> {
 
-        // @protectedby {@code this}
-        private final InputStream inputStream;
+        private final Object lock = new Object();
+        private final Executor executor;
         private final BufferAllocator<ByteBuffer> allocator;
-        private volatile ByteBuffer current;
-        private volatile boolean eof;
+        private final Runnable fillTask = new FillTask();
 
-        private LocalHandler(final InputStream inputStream, final BufferAllocator<ByteBuffer> allocator) {
+        // @protectedby {@code lock}
+        private WritableMessageChannel channel;
+        // @protectedby {@code lock}
+        private final InputStream inputStream;
+        // @protectedby {@code lock}
+        private ByteBuffer writing;
+        // @protectedby {@code lock}
+        private boolean eof;
+
+        private LocalHandler(final InputStream inputStream, final BufferAllocator<ByteBuffer> allocator, final Executor executor) {
             this.inputStream = inputStream;
             this.allocator = allocator;
+            this.executor = executor;
         }
 
-        private boolean fillBuffer() throws IOException {
-            final ByteBuffer buffer = allocator.allocate();
-            buffer.put(DATA_CHUNK);
-            buffer.putShort((short) 0);
-            final int cnt;
-            if (buffer.hasArray()) {
-                final byte[] a = buffer.array();
-                final int off = buffer.arrayOffset();
-                final int rem = Math.min(buffer.remaining(), 65536);
-                cnt = inputStream.read(a, off, rem);
-                if (cnt == -1) {
-                    return false;
-                }
-                skip(current, cnt);
-            } else {
-                final int rem = Math.min(buffer.remaining(), 65536);
-                final byte[] a = new byte[rem];
-                cnt = inputStream.read(a);
-                if (cnt == -1) {
-                    return false;
-                }
-                current.put(a);
-            }
-            buffer.putShort(1, (short) cnt);
-            current = flip(buffer);
-            return true;
+        public void handleOpened(final WritableMessageChannel channel) {
+            this.channel = channel;
+            executor.execute(fillTask);
         }
 
-        private void prepareChunk(final StreamSinkChannel channel) {
-            try {
-                eof = fillBuffer();
-            } catch (Throwable e) {
-                try {
-                    current = ByteBuffer.wrap(("e" + e.getMessage()).getBytes("utf-8"));
-                } catch (UnsupportedEncodingException e1) {
-                    current = ByteBuffer.wrap(new byte[] { ERROR });
-                }
-                eof = true;
-            }
-            channel.resumeWrites();
-        }
-
-        public void handleOpened(final StreamSinkChannel channel) {
-            if (channel.getOptions().contains(CommonOptions.TCP_NODELAY)) {
-                try {
-                    channel.setOption(CommonOptions.TCP_NODELAY, Boolean.TRUE);
-                } catch (IOException e) {
-                    // not too big a deal; just skip it
-                    log.trace(e, "Failed to enable TCP_NODELAY");
-                }
-            }
-            prepareChunk(channel);
-        }
-
-        public void handleReadable(final StreamSinkChannel channel) {
+        public void handleReadable(final WritableMessageChannel channel) {
             // not called on a sink channel
         }
 
-        public void handleWritable(final StreamSinkChannel channel) {
-            while (current.hasRemaining()) {
-                try {
-                    final int c = channel.write(current);
-                    if (c == 0) {
-                        channel.resumeWrites();
+        public void handleWritable(final WritableMessageChannel channel) {
+            synchronized (lock) {
+                final ByteBuffer buffer = writing;
+                if (buffer == null) {
+                    if (eof) {
+                        IoUtils.safeClose(channel);
+                    } else {
+                        executor.execute(fillTask);
+                    }
+                } else {
+                    final boolean sent;
+                    try {
+                        sent = channel.send(buffer);
+                    } catch (IOException e) {
+                        log.debug("Channel write failed: %s", e);
+                        IoUtils.safeClose(channel);
                         return;
                     }
-                } catch (IOException e) {
-                    log.debug("Channel write failed: %s", e);
-                    IoUtils.safeClose(channel);
+                    if (sent) {
+                        writing = null;
+                        allocator.free(buffer);
+                        executor.execute(fillTask);
+                    } else {
+                        channel.resumeWrites();
+                    }
                 }
-            }
-            if (eof) {
-                IoUtils.safeClose(channel);
-            } else {
-                prepareChunk(channel);
             }
         }
 
-        public void handleClosed(final StreamSinkChannel channel) {
+        public void handleClosed(final WritableMessageChannel channel) {
             synchronized (this) {
                 IoUtils.safeClose(inputStream);
             }
         }
-    }
 
-    public static final class RemoteHandler implements IoHandler<StreamSourceChannel> {
-
-        private enum DecoderState {
-            NEW_CHUNK,
-            IN_ERROR,
-            IN_DATA,
-        }
-
-        private final RemoteInputStream remoteInputStream;
-        private final ByteBuffer initialBuffer = ByteBuffer.allocate(5);
-
-        private volatile ByteBuffer dataBuffer = null;
-
-        private volatile DecodingBuilder exceptionBuilder;
-        private volatile DecoderState decoderState = DecoderState.NEW_CHUNK;
-
-        private RemoteHandler(final RemoteInputStream remoteInputStream, final BufferAllocator<ByteBuffer> allocator) {
-            this.remoteInputStream = remoteInputStream;
-        }
-
-        public void handleOpened(final StreamSourceChannel channel) {
-            channel.resumeReads();
-        }
-
-        public void handleReadable(final StreamSourceChannel channel) {
-            try {
-                for (;;) switch (decoderState) {
-                    case NEW_CHUNK: {
-                        int n = channel.read(initialBuffer);
-                        if (n == -1) {
-                            IoUtils.safeClose(channel);
-                            return;
-                        }
-                        if (n == 0) {
-                            remoteInputStream.scheduleResumeReads(channel);
-                            return;
-                        }
-                        if (initialBuffer.get(0) == DATA_CHUNK) {
-                            if (initialBuffer.hasRemaining()) {
-                                handleReadable(channel);
+        private final class FillTask implements Runnable {
+            public void run() {
+                try {
+                    final ByteBuffer buffer = allocator.allocate();
+                    buffer.put((byte) DATA_CHUNK);
+                    buffer.putShort((short) 0);
+                    final int rem = buffer.remaining();
+                    final int cnt;
+                    if (buffer.hasArray()) {
+                        final byte[] a = buffer.array();
+                        final int off = buffer.arrayOffset();
+                        cnt = inputStream.read(a, off, rem);
+                        if (cnt == -1) {
+                            synchronized (lock) {
+                                eof = true;
                                 return;
                             }
-                            initialBuffer.flip();
-                            initialBuffer.get();
-                            final int length = (initialBuffer.getShort() - 1) & 0xffff + 1;
-                            dataBuffer = ByteBuffer.allocate(length);
-                            decoderState = DecoderState.IN_DATA;
-                            break;
-                        } else if (initialBuffer.get(0) == ERROR) {
-                            decoderState = DecoderState.IN_ERROR;
-                            initialBuffer.flip();
-                            initialBuffer.get();
-                            exceptionBuilder.append(initialBuffer);
-                            initialBuffer.clear();
-                            break;
-                        } else {
-                            remoteInputStream.acceptException("Received garbage from remote side");
-                            IoUtils.safeClose(channel);
-                            return;
                         }
+                        skip(buffer, cnt);
+                    } else {
+                        final byte[] a = new byte[rem];
+                        cnt = inputStream.read(a);
+                        if (cnt == -1) {
+                            synchronized (lock) {
+                                eof = true;
+                                return;
+                            }
+                        }
+                        buffer.put(a);
                     }
-                    case IN_ERROR: {
-                        ByteBuffer buffer = ByteBuffer.allocate(256);
-                        int n = channel.read(buffer);
-                        if (n == -1) {
-                            remoteInputStream.acceptException(exceptionBuilder.finish().toString());
-                            exceptionBuilder = null;
-                            IoUtils.safeClose(channel);
-                            return;
-                        }
-                        if (n == 0) {
-                            remoteInputStream.scheduleResumeReads(channel);
-                            return;
-                        }
-                        exceptionBuilder.append(buffer);
-                        break;
+                    buffer.putShort(1, (short) cnt);
+                    synchronized (lock) {
+                        writing = flip(buffer);
                     }
-                    case IN_DATA: {
-                        if (! dataBuffer.hasRemaining()) {
-                            dataBuffer.flip();
-                            remoteInputStream.acceptBuffer(dataBuffer);
-                            dataBuffer = null;
-                            decoderState = DecoderState.NEW_CHUNK;
+                    channel.resumeWrites();
+                    return;
+                } catch (IOException e) {
+                    synchronized (lock) {
+                        eof = true;
+                        try {
+                            // this could probably be improved upon
+                            writing = ByteBuffer.wrap((Character.toString((char) ERROR) + e.getMessage()).getBytes("utf-8"));
+                        } catch (UnsupportedEncodingException e1) {
+                            writing = ByteBuffer.wrap(new byte[] { ERROR });
                         }
-                        int n = channel.read(dataBuffer);
-                        if (n == -1) {
-                            IoUtils.safeClose(channel);
-                            return;
-                        }
-                        if (n == 0) {
-                            remoteInputStream.scheduleResumeReads(channel);
-                            return;
-                        }
-                        break;
                     }
                 }
-            } catch (IOException e) {
-                remoteInputStream.acceptException("Read from remote input stream failed: " + e.getMessage());
-                IoUtils.safeClose(channel);
+            }
+        }
+    }
+
+    public static final class RemoteHandler implements IoHandler<ReadableAllocatedMessageChannel> {
+
+        private final Object lock = new Object();
+
+        private ByteBuffer current;
+        private boolean done;
+        private IOException exception;
+
+        private RemoteHandler() {
+        }
+
+        public ByteBuffer getBuffer() throws IOException {
+            synchronized (lock) {
+                if (exception != null) {
+                    final IOException ex = new IOException("I/O exception from channel receive");
+                    ex.initCause(exception);
+                    throw ex;
+                }
+                try {
+                    while (current == null && ! done) {
+                        lock.wait();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new InterruptedIOException("Interrupted while reading from input stream");
+                }
+                try {
+                    return current;
+                } finally {
+                    current = null;
+                }
             }
         }
 
-        public void handleWritable(final StreamSourceChannel channel) {
+        public void handleOpened(final ReadableAllocatedMessageChannel channel) {
+            channel.resumeReads();
         }
 
-        public void handleClosed(final StreamSourceChannel channel) {
-            remoteInputStream.acceptEof();
+        public void handleReadable(final ReadableAllocatedMessageChannel channel) {
+            synchronized (lock) {
+                if (current != null) {
+                    return;
+                }
+                try {
+                    final ByteBuffer buffer = channel.receive();
+                    if (buffer == null) {
+                        IoUtils.safeClose(channel);
+                        return;
+                    }
+                    if (! buffer.hasRemaining()) {
+                        channel.resumeReads();
+                        return;
+                    }
+                    final byte type = buffer.get();
+                    switch (type) {
+                        case DATA_CHUNK: {
+                            current = buffer;
+                            // only one waiter would be able to use this anyway
+                            lock.notify();
+                            break;
+                        }
+                        case ERROR: {
+                            if (buffer.hasArray()) {
+                                IoUtils.safeClose(channel);
+                                final byte[] a = buffer.array();
+                                final int offs = buffer.arrayOffset();
+                                final int rem = buffer.remaining();
+                                exception = new IOException(new String(a, offs + 1, rem, "utf-8"));
+                            }
+                            break;
+                        }
+                        default: {
+                            IoUtils.safeClose(channel);
+                            exception = new IOException("Remote data stream was corrupted");
+                            break;
+                        }
+                    }
+                } catch (IOException e) {
+                    IoUtils.safeClose(channel);
+                    // should only be one waiter, but just in case, notify em all so they all catch the exception...
+                    exception = e;
+                }
+            }
+        }
+
+        public void handleWritable(final ReadableAllocatedMessageChannel channel) {
+            // empty
+        }
+
+        public void handleClosed(final ReadableAllocatedMessageChannel channel) {
+            synchronized (lock) {
+                done = true;
+                lock.notifyAll();
+            }
         }
     }
 
     public static final class RemoteInputStream extends InputStream {
 
-        private enum StreamState {
-            RUNNING,
-            EOF,
-            CLOSED,
-        }
-
-        private final IoFuture<StreamSourceChannel> futureChannel;
         private final BufferAllocator<ByteBuffer> allocator;
 
         private final Object lock = new Object();
 
         // @protectedby lock
-        private StreamState state;
         private ByteBuffer current;
-        private ByteBuffer next;
-        private String pendingException;
-        private boolean pendingResumeReads = false;
 
-        private RemoteInputStream(final IoFuture<StreamSourceChannel> futureChannel, final BufferAllocator<ByteBuffer> allocator) {
+        private final IoFuture<? extends ReadableAllocatedMessageChannel> futureChannel;
+        private final RemoteHandler handler;
+
+        private RemoteInputStream(final IoFuture<? extends ReadableAllocatedMessageChannel> futureChannel, final BufferAllocator<ByteBuffer> allocator, final RemoteHandler handler) {
             this.futureChannel = futureChannel;
             this.allocator = allocator;
+            this.handler = handler;
         }
 
-        protected void acceptBuffer(ByteBuffer buffer) {
-            synchronized (lock) {
-                if (! buffer.hasRemaining()) {
-                    throw new IllegalArgumentException("empty buffer");
-                }
-                if (state == StreamState.CLOSED) {
-                    allocator.free(buffer);
-                }
-                if (current == null) {
-                    current = buffer;
-                    lock.notifyAll();
-                } else if (next == null) {
-                    next = buffer;
-                } else {
-                    throw new IllegalStateException();
-                }
-            }
-        }
-
-        protected void acceptException(String exception) {
-            synchronized (lock) {
-                pendingException = exception;
-                if (current == null) {
-                    lock.notifyAll();
-                }
-            }
-        }
-
-        protected void acceptEof() {
-            synchronized (lock) {
-                if (state == StreamState.RUNNING) {
-                    state = StreamState.EOF;
-                    if (current == null) {
-                        lock.notifyAll();
-                    }
-                }
-            }
-        }
-
-        protected void scheduleResumeReads(StreamSourceChannel channel) {
-            synchronized (lock) {
-                if (state == StreamState.CLOSED || state == StreamState.EOF) {
-                    return;
-                }
-                if (next == null || current == null) {
-                    channel.resumeReads();
-                } else {
-                    pendingResumeReads = true;
-                }
-            }
-        }
-
+        // call under {@code lock}
         private ByteBuffer getCurrent() throws IOException {
-            boolean intr = false;
-            try {
-                while (current == null) {
-                    if (pendingException != null) {
-                        throw new IOException(pendingException);
-                    } else if (state == StreamState.EOF) {
-                        return null;
-                    }
-                    try {
-                        lock.wait();
-                    } catch (InterruptedException e) {
-                        intr = true;
-                    }
-                }
+            if (current != null) {
                 return current;
-            } finally {
-                if (intr) {
-                    Thread.currentThread().interrupt();
+            } else {
+                final ByteBuffer buffer = handler.getBuffer();
+                if (buffer != null) {
+                    current = buffer;
+                    return buffer;
+                } else {
+                    return null;
                 }
             }
         }
 
         public int read() throws IOException {
             synchronized (lock) {
-                if (state == StreamState.CLOSED) {
-                    return -1;
-                }
                 final ByteBuffer buffer = getCurrent();
                 if (buffer == null) {
                     return -1;
                 }
                 final byte v = buffer.get();
                 if (! buffer.hasRemaining()) {
-                    current = next;
-                    next = null;
+                    current = null;
                     allocator.free(buffer);
-                    if (pendingResumeReads) {
-                        futureChannel.get().resumeReads();
-                        pendingResumeReads = false;
-                    }
                 }
                 return v & 0xff;
             }
         }
 
-        public int read(final byte b[], final int off, final int len) throws IOException {
+        public int read(final byte[] b, final int off, final int len) throws IOException {
             synchronized (lock) {
-                if (state == StreamState.CLOSED) {
-                    return -1;
-                }
                 final ByteBuffer buffer = getCurrent();
                 if (buffer == null) {
                     return -1;
@@ -402,13 +331,8 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
                 final int cnt = Math.min(buffer.remaining(), len);
                 buffer.get(b, off, cnt);
                 if (! buffer.hasRemaining()) {
-                    current = next;
-                    next = null;
+                    current = null;
                     allocator.free(buffer);
-                    if (pendingResumeReads) {
-                        futureChannel.get().resumeReads();
-                        pendingResumeReads = false;
-                    }
                 }
                 return cnt;
             }
@@ -416,24 +340,17 @@ public final class InputStreamStreamSerializerFactory implements StreamSerialize
 
         public void close() throws IOException {
             synchronized (lock) {
-                if (state != StreamState.CLOSED) {
-                    if (current != null) {
-                        allocator.free(current);
-                        current = null;
-                    }
-                    if (next != null) {
-                        allocator.free(next);
-                        next = null;
-                    }
-                    state = StreamState.CLOSED;
-                    futureChannel.get().close();
+                if (current != null) {
+                    allocator.free(current);
+                    current = null;
                 }
+                futureChannel.get().close();
             }
         }
 
         public int available() throws IOException {
             synchronized (lock) {
-                return current == null ? 0 : current.remaining() + (next == null ? 0 : next.remaining());
+                return current == null ? 0 : current.remaining();
             }
         }
     }

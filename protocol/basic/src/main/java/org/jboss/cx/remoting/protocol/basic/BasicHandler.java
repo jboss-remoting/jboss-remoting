@@ -83,9 +83,9 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     private final ConcurrentIntegerMap<RequestHandler> remoteClients = concurrentIntegerMap();
     // forwarded to remote side (handled on this side)
     private final ConcurrentIntegerMap<Handle<RequestHandler>> forwardedClients = concurrentIntegerMap();
-    // sequence for forwarded clients
+    // sequence for forwarded clients (unsigned; shift left one bit, add one)
     private final AtomicInteger forwardedClientSequence = new AtomicInteger();
-    // sequence for clients created from services forwarded to us
+    // sequence for clients created from services forwarded to us (unsigned; shift left one bit)
     private final AtomicInteger remoteClientSequence = new AtomicInteger();
 
     // services forwarded to us

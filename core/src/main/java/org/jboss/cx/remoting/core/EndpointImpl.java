@@ -18,7 +18,7 @@ import org.jboss.cx.remoting.Client;
 import org.jboss.cx.remoting.ClientSource;
 import org.jboss.cx.remoting.SimpleCloseable;
 import org.jboss.cx.remoting.ServiceListener;
-import org.jboss.cx.remoting.core.util.OrderedExecutorFactory;
+import org.jboss.cx.remoting.util.OrderedExecutorFactory;
 import org.jboss.cx.remoting.spi.remote.RequestHandler;
 import org.jboss.cx.remoting.spi.remote.RequestHandlerSource;
 import org.jboss.cx.remoting.spi.remote.Handle;
