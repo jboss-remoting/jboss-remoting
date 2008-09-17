@@ -333,7 +333,7 @@
         <delete dir="api/target"/>
     </target>
 
-    <target name="api" description="Build the API module" depends="lib.jboss-marshalling-api-check,lib.xnio-api,util,api.compile">
+    <target name="api" description="Build the API module" depends="lib.jboss-marshalling-api,lib.xnio-api,util,api.compile">
         <path id="api.classpath">
             <pathelement location="api/target/main/classes"/>
         </path>
