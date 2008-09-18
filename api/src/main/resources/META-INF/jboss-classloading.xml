@@ -1,14 +1,16 @@
-<classloading name="JBossRemotingAPI" version="3.0" xmlns="urn:jboss:classloading:1.0">
+<?xml version="1.0" encoding="UTF-8"?>
+
+<classloading name="JBossRemotingAPI" version="3.0.0" xmlns="urn:jboss:classloading:1.0">
     <capabilities>
-        <package name="org.jboss.remoting" version="3.0"/>
-        <package name="org.jboss.remoting.spi" version="3.0"/>
-        <package name="org.jboss.remoting.spi.remote" version="3.0"/>
-        <package name="org.jboss.remoting.spi.stream" version="3.0"/>
-        <package name="org.jboss.remoting.spi.wrapper" version="3.0"/>
-        <package name="org.jboss.remoting.stream" version="3.0"/>
+        <package name="org.jboss.remoting" version="3.0.0"/>
+        <package name="org.jboss.remoting.spi" version="3.0.0"/>
+        <package name="org.jboss.remoting.spi.remote" version="3.0.0"/>
+        <package name="org.jboss.remoting.spi.stream" version="3.0.0"/>
+        <package name="org.jboss.remoting.spi.wrapper" version="3.0.0"/>
+        <package name="org.jboss.remoting.stream" version="3.0.0"/>
     </capabilities>
     <requirements>
-        <module name="XnioAPI" from-inclusive="true" from="1.1" reExport="true"/>
-        <module name="JBossMarshallingAPI" from-inclusive="true" from="1.0" reExport="true"/>
+        <module name="XnioAPI" from-inclusive="true" from="1.1.0" reExport="true"/>
+        <module name="JBossMarshallingAPI" from-inclusive="true" from="1.0.0" reExport="true"/>
     </requirements>
 </classloading>
