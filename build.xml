@@ -845,7 +845,7 @@
     </target>
 
     <target name="protocol.basic.clean">
-        <delete dir="protocol.basic/target"/>
+        <delete dir="protocol/basic/target"/>
     </target>
 
     <target name="protocol.basic" description="Build the protocol.basic module" depends="lib.jboss-marshalling-api,lib.xnio-api,api,core,util,protocol.basic.compile">
