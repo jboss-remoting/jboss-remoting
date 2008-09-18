@@ -23,8 +23,6 @@ public final class DefaultStreamDetector implements StreamDetector {
             return new ObjectSourceStreamSerializerFactory();
         } else if (candidate instanceof ObjectSink) {
             return null;
-        } else if (candidate instanceof Iterator) {
-            return null;
         } else {
             return null;
         }
