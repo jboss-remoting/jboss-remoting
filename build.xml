@@ -1344,7 +1344,7 @@
 
     <!-- fetch: These should be the second-to-last targets in the file -->
 
-    <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jboss-managed,lib.jbossxb,lib.servlet"/>
+    <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jboss-managed,lib.jboss-marshalling-api,lib.jbossxb,lib.servlet"/>
 
     <!-- all: These should be the last targets in the file -->
 
