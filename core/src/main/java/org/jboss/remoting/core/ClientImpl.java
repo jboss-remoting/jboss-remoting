@@ -30,8 +30,12 @@ import org.jboss.remoting.spi.remote.ReplyHandler;
 import org.jboss.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.remoting.spi.remote.Handle;
 import org.jboss.xnio.IoFuture;
+import org.jboss.marshalling.Externalizer;
+import org.jboss.marshalling.Creator;
 import java.util.concurrent.Executor;
 import java.io.IOException;
+import java.io.ObjectOutput;
+import java.io.ObjectInput;
 
 /**
  *
@@ -87,5 +91,27 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
 
     public String toString() {
         return "client instance <" + Integer.toString(hashCode()) + ">";
+    }
+
+    static final class ExternalizerImpl implements Externalizer<ClientImpl<?, ?>> {
+
+        private final EndpointImpl endpoint;
+
+        ExternalizerImpl(final EndpointImpl endpoint) {
+            this.endpoint = endpoint;
+        }
+
+        public void writeExternal(final ClientImpl<?, ?> client, final ObjectOutput output) throws IOException {
+            output.writeObject(client.handle.getResource());
+        }
+
+        public ClientImpl<?, ?> createExternal(final Class<ClientImpl<?, ?>> clientClass, final ObjectInput input, final Creator creator) throws IOException, ClassNotFoundException {
+            final RequestHandler handler = (RequestHandler) input.readObject();
+            return new ClientImpl(handler.getHandle(), endpoint.getExecutor());
+        }
+
+        public void readExternal(final ClientImpl<?, ?> client, final ObjectInput input) throws IOException, ClassNotFoundException {
+            // no op
+        }
     }
 }
