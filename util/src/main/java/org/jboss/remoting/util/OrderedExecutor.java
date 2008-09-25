@@ -57,7 +57,11 @@ public final class OrderedExecutor implements Executor {
                             return;
                         }
                     }
-                    task.run();
+                    try {
+                        task.run();
+                    } catch (Throwable t) {
+                        // eat it!
+                    }
                 }
             }
         };
