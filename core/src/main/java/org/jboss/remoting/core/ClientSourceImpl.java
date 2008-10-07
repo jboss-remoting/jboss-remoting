@@ -66,4 +66,8 @@ public final class ClientSourceImpl<I, O> extends AbstractHandleableCloseable<Cl
     public String toString() {
         return "client source instance <" + Integer.toString(hashCode()) + ">";
     }
+
+    Handle<RequestHandlerSource> getRequestHandlerSourceHandle() {
+        return handle;
+    }
 }

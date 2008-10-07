@@ -93,27 +93,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         return "client instance <" + Integer.toString(hashCode()) + ">";
     }
 
-    static final class ExternalizerImpl implements Externalizer {
-
-        private static final long serialVersionUID = 814228455390899997L;
-
-        private final EndpointImpl endpoint;
-
-        ExternalizerImpl(final EndpointImpl endpoint) {
-            this.endpoint = endpoint;
-        }
-
-        public void writeExternal(final Object o, final ObjectOutput output) throws IOException {
-            output.writeObject(((ClientImpl)o).handle.getResource());
-        }
-
-        public Object createExternal(final Class<?> aClass, final ObjectInput input, final Creator creator) throws IOException, ClassNotFoundException {
-            final RequestHandler handler = (RequestHandler) input.readObject();
-            return new ClientImpl(handler.getHandle(), endpoint.getExecutor());
-        }
-
-        public void readExternal(final Object o, final ObjectInput input) throws IOException, ClassNotFoundException {
-            // no op
-        }
+    Handle<RequestHandler> getRequestHandlerHandle() {
+        return handle;
     }
 }
