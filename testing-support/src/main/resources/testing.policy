@@ -70,3 +70,8 @@ grant codeBase "file:${lib.xnio-standalone.local}"
 {
     permission java.security.AllPermission;
 };
+
+grant codeBase "file:${lib.marshalling-api.local}"
+{
+    permission java.security.AllPermission;
+};

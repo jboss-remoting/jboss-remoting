@@ -127,30 +127,6 @@
         <get src="${remote.license.dir}/${lib.jboss-managed.license}.txt" dest="${lib.jboss-managed.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
-    <!-- External library: JBoss Marshalling -->
-
-    <target name="lib.jboss-marshalling-api-check">
-        <available property="lib.jboss-marshalling-api.exists" file="${lib.jboss-marshalling-api.local}"/>
-    </target>
-
-    <target name="lib.jboss-marshalling-api" depends="lib.jboss-marshalling-api-check" unless="lib.jboss-marshalling-api.exists">
-        <mkdir dir="${local.repository}/${lib.jboss-marshalling-api.dir}"/>
-        <get src="${lib.jboss-marshalling-api.remote}" dest="${lib.jboss-marshalling-api.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.jboss-marshalling-api.license}.txt" dest="${lib.jboss-marshalling-api.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
-    </target>
-
-    <!-- External library: JBoss Serialization -->
-
-    <target name="lib.jboss-serialization-check">
-        <available property="lib.jboss-serialization.exists" file="${lib.jboss-serialization.local}"/>
-    </target>
-
-    <target name="lib.jboss-serialization" depends="lib.jboss-serialization-check" unless="lib.jboss-serialization.exists">
-        <mkdir dir="${local.repository}/${lib.jboss-serialization.local-dir}"/>
-        <get src="${lib.jboss-serialization.remote}" dest="${lib.jboss-serialization.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.jboss-serialization.license}.txt" dest="${lib.jboss-serialization.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
-    </target>
-
     <!-- External library: JBossXB -->
 
     <target name="lib.jbossxb-check">
@@ -163,6 +139,8 @@
         <get src="${remote.license.dir}/${lib.jbossxb.license}.txt" dest="${lib.jbossxb.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
+    <!-- External library: JUnit -->
+
     <target name="lib.junit-check">
         <available property="lib.junit.exists" file="${lib.junit.local}"/>
     </target>
@@ -171,6 +149,30 @@
         <mkdir dir="${local.repository}/${lib.junit.dir}"/>
         <get src="${lib.junit.remote}" dest="${lib.junit.local}" usetimestamp="true" ignoreerrors="false"/>
         <get src="${remote.license.dir}/${lib.junit.license}.txt" dest="${lib.junit.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <!-- External library: Marshalling API -->
+
+    <target name="lib.marshalling-api-check">
+        <available property="lib.marshalling-api.exists" file="${lib.marshalling-api.local}"/>
+    </target>
+
+    <target name="lib.marshalling-api" depends="lib.marshalling-api-check" unless="lib.marshalling-api.exists">
+        <mkdir dir="${local.repository}/${lib.marshalling-api.dir}"/>
+        <get src="${lib.marshalling-api.remote}" dest="${lib.marshalling-api.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.marshalling-api.license}.txt" dest="${lib.marshalling-api.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    </target>
+
+    <!-- External library: River -->
+
+    <target name="lib.river-check">
+        <available property="lib.river.exists" file="${lib.river.local}"/>
+    </target>
+
+    <target name="lib.river" depends="lib.river-check" unless="lib.river.exists">
+        <mkdir dir="${local.repository}/${lib.river.dir}"/>
+        <get src="${lib.river.remote}" dest="${lib.river.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.river.license}.txt" dest="${lib.river.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- External library: Servlet API 2.4 -->
@@ -248,7 +250,7 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
-                <pathelement location="${lib.jboss-marshalling-api.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
                 <path refid="util.classpath"/>
             </classpath>
@@ -280,7 +282,7 @@
                 <path refid="api.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.jboss-marshalling-api.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
@@ -296,6 +298,7 @@
             <sysproperty key="build.home" value="${basedir}"/>
             <sysproperty key="ant.library.dir" value="${ant.home}/lib"/>
             <sysproperty key="lib.junit.local" value="${lib.junit.local}"/>
+            <sysproperty key="lib.marshalling-api.local" value="${lib.marshalling-api.local}"/>
             <sysproperty key="lib.xnio-api.local" value="${lib.xnio-api.local}"/>
             <jvmarg line="${test.jvmargs}"/>
             <formatter type="plain" extension="${extension}"/>
@@ -305,6 +308,7 @@
                 <path refid="util.classpath"/>
                 <pathelement location="api/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
             <batchtest fork="yes" todir="api/target/test-results"
@@ -325,7 +329,7 @@
         <antcall inheritall="true" inheritrefs="true" target="api.test.pseudotarget">
             <param name="extension" value="-security.txt"/>
             <param name="message" value="Running with security manager"/>
-            <param name="test.jvmargs" value="-Djava.security.manager=org.jboss.cx.remoting.test.support.LoggingSecurityManager -Djava.security.policy=${basedir}/testing-support/src/main/resources/testing.policy"/>
+            <param name="test.jvmargs" value="-Djava.security.manager=org.jboss.remoting.test.support.LoggingSecurityManager -Djava.security.policy=${basedir}/testing-support/src/main/resources/testing.policy"/>
         </antcall>
     </target>
 
@@ -333,7 +337,7 @@
         <delete dir="api/target"/>
     </target>
 
-    <target name="api" description="Build the API module" depends="lib.jboss-marshalling-api,lib.xnio-api,util,api.compile">
+    <target name="api" description="Build the API module" depends="lib.marshalling-api,lib.xnio-api,util,api.compile">
         <path id="api.classpath">
             <pathelement location="api/target/main/classes"/>
         </path>
@@ -404,7 +408,7 @@
                 <path refid="api.classpath"/>
                 <path refid="util.classpath"/>
                 <path refid="version.classpath"/>
-                <pathelement location="${lib.jboss-marshalling-api.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
@@ -436,7 +440,7 @@
                 <path refid="core.classpath"/>
                 <path refid="util.classpath"/>
                 <path refid="testing-support.classpath"/>
-                <pathelement location="${lib.jboss-marshalling-api.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.junit.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
@@ -453,6 +457,7 @@
             <sysproperty key="build.home" value="${basedir}"/>
             <sysproperty key="ant.library.dir" value="${ant.home}/lib"/>
             <sysproperty key="lib.junit.local" value="${lib.junit.local}"/>
+            <sysproperty key="lib.marshalling-api.local" value="${lib.marshalling-api.local}"/>
             <sysproperty key="lib.xnio-api.local" value="${lib.xnio-api.local}"/>
             <jvmarg line="${test.jvmargs}"/>
             <formatter type="plain" extension="${extension}"/>
@@ -463,6 +468,7 @@
                 <path refid="util.classpath"/>
                 <pathelement location="core/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
             <batchtest fork="yes" todir="core/target/test-results"
@@ -483,7 +489,7 @@
         <antcall inheritall="true" inheritrefs="true" target="core.test.pseudotarget">
             <param name="extension" value="-security.txt"/>
             <param name="message" value="Running with security manager"/>
-            <param name="test.jvmargs" value="-Djava.security.manager=org.jboss.cx.remoting.test.support.LoggingSecurityManager -Djava.security.policy=${basedir}/testing-support/src/main/resources/testing.policy"/>
+            <param name="test.jvmargs" value="-Djava.security.manager=org.jboss.remoting.test.support.LoggingSecurityManager -Djava.security.policy=${basedir}/testing-support/src/main/resources/testing.policy"/>
         </antcall>
     </target>
 
@@ -758,7 +764,7 @@
                 <!-- TODO: marshallers should be moved to their own module -->
                 <path refid="core.classpath"/>
                 <path refid="util.classpath"/>
-                <pathelement location="${lib.jboss-marshalling-api.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
@@ -792,7 +798,8 @@
                 <path refid="util.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.jboss-marshalling-api.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
+                <pathelement location="${lib.river.local}"/>
                 <pathelement location="${lib.xnio-standalone.local}"/>
             </classpath>
         </javac>
@@ -808,6 +815,7 @@
             <sysproperty key="build.home" value="${basedir}"/>
             <sysproperty key="ant.library.dir" value="${ant.home}/lib"/>
             <sysproperty key="lib.junit.local" value="${lib.junit.local}"/>
+            <sysproperty key="lib.marshalling-api.local" value="${lib.marshalling-api.local}"/>
             <sysproperty key="lib.xnio-standalone.local" value="${lib.xnio-standalone.local}"/>
             <jvmarg line="${test.jvmargs}"/>
             <formatter type="plain" extension="${extension}"/>
@@ -819,7 +827,8 @@
                 <path refid="util.classpath"/>
                 <pathelement location="protocol/basic/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.jboss-marshalling-api.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
+                <pathelement location="${lib.river.local}"/>
                 <pathelement location="${lib.xnio-standalone.local}"/>
             </classpath>
             <batchtest fork="yes" todir="protocol/basic/target/test-results"
@@ -840,7 +849,7 @@
         <antcall inheritall="true" inheritrefs="true" target="protocol.basic.test.pseudotarget">
             <param name="extension" value="-security.txt"/>
             <param name="message" value="Running with security manager"/>
-            <param name="test.jvmargs" value="-Djava.security.manager=org.jboss.cx.remoting.test.support.LoggingSecurityManager -Djava.security.policy=${basedir}/testing-support/src/main/resources/testing.policy -Dsecurity.debug=policy"/>
+            <param name="test.jvmargs" value="-Djava.security.manager=org.jboss.remoting.test.support.LoggingSecurityManager -Djava.security.policy=${basedir}/testing-support/src/main/resources/testing.policy -Dsecurity.debug=policy"/>
         </antcall>
     </target>
 
@@ -848,7 +857,7 @@
         <delete dir="protocol/basic/target"/>
     </target>
 
-    <target name="protocol.basic" description="Build the protocol.basic module" depends="lib.jboss-marshalling-api,lib.xnio-api,api,core,util,protocol.basic.compile">
+    <target name="protocol.basic" description="Build the protocol.basic module" depends="lib.xnio-api,api,core,util,protocol.basic.compile">
         <path id="protocol.basic.classpath">
             <pathelement location="protocol/basic/target/main/classes"/>
         </path>
@@ -1300,7 +1309,7 @@
     <!-- JAVADOCS                                       -->
     <!-- ============================================== -->
 
-    <target name="api-javadoc" depends="api,core,standalone,util,lib.apiviz,lib.jboss-marshalling-api,lib.xnio-api">
+    <target name="api-javadoc" depends="api,core,standalone,util,lib.apiviz,lib.marshalling-api,lib.xnio-api">
         <delete dir="api/target/main/docs"/>
         <mkdir dir="api/target/main/docs"/>
         <javadoc destdir="api/target/main/docs" author="false" version="false" use="false" windowtitle="JBoss Remoting API">
@@ -1311,14 +1320,15 @@
             <doctitle><![CDATA[<h1>JBoss Remoting 3</h1>]]></doctitle>
             <bottom><![CDATA[<i>Copyright &#169; 2008 JBoss, a division of Red Hat, Inc.</i>]]></bottom>
             <link href="http://java.sun.com/j2se/1.5.0/docs/api/"/>
-            <link href="http://docs.jboss.org/xnio/1.0/api/"/>
+            <link href="http://docs.jboss.org/xnio/${lib.xnio.version}/api/"/>
+            <link href="http://docs.jboss.org/river/${lib.marshalling-api.version}/api/"/>
             <classpath>
                 <path refid="core.classpath"/>
                 <path refid="api.classpath"/>
                 <path refid="standalone.classpath"/>
                 <path refid="util.classpath"/>
                 <pathelement location="${lib.xnio-api.local}"/>
-                <pathelement location="${lib.jboss-marshalling-api.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
             </classpath>
         </javadoc>
     </target>
@@ -1344,7 +1354,7 @@
 
     <!-- fetch: These should be the second-to-last targets in the file -->
 
-    <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jboss-managed,lib.jboss-marshalling-api,lib.jbossxb,lib.servlet"/>
+    <target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jboss-managed,lib.jbossxb,lib.marshalling-api,lib.servlet"/>
 
     <!-- all: These should be the last targets in the file -->
 
