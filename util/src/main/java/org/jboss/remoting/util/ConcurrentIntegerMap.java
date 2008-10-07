@@ -22,24 +22,16 @@
 
 package org.jboss.remoting.util;
 
-import java.util.Set;
-import java.util.Collection;
-
 /**
- *
+ * A concurrent map that is keyed by integer.
  */
 public interface ConcurrentIntegerMap<V> {
-    boolean containsKey(int key);
-
-    boolean containsValue(Object value);
 
     V get(int key);
 
     V put(int key, V value);
 
     V putIfAbsent(int key, V value);
-
-    void putAll(ConcurrentIntegerMap<? extends V> m);
 
     V remove(int key);
 
@@ -51,27 +43,9 @@ public interface ConcurrentIntegerMap<V> {
 
     void clear();
 
-    int size();
-
     boolean isEmpty();
-
-    Set<Entry<V>> entrySet();
-
-    Collection<V> values();
 
     boolean equals(Object other);
 
     int hashCode();
-
-    interface Entry<V> {
-        int getKey();
-
-        V getValue();
-
-        V setValue(V value);
-
-        int hashCode();
-
-        boolean equals(Object other);
-    }
 }

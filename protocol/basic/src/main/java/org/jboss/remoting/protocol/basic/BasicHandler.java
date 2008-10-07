@@ -65,10 +65,9 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
 
     //--== Connection configuration items ==--
     private final MarshallerFactory marshallerFactory;
-    private final Configuration configuration;
+    private final Configuration marshallingConfiguration;
     private final int linkMetric;
     private final Executor executor;
-    private final ClassLoader classLoader;
     // buffer allocator for outbound message assembly
     private final BufferAllocator<ByteBuffer> allocator;
 
@@ -102,9 +101,8 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     public BasicHandler(final RemotingChannelConfiguration configuration) {
         allocator = configuration.getAllocator();
         executor = configuration.getExecutor();
-        classLoader = configuration.getClassLoader();
         marshallerFactory = configuration.getMarshallerFactory();
-        this.configuration = new Configuration();
+        marshallingConfiguration = configuration.getMarshallingConfiguration();
         linkMetric = configuration.getLinkMetric();
     }
 
@@ -151,7 +149,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     }
                     final Object payload;
                     try {
-                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(configuration);
+                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
                         try {
                             unmarshaller.start(createByteInput(buffer, true));
                             try {
@@ -186,7 +184,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     final int requestId = buffer.getInt();
                     final Object payload;
                     try {
-                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(configuration);
+                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
                         try {
                             unmarshaller.start(createByteInput(buffer, true));
                             try {
@@ -218,7 +216,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     }
                     final Object payload;
                     try {
-                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(configuration);
+                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
                         try {
                             unmarshaller.start(createByteInput(buffer, true));
                             try {
@@ -277,7 +275,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     }
                     final Throwable cause;
                     try {
-                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(configuration);
+                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
                         try {
                             unmarshaller.start(createByteInput(buffer, true));
                             try {
@@ -442,7 +440,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             buffer.put((byte) MessageType.REPLY.getId());
             buffer.putInt(requestId);
             try {
-                final org.jboss.marshalling.Marshaller marshaller = marshallerFactory.createMarshaller(configuration);
+                final org.jboss.marshalling.Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
                 try {
                     final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
                     final ByteOutput output = createByteOutput(allocator, bufferList);
@@ -471,7 +469,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             buffer.put((byte) MessageType.REQUEST_FAILED.getId());
             buffer.putInt(requestId);
             try {
-                final org.jboss.marshalling.Marshaller marshaller = marshallerFactory.createMarshaller(configuration);
+                final org.jboss.marshalling.Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
                 try {
                     final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
                     final ByteOutput output = createByteOutput(allocator, bufferList);
@@ -612,7 +610,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             log.trace("Sending outbound one-way request of type %s", request == null ? "null" : request.getClass());
             try {
                 final List<ByteBuffer> bufferList;
-                final Marshaller marshaller = marshallerFactory.createMarshaller(configuration);
+                final Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
                 try {
                     bufferList = new ArrayList<ByteBuffer>();
                     final ByteOutput output = createByteOutput(allocator, bufferList);
@@ -646,7 +644,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             log.trace("Sending outbound request of type %s", request == null ? "null" : request.getClass());
             try {
                 final List<ByteBuffer> bufferList;
-                final Marshaller marshaller = marshallerFactory.createMarshaller(configuration);
+                final Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
                 try {
                     bufferList = new ArrayList<ByteBuffer>();
                     final ByteOutput output = createByteOutput(allocator, bufferList);

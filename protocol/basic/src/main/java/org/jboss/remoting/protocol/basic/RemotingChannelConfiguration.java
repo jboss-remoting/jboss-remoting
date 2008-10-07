@@ -26,15 +26,16 @@ import java.util.concurrent.Executor;
 import java.nio.ByteBuffer;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.marshalling.MarshallerFactory;
+import org.jboss.marshalling.Configuration;
 
 /**
  *
  */
 public final class RemotingChannelConfiguration {
     private MarshallerFactory marshallerFactory;
+    private Configuration marshallingConfiguration;
     private int linkMetric;
     private Executor executor;
-    private ClassLoader classLoader;
     private BufferAllocator<ByteBuffer> allocator;
 
     public RemotingChannelConfiguration() {
@@ -46,6 +47,14 @@ public final class RemotingChannelConfiguration {
 
     public void setMarshallerFactory(final MarshallerFactory marshallerFactory) {
         this.marshallerFactory = marshallerFactory;
+    }
+
+    public Configuration getMarshallingConfiguration() {
+        return marshallingConfiguration;
+    }
+
+    public void setMarshallingConfiguration(final Configuration marshallingConfiguration) {
+        this.marshallingConfiguration = marshallingConfiguration;
     }
 
     public int getLinkMetric() {
@@ -62,14 +71,6 @@ public final class RemotingChannelConfiguration {
 
     public void setExecutor(final Executor executor) {
         this.executor = executor;
-    }
-
-    public ClassLoader getClassLoader() {
-        return classLoader;
-    }
-
-    public void setClassLoader(final ClassLoader classLoader) {
-        this.classLoader = classLoader;
     }
 
     public BufferAllocator<ByteBuffer> getAllocator() {
