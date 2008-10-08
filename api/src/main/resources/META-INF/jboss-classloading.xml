@@ -11,6 +11,6 @@
     </capabilities>
     <requirements>
         <module name="XnioAPI" from-inclusive="true" from="1.1.0" reExport="true"/>
-        <module name="RiverAPI" from-inclusive="true" from="1.0.0" reExport="true"/>
+        <module name="MarshallingAPI" from-inclusive="true" from="1.0.0" reExport="true"/>
     </requirements>
 </classloading>

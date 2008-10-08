@@ -215,7 +215,6 @@ public class EndpointImpl implements Endpoint {
     }
 
     public <I, O> IoFuture<ClientSource<I, O>> locateService(final URI serviceUri) throws IllegalArgumentException {
-        // todo - should this be typesafe?
         if (serviceUri == null) {
             throw new NullPointerException("serviceUri is null");
         }
