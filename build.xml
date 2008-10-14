@@ -1360,7 +1360,7 @@
 
     <target name="all" description="Build everything" depends="all-core,all-jars,api-javadoc"/>
 
-    <target name="clean" description="Clean out all build files" depends="clean-core,clean-http"/>
+    <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,version.clean,srp.clean"/>
 
     <target name="test" description="Run all tests" depends="api.test,core.test,protocol.basic.test"/>
 
