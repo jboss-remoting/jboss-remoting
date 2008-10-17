@@ -32,6 +32,12 @@ public final class CollectionUtil {
     private CollectionUtil() {
     }
 
+    /**
+     * Create an enum map for the given key type.
+     *
+     * @param keyType the key type
+     * @return the new map
+     */
     public static <K extends Enum<K>, V> EnumMap<K, V> enumMap(Class<K> keyType) {
         return new EnumMap<K, V>(keyType);
     }
@@ -63,6 +69,11 @@ public final class CollectionUtil {
         return new ConcurrentReferenceHashMap<K, V>(16, STRONG, WEAK);
     }
 
+    /**
+     * Create a concurrent integer-keyed map.
+     *
+     * @return a concurrent integer-keyed map
+     */
     public static <V> ConcurrentIntegerMap<V> concurrentIntegerMap() {
         return new EmulatedConcurrentIntegerHashMap<V>(CollectionUtil.<Integer, V>concurrentMap());
     }
@@ -224,6 +235,53 @@ public final class CollectionUtil {
      */
     public static <K, V> Map<K, V> hashMap() {
         return new HashMap<K, V>();
+    }
+
+    /**
+     * Create an immutable map entry.
+     *
+     * @param key the key
+     * @param value the value
+     * @return the entry
+     */
+    public static <K, V> Map.Entry<K, V> entry(final K key, final V value) {
+        return new Map.Entry<K, V>() {
+            public K getKey() {
+                return key;
+            }
+
+            public V getValue() {
+                return value;
+            }
+
+            public V setValue(final V value) {
+                throw new UnsupportedOperationException("setValue");
+            }
+        };
+    }
+
+    /**
+     * Create a prepopulated hash map.  The map will be sized for the number of elements given.
+     *
+     * @param entries the map entries
+     * @return the prepopulated hash map
+     */
+    public static <K, V> Map<K, V> hashMap(Map.Entry<K, V>... entries) {
+        final Map<K, V> map = new HashMap<K, V>(entries.length);
+        for (Map.Entry<K,V> e : entries) {
+            map.put(e.getKey(), e.getValue());
+        }
+        return map;
+    }
+
+    /**
+     * Create an unmodifiable prepopulated hash map.
+     *
+     * @param entries the map entries
+     * @return the unmodifiable prepopulated hash map
+     */
+    public static <K, V> Map<K, V> unmodifiableHashMap(Map.Entry<K, V>... entries) {
+        return Collections.unmodifiableMap(hashMap(entries));
     }
 
     /**
@@ -563,6 +621,11 @@ public final class CollectionUtil {
         }
     }
 
+    /**
+     * Get the empty iterable.
+     *
+     * @return the empty iterable
+     */
     @SuppressWarnings ({"unchecked"})
     public static <T> Iterable<T> emptyIterable() {
         return (Iterable<T>) EMPTY_ITERABLE;
@@ -576,6 +639,11 @@ public final class CollectionUtil {
         }
     }
 
+    /**
+     * Get the empty iterator.
+     *
+     * @return the empty iterator
+     */
     @SuppressWarnings ({"unchecked"})
     public static <T> Iterator<T> emptyIterator() {
         return (Iterator<T>) EMPTY_ITERATOR;
@@ -599,6 +667,12 @@ public final class CollectionUtil {
 
     }
 
+    /**
+     * Get a reversed view of a list iterator.
+     *
+     * @param original the original iterator
+     * @return the reversed view
+     */
     public static <T> ListIterator<T> reverse(ListIterator<T> original) {
         if (original instanceof ReverseListIterator) {
             return ((ReverseListIterator<T>)original).original;
@@ -607,6 +681,12 @@ public final class CollectionUtil {
         }
     }
 
+    /**
+     * Get an iterable reversed view of a list.
+     *
+     * @param list the list
+     * @return the reversed view
+     */
     public static <T> Iterable<T> reverse(final List<T> list) {
         return new Iterable<T>() {
             public Iterator<T> iterator() {
