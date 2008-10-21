@@ -45,6 +45,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ExecutorService;
 import java.io.IOException;
 
 /**
@@ -56,7 +57,7 @@ public final class BasicTestCase extends TestCase {
     }
 
     public static void testConnect() throws Throwable {
-        Executor executor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+        ExecutorService executor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
         Xnio xnio = NioXnio.create(executor, 2, 2, 2);
         final BasicConfiguration configuration = new BasicConfiguration();
         configuration.setExecutor(executor);
@@ -103,6 +104,6 @@ public final class BasicTestCase extends TestCase {
         final Handle<RequestHandler> clientHandlerHandle = BasicProtocol.createClient(futureChannel.get(), configuration);
         final Client<Object,Object> client = endpoint.createClient(clientHandlerHandle.getResource());
         System.out.println("Reply is:" + client.invoke("GORBA!"));
-        
+
     }
 }

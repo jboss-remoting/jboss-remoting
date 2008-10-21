@@ -30,12 +30,8 @@ import org.jboss.remoting.spi.remote.ReplyHandler;
 import org.jboss.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.remoting.spi.remote.Handle;
 import org.jboss.xnio.IoFuture;
-import org.jboss.marshalling.Externalizer;
-import org.jboss.marshalling.Creator;
 import java.util.concurrent.Executor;
 import java.io.IOException;
-import java.io.ObjectOutput;
-import java.io.ObjectInput;
 
 /**
  *
