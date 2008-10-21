@@ -30,6 +30,7 @@ import org.jboss.remoting.spi.AbstractAutoCloseable;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.Executor;
@@ -40,6 +41,8 @@ import java.io.IOException;
  *
  */
 final class BasicRequestHandler extends AbstractAutoCloseable<RequestHandler> implements RequestHandler {
+
+    private static final Logger log = Logger.getLogger(BasicRequestHandler.class);
 
     private final AtomicInteger requestSequence;
     private final Lock reqLock;
@@ -63,7 +66,7 @@ final class BasicRequestHandler extends AbstractAutoCloseable<RequestHandler> im
             marshaller.writeObject(request);
             marshaller.flush();
         } catch (IOException e) {
-            // todo log it
+            log.error(e, "Error receiving request");
             IoUtils.safeClose(this);
         } finally {
             reqLock.unlock();
@@ -86,7 +89,7 @@ final class BasicRequestHandler extends AbstractAutoCloseable<RequestHandler> im
                         marshaller.writeInt(id);
                         marshaller.flush();
                     } catch (IOException e) {
-                        // todo log it
+                        log.error(e, "Error writing cancel request");
                         IoUtils.safeClose(BasicRequestHandler.this);
                     }
                 }

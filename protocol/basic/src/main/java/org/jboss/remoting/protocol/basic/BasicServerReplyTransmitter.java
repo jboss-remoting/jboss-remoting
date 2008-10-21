@@ -26,6 +26,7 @@ import java.util.concurrent.BlockingQueue;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 import org.jboss.remoting.spi.remote.RequestHandler;
 import org.jboss.remoting.spi.remote.Handle;
 
@@ -33,6 +34,8 @@ import org.jboss.remoting.spi.remote.Handle;
  *
  */
 final class BasicServerReplyTransmitter implements Runnable {
+
+    private static final Logger log = Logger.getLogger(BasicServerReplyTransmitter.class);
 
     private final BlockingQueue<FutureBasicReply> replyQueue;
     private final Marshaller marshaller;
@@ -49,7 +52,7 @@ final class BasicServerReplyTransmitter implements Runnable {
     public void run() {
         try {
             for (;;) {
-                final FutureBasicReply futureBasicReply = replyQueue.remove();
+                final FutureBasicReply futureBasicReply = replyQueue.take();
                 OUT: for (;;) switch (futureBasicReply.awaitInterruptibly()) {
                     case DONE: {
                         marshaller.write(1);
@@ -77,9 +80,9 @@ final class BasicServerReplyTransmitter implements Runnable {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            // todo log it
+            log.trace(e, "Interrupted");
         } catch (Exception e) {
-            // todo log it
+            log.error(e, "Error in reply transmitter");
         } finally {
             IoUtils.safeClose(streamChannel);
             IoUtils.safeClose(requestHandlerHandle);

@@ -29,6 +29,7 @@ import java.io.IOException;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 import org.jboss.remoting.spi.remote.ReplyHandler;
 import org.jboss.remoting.spi.SpiUtils;
 import org.jboss.remoting.RemoteExecutionException;
@@ -39,6 +40,8 @@ import org.jboss.remoting.IndeterminateOutcomeException;
  *
  */
 final class BasicHandlerReplyConsumer implements Runnable {
+
+    private static final Logger log = Logger.getLogger(BasicHandlerReplyConsumer.class);
 
     private final AtomicInteger replySequence;
     private final Unmarshaller unmarshaller;
@@ -124,7 +127,7 @@ final class BasicHandlerReplyConsumer implements Runnable {
                 }
             }
         } catch (Exception e) {
-            // todo log it
+            log.error(e, "Error receiving reply");
         } finally {
             IoUtils.safeClose(streamChannel);
             reqLock.lock();

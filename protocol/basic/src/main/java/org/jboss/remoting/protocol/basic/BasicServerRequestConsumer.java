@@ -29,6 +29,7 @@ import org.jboss.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.remoting.spi.remote.ReplyHandler;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 import java.util.concurrent.BlockingQueue;
 import java.io.IOException;
 
@@ -36,6 +37,8 @@ import java.io.IOException;
  *
  */
 final class BasicServerRequestConsumer implements Runnable {
+
+    private static final Logger log = Logger.getLogger(BasicServerRequestConsumer.class);
 
     private final Unmarshaller unmarshaller;
     private final RequestHandler requestHandler;
@@ -112,7 +115,7 @@ final class BasicServerRequestConsumer implements Runnable {
                 }
             }
         } catch (Exception e) {
-            // todo log it
+            log.error(e, "Connection failed");
         } finally {
             IoUtils.safeClose(streamChannel);
             IoUtils.safeClose(requestHandlerHandle);

@@ -922,6 +922,7 @@
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
                 <path refid="protocol.basic.classpath"/>
+                <path refid="standalone.classpath"/>
                 <path refid="util.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.junit.local}"/>
@@ -944,6 +945,7 @@
             <sysproperty key="ant.library.dir" value="${ant.home}/lib"/>
             <sysproperty key="lib.junit.local" value="${lib.junit.local}"/>
             <sysproperty key="lib.marshalling-api.local" value="${lib.marshalling-api.local}"/>
+            <sysproperty key="lib.river.local" value="${lib.river.local}"/>
             <sysproperty key="lib.xnio-api.local" value="${lib.xnio-api.local}"/>
             <sysproperty key="lib.xnio-nio.local" value="${lib.xnio-nio.local}"/>
             <jvmarg line="${test.jvmargs}"/>
@@ -952,6 +954,7 @@
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
                 <path refid="protocol.basic.classpath"/>
+                <path refid="standalone.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <path refid="util.classpath"/>
                 <pathelement location="protocol/basic/target/test/classes"/>
@@ -970,7 +973,7 @@
         </junit>
     </target>
 
-    <target name="protocol.basic.test" depends="lib.xnio-nio,api,core,protocol.basic,testing-support,util,protocol.basic.test.compile">
+    <target name="protocol.basic.test" depends="lib.river,lib.xnio-nio,api,core,protocol.basic,standalone,testing-support,util,protocol.basic.test.compile">
         <antcall inheritall="true" inheritrefs="true" target="protocol.basic.test.pseudotarget">
             <param name="extension" value=".txt"/>
             <param name="message" value="Running with no security manager"/>

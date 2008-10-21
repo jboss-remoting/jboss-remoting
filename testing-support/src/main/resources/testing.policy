@@ -17,6 +17,12 @@ grant codeBase "file:${build.home}/protocol/basic/target/test/classes/-"
     permission java.net.SocketPermission "*:*", "accept, connect, resolve";
 };
 
+grant codeBase "file:${build.home}/protocol/multiplex/target/test/classes/-"
+{
+    permission java.lang.RuntimePermission "modifyThread"; // for executor control
+    permission java.net.SocketPermission "*:*", "accept, connect, resolve";
+};
+
 // Permissions for Remoting itself
 
 grant codeBase "file:${build.home}/api/target/main/classes/-"
@@ -68,6 +74,11 @@ grant codeBase "file:${lib.xnio-nio.local}"
 };
 
 grant codeBase "file:${lib.marshalling-api.local}"
+{
+    permission java.security.AllPermission;
+};
+
+grant codeBase "file:${lib.river.local}"
 {
     permission java.security.AllPermission;
 };
