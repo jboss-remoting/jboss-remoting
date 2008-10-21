@@ -761,7 +761,6 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
-                <!-- TODO: marshallers should be moved to their own module -->
                 <path refid="core.classpath"/>
                 <path refid="util.classpath"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
@@ -863,6 +862,134 @@
     <target name="protocol.multiplex" description="Build the protocol.multiplex module" depends="lib.xnio-api,api,core,util,protocol.multiplex.compile">
         <path id="protocol.multiplex.classpath">
             <pathelement location="protocol/multiplex/target/main/classes"/>
+        </path>
+    </target>
+
+    <!-- protocol.basic module -->
+
+    <target name="protocol.basic.compile.depcheck">
+        <mkdir dir="protocol/basic/target/main"/>
+        <uptodate property="protocol/basic.compile.uptodate" targetfile="protocol/basic/target/main/.lastcompile">
+            <srcfiles dir="protocol/basic/src/main/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="protocol.basic.compile" depends="protocol.basic.compile.depcheck" unless="protocol.basic.compile.uptodate">
+        <mkdir dir="protocol/basic/target/main/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="protocol/basic/src/main/java"
+                destdir="protocol/basic/target/main/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="core.classpath"/>
+                <path refid="util.classpath"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
+            </classpath>
+        </javac>
+        <touch file="protocol/basic/target/main/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="protocol.basic.test.compile.depcheck">
+        <mkdir dir="protocol/basic/target/test"/>
+        <uptodate property="protocol.basic.compile.uptodate" targetfile="protocol/basic/target/test/.lastcompile">
+            <srcfiles dir="protocol/basic/src/test/java">
+                <include name="**/"/>
+                <include name="**/*.java"/>
+                <exclude name="**/.*"/>
+            </srcfiles>
+        </uptodate>
+    </target>
+
+    <target name="protocol.basic.test.compile" depends="lib.junit,protocol.basic.compile,protocol.basic.test.compile.depcheck" unless="protocol.basic.test.compile.uptodate">
+        <mkdir dir="protocol/basic/target/test/classes"/>
+        <javac
+                source="${javac.source}"
+                target="${javac.target}"
+                srcdir="protocol/basic/src/test/java"
+                destdir="protocol/basic/target/test/classes"
+                debug="true">
+            <compilerarg value="-Xlint:unchecked"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="core.classpath"/>
+                <path refid="protocol.basic.classpath"/>
+                <path refid="util.classpath"/>
+                <path refid="testing-support.classpath"/>
+                <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
+                <pathelement location="${lib.river.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
+                <pathelement location="${lib.xnio-nio.local}"/>
+            </classpath>
+        </javac>
+        <touch file="protocol/basic/target/test/.lastcompile" verbose="false"/>
+    </target>
+
+    <target name="protocol.basic.test.pseudotarget">
+        <echo message="============================================="/>
+        <echo message="${message}"/>
+        <echo message="============================================="/>
+        <mkdir dir="protocol/basic/target/test-results"/>
+        <junit printsummary="true" fork="yes" includeantruntime="true">
+            <sysproperty key="build.home" value="${basedir}"/>
+            <sysproperty key="ant.library.dir" value="${ant.home}/lib"/>
+            <sysproperty key="lib.junit.local" value="${lib.junit.local}"/>
+            <sysproperty key="lib.marshalling-api.local" value="${lib.marshalling-api.local}"/>
+            <sysproperty key="lib.xnio-api.local" value="${lib.xnio-api.local}"/>
+            <sysproperty key="lib.xnio-nio.local" value="${lib.xnio-nio.local}"/>
+            <jvmarg line="${test.jvmargs}"/>
+            <formatter type="plain" extension="${extension}"/>
+            <classpath>
+                <path refid="api.classpath"/>
+                <path refid="core.classpath"/>
+                <path refid="protocol.basic.classpath"/>
+                <path refid="testing-support.classpath"/>
+                <path refid="util.classpath"/>
+                <pathelement location="protocol/basic/target/test/classes"/>
+                <pathelement location="${lib.junit.local}"/>
+                <pathelement location="${lib.marshalling-api.local}"/>
+                <pathelement location="${lib.river.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
+                <pathelement location="${lib.xnio-nio.local}"/>
+            </classpath>
+            <batchtest fork="yes" todir="protocol/basic/target/test-results"
+                       haltonfailure="no">
+               <fileset dir="protocol/basic/target/test/classes">
+                   <include name="**/*TestCase.class"/>
+               </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="protocol.basic.test" depends="lib.xnio-nio,api,core,protocol.basic,testing-support,util,protocol.basic.test.compile">
+        <antcall inheritall="true" inheritrefs="true" target="protocol.basic.test.pseudotarget">
+            <param name="extension" value=".txt"/>
+            <param name="message" value="Running with no security manager"/>
+            <param name="test.jvmargs" value="-Ddummy=dummy"/>
+        </antcall>
+        <antcall inheritall="true" inheritrefs="true" target="protocol.basic.test.pseudotarget">
+            <param name="extension" value="-security.txt"/>
+            <param name="message" value="Running with security manager"/>
+            <param name="test.jvmargs" value="-Djava.security.manager=org.jboss.remoting.test.support.LoggingSecurityManager -Djava.security.policy=${basedir}/testing-support/src/main/resources/testing.policy -Dsecurity.debug=policy"/>
+        </antcall>
+    </target>
+
+    <target name="protocol.basic.clean">
+        <delete dir="protocol/basic/target"/>
+    </target>
+
+    <target name="protocol.basic" description="Build the protocol.basic module" depends="lib.xnio-api,api,core,util,protocol.basic.compile">
+        <path id="protocol.basic.classpath">
+            <pathelement location="protocol/basic/target/main/classes"/>
         </path>
     </target>
 
@@ -1173,6 +1300,7 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
+                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="util/target/main/.lastcompile" verbose="false"/>
@@ -1182,7 +1310,7 @@
         <delete dir="util/target"/>
     </target>
 
-    <target name="util" description="Build the utilities module" depends="util.compile">
+    <target name="util" description="Build the utilities module" depends="lib.xnio-api,util.compile">
         <path id="util.classpath">
             <pathelement location="util/target/main/classes"/>
         </path>
@@ -1222,7 +1350,7 @@
         <path id="version.classpath">
             <pathelement location="version/target/main/classes"/>
         </path>
-        <java classpathref="version.classpath" classname="org.jboss.cx.remoting.version.Version" outputproperty="version"/>
+        <java classpathref="version.classpath" classname="org.jboss.remoting.version.Version" outputproperty="version"/>
         <property name="version" value="UNKNOWN"/>
     </target>
 
@@ -1341,9 +1469,9 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.multiplex,samples,standalone,testing-support,tools,util"/>
+    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,protocol.multiplex,samples,standalone,testing-support,tools,util"/>
 
-    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.multiplex.clean,samples.clean,standalone.clean,testing-support.clean,tools.clean,util.clean"/>
+    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,standalone.clean,testing-support.clean,tools.clean,util.clean"/>
 
     <!-- http -->
 
@@ -1365,6 +1493,6 @@
 
     <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,version.clean,srp.clean"/>
 
-    <target name="test" description="Run all tests" depends="api.test,core.test,protocol.multiplex.test"/>
+    <target name="test" description="Run all tests" depends="api.test,core.test,protocol.basic.test,protocol.multiplex.test"/>
 
 </project>
