@@ -23,7 +23,9 @@
 package org.jboss.remoting.spi.stream;
 
 import java.util.concurrent.Executor;
-import org.jboss.marshalling.MarshallerFactory;
+import java.io.IOException;
+import org.jboss.marshalling.Marshaller;
+import org.jboss.marshalling.Unmarshaller;
 
 /**
  * A context for stream serialization.
@@ -31,16 +33,25 @@ import org.jboss.marshalling.MarshallerFactory;
 public interface StreamContext {
 
     /**
-     * Get an executor which may be used for various asynchronous tasks.
+     * Get an executor which may be used by a stream serializer for various asynchronous tasks.
      *
      * @return an executor
      */
     Executor getExecutor();
 
     /**
-     * Get a marshaller factory which is configured compatibly with the channel.
+     * Create a marshaller which is configured compatibly with the channel.
      *
-     * @return the marshaller factory
+     * @return a marshaller
      */
-    MarshallerFactory getMarshallerFactory();
+    Marshaller createMarshaller() throws IOException;
+
+    /**
+     * Create an unmarshaller which is configured compatibly with the channel.
+     *
+     * @return an unmarshaller
+     */
+    Unmarshaller createUnmarshaller() throws IOException;
+
+    // todo - getter & setter for child ObjectTable, ClassTable, ExternalizerFactory, etc. for marshaller and unmarshaller
 }

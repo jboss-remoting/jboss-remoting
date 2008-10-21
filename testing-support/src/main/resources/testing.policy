@@ -15,7 +15,6 @@ grant codeBase "file:${build.home}/protocol/basic/target/test/classes/-"
 {
     permission java.lang.RuntimePermission "modifyThread"; // for executor control
     permission java.net.SocketPermission "*:*", "accept, connect, resolve";
-    permission java.util.PropertyPermission "xnio.provider", "read"; // todo - fixed in XNIO trunk...
 };
 
 // Permissions for Remoting itself
@@ -27,14 +26,11 @@ grant codeBase "file:${build.home}/api/target/main/classes/-"
 
 grant codeBase "file:${build.home}/core/target/main/classes/-"
 {
-    // TODO: this is for the marshallers, which ought to be in their own module/module set
-    permission java.io.SerializablePermission "enableSubstitution";
     permission java.util.PropertyPermission "jboss.remoting.*", "read";
 };
 
 grant codeBase "file:${build.home}/protocol/basic/target/main/classes/-"
 {
-    permission java.net.SocketPermission "*:*", "accept, connect, resolve"; // todo - need a better solution
     permission java.util.PropertyPermission "jboss.remoting.*", "read";
 };
 
@@ -66,7 +62,7 @@ grant codeBase "file:${lib.xnio-api.local}"
     permission java.security.AllPermission;
 };
 
-grant codeBase "file:${lib.xnio-standalone.local}"
+grant codeBase "file:${lib.xnio-nio.local}"
 {
     permission java.security.AllPermission;
 };

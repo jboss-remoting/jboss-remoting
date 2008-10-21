@@ -20,48 +20,25 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.protocol.basic;
+package org.jboss.remoting.spi.stream;
+
+import org.jboss.xnio.Connector;
+import org.jboss.xnio.Acceptor;
+import org.jboss.xnio.channels.StreamChannel;
+import org.jboss.xnio.channels.AllocatedMessageChannel;
+import java.io.IOException;
 
 /**
+ * A provider for streams.
  *
+ * @param <A> the address type
  */
-public enum ConfigValue {
+public interface StreamProvider<A> {
+    Connector<A, StreamChannel> getStreamChannelConnector();
 
-    /**
-     * The protocol version to use.  Value type is {@code int}.
-     */
-    PROTOCOL_VERSION(0),
-    /**
-     * The name of the marshaller to use.  Value type is {@code String}.
-     */
-    MARSHALLER_NAME(1),
-    ;
-    private final int id;
+    Connector<A, AllocatedMessageChannel> getMessageChannelConnector();
 
-    private ConfigValue(final int id) {
-        this.id = id;
-    }
+    Acceptor<A, StreamChannel> getStreamChannelAcceptor();
 
-    /**
-     * Get the integer ID for this config value.
-     *
-     * @return the integer ID
-     */
-    public int getId() {
-        return id;
-    }
-
-    /**
-     * Get the config value for an integer ID.
-     *
-     * @param id the integer ID
-     * @return the config value instance
-     */
-    public static ConfigValue getConfigValue(final int id) {
-        switch (id) {
-            case 0: return PROTOCOL_VERSION;
-            case 1: return MARSHALLER_NAME;
-            default: throw new IllegalArgumentException("Invalid config value ID");
-        }
-    }
+    Acceptor<A, AllocatedMessageChannel> getMessageChannelAcceptor();
 }

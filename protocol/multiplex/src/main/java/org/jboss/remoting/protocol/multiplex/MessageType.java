@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.protocol.basic;
+package org.jboss.remoting.protocol.multiplex;
 
 /**
  * The type of a protocol message.

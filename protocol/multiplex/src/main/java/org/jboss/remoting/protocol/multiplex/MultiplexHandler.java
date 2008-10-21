@@ -20,12 +20,16 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.protocol.basic;
+package org.jboss.remoting.protocol.multiplex;
 
 import org.jboss.xnio.channels.AllocatedMessageChannel;
+import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.Connector;
+import org.jboss.xnio.Acceptor;
 import org.jboss.xnio.log.Logger;
 import org.jboss.remoting.spi.remote.RequestHandler;
 import org.jboss.remoting.spi.remote.RequestHandlerSource;
@@ -34,18 +38,24 @@ import org.jboss.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.remoting.spi.remote.Handle;
 import org.jboss.remoting.spi.SpiUtils;
 import org.jboss.remoting.spi.AbstractAutoCloseable;
+import org.jboss.remoting.spi.stream.StreamDetector;
+import org.jboss.remoting.spi.stream.StreamSerializerFactory;
+import org.jboss.remoting.spi.stream.StreamProvider;
 import static org.jboss.remoting.util.CollectionUtil.concurrentIntegerMap;
 import org.jboss.remoting.util.CollectionUtil;
 import org.jboss.remoting.util.ConcurrentIntegerMap;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.SimpleCloseable;
+import org.jboss.remoting.RemoteExecutionException;
+import org.jboss.remoting.IndeterminateOutcomeException;
 import org.jboss.marshalling.MarshallerFactory;
-import org.jboss.marshalling.ByteInput;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.ByteOutput;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Configuration;
+import org.jboss.marshalling.ObjectTable;
+import org.jboss.marshalling.Marshalling;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -55,13 +65,16 @@ import java.util.Collection;
 import java.nio.ByteBuffer;
 import java.nio.BufferUnderflowException;
 import java.io.IOException;
+import java.io.InvalidClassException;
 
 /**
+ * Protocol handler for the basic message-oriented Remoting protocol.
  *
+ * @param <A> stream channel address type (Void if streams are not supported)
  */
-public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
+public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChannel> {
 
-    private static final Logger log = Logger.getLogger(BasicHandler.class);
+    private static final Logger log = Logger.getLogger(MultiplexHandler.class);
 
     //--== Connection configuration items ==--
     private final MarshallerFactory marshallerFactory;
@@ -70,6 +83,11 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     private final Executor executor;
     // buffer allocator for outbound message assembly
     private final BufferAllocator<ByteBuffer> allocator;
+    private final StreamDetector streamDetector;
+    private final Connector<A, AllocatedMessageChannel> messageConnector;
+    private final Acceptor<A, AllocatedMessageChannel> messageAcceptor;
+    private final Connector<A, StreamChannel> streamConnector;
+    private final Acceptor<A, StreamChannel> streamAcceptor;
 
     // running on remote node
     private final ConcurrentIntegerMap<ReplyHandler> remoteRequests = concurrentIntegerMap();
@@ -96,14 +114,22 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
     // sequence for forwarded services
     private final AtomicInteger serviceSequence = new AtomicInteger();
 
+    private final Endpoint endpoint;
+
     private volatile AllocatedMessageChannel channel;
 
-    public BasicHandler(final RemotingChannelConfiguration configuration) {
+    public MultiplexHandler(final Endpoint endpoint, final RemotingChannelConfiguration configuration, final StreamProvider<A> streamProvider) {
+        this.endpoint = endpoint;
+        messageConnector = streamProvider.getMessageChannelConnector();
+        messageAcceptor = streamProvider.getMessageChannelAcceptor();
+        streamConnector = streamProvider.getStreamChannelConnector();
+        streamAcceptor = streamProvider.getStreamChannelAcceptor();
         allocator = configuration.getAllocator();
         executor = configuration.getExecutor();
         marshallerFactory = configuration.getMarshallerFactory();
         marshallingConfiguration = configuration.getMarshallingConfiguration();
         linkMetric = configuration.getLinkMetric();
+        streamDetector = configuration.getStreamDetector();
     }
 
     public void handleOpened(final AllocatedMessageChannel channel) {
@@ -151,7 +177,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     try {
                         final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
                         try {
-                            unmarshaller.start(createByteInput(buffer, true));
+                            unmarshaller.start(Marshalling.createByteInput(buffer));
                             try {
                                 payload = unmarshaller.readObject();
                                 unmarshaller.finish();
@@ -160,7 +186,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                                 break;
                             }
                         } finally {
-                            // TODO: IoUtils.safeClose(unmarshaller);
+                            IoUtils.safeClose(unmarshaller);
                         }
                     } catch (IOException ex) {
                         log.error(ex, "Failed to unmarshal a one-way request");
@@ -186,7 +212,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     try {
                         final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
                         try {
-                            unmarshaller.start(createByteInput(buffer, true));
+                            unmarshaller.start(Marshalling.createByteInput(buffer));
                             try {
                                 payload = unmarshaller.readObject();
                                 unmarshaller.finish();
@@ -196,7 +222,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                                 break;
                             }
                         } finally {
-                            // TODO: IoUtils.safeClose(unmarshaller);
+                            IoUtils.safeClose(unmarshaller);
                         }
                     } catch (IOException ex) {
                         log.trace("Failed to unmarshal a request (%s), sending %s", ex, MessageType.REQUEST_RECEIVE_FAILED);
@@ -218,22 +244,22 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     try {
                         final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
                         try {
-                            unmarshaller.start(createByteInput(buffer, true));
+                            unmarshaller.start(Marshalling.createByteInput(buffer));
                             try {
                                 payload = unmarshaller.readObject();
                                 unmarshaller.finish();
                             } catch (ClassNotFoundException e) {
-                                replyHandler.handleException("Reply unmarshalling failed", e);
+                                replyHandler.handleException(new InvalidClassException("Class not found: " + e.toString()));
                                 log.trace("Class not found in reply to request ID %d", Integer.valueOf(requestId));
                                 break;
                             }
                         } finally {
-                            // TODO: IoUtils.safeClose(unmarshaller);
+                            IoUtils.safeClose(unmarshaller);
                         }
                     } catch (IOException ex) {
                         log.trace("Failed to unmarshal a reply (%s), sending a ReplyException");
                         // todo
-                        SpiUtils.safeHandleException(replyHandler, null, null);
+                        SpiUtils.safeHandleException(replyHandler, ex);
                         break;
                     }
                     SpiUtils.safeHandleReply(replyHandler, payload);
@@ -263,6 +289,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         break;
                     }
                     final String reason = readUTFZ(buffer);
+                    
                     // todo - throw a new ReplyException
                     break;
                 }
@@ -277,29 +304,26 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     try {
                         final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
                         try {
-                            unmarshaller.start(createByteInput(buffer, true));
+                            unmarshaller.start(Marshalling.createByteInput(buffer));
                             try {
                                 cause = (Throwable) unmarshaller.readObject();
                             } catch (ClassNotFoundException e) {
-                                replyHandler.handleException("Exception reply unmarshalling failed", e);
+                                replyHandler.handleException(new InvalidClassException("Class not found: " + e.toString()));
                                 log.trace("Class not found in exception reply to request ID %d", Integer.valueOf(requestId));
                                 break;
                             } catch (ClassCastException e) {
-                                // todo - report a generic exception
-                                SpiUtils.safeHandleException(replyHandler, null, null);
+                                SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Remote request failed (and an unexpected I/O error occurred when attempting to unmarshal the cause)"));
                                 break;
                             }
                         } finally {
-                            // TODO: IoUtils.safeClose(unmarshaller);
+                            IoUtils.safeClose(unmarshaller);
                         }
                     } catch (IOException ex) {
                         log.trace("Failed to unmarshal an exception reply (%s), sending a generic execution exception");
-                        // todo
-                        SpiUtils.safeHandleException(replyHandler, null, null);
+                        SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Remote request failed (and an unexpected I/O error occurred when attempting to read the cause)"));
                         break;
                     }
-                    // todo - wrap with REE
-                    SpiUtils.safeHandleException(replyHandler, null, cause);
+                    SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Remote execution failed", cause));
                     break;
                 }
                 case REQUEST_OUTCOME_UNKNOWN: {
@@ -310,7 +334,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         break;
                     }
                     final String reason = readUTFZ(buffer);
-                    // todo - throw a new IndetermOutcomeEx
+                    SpiUtils.safeHandleException(replyHandler, new IndeterminateOutcomeException(reason));
                     break;
                 }
                 case CLIENT_CLOSE: {
@@ -360,7 +384,6 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     final String groupName = readUTFZ(buffer);
                     final String endpointName = readUTFZ(buffer);
                     final int baseMetric = buffer.getInt();
-                    Endpoint endpoint = null;
                     int id = -1;
                     final RequestHandlerSource handlerSource = new RequestHandlerSourceImpl(allocator, id);
                     final int calcMetric = baseMetric + linkMetric;
@@ -380,11 +403,11 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                     break;
                 }
                 default: {
-                    log.trace("Received invalid message type %s", msgType);
+                    log.error("Malformed packet received (invalid message type %s)", msgType);
                 }
             }
         } catch (BufferUnderflowException e) {
-            log.error(e, "Malformed packet");
+            log.error("Malformed packet received (buffer underflow)");
         }
     }
 
@@ -440,7 +463,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             buffer.put((byte) MessageType.REPLY.getId());
             buffer.putInt(requestId);
             try {
-                final org.jboss.marshalling.Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
+                final Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
                 try {
                     final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
                     final ByteOutput output = createByteOutput(allocator, bufferList);
@@ -454,7 +477,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         IoUtils.safeClose(output);
                     }
                 } finally {
-                    // TODO: IoUtils.safeClose(marshaller);
+                    IoUtils.safeClose(marshaller);
                 }
             } catch (IOException e) {
                 log.error(e, "Failed to send a reply to the remote side");
@@ -464,18 +487,18 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             }
         }
 
-        public void handleException(final String msg, final Throwable cause) {
+        public void handleException(final IOException exception) {
             ByteBuffer buffer = allocator.allocate();
             buffer.put((byte) MessageType.REQUEST_FAILED.getId());
             buffer.putInt(requestId);
             try {
-                final org.jboss.marshalling.Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
+                final Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
                 try {
                     final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
                     final ByteOutput output = createByteOutput(allocator, bufferList);
                     try {
                         marshaller.start(output);
-                        marshaller.writeObject(cause);
+                        marshaller.writeObject(exception);
                         marshaller.close();
                         output.close();
                         registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
@@ -483,7 +506,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         IoUtils.safeClose(output);
                     }
                 } finally {
-                    // TODO: IoUtils.safeClose(marshaller);
+                    IoUtils.safeClose(marshaller);
                 }
             } catch (IOException e) {
                 log.error(e, "Failed to send an exception to the remote side");
@@ -624,7 +647,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         IoUtils.safeClose(output);
                     }
                 } finally {
-                    // TODO: IoUtils.safeClose(marshaller);
+                    IoUtils.safeClose(marshaller);
                 }
                 try {
                     registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
@@ -677,13 +700,13 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                         IoUtils.safeClose(output);
                     }
                 } finally {
-                    // TODO: IoUtils.safeClose(marshaller);
+                    IoUtils.safeClose(marshaller);
                 }
             } catch (final IOException t) {
                 log.trace(t, "receiveRequest failed with an exception");
                 executor.execute(new Runnable() {
                     public void run() {
-                        SpiUtils.safeHandleException(handler, "Failed to build request", t);
+                        SpiUtils.safeHandleException(handler, t);
                     }
                 });
                 return SpiUtils.getBlankRemoteRequestContext();
@@ -751,7 +774,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
             int id;
             do {
                 id = remoteClientSequence.getAndIncrement() << 1;
-            } while (remoteClients.putIfAbsent(id, new RequestHandlerImpl(id, BasicHandler.this.allocator)) != null);
+            } while (remoteClients.putIfAbsent(id, new RequestHandlerImpl(id, MultiplexHandler.this.allocator)) != null);
             final int clientId = id;
             final ByteBuffer buffer = allocator.allocate();
             buffer.put((byte) MessageType.CLIENT_OPEN.getId());
@@ -781,54 +804,6 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
         }
     }
 
-    public static ByteInput createByteInput(final ByteBuffer buffer, final boolean eof) {
-        return new ByteInput() {
-            public int read() throws IOException {
-                if (buffer.hasRemaining()) {
-                    return buffer.get() & 0xff;
-                } else {
-                    return eof ? -1 : 0;
-                }
-            }
-
-            public int read(final byte[] b) throws IOException {
-                return read(b, 0, b.length);
-            }
-
-            public int read(final byte[] b, final int off, final int len) throws IOException {
-                int r = Math.min(buffer.remaining(), len);
-                if (r > 0) {
-                    buffer.get(b, off, r);
-                    return r;
-                } else {
-                    return eof ? -1 : 0;
-                }
-            }
-
-            public int available() throws IOException {
-                return buffer.remaining();
-            }
-
-            public long skip(final long n) throws IOException {
-                final int cnt = n > (long) Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) n;
-                int r = Math.min(buffer.remaining(), cnt);
-                if (r > 0) {
-                    final int oldPos = buffer.position();
-                    final int newPos = oldPos + r;
-                    if (newPos < 0) {
-                        final int lim = buffer.limit();
-                        buffer.position(lim);
-                        return lim - oldPos;
-                    }
-                }
-                return r;
-            }
-
-            public void close() {
-            }
-        };
-    }
-
     public static ByteOutput createByteOutput(final BufferAllocator<ByteBuffer> allocator, final Collection<ByteBuffer> target) {
         return new ByteOutput() {
             private ByteBuffer current;
@@ -838,7 +813,7 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                 return buffer == null ? (current = allocator.allocate()) : buffer;
             }
 
-            public void write(final int i) throws IOException {
+            public void write(final int i) {
                 final ByteBuffer buffer = getCurrent();
                 buffer.put((byte) i);
                 if (! buffer.hasRemaining()) {
@@ -848,11 +823,11 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                 }
             }
 
-            public void write(final byte[] bytes) throws IOException {
+            public void write(final byte[] bytes) {
                 write(bytes, 0, bytes.length);
             }
 
-            public void write(final byte[] bytes, int offs, int len) throws IOException {
+            public void write(final byte[] bytes, int offs, int len) {
                 while (len > 0) {
                     final ByteBuffer buffer = getCurrent();
                     final int c = Math.min(len, buffer.remaining());
@@ -867,11 +842,11 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                 }
             }
 
-            public void close() throws IOException {
+            public void close() {
                 flush();
             }
 
-            public void flush() throws IOException {
+            public void flush() {
                 final ByteBuffer buffer = current;
                 if (buffer != null) {
                     buffer.flip();
@@ -880,5 +855,53 @@ public final class BasicHandler implements IoHandler<AllocatedMessageChannel> {
                 }
             }
         };
+    }
+
+    public class ProtocolObjectTableWriter implements ObjectTable.Writer {
+
+        public void writeObject(final Marshaller marshaller, final Object o) throws IOException {
+            
+        }
+    }
+
+    public class ProtocolObjectTable implements ObjectTable {
+
+        public Writer getObjectWriter(final Object o) throws IOException /* fixed in beta2 */ {
+            if (o instanceof RequestHandler) {
+                final RequestHandler requestHandler = (RequestHandler) o;
+
+            } else if (o instanceof RequestHandlerSource) {
+                final RequestHandlerSource requestHandlerSource = (RequestHandlerSource) o;
+                
+            } else {
+                final StreamSerializerFactory ssf = streamDetector.detectStream(o);
+                if (ssf != null) {
+                    final IoHandler<? super AllocatedMessageChannel> streamHandler = ssf.getLocalSide(o, new StreamContextImpl(executor, marshallerFactory, marshallingConfiguration));
+                    // todo - this should really be the "server" side
+                    final IoFuture<AllocatedMessageChannel> futureChannel = messageConnector.connectTo(null, streamHandler);
+                    
+                }
+            }
+            return null;
+        }
+
+        public Object readObject(final Unmarshaller unmarshaller) throws IOException, ClassNotFoundException {
+            switch (unmarshaller.readByte()) {
+                case 1: {
+                    // remote client
+                    final int id = unmarshaller.readInt();
+                }
+                case 2: {
+                    // remote client source
+                }
+                case 3: {
+                    // stream
+                }
+                default: {
+                    // invalid
+                }
+            }
+            return null;
+        }
     }
 }

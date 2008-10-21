@@ -82,9 +82,9 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
                 try {
                     requestListener.handleRequest(context, (I) request);
                 } catch (RemoteExecutionException e) {
-                    SpiUtils.safeHandleException(replyHandler, e.getMessage(), e.getCause());
+                    SpiUtils.safeHandleException(replyHandler, e);
                 } catch (Throwable t) {
-                    SpiUtils.safeHandleException(replyHandler, "Unexpected exception in request listener", t);
+                    SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Request handler threw an exception", t));
                 }
             }
         });

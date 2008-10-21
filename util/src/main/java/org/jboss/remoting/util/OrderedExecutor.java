@@ -24,6 +24,7 @@ package org.jboss.remoting.util;
 
 import java.util.concurrent.Executor;
 import java.util.LinkedList;
+import org.jboss.xnio.log.Logger;
 
 /**
  * An executor that always runs all tasks in order, using a delegate executor to run the tasks.
@@ -32,6 +33,8 @@ import java.util.LinkedList;
  * same method, will result in B's task running after A's.
  */
 public final class OrderedExecutor implements Executor {
+    private static final Logger log = Logger.getLogger(OrderedExecutor.class);
+
     // @protectedby tasks
     private final LinkedList<Runnable> tasks = new LinkedList<Runnable>();
     // @protectedby tasks
@@ -60,7 +63,7 @@ public final class OrderedExecutor implements Executor {
                     try {
                         task.run();
                     } catch (Throwable t) {
-                        // eat it!
+                        log.error(t, "Runnable task %s failed", task);
                     }
                 }
             }
@@ -77,7 +80,15 @@ public final class OrderedExecutor implements Executor {
             tasks.add(command);
             if (! running) {
                 running = true;
-                parent.execute(runner);
+                boolean ok = false;
+                try {
+                    parent.execute(runner);
+                    ok = true;
+                } finally {
+                    if (! ok) {
+                        running = false;
+                    }
+                }
             }
         }
     }

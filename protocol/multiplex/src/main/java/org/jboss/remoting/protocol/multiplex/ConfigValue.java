@@ -20,32 +20,48 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.spi.remote;
-
-import java.io.IOException;
+package org.jboss.remoting.protocol.multiplex;
 
 /**
- * A handler for replies from a request.  The handler should respect the first invocation made on it, and ignore
- * any subsequent invocations.
+ *
  */
-public interface ReplyHandler {
+public enum ConfigValue {
 
     /**
-     * Handle a successful reply.
+     * The protocol version to use.  Value type is {@code int}.
+     */
+    PROTOCOL_VERSION(0),
+    /**
+     * The name of the marshaller to use.  Value type is {@code String}.
+     */
+    MARSHALLER_NAME(1),
+    ;
+    private final int id;
+
+    private ConfigValue(final int id) {
+        this.id = id;
+    }
+
+    /**
+     * Get the integer ID for this config value.
      *
-     * @param reply the reply
+     * @return the integer ID
      */
-    void handleReply(Object reply);
+    public int getId() {
+        return id;
+    }
 
     /**
-     * Handle an exception.
+     * Get the config value for an integer ID.
      *
-     * @param exception an exception which describes the problem
+     * @param id the integer ID
+     * @return the config value instance
      */
-    void handleException(IOException exception);
-
-    /**
-     * Handle a cancellation request.
-     */
-    void handleCancellation();
+    public static ConfigValue getConfigValue(final int id) {
+        switch (id) {
+            case 0: return PROTOCOL_VERSION;
+            case 1: return MARSHALLER_NAME;
+            default: throw new IllegalArgumentException("Invalid config value ID");
+        }
+    }
 }

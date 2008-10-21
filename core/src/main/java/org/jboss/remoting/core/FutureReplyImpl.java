@@ -22,12 +22,12 @@
 
 package org.jboss.remoting.core;
 
-import org.jboss.remoting.RemotingException;
 import org.jboss.remoting.spi.remote.ReplyHandler;
 import org.jboss.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.xnio.AbstractIoFuture;
 import org.jboss.xnio.IoFuture;
 import java.util.concurrent.Executor;
+import java.io.IOException;
 
 /**
  *
@@ -67,8 +67,8 @@ public final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
             setResult((O) reply);
         }
 
-        public void handleException(final String exMsg, final Throwable exCause) {
-            setException(new RemotingException(exMsg, exCause));
+        public void handleException(final IOException exception) {
+            setException(exception);
         }
 
         public void handleCancellation() {

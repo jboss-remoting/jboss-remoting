@@ -211,16 +211,16 @@
         <get src="${remote.license.dir}/${lib.xnio-api.license}.txt" dest="${lib.xnio-api.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
-    <!-- External library: XNIO standalone -->
+    <!-- External library: XNIO nio -->
 
-    <target name="lib.xnio-standalone-check">
-        <available property="lib.xnio-standalone.exists" file="${lib.xnio-standalone.local}"/>
+    <target name="lib.xnio-nio-check">
+        <available property="lib.xnio-nio.exists" file="${lib.xnio-nio.local}"/>
     </target>
 
-    <target name="lib.xnio-standalone" depends="lib.xnio-standalone-check" unless="lib.xnio-standalone.exists">
-        <mkdir dir="${local.repository}/${lib.xnio-standalone.dir}"/>
-        <get src="${lib.xnio-standalone.remote}" dest="${lib.xnio-standalone.local}" usetimestamp="true" ignoreerrors="false"/>
-        <get src="${remote.license.dir}/${lib.xnio-standalone.license}.txt" dest="${lib.xnio-standalone.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
+    <target name="lib.xnio-nio" depends="lib.xnio-nio-check" unless="lib.xnio-nio.exists">
+        <mkdir dir="${local.repository}/${lib.xnio-nio.dir}"/>
+        <get src="${lib.xnio-nio.remote}" dest="${lib.xnio-nio.local}" usetimestamp="true" ignoreerrors="false"/>
+        <get src="${remote.license.dir}/${lib.xnio-nio.license}.txt" dest="${lib.xnio-nio.local}.license.txt" usetimestamp="true" ignoreerrors="false"/>
     </target>
 
     <!-- ============================================== -->
@@ -800,7 +800,8 @@
                 <pathelement location="${lib.junit.local}"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.river.local}"/>
-                <pathelement location="${lib.xnio-standalone.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
+                <pathelement location="${lib.xnio-nio.local}"/>
             </classpath>
         </javac>
         <touch file="protocol/basic/target/test/.lastcompile" verbose="false"/>
@@ -816,7 +817,8 @@
             <sysproperty key="ant.library.dir" value="${ant.home}/lib"/>
             <sysproperty key="lib.junit.local" value="${lib.junit.local}"/>
             <sysproperty key="lib.marshalling-api.local" value="${lib.marshalling-api.local}"/>
-            <sysproperty key="lib.xnio-standalone.local" value="${lib.xnio-standalone.local}"/>
+            <sysproperty key="lib.xnio-api.local" value="${lib.xnio-api.local}"/>
+            <sysproperty key="lib.xnio-nio.local" value="${lib.xnio-nio.local}"/>
             <jvmarg line="${test.jvmargs}"/>
             <formatter type="plain" extension="${extension}"/>
             <classpath>
@@ -829,7 +831,8 @@
                 <pathelement location="${lib.junit.local}"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.river.local}"/>
-                <pathelement location="${lib.xnio-standalone.local}"/>
+                <pathelement location="${lib.xnio-api.local}"/>
+                <pathelement location="${lib.xnio-nio.local}"/>
             </classpath>
             <batchtest fork="yes" todir="protocol/basic/target/test-results"
                        haltonfailure="no">
@@ -840,7 +843,7 @@
         </junit>
     </target>
 
-    <target name="protocol.basic.test" depends="lib.xnio-standalone,api,core,protocol.basic,testing-support,util,protocol.basic.test.compile">
+    <target name="protocol.basic.test" depends="lib.xnio-nio,api,core,protocol.basic,testing-support,util,protocol.basic.test.compile">
         <antcall inheritall="true" inheritrefs="true" target="protocol.basic.test.pseudotarget">
             <param name="extension" value=".txt"/>
             <param name="message" value="Running with no security manager"/>

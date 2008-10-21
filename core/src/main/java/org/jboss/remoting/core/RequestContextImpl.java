@@ -26,6 +26,7 @@ import org.jboss.remoting.RequestContext;
 import org.jboss.remoting.ClientContext;
 import org.jboss.remoting.RemotingException;
 import org.jboss.remoting.RequestCancelHandler;
+import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.core.util.TaggingExecutor;
 import org.jboss.remoting.spi.remote.ReplyHandler;
 import org.jboss.remoting.spi.SpiUtils;
@@ -81,7 +82,7 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
     public void sendFailure(final String msg, final Throwable cause) throws RemotingException, IllegalStateException {
         if (! closed.getAndSet(true)) {
             if (replyHandler != null) {
-                replyHandler.handleException(msg, cause);
+                replyHandler.handleException(new RemoteExecutionException(msg, cause));
             }
         } else {
             throw new IllegalStateException("Reply already sent");

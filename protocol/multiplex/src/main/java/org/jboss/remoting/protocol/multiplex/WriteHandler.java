@@ -20,25 +20,13 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.protocol.basic;
+package org.jboss.remoting.protocol.multiplex;
 
-import org.jboss.remoting.spi.AbstractSimpleCloseable;
-import java.util.concurrent.Executor;
+import org.jboss.xnio.channels.WritableMessageChannel;
 
 /**
  *
  */
-public abstract class AbstractConnection extends AbstractSimpleCloseable {
-    /**
-     * Basic constructor.
-     *
-     * @param executor the executor used to execute the close notification handlers
-     */
-    protected AbstractConnection(final Executor executor) {
-        super(executor);
-    }
-
-    public String toString() {
-        return "connection <" + Integer.toString(hashCode()) + ">";
-    }
+public interface WriteHandler {
+    boolean handleWrite(WritableMessageChannel channel);
 }

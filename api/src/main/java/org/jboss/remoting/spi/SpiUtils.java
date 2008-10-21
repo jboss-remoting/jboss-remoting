@@ -28,6 +28,7 @@ import org.jboss.remoting.RequestCancelHandler;
 import org.jboss.remoting.RequestContext;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.xnio.log.Logger;
+import java.io.IOException;
 
 /**
  * Utility methods for Remoting service providers.
@@ -41,12 +42,11 @@ public final class SpiUtils {
      * Safely notify a reply handler of an exception.
      *
      * @param replyHandler the reply handler
-     * @param msg the message
-     * @param cause the cause
+     * @param exception
      */
-    public static void safeHandleException(final ReplyHandler replyHandler, final String msg, final Throwable cause) {
+    public static void safeHandleException(final ReplyHandler replyHandler, final IOException exception) {
         try {
-            replyHandler.handleException(msg, cause);
+            replyHandler.handleException(exception);
         } catch (Throwable t) {
             log.error(t, "Failed to properly handle exception");
         }

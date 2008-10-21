@@ -44,7 +44,7 @@ public interface RequestHandler extends HandleableCloseable<RequestHandler> {
     /**
      * Receive a request from a remote system.  This method is intended to be called by protocol handlers.  If the
      * request cannot be accepted for some reason, the
-     * {@link ReplyHandler#handleException(String, Throwable)}
+     * {@link ReplyHandler#handleException(java.io.IOException)}
      * method is called immediately.
      *
      * @param request the request
