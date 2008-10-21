@@ -84,7 +84,7 @@ public final class MultiplexProtocol {
         configuration.setAllocator(allocator);
         configuration.setExecutor(executor);
         // todo marshaller factory... etc
-        final MultiplexHandler multiplexHandler = new MultiplexHandler<A>(endpoint, configuration, streamProvider);
+        final MultiplexHandler<A> multiplexHandler = new MultiplexHandler<A>(endpoint, configuration, streamProvider);
         final IoFuture<AllocatedMessageChannel> futureChannel = channelSource.open(multiplexHandler);
         return new AbstractConvertingIoFuture<SimpleCloseable, AllocatedMessageChannel>(futureChannel) {
             protected SimpleCloseable convert(final AllocatedMessageChannel channel) throws RemotingException {
