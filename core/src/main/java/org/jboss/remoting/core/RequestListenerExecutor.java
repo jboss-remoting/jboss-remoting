@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.core.util;
+package org.jboss.remoting.core;
 
 import java.util.concurrent.Executor;
 import java.util.Set;
@@ -29,13 +29,15 @@ import org.jboss.remoting.util.CollectionUtil;
 /**
  *
  */
-public final class TaggingExecutor implements Executor {
+public final class RequestListenerExecutor implements Executor {
 
     private final Set<Task> tasks = CollectionUtil.synchronizedHashSet();
     private final Executor executor;
+    private final RequestContextImpl requestContext;
 
-    public TaggingExecutor(final Executor executor) {
+    public RequestListenerExecutor(final Executor executor, final RequestContextImpl context) {
         this.executor = executor;
+        requestContext = context;
     }
 
     private final class Task implements Runnable {
@@ -47,11 +49,13 @@ public final class TaggingExecutor implements Executor {
         }
 
         public void run() {
+            requestContext.startTask();
             thread = Thread.currentThread();
             tasks.add(this);
             try {
                 runnable.run();
             } finally {
+                requestContext.finishTask();
                 tasks.remove(this);
                 thread = null;
             }
@@ -64,9 +68,10 @@ public final class TaggingExecutor implements Executor {
 
     public void interruptAll() {
         synchronized (tasks) {
+            final Thread currentThread = Thread.currentThread();
             for (Task task : tasks) {
                 final Thread thread = task.thread;
-                if (thread != null) {
+                if (thread != null && thread != currentThread) {
                     thread.interrupt();
                 }
             }

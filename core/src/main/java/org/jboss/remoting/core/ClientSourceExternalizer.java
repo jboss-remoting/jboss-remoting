@@ -42,10 +42,12 @@ public final class ClientSourceExternalizer implements Externalizer {
         this.endpoint = endpoint;
     }
 
+    @SuppressWarnings({ "unchecked" })
     public void writeExternal(final Object o, final ObjectOutput output) throws IOException {
         output.writeObject(((ClientSourceImpl) o).getRequestHandlerSourceHandle().getResource());
     }
 
+    @SuppressWarnings({ "unchecked" })
     public Object createExternal(final Class<?> aClass, final ObjectInput input, final Creator creator) throws IOException, ClassNotFoundException {
         final RequestHandlerSource handler = (RequestHandlerSource) input.readObject();
         return new ClientSourceImpl(handler.getHandle(), endpoint);

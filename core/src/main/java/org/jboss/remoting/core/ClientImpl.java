@@ -23,7 +23,7 @@
 package org.jboss.remoting.core;
 
 import org.jboss.remoting.Client;
-import org.jboss.remoting.RemotingException;
+import org.jboss.remoting.IndeterminateOutcomeException;
 import org.jboss.remoting.core.util.QueueExecutor;
 import org.jboss.remoting.spi.remote.RequestHandler;
 import org.jboss.remoting.spi.remote.ReplyHandler;
@@ -51,7 +51,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
 
     public O invoke(final I request) throws IOException {
         if (! isOpen()) {
-            throw new RemotingException("Client is not open");
+            throw new IOException("Client is not open");
         }
         final QueueExecutor executor = new QueueExecutor();
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor);
@@ -64,12 +64,21 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
             }
         });
         executor.runQueue();
-        return futureReply.get();
+        try {
+            return futureReply.getInterruptibly();
+        } catch (InterruptedException e) {
+            try {
+                futureReply.cancel();
+                throw new IndeterminateOutcomeException("The current thread was interrupted before the result could be read");
+            } finally {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     public IoFuture<O> send(final I request) throws IOException {
         if (! isOpen()) {
-            throw new RemotingException("Client is not open");
+            throw new IOException("Client is not open");
         }
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor);
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
@@ -78,9 +87,9 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         return futureReply;
     }
 
-    public void sendOneWay(final I request) throws RemotingException {
+    public void sendOneWay(final I request) throws IOException {
         if (! isOpen()) {
-            throw new RemotingException("Client is not open");
+            throw new IOException("Client is not open");
         }
         handle.getResource().receiveRequest(request);
     }

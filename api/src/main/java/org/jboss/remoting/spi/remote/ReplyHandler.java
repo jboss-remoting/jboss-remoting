@@ -31,21 +31,22 @@ import java.io.IOException;
 public interface ReplyHandler {
 
     /**
-     * Handle a successful reply.
+     * Handle a successful reply.  If the reply could not be forwarded, an exception is thrown.
      *
      * @param reply the reply
      */
-    void handleReply(Object reply);
+    void handleReply(Object reply) throws IOException;
 
     /**
-     * Handle an exception.
+     * Handle an exception.  If the exception could not be forwarded, a (different) {@code IOException} is thrown.
      *
      * @param exception an exception which describes the problem
      */
-    void handleException(IOException exception);
+    void handleException(IOException exception) throws IOException;
 
     /**
-     * Handle a cancellation request.
+     * Handle a cancellation acknowledgement.  If the cancellation acknowledgement could not be forwarded, an
+     * exception is thrown.
      */
-    void handleCancellation();
+    void handleCancellation() throws IOException;
 }

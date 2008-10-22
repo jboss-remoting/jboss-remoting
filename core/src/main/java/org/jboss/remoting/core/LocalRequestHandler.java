@@ -27,12 +27,12 @@ import org.jboss.remoting.spi.remote.RemoteRequestContext;
 import org.jboss.remoting.spi.remote.ReplyHandler;
 import org.jboss.remoting.spi.SpiUtils;
 import org.jboss.remoting.spi.AbstractAutoCloseable;
-import org.jboss.remoting.RemotingException;
 import org.jboss.remoting.RequestListener;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.xnio.log.Logger;
 import java.util.concurrent.Executor;
+import java.io.IOException;
 
 /**
  *
@@ -40,14 +40,12 @@ import java.util.concurrent.Executor;
 public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<RequestHandler> implements RequestHandler {
 
     private final RequestListener<I, O> requestListener;
-    private final Executor executor;
     private final ClientContextImpl clientContext;
 
     private static final Logger log = Logger.getLogger(LocalRequestHandler.class);
 
     private LocalRequestHandler(final Executor executor, final RequestListener<I, O> requestListener, final ClientContextImpl clientContext) {
         super(executor);
-        this.executor = executor;
         this.requestListener = requestListener;
         this.clientContext = clientContext;
     }
@@ -62,7 +60,7 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
 
     public void receiveRequest(final Object request) {
         final RequestContextImpl<O> context = new RequestContextImpl<O>(clientContext);
-        executor.execute(new Runnable() {
+        context.execute(new Runnable() {
             @SuppressWarnings({ "unchecked" })
             public void run() {
                 try {
@@ -76,7 +74,7 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
 
     public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler replyHandler) {
         final RequestContextImpl<O> context = new RequestContextImpl<O>(replyHandler, clientContext);
-        executor.execute(new Runnable() {
+        context.execute(new Runnable() {
             @SuppressWarnings({ "unchecked" })
             public void run() {
                 try {
@@ -95,7 +93,7 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
         };
     }
 
-    void open() throws RemotingException {
+    void open() throws IOException {
         try {
             requestListener.handleClientOpen(clientContext);
             addCloseHandler(new CloseHandler<RequestHandler>() {
@@ -108,7 +106,9 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
                 }
             });
         } catch (Throwable t) {
-            throw new RemotingException("Failed to open client context", t);
+            final IOException ioe = new IOException("Failed to open client context");
+            ioe.initCause(t);
+            throw ioe;
         }
     }
 

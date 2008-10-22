@@ -49,6 +49,8 @@ import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.SimpleCloseable;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.IndeterminateOutcomeException;
+import org.jboss.remoting.ReplyException;
+import org.jboss.remoting.RemoteReplyException;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.ByteOutput;
@@ -66,6 +68,7 @@ import java.nio.ByteBuffer;
 import java.nio.BufferUnderflowException;
 import java.io.IOException;
 import java.io.InvalidClassException;
+import java.io.InterruptedIOException;
 
 /**
  * Protocol handler for the basic message-oriented Remoting protocol.
@@ -257,7 +260,7 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
                             IoUtils.safeClose(unmarshaller);
                         }
                     } catch (IOException ex) {
-                        log.trace("Failed to unmarshal a reply (%s), sending a ReplyException");
+                        log.trace("Failed to unmarshal a reply (%s), sending a ReplyException", ex);
                         // todo
                         SpiUtils.safeHandleException(replyHandler, ex);
                         break;
@@ -276,8 +279,10 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
                 case CANCEL_ACK: {
                     final int requestId = buffer.getInt();
                     final ReplyHandler replyHandler = remoteRequests.get(requestId);
-                    if (replyHandler != null) {
+                    if (replyHandler != null) try {
                         replyHandler.handleCancellation();
+                    } catch (IOException e) {
+                        log.trace("Failed to forward a cancellation acknowledgement (%s)", e);
                     }
                     break;
                 }
@@ -458,7 +463,7 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
             this.allocator = allocator;
         }
 
-        public void handleReply(final Object reply) {
+        public void handleReply(final Object reply) throws IOException {
             ByteBuffer buffer = allocator.allocate();
             buffer.put((byte) MessageType.REPLY.getId());
             buffer.putInt(requestId);
@@ -479,15 +484,13 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
                 } finally {
                     IoUtils.safeClose(marshaller);
                 }
-            } catch (IOException e) {
-                log.error(e, "Failed to send a reply to the remote side");
             } catch (InterruptedException e) {
-                log.error(e, "Reply handler thread interrupted before a reply could be sent");
                 Thread.currentThread().interrupt();
+                throw new InterruptedIOException("Reply handler thread interrupted before a reply could be sent");
             }
         }
 
-        public void handleException(final IOException exception) {
+        public void handleException(final IOException exception) throws IOException {
             ByteBuffer buffer = allocator.allocate();
             buffer.put((byte) MessageType.REQUEST_FAILED.getId());
             buffer.putInt(requestId);
@@ -508,15 +511,13 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
                 } finally {
                     IoUtils.safeClose(marshaller);
                 }
-            } catch (IOException e) {
-                log.error(e, "Failed to send an exception to the remote side");
             } catch (InterruptedException e) {
-                log.error(e, "Reply handler thread interrupted before an exception could be sent");
                 Thread.currentThread().interrupt();
+                throw new InterruptedIOException("Reply handler thread interrupted before an exception could be sent");
             }
         }
 
-        public void handleCancellation() {
+        public void handleCancellation() throws InterruptedIOException {
             final ByteBuffer buffer = allocator.allocate();
             buffer.put((byte) MessageType.CANCEL_ACK.getId());
             buffer.putInt(requestId);
@@ -524,8 +525,8 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
             try {
                 registerWriter(channel, new SimpleWriteHandler(allocator, buffer));
             } catch (InterruptedException e) {
-                // todo log
                 Thread.currentThread().interrupt();
+                throw new InterruptedIOException("Reply handler thread interrupted before cancellation could be sent");
             }
         }
     }

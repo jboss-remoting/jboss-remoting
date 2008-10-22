@@ -24,15 +24,17 @@ package org.jboss.remoting.core;
 
 import org.jboss.remoting.RequestContext;
 import org.jboss.remoting.ClientContext;
-import org.jboss.remoting.RemotingException;
 import org.jboss.remoting.RequestCancelHandler;
 import org.jboss.remoting.RemoteExecutionException;
-import org.jboss.remoting.core.util.TaggingExecutor;
+import org.jboss.remoting.RemoteReplyException;
+import org.jboss.remoting.IndeterminateOutcomeException;
 import org.jboss.remoting.spi.remote.ReplyHandler;
 import org.jboss.remoting.spi.SpiUtils;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Set;
 import java.util.HashSet;
+import java.io.IOException;
 
 /**
  *
@@ -43,21 +45,26 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
     private final Object cancelLock = new Object();
     private final ReplyHandler replyHandler;
     private final ClientContextImpl clientContext;
+    private final AtomicInteger taskCount = new AtomicInteger();
 
-    private final AtomicBoolean cancelled = new AtomicBoolean();
+    // @protectedby cancelLock
+    private boolean cancelled;
     // @protectedby cancelLock
     private Set<RequestCancelHandler<O>> cancelHandlers;
-    private final TaggingExecutor executor;
+    private final RequestListenerExecutor executor;
 
     RequestContextImpl(final ReplyHandler replyHandler, final ClientContextImpl clientContext) {
         this.replyHandler = replyHandler;
         this.clientContext = clientContext;
-        executor = new TaggingExecutor(clientContext.getExecutor());
+        //noinspection ThisEscapedInObjectConstruction
+        executor = new RequestListenerExecutor(clientContext.getExecutor(), this);
     }
 
+    // todo - used by one-way requests... :|
     RequestContextImpl(final ClientContextImpl clientContext) {
         this.clientContext = clientContext;
-        executor = new TaggingExecutor(clientContext.getExecutor());
+        //noinspection ThisEscapedInObjectConstruction
+        executor = new RequestListenerExecutor(clientContext.getExecutor(), this);
         replyHandler = null;
     }
 
@@ -66,34 +73,42 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
     }
 
     public boolean isCancelled() {
-        return cancelled.get();
+        synchronized (cancelLock) {
+            return cancelled;
+        }
     }
 
-    public void sendReply(final O reply) throws RemotingException, IllegalStateException {
+    public void sendReply(final O reply) throws IOException, IllegalStateException {
         if (! closed.getAndSet(true)) {
-            if (replyHandler != null) {
+            if (replyHandler != null) try {
                 replyHandler.handleReply(reply);
-            }
+            } catch (IOException e) {
+                SpiUtils.safeHandleException(replyHandler, new RemoteReplyException("Remote reply failed", e));
+                throw e;
+            } else throw new IllegalStateException("Cannot send a reply to a one-way invocation");
         } else {
             throw new IllegalStateException("Reply already sent");
         }
     }
 
-    public void sendFailure(final String msg, final Throwable cause) throws RemotingException, IllegalStateException {
+    public void sendFailure(final String msg, final Throwable cause) throws IOException, IllegalStateException {
         if (! closed.getAndSet(true)) {
             if (replyHandler != null) {
                 replyHandler.handleException(new RemoteExecutionException(msg, cause));
-            }
+            } else throw new IllegalStateException("Cannot send a reply to a one-way invocation");
         } else {
             throw new IllegalStateException("Reply already sent");
         }
     }
 
-    public void sendCancelled() throws RemotingException, IllegalStateException {
+    public void sendCancelled() throws IOException, IllegalStateException {
         if (! closed.getAndSet(true)) {
-            if (replyHandler != null) {
+            if (replyHandler != null) try {
                 replyHandler.handleCancellation();
-            }
+            } catch (IOException e) {
+                // this is highly unlikely to succeed
+                SpiUtils.safeHandleException(replyHandler, new RemoteReplyException("Remote cancellation acknowledgement failed", e));
+            } else throw new IllegalStateException("Cannot send a reply to a one-way invocation");
         } else {
             throw new IllegalStateException("Reply already sent");
         }
@@ -101,7 +116,7 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
 
     public void addCancelHandler(final RequestCancelHandler<O> handler) {
         synchronized (cancelLock) {
-            if (cancelled.get()) {
+            if (cancelled) {
                 SpiUtils.safeNotifyCancellation(handler, this);
             } else {
                 if (cancelHandlers == null) {
@@ -117,8 +132,9 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
     }
 
     protected void cancel() {
-        if (! cancelled.getAndSet(true)) {
-            synchronized (cancelLock) {
+        synchronized (cancelLock) {
+            if (! cancelled) {
+                cancelled = true;
                 if (cancelHandlers != null) {
                     for (final RequestCancelHandler<O> handler : cancelHandlers) {
                         executor.execute(new Runnable() {
@@ -129,8 +145,19 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
                     }
                     cancelHandlers = null;
                 }
+                executor.interruptAll();
             }
-            executor.interruptAll();
+        }
+    }
+
+    void startTask() {
+        taskCount.incrementAndGet();
+    }
+
+    void finishTask() {
+        if (taskCount.decrementAndGet() == 0 && closed.getAndSet(true)) {
+            // no response sent!  send back IndeterminateOutcomeException
+            SpiUtils.safeHandleException(replyHandler, new IndeterminateOutcomeException("No reply was sent by the request listener"));
         }
     }
 }

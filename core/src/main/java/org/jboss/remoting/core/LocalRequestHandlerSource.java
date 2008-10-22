@@ -27,7 +27,6 @@ import org.jboss.remoting.spi.remote.RequestHandler;
 import org.jboss.remoting.spi.remote.Handle;
 import org.jboss.remoting.spi.AbstractAutoCloseable;
 import org.jboss.remoting.RequestListener;
-import org.jboss.remoting.RemotingException;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.xnio.log.Logger;
 import java.util.concurrent.Executor;
@@ -57,11 +56,11 @@ public final class LocalRequestHandlerSource<I, O> extends AbstractAutoCloseable
             localRequestHandler.open();
             return localRequestHandler.getHandle();
         } else {
-            throw new RemotingException("LocalRequestHandlerSource is closed");
+            throw new IOException("LocalRequestHandlerSource is closed");
         }
     }
 
-    void open() throws RemotingException {
+    void open() throws IOException {
         try {
             requestListener.handleServiceOpen(serviceContext);
             addCloseHandler(new CloseHandler<RequestHandlerSource>() {
@@ -74,7 +73,9 @@ public final class LocalRequestHandlerSource<I, O> extends AbstractAutoCloseable
                 }
             });
         } catch (Throwable t) {
-            throw new RemotingException("Failed to open client context", t);
+            final IOException ioe = new IOException("Failed to open client context");
+            ioe.initCause(t);
+            throw ioe;
         }
     }
 

@@ -48,7 +48,7 @@ public final class SpiUtils {
         try {
             replyHandler.handleException(exception);
         } catch (Throwable t) {
-            log.error(t, "Failed to properly handle exception");
+            log.debug(t, "Failed to properly handle exception");
         }
     }
 
@@ -63,7 +63,7 @@ public final class SpiUtils {
         try {
             replyHandler.handleReply(reply);
         } catch (Throwable t) {
-            log.error(t, "Failed to properly handle reply");
+            log.debug(t, "Failed to properly handle reply");
         }
     }
 
@@ -76,7 +76,7 @@ public final class SpiUtils {
         try {
             replyHandler.handleCancellation();
         } catch (Throwable t) {
-            log.error(t, "Failed to properly handle cancellation");
+            log.debug(t, "Failed to properly handle cancellation");
         }
     }
 
@@ -90,7 +90,7 @@ public final class SpiUtils {
         try {
             handler.notifyCancel(requestContext);
         } catch (Throwable t) {
-            log.error(t, "Request cancel handler threw an exception when calling notifyCancel()");
+            log.error(t, "Request cancel handler threw an exception");
         }
     }
 
@@ -105,7 +105,7 @@ public final class SpiUtils {
         try {
             handler.handleClose(closed);
         } catch (Throwable t) {
-            log.error(t, "Close handler failed unexpectedly");
+            log.error(t, "Close handler threw an exception");
         }
     }
 

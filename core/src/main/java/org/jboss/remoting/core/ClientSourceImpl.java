@@ -24,7 +24,6 @@ package org.jboss.remoting.core;
 
 import org.jboss.remoting.ClientSource;
 import org.jboss.remoting.Client;
-import org.jboss.remoting.RemotingException;
 import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.spi.remote.RequestHandler;
 import org.jboss.remoting.spi.remote.RequestHandlerSource;
@@ -53,7 +52,7 @@ public final class ClientSourceImpl<I, O> extends AbstractHandleableCloseable<Cl
 
     public Client<I, O> createClient() throws IOException {
         if (! isOpen()) {
-            throw new RemotingException("Client source is not open");
+            throw new IOException("Client source is not open");
         }
         final Handle<RequestHandler> clientHandle = handle.getResource().createRequestHandler();
         try {

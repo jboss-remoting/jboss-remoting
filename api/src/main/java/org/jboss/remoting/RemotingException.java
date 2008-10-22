@@ -3,9 +3,10 @@ package org.jboss.remoting;
 import java.io.IOException;
 
 /**
- * A general Remoting exception.
+ * A general Remoting exception.  Used as a base class in order to provide constructors which accept any combination
+ * of {@code cause} and {@code message}.
  */
-public class RemotingException extends IOException {
+public abstract class RemotingException extends IOException {
 
     private static final long serialVersionUID = 1540716301579397423L;
 
@@ -13,7 +14,7 @@ public class RemotingException extends IOException {
      * Constructs a <tt>RemotingException</tt> with no detail message. The cause is not initialized, and may subsequently be
      * initialized by a call to {@link #initCause(Throwable) initCause}.
      */
-    public RemotingException() {
+    protected RemotingException() {
     }
 
     /**
@@ -22,7 +23,7 @@ public class RemotingException extends IOException {
      *
      * @param msg the detail message
      */
-    public RemotingException(String msg) {
+    protected RemotingException(String msg) {
         super(msg);
     }
 
@@ -34,7 +35,7 @@ public class RemotingException extends IOException {
      *
      * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
      */
-    public RemotingException(Throwable cause) {
+    protected RemotingException(Throwable cause) {
         initCause(cause);
     }
 
@@ -44,7 +45,7 @@ public class RemotingException extends IOException {
      * @param msg the detail message
      * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
      */
-    public RemotingException(String msg, Throwable cause) {
+    protected RemotingException(String msg, Throwable cause) {
         super(msg);
         initCause(cause);
     }
