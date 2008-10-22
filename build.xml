@@ -503,189 +503,6 @@
         </path>
     </target>
 
-    <!-- http module -->
-
-    <target name="http.compile.depcheck">
-        <mkdir dir="http/target/main"/>
-        <uptodate property="http.compile.uptodate" targetfile="http/target/main/.lastcompile">
-            <srcfiles dir="http/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="http.compile" depends="http.compile.depcheck" unless="http.compile.uptodate">
-        <mkdir dir="http/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="http/src/main/java"
-                destdir="http/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="util.classpath"/>
-            </classpath>
-        </javac>
-        <touch file="http/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="http.clean">
-        <delete dir="http/target"/>
-    </target>
-
-    <target name="http" description="Build the http module" depends="api,util,http.compile">
-        <path id="http.classpath">
-            <pathelement location="http/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- http-se6 module -->
-
-    <target name="http-se6.httpserver.builtin-check">
-        <condition property="http-se6.httpserver.builtin">
-            <available classname="com.sun.http.HttpServer"/>
-        </condition>
-    </target>
-
-    <target name="http-se6.httpserver.classpath.false" depends="http-se6.httpserver.builtin-check" unless="http-se6.httpserver.builtin">
-        <path id="httpserver.classpath">
-            <pathelement location="${lib.sun-httpserver.local}"/>
-        </path>
-    </target>
-
-    <target name="http-se6.httpserver.classpath.true" depends="http-se6.httpserver.builtin-check" if="http-se6.httpserver.builtin">
-        <path id="httpserver.classpath"/>
-    </target>
-
-    <target name="http-se6.httpserver.classpath" depends="http-se6.httpserver.classpath.false,http-se6.httpserver.classpath.true"/>
-
-    <target name="http-se6.compile.depcheck">
-        <mkdir dir="http-se6/target/main"/>
-        <uptodate property="http-se6.compile.uptodate" targetfile="http-se6/target/main/.lastcompile">
-            <srcfiles dir="http-se6/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="http-se6.compile" depends="http-se6.compile.depcheck,http-se6.httpserver.classpath" unless="http-se6.compile.uptodate">
-        <mkdir dir="http-se6/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="http-se6/src/main/java"
-                destdir="http-se6/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="http.classpath"/>
-                <path refid="util.classpath"/>
-                <path refid="httpserver.classpath"/>
-            </classpath>
-        </javac>
-        <touch file="http-se6/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="http-se6.clean">
-        <delete dir="http-se6/target"/>
-    </target>
-
-    <target name="http-se6" description="Build the http-se6 module" depends="lib.sun-httpserver,api,http,util,http-se6.compile">
-        <path id="http-se6.classpath">
-            <pathelement location="http-se6/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- http-servlet module -->
-
-    <target name="http-servlet.compile.depcheck">
-        <mkdir dir="http-servlet/target/main"/>
-        <uptodate property="http-servlet.compile.uptodate" targetfile="http-servlet/target/main/.lastcompile">
-            <srcfiles dir="http-servlet/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="http-servlet.compile" depends="http-servlet.compile.depcheck" unless="http-servlet.compile.uptodate">
-        <mkdir dir="http-servlet/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="http-servlet/src/main/java"
-                destdir="http-servlet/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="http.classpath"/>
-                <path refid="util.classpath"/>
-                <pathelement location="${lib.servlet.local}"/>
-            </classpath>
-        </javac>
-        <touch file="http-servlet/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="http-servlet.clean">
-        <delete dir="http-servlet/target"/>
-    </target>
-
-    <target name="http-servlet" description="Build the http-servlet module" depends="api,http,util,lib.servlet,http-servlet.compile">
-        <path id="http-servlet.classpath">
-            <pathelement location="http-servlet/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- http-urlconnection module -->
-
-    <target name="http-urlconnection.compile.depcheck">
-        <mkdir dir="http-urlconnection/target/main"/>
-        <uptodate property="http-urlconnection.compile.uptodate" targetfile="http-urlconnection/target/main/.lastcompile">
-            <srcfiles dir="http-urlconnection/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="http-urlconnection.compile" depends="http-urlconnection.compile.depcheck" unless="http-urlconnection.compile.uptodate">
-        <mkdir dir="http-urlconnection/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="http-urlconnection/src/main/java"
-                destdir="http-urlconnection/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="http.classpath"/>
-                <path refid="util.classpath"/>
-            </classpath>
-        </javac>
-        <touch file="http-urlconnection/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="http-urlconnection.clean">
-        <delete dir="http-urlconnection/target"/>
-    </target>
-
-    <target name="http-urlconnection" description="Build the http-urlconnection module" depends="api,http,util,http-urlconnection.compile">
-        <path id="http-urlconnection.classpath">
-            <pathelement location="http-urlconnection/target/main/classes"/>
-        </path>
-    </target>
-
     <!-- mc-deployers module -->
 
     <target name="mc-deployers.compile.depcheck">
@@ -996,7 +813,6 @@
         </path>
     </target>
 
-
     <!-- samples module -->
 
     <target name="samples.compile.depcheck">
@@ -1021,7 +837,6 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
-                <path refid="srp.classpath"/>
                 <path refid="standalone.classpath"/>
                 <path refid="util.classpath"/>
                 <pathelement location="${lib.xnio-api.local}"/>
@@ -1034,85 +849,9 @@
         <delete dir="samples/target"/>
     </target>
 
-    <target name="samples" description="Build the samples module" depends="api,srp,standalone,util,samples.compile">
+    <target name="samples" description="Build the samples module" depends="api,standalone,util,samples.compile">
         <path id="samples.classpath">
             <pathelement location="samples/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- sasl-null module -->
-
-    <target name="sasl-null.compile.depcheck">
-        <mkdir dir="sasl-null/target/main"/>
-        <uptodate property="sasl-null.compile.uptodate" targetfile="sasl-null/target/main/.lastcompile">
-            <srcfiles dir="sasl-null/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="sasl-null.compile" depends="sasl-null.compile.depcheck" unless="sasl-null.compile.uptodate">
-        <mkdir dir="sasl-null/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="sasl-null/src/main/java"
-                destdir="sasl-null/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-        </javac>
-        <touch file="sasl-null/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="sasl-null.clean">
-        <delete dir="sasl-null/target"/>
-    </target>
-
-    <target name="sasl-null" description="Build the sasl-null module" depends="sasl-null.compile">
-        <path id="sasl-null.classpath">
-            <pathelement location="sasl-null/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- srp module -->
-
-    <target name="srp.compile.depcheck">
-        <mkdir dir="srp/target/main"/>
-        <uptodate property="srp.compile.uptodate" targetfile="srp/target/main/.lastcompile">
-            <srcfiles dir="srp/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="srp.compile" depends="srp.compile.depcheck" unless="srp.compile.uptodate">
-        <mkdir dir="srp/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="srp/src/main/java"
-                destdir="srp/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="util.classpath"/>
-                <pathelement location="${lib.xnio-api.local}"/>
-            </classpath>
-        </javac>
-        <touch file="srp/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="srp.clean">
-        <delete dir="srp/target"/>
-    </target>
-
-    <target name="srp" description="Build the SRP SASL module" depends="util,srp.compile">
-        <path id="srp.classpath">
-            <pathelement location="srp/target/main/classes"/>
         </path>
     </target>
 
@@ -1198,55 +937,12 @@
         </path>
     </target>
 
-    <!-- tools module -->
+    <!-- transporter module -->
 
-    <target name="tools.compile.depcheck">
-        <mkdir dir="tools/target/main"/>
-        <uptodate property="tools.compile.uptodate" targetfile="tools/target/main/.lastcompile">
-            <srcfiles dir="tools/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-        <condition property="tools.supported">
-            <available classname="java.io.Console"/>
-        </condition>
-    </target>
-
-    <target name="tools.compile" depends="tools.compile.depcheck" unless="tools.compile.uptodate" if="tools.supported">
-        <mkdir dir="tools/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="tools/src/main/java"
-                destdir="tools/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="srp.classpath"/>
-                <path refid="util.classpath"/>
-            </classpath>
-        </javac>
-        <touch file="tools/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="tools.clean">
-        <delete dir="tools/target"/>
-    </target>
-
-    <target name="tools" description="Build the tools module" depends="srp,util,tools.compile">
-        <path id="tools.classpath">
-            <pathelement location="tools/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- transaction module -->
-
-    <target name="transaction.compile.depcheck">
-        <mkdir dir="transaction/target/main"/>
-        <uptodate property="transaction.compile.uptodate" targetfile="transaction/target/main/.lastcompile">
-            <srcfiles dir="transaction/src/main/java">
+    <target name="transporter.compile.depcheck">
+        <mkdir dir="transporter/target/main"/>
+        <uptodate property="transporter.compile.uptodate" targetfile="transporter/target/main/.lastcompile">
+            <srcfiles dir="transporter/src/main/java">
                 <include name="**/"/>
                 <include name="**/*.java"/>
                 <exclude name="**/.*"/>
@@ -1254,29 +950,30 @@
         </uptodate>
     </target>
 
-    <target name="transaction.compile" depends="transaction.compile.depcheck" unless="transaction.compile.uptodate">
-        <mkdir dir="transaction/target/main/classes"/>
+    <target name="transporter.compile" depends="transporter.compile.depcheck" unless="transporter.compile.uptodate">
+        <mkdir dir="transporter/target/main/classes"/>
         <javac
                 source="${javac.source}"
                 target="${javac.target}"
-                srcdir="transaction/src/main/java"
-                destdir="transaction/target/main/classes"
+                srcdir="transporter/src/main/java"
+                destdir="transporter/target/main/classes"
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
+                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
-        <touch file="transaction/target/main/.lastcompile" verbose="false"/>
+        <touch file="transporter/target/main/.lastcompile" verbose="false"/>
     </target>
 
-    <target name="transaction.clean">
-        <delete dir="transaction/target"/>
+    <target name="transporter.clean">
+        <delete dir="transporter/target"/>
     </target>
 
-    <target name="transaction" description="Build the transaction module" depends="api,transaction.compile">
-        <path id="transaction.classpath">
-            <pathelement location="transaction/target/main/classes"/>
+    <target name="transporter" description="Build the transporter module" depends="api,lib.xnio-api,transporter.compile">
+        <path id="transporter.classpath">
+            <pathelement location="transporter/target/main/classes"/>
         </path>
     </target>
 
@@ -1361,7 +1058,7 @@
     <!-- JARS - Keep in alpha order by jar name         -->
     <!-- ============================================== -->
 
-    <target name="api-jar" description="Build the API JAR" depends="api,util,version">
+    <target name="api-jar" description="Build the API JAR" depends="api,transporter,util,version">
         <delete file="jboss-remoting-api.jar"/>
         <jar jarfile="jboss-remoting-api.jar">
             <manifest>
@@ -1376,6 +1073,9 @@
                 <attribute name="Implementation-Vendor-Id" value="http://www.jboss.org"/>
             </manifest>
             <zipfileset dir="api/target/main/classes">
+                <include name="**/*.class"/>
+            </zipfileset>
+            <zipfileset dir="transporter/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
             <zipfileset dir="util/target/main/classes">
@@ -1407,7 +1107,7 @@
         </jar>
     </target>
 
-    <target name="standalone-jar" description="Build the standalone JAR" depends="api,core,srp,standalone,util,version">
+    <target name="standalone-jar" description="Build the standalone JAR" depends="api,core,standalone,util,version">
         <delete file="jboss-remoting-standalone.jar"/>
         <jar jarfile="jboss-remoting-standalone.jar">
             <manifest>
@@ -1450,6 +1150,7 @@
             <doclet name="${lib.apiviz.doclet}" path="${lib.apiviz.local}"/>
             <packageset dir="api/src/main/java"/>
             <packageset dir="standalone/src/main/java"/>
+            <packageset dir="transporter/src/main/java"/>
             <packageset dir="util/src/main/java"/>
             <doctitle><![CDATA[<h1>JBoss Remoting 3</h1>]]></doctitle>
             <bottom><![CDATA[<i>Copyright &#169; 2008 JBoss, a division of Red Hat, Inc.</i>]]></bottom>
@@ -1460,6 +1161,7 @@
                 <path refid="core.classpath"/>
                 <path refid="api.classpath"/>
                 <path refid="standalone.classpath"/>
+                <path refid="transporter.classpath"/>
                 <path refid="util.classpath"/>
                 <pathelement location="${lib.xnio-api.local}"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
@@ -1472,15 +1174,9 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,protocol.multiplex,samples,standalone,testing-support,tools,util"/>
+    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,protocol.multiplex,samples,standalone,testing-support,transporter,util"/>
 
-    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,standalone.clean,testing-support.clean,tools.clean,util.clean"/>
-
-    <!-- http -->
-
-    <target name="all-http" description="Build all HTTP targets" depends="http,http-se6,http-servlet,http-urlconnection"/>
-
-    <target name="clean-http" description="Clean all HTTP targets" depends="http.clean,http-se6.clean,http-servlet.clean,http-urlconnection.clean"/>
+    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,standalone.clean,testing-support.clean,transporter.clean,util.clean"/>
 
     <!-- JARs: These should be the third-to-last targets in the file -->
 
@@ -1494,7 +1190,7 @@
 
     <target name="all" description="Build everything" depends="all-core,all-jars,api-javadoc"/>
 
-    <target name="clean" description="Clean out all build files" depends="clean-core,clean-http,version.clean,srp.clean"/>
+    <target name="clean" description="Clean out all build files" depends="clean-core,version.clean"/>
 
     <target name="test" description="Run all tests" depends="api.test,core.test,protocol.basic.test,protocol.multiplex.test"/>
 
