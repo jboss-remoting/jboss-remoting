@@ -66,7 +66,7 @@ import java.io.InterruptedIOException;
  *
  * @param <A> stream channel address type (Void if streams are not supported)
  */
-public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChannel> {
+public final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
 
     private static final Logger log = Logger.getLogger(MultiplexHandler.class);
 
@@ -107,7 +107,7 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
 
     private volatile AllocatedMessageChannel channel;
 
-    public MultiplexHandler(final Endpoint endpoint, final RemotingChannelConfiguration configuration) {
+    public MultiplexHandler(final Endpoint endpoint, final MultiplexConfiguration configuration) {
         this.endpoint = endpoint;
         allocator = configuration.getAllocator();
         executor = configuration.getExecutor();

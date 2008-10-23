@@ -32,19 +32,13 @@ import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.AbstractConvertingIoFuture;
 import org.jboss.xnio.IoHandler;
-import org.jboss.xnio.BufferAllocator;
-import org.jboss.xnio.log.Logger;
 import org.jboss.xnio.channels.AllocatedMessageChannel;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.concurrent.Executor;
 
 /**
  *
  */
 public final class MultiplexProtocol {
-
-    private static final Logger log = Logger.getLogger(MultiplexProtocol.class);
 
     private MultiplexProtocol() {
     }
@@ -52,17 +46,12 @@ public final class MultiplexProtocol {
     /**
      * Create a request server for the multiplex protocol.
      *
-     * @return a handler factory for passing to an XNIO server @param executor the executor to use for invocations
-     * @param allocator the buffer allocator to use
+     * @return a handler factory for passing to an XNIO server @param executor the executor to use for invocations @param configuration
      */
-    public static <A> IoHandlerFactory<AllocatedMessageChannel> createServer(final Endpoint endpoint, final Executor executor, final BufferAllocator<ByteBuffer> allocator) {
+    public static IoHandlerFactory<AllocatedMessageChannel> createServer(final Endpoint endpoint, final MultiplexConfiguration configuration) {
         return new IoHandlerFactory<AllocatedMessageChannel>() {
             public IoHandler<? super AllocatedMessageChannel> createHandler() {
-                final RemotingChannelConfiguration configuration = new RemotingChannelConfiguration();
-                configuration.setAllocator(allocator);
-                configuration.setExecutor(executor);
-                // todo marshaller factory... etc
-                return new MultiplexHandler<A>(endpoint, configuration);
+                return new MultiplexHandler(endpoint, configuration);
             }
         };
     }
@@ -71,19 +60,14 @@ public final class MultiplexProtocol {
      * Create a request client for the multiplex protocol.
      *
      * @return a handle which may be used to close the connection
-     * @throws IOException if an error occurs @param executor the executor to use for invocations @param channelSource the XNIO channel source to use to establish the connection
-     * @param allocator the buffer allocator to use
+     * @throws IOException if an error occurs @param executor the executor to use for invocations @param channelSource the XNIO channel source to use to establish the connection @param allocator the buffer allocator to use @param configuration
      */
-    public static <A> IoFuture<SimpleCloseable> connect(final Endpoint endpoint, final Executor executor, final ChannelSource<AllocatedMessageChannel> channelSource, final BufferAllocator<ByteBuffer> allocator) throws IOException {
-        final RemotingChannelConfiguration configuration = new RemotingChannelConfiguration();
-        configuration.setAllocator(allocator);
-        configuration.setExecutor(executor);
-        // todo marshaller factory... etc
-        final MultiplexHandler<A> multiplexHandler = new MultiplexHandler<A>(endpoint, configuration);
+    public static IoFuture<SimpleCloseable> connect(final Endpoint endpoint, final MultiplexConfiguration configuration, final ChannelSource<AllocatedMessageChannel> channelSource) throws IOException {
+        final MultiplexHandler multiplexHandler = new MultiplexHandler(endpoint, configuration);
         final IoFuture<AllocatedMessageChannel> futureChannel = channelSource.open(multiplexHandler);
         return new AbstractConvertingIoFuture<SimpleCloseable, AllocatedMessageChannel>(futureChannel) {
             protected SimpleCloseable convert(final AllocatedMessageChannel channel) throws RemotingException {
-                return new AbstractConnection(executor) {
+                return new AbstractConnection(configuration.getExecutor()) {
                     public Handle<RequestHandlerSource> getServiceForId(final int id) throws IOException {
                         return multiplexHandler.getRemoteService(id).getHandle();
                     }

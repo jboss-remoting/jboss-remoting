@@ -31,14 +31,14 @@ import org.jboss.marshalling.Configuration;
 /**
  *
  */
-public final class RemotingChannelConfiguration {
+public final class MultiplexConfiguration {
     private MarshallerFactory marshallerFactory;
     private Configuration marshallingConfiguration;
     private int linkMetric;
     private Executor executor;
     private BufferAllocator<ByteBuffer> allocator;
 
-    public RemotingChannelConfiguration() {
+    public MultiplexConfiguration() {
     }
 
     public MarshallerFactory getMarshallerFactory() {
