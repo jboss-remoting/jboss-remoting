@@ -1,12 +1,9 @@
 package org.jboss.remoting.samples.simple;
 
 import java.io.IOException;
-import java.security.Security;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.Endpoint;
-import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.Remoting;
-import org.jboss.remoting.core.security.sasl.Provider;
 import org.jboss.xnio.IoUtils;
 
 /**
@@ -14,8 +11,10 @@ import org.jboss.xnio.IoUtils;
  */
 public final class LocalBasicExampleMain {
 
-    public static void main(String[] args) throws IOException, RemoteExecutionException {
-        Security.addProvider(new Provider());
+    private LocalBasicExampleMain() {
+    }
+
+    public static void main(String[] args) throws IOException {
         final StringRot13RequestListener listener = new StringRot13RequestListener();
         final Endpoint endpoint = Remoting.createEndpoint("simple");
         try {

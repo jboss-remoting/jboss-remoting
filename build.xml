@@ -1107,7 +1107,7 @@
         </jar>
     </target>
 
-    <target name="standalone-jar" description="Build the standalone JAR" depends="api,core,standalone,util,version">
+    <target name="standalone-jar" description="Build the standalone JAR" depends="api,core,standalone,transporter,util,version">
         <delete file="jboss-remoting-standalone.jar"/>
         <jar jarfile="jboss-remoting-standalone.jar">
             <manifest>
@@ -1127,10 +1127,10 @@
             <zipfileset dir="core/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
-            <zipfileset dir="srp/target/main/classes">
+            <zipfileset dir="standalone/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
-            <zipfileset dir="standalone/target/main/classes">
+            <zipfileset dir="transporter/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
             <zipfileset dir="util/target/main/classes">

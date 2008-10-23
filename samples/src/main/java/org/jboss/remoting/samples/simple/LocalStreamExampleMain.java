@@ -4,12 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.security.Security;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.Endpoint;
-import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.Remoting;
-import org.jboss.remoting.core.security.sasl.Provider;
 import org.jboss.xnio.IoUtils;
 
 /**
@@ -20,8 +17,7 @@ public final class LocalStreamExampleMain {
     private LocalStreamExampleMain() {
     }
 
-    public static void main(String[] args) throws IOException, RemoteExecutionException {
-        Security.addProvider(new Provider());
+    public static void main(String[] args) throws IOException {
         final StreamingRot13RequestListener listener = new StreamingRot13RequestListener();
         final Endpoint endpoint = Remoting.createEndpoint("simple");
         try {
