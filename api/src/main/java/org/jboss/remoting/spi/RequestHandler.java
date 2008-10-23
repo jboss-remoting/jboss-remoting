@@ -22,10 +22,10 @@
 
 package org.jboss.remoting.spi;
 
+import java.io.IOException;
+import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.HandleableCloseable;
 import org.jboss.remoting.RemotingException;
-import org.jboss.remoting.CloseHandler;
-import java.io.IOException;
 
 /**
  * A request handler, which can be passed to remote endpoints.  Remote systems can then use the handler

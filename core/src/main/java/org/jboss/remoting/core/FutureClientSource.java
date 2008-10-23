@@ -22,12 +22,12 @@
 
 package org.jboss.remoting.core;
 
+import java.io.IOException;
+import org.jboss.remoting.ClientSource;
+import org.jboss.remoting.SimpleCloseable;
 import org.jboss.xnio.AbstractIoFuture;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
-import org.jboss.remoting.ClientSource;
-import org.jboss.remoting.SimpleCloseable;
-import java.io.IOException;
 
 /**
  *

@@ -22,9 +22,9 @@
 
 package org.jboss.remoting.spi;
 
-import org.jboss.remoting.HandleableCloseable;
-import org.jboss.remoting.CloseHandler;
 import java.io.IOException;
+import org.jboss.remoting.CloseHandler;
+import org.jboss.remoting.HandleableCloseable;
 
 /**
  * A handle to a local resource.

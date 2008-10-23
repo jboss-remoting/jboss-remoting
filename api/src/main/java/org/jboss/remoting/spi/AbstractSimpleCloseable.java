@@ -22,8 +22,8 @@
 
 package org.jboss.remoting.spi;
 
-import org.jboss.remoting.SimpleCloseable;
 import java.util.concurrent.Executor;
+import org.jboss.remoting.SimpleCloseable;
 
 /**
  * An abstract simple closeable implementation.

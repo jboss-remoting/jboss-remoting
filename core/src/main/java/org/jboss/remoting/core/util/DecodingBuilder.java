@@ -24,8 +24,8 @@ package org.jboss.remoting.core.util;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.CharsetDecoder;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import static org.jboss.xnio.Buffers.flip;
 

@@ -22,8 +22,8 @@
 
 package org.jboss.remoting.util;
 
-import java.util.concurrent.Executor;
 import java.util.LinkedList;
+import java.util.concurrent.Executor;
 import org.jboss.xnio.log.Logger;
 
 /**

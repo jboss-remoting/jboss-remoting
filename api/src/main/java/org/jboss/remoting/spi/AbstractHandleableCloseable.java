@@ -22,20 +22,19 @@
 
 package org.jboss.remoting.spi;
 
-import org.jboss.remoting.HandleableCloseable;
-import org.jboss.remoting.RemotingException;
-import org.jboss.remoting.CloseHandler;
-import org.jboss.remoting.spi.SpiUtils;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.log.Logger;
+import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.io.IOException;
+import org.jboss.remoting.CloseHandler;
+import org.jboss.remoting.HandleableCloseable;
+import org.jboss.remoting.RemotingException;
+import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 
 /**
  * A basic implementation of a closeable resource.  Use as a convenient base class for your closeable resources.

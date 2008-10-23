@@ -22,16 +22,16 @@
 
 package org.jboss.remoting.core;
 
+import java.io.IOException;
+import java.util.concurrent.Executor;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.IndeterminateOutcomeException;
 import org.jboss.remoting.core.util.QueueExecutor;
-import org.jboss.remoting.spi.RequestHandler;
-import org.jboss.remoting.spi.ReplyHandler;
-import org.jboss.remoting.spi.RemoteRequestContext;
 import org.jboss.remoting.spi.Handle;
+import org.jboss.remoting.spi.RemoteRequestContext;
+import org.jboss.remoting.spi.ReplyHandler;
+import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.xnio.IoFuture;
-import java.util.concurrent.Executor;
-import java.io.IOException;
 
 /**
  *

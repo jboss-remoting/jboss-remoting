@@ -22,9 +22,9 @@
 
 package org.jboss.remoting.core;
 
+import java.util.concurrent.Executor;
 import org.jboss.remoting.ClientContext;
 import org.jboss.remoting.ServiceContext;
-import java.util.concurrent.Executor;
 
 /**
  *

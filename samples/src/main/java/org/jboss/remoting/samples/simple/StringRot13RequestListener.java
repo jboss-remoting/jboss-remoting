@@ -1,9 +1,9 @@
 package org.jboss.remoting.samples.simple;
 
+import java.io.IOException;
 import org.jboss.remoting.AbstractRequestListener;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.RequestContext;
-import java.io.IOException;
 
 /**
  *

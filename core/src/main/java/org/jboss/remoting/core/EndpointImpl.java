@@ -1,37 +1,37 @@
 package org.jboss.remoting.core;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.Set;
-import java.util.Map;
-import java.util.List;
-import java.io.Closeable;
-import java.io.IOException;
-import java.net.URI;
-import org.jboss.remoting.Endpoint;
-import org.jboss.remoting.RequestListener;
-import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.ClientSource;
-import org.jboss.remoting.SimpleCloseable;
+import org.jboss.remoting.CloseHandler;
+import org.jboss.remoting.Endpoint;
+import org.jboss.remoting.RequestListener;
 import org.jboss.remoting.ServiceListener;
-import org.jboss.remoting.util.OrderedExecutorFactory;
+import org.jboss.remoting.SimpleCloseable;
+import org.jboss.remoting.spi.AbstractSimpleCloseable;
+import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.RequestHandlerSource;
-import org.jboss.remoting.spi.Handle;
-import org.jboss.remoting.spi.AbstractSimpleCloseable;
 import org.jboss.remoting.util.CollectionUtil;
 import org.jboss.remoting.util.NamingThreadFactory;
+import org.jboss.remoting.util.OrderedExecutorFactory;
 import org.jboss.remoting.util.ServiceURI;
 import org.jboss.remoting.version.Version;
-import org.jboss.xnio.log.Logger;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.FinishedIoFuture;
 import org.jboss.xnio.FailedIoFuture;
+import org.jboss.xnio.FinishedIoFuture;
+import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 
 /**
  *

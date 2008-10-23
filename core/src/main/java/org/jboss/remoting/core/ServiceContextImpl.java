@@ -22,8 +22,8 @@
 
 package org.jboss.remoting.core;
 
-import org.jboss.remoting.ServiceContext;
 import java.util.concurrent.Executor;
+import org.jboss.remoting.ServiceContext;
 
 /**
  *

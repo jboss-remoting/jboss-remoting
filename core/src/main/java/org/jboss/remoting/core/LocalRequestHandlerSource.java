@@ -22,15 +22,15 @@
 
 package org.jboss.remoting.core;
 
-import org.jboss.remoting.spi.RequestHandlerSource;
-import org.jboss.remoting.spi.RequestHandler;
-import org.jboss.remoting.spi.Handle;
-import org.jboss.remoting.spi.AbstractAutoCloseable;
-import org.jboss.remoting.RequestListener;
-import org.jboss.remoting.CloseHandler;
-import org.jboss.xnio.log.Logger;
-import java.util.concurrent.Executor;
 import java.io.IOException;
+import java.util.concurrent.Executor;
+import org.jboss.remoting.CloseHandler;
+import org.jboss.remoting.RequestListener;
+import org.jboss.remoting.spi.AbstractAutoCloseable;
+import org.jboss.remoting.spi.Handle;
+import org.jboss.remoting.spi.RequestHandler;
+import org.jboss.remoting.spi.RequestHandlerSource;
+import org.jboss.xnio.log.Logger;
 
 /**
  *

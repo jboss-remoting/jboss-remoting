@@ -22,15 +22,15 @@
 
 package org.jboss.remoting.core;
 
-import org.jboss.remoting.ClientSource;
+import java.io.IOException;
 import org.jboss.remoting.Client;
+import org.jboss.remoting.ClientSource;
 import org.jboss.remoting.Endpoint;
+import org.jboss.remoting.spi.AbstractHandleableCloseable;
+import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.RequestHandlerSource;
-import org.jboss.remoting.spi.Handle;
-import org.jboss.remoting.spi.AbstractHandleableCloseable;
 import org.jboss.xnio.IoUtils;
-import java.io.IOException;
 
 /**
  *
