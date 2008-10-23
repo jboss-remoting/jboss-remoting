@@ -26,7 +26,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.io.IOException;
 import org.jboss.remoting.RemotingException;
-import org.jboss.remoting.spi.remote.Handle;
+import org.jboss.remoting.spi.Handle;
 import org.jboss.xnio.log.Logger;
 
 /**

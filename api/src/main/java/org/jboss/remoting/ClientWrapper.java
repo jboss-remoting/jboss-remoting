@@ -1,4 +1,4 @@
-package org.jboss.remoting.spi.wrapper;
+package org.jboss.remoting;
 
 import java.util.concurrent.ConcurrentMap;
 import java.io.IOException;

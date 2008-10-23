@@ -22,8 +22,8 @@
 
 package org.jboss.remoting.core;
 
-import org.jboss.remoting.spi.remote.ReplyHandler;
-import org.jboss.remoting.spi.remote.RemoteRequestContext;
+import org.jboss.remoting.spi.ReplyHandler;
+import org.jboss.remoting.spi.RemoteRequestContext;
 import org.jboss.xnio.AbstractIoFuture;
 import org.jboss.xnio.IoFuture;
 import java.util.concurrent.Executor;

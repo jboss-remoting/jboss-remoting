@@ -20,25 +20,16 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.spi.stream;
-
-import org.jboss.xnio.Connector;
-import org.jboss.xnio.Acceptor;
-import org.jboss.xnio.channels.StreamChannel;
-import org.jboss.xnio.channels.AllocatedMessageChannel;
-import java.io.IOException;
+package org.jboss.remoting.spi;
 
 /**
- * A provider for streams.
- *
- * @param <A> the address type
+ * The context of an outstanding remote request.  This instance should be discarded when a reply (of any sort)
+ * is received for the request.
  */
-public interface StreamProvider<A> {
-    Connector<A, StreamChannel> getStreamChannelConnector();
+public interface RemoteRequestContext {
 
-    Connector<A, AllocatedMessageChannel> getMessageChannelConnector();
-
-    Acceptor<A, StreamChannel> getStreamChannelAcceptor();
-
-    Acceptor<A, AllocatedMessageChannel> getMessageChannelAcceptor();
+    /**
+     * Signal that the request should be cancelled, if possible.
+     */
+    void cancel();
 }

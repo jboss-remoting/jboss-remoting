@@ -24,7 +24,7 @@ package org.jboss.remoting.core;
 
 import org.jboss.marshalling.Externalizer;
 import org.jboss.marshalling.Creator;
-import org.jboss.remoting.spi.remote.RequestHandler;
+import org.jboss.remoting.spi.RequestHandler;
 import java.io.ObjectOutput;
 import java.io.IOException;
 import java.io.ObjectInput;

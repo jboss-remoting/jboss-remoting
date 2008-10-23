@@ -25,7 +25,6 @@ package org.jboss.remoting.protocol.basic;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Configuration;
 import org.jboss.xnio.BufferAllocator;
-import org.jboss.remoting.spi.stream.StreamDetector;
 import java.util.concurrent.Executor;
 import java.nio.ByteBuffer;
 
@@ -38,7 +37,6 @@ public final class BasicConfiguration {
     private int linkMetric;
     private Executor executor;
     private BufferAllocator<ByteBuffer> allocator;
-    private StreamDetector streamDetector;
 
     public MarshallerFactory getMarshallerFactory() {
         return marshallerFactory;
@@ -78,13 +76,5 @@ public final class BasicConfiguration {
 
     public void setAllocator(final BufferAllocator<ByteBuffer> allocator) {
         this.allocator = allocator;
-    }
-
-    public StreamDetector getStreamDetector() {
-        return streamDetector;
-    }
-
-    public void setStreamDetector(final StreamDetector streamDetector) {
-        this.streamDetector = streamDetector;
     }
 }

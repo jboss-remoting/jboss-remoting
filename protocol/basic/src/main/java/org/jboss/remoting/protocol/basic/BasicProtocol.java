@@ -22,9 +22,9 @@
 
 package org.jboss.remoting.protocol.basic;
 
-import org.jboss.remoting.spi.remote.RequestHandler;
-import org.jboss.remoting.spi.remote.ReplyHandler;
-import org.jboss.remoting.spi.remote.Handle;
+import org.jboss.remoting.spi.RequestHandler;
+import org.jboss.remoting.spi.ReplyHandler;
+import org.jboss.remoting.spi.Handle;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.channels.ChannelOutputStream;
 import org.jboss.xnio.channels.ChannelInputStream;

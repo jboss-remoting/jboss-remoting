@@ -28,7 +28,7 @@ import org.jboss.remoting.RequestCancelHandler;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.RemoteReplyException;
 import org.jboss.remoting.IndeterminateOutcomeException;
-import org.jboss.remoting.spi.remote.ReplyHandler;
+import org.jboss.remoting.spi.ReplyHandler;
 import org.jboss.remoting.spi.SpiUtils;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;

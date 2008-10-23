@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Configuration;
-import org.jboss.remoting.spi.stream.StreamDetector;
 
 /**
  *
@@ -38,7 +37,6 @@ public final class RemotingChannelConfiguration {
     private int linkMetric;
     private Executor executor;
     private BufferAllocator<ByteBuffer> allocator;
-    private StreamDetector streamDetector;
 
     public RemotingChannelConfiguration() {
     }
@@ -81,13 +79,5 @@ public final class RemotingChannelConfiguration {
 
     public void setAllocator(final BufferAllocator<ByteBuffer> allocator) {
         this.allocator = allocator;
-    }
-
-    public StreamDetector getStreamDetector() {
-        return streamDetector;
-    }
-
-    public void setStreamDetector(final StreamDetector streamDetector) {
-        this.streamDetector = streamDetector;
     }
 }

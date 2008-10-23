@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.xnio.IoUtils;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.test.support.LoggingHelper;
-import org.jboss.remoting.spi.remote.Handle;
+import org.jboss.remoting.spi.Handle;
 
 /**
  *

@@ -4,9 +4,6 @@
     <capabilities>
         <package name="org.jboss.remoting" version="3.0.0"/>
         <package name="org.jboss.remoting.spi" version="3.0.0"/>
-        <package name="org.jboss.remoting.spi.remote" version="3.0.0"/>
-        <package name="org.jboss.remoting.spi.stream" version="3.0.0"/>
-        <package name="org.jboss.remoting.spi.wrapper" version="3.0.0"/>
         <package name="org.jboss.remoting.stream" version="3.0.0"/>
     </capabilities>
     <requirements>

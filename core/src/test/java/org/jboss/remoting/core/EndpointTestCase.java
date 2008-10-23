@@ -34,8 +34,8 @@ import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.test.support.LoggingHelper;
-import org.jboss.remoting.spi.remote.RequestHandler;
-import org.jboss.remoting.spi.remote.Handle;
+import org.jboss.remoting.spi.RequestHandler;
+import org.jboss.remoting.spi.Handle;
 import org.jboss.xnio.IoUtils;
 
 /**

@@ -1,4 +1,4 @@
-package org.jboss.remoting.spi.wrapper;
+package org.jboss.remoting;
 
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.Client;

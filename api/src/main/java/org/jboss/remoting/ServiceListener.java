@@ -22,7 +22,7 @@
 
 package org.jboss.remoting;
 
-import org.jboss.remoting.spi.remote.RequestHandlerSource;
+import org.jboss.remoting.spi.RequestHandlerSource;
 
 /**
  * A listener for watching service registrations on an endpoint.

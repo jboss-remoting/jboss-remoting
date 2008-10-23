@@ -23,10 +23,10 @@
 package org.jboss.remoting.protocol.basic;
 
 import org.jboss.marshalling.Unmarshaller;
-import org.jboss.remoting.spi.remote.RequestHandler;
-import org.jboss.remoting.spi.remote.Handle;
-import org.jboss.remoting.spi.remote.RemoteRequestContext;
-import org.jboss.remoting.spi.remote.ReplyHandler;
+import org.jboss.remoting.spi.RequestHandler;
+import org.jboss.remoting.spi.Handle;
+import org.jboss.remoting.spi.RemoteRequestContext;
+import org.jboss.remoting.spi.ReplyHandler;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;

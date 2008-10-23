@@ -22,8 +22,8 @@
 
 package org.jboss.remoting.spi;
 
-import org.jboss.remoting.spi.remote.ReplyHandler;
-import org.jboss.remoting.spi.remote.RemoteRequestContext;
+import org.jboss.remoting.spi.ReplyHandler;
+import org.jboss.remoting.spi.RemoteRequestContext;
 import org.jboss.remoting.RequestCancelHandler;
 import org.jboss.remoting.RequestContext;
 import org.jboss.remoting.CloseHandler;

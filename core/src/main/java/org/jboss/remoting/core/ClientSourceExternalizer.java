@@ -27,7 +27,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import org.jboss.marshalling.Creator;
 import org.jboss.marshalling.Externalizer;
-import org.jboss.remoting.spi.remote.RequestHandlerSource;
+import org.jboss.remoting.spi.RequestHandlerSource;
 
 /**
  *

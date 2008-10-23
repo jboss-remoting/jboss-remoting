@@ -25,9 +25,8 @@ package org.jboss.remoting.protocol.multiplex;
 import org.jboss.remoting.RemotingException;
 import org.jboss.remoting.SimpleCloseable;
 import org.jboss.remoting.Endpoint;
-import org.jboss.remoting.spi.remote.RequestHandlerSource;
-import org.jboss.remoting.spi.remote.Handle;
-import org.jboss.remoting.spi.stream.StreamProvider;
+import org.jboss.remoting.spi.RequestHandlerSource;
+import org.jboss.remoting.spi.Handle;
 import org.jboss.xnio.IoHandlerFactory;
 import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.IoFuture;
@@ -53,19 +52,17 @@ public final class MultiplexProtocol {
     /**
      * Create a request server for the multiplex protocol.
      *
-     * @param executor the executor to use for invocations
+     * @return a handler factory for passing to an XNIO server @param executor the executor to use for invocations
      * @param allocator the buffer allocator to use
-     * @return a handler factory for passing to an XNIO server
-     * @param <A> stream channel address type
      */
-    public static <A> IoHandlerFactory<AllocatedMessageChannel> createServer(final Endpoint endpoint, final Executor executor, final BufferAllocator<ByteBuffer> allocator, final StreamProvider<A> streamProvider) {
+    public static <A> IoHandlerFactory<AllocatedMessageChannel> createServer(final Endpoint endpoint, final Executor executor, final BufferAllocator<ByteBuffer> allocator) {
         return new IoHandlerFactory<AllocatedMessageChannel>() {
             public IoHandler<? super AllocatedMessageChannel> createHandler() {
                 final RemotingChannelConfiguration configuration = new RemotingChannelConfiguration();
                 configuration.setAllocator(allocator);
                 configuration.setExecutor(executor);
                 // todo marshaller factory... etc
-                return new MultiplexHandler<A>(endpoint, configuration, streamProvider);
+                return new MultiplexHandler<A>(endpoint, configuration);
             }
         };
     }
@@ -74,17 +71,15 @@ public final class MultiplexProtocol {
      * Create a request client for the multiplex protocol.
      *
      * @return a handle which may be used to close the connection
-     * @throws IOException if an error occurs @param executor the executor to use for invocations
-     * @param channelSource the XNIO channel source to use to establish the connection
+     * @throws IOException if an error occurs @param executor the executor to use for invocations @param channelSource the XNIO channel source to use to establish the connection
      * @param allocator the buffer allocator to use
-     * @param streamProvider
      */
-    public static <A> IoFuture<SimpleCloseable> connect(final Endpoint endpoint, final Executor executor, final ChannelSource<AllocatedMessageChannel> channelSource, final BufferAllocator<ByteBuffer> allocator, final StreamProvider<A> streamProvider) throws IOException {
+    public static <A> IoFuture<SimpleCloseable> connect(final Endpoint endpoint, final Executor executor, final ChannelSource<AllocatedMessageChannel> channelSource, final BufferAllocator<ByteBuffer> allocator) throws IOException {
         final RemotingChannelConfiguration configuration = new RemotingChannelConfiguration();
         configuration.setAllocator(allocator);
         configuration.setExecutor(executor);
         // todo marshaller factory... etc
-        final MultiplexHandler<A> multiplexHandler = new MultiplexHandler<A>(endpoint, configuration, streamProvider);
+        final MultiplexHandler<A> multiplexHandler = new MultiplexHandler<A>(endpoint, configuration);
         final IoFuture<AllocatedMessageChannel> futureChannel = channelSource.open(multiplexHandler);
         return new AbstractConvertingIoFuture<SimpleCloseable, AllocatedMessageChannel>(futureChannel) {
             protected SimpleCloseable convert(final AllocatedMessageChannel channel) throws RemotingException {

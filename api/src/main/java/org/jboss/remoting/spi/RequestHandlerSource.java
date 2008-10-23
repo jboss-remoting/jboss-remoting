@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.spi.remote;
+package org.jboss.remoting.spi;
 
 import org.jboss.remoting.HandleableCloseable;
 import org.jboss.remoting.RemotingException;
@@ -28,46 +28,41 @@ import org.jboss.remoting.CloseHandler;
 import java.io.IOException;
 
 /**
- * A request handler, which can be passed to remote endpoints.  Remote systems can then use the handler
- * to make invocations, or they may forward a handler on to other remote systems.
+ * A request handler source, which can be passed to remote endpoints.  Remote systems can then use the handler source
+ * to acquire request handlers, or they may pass it on to other systems.  Acquiring a request handler using this method
+ * has the advantage that a round trip to the remote side is not necessary; the local side can spawn a request handler
+ * and simply notify the remote side of the change.
  */
-public interface RequestHandler extends HandleableCloseable<RequestHandler> {
+public interface RequestHandlerSource extends HandleableCloseable<RequestHandlerSource> {
 
     /**
-     * Receive a request from a remote system.  This method is intended to be called by protocol handlers.  If the
-     * request cannot be accepted for some reason, the
-     * {@link ReplyHandler#handleException(java.io.IOException)}
-     * method is called immediately.
+     * Create a request handler for the service corresponding to this request handler source.
      *
-     * @param request the request
-     * @param replyHandler a handler for the reply
-     * @return a context which may be used to cancel the request
+     * @return a request handler
+     * @throws RemotingException if a client could not be opened
      */
-    RemoteRequestContext receiveRequest(Object request, ReplyHandler replyHandler);
+    Handle<RequestHandler> createRequestHandler() throws IOException;
 
     /**
-     * Get a handle to this request handler.  The request handler will not auto-close as long as there is at least
-     * one open handle.  If a handle is "leaked", it will be closed
+     * Get a handle to this request handler source.  The request handler source will not auto-close as long as there is at least
+     * one open handle, or request handler.  If a handle is "leaked", it will be closed
      * automatically if/when the garbage collector invokes its {@link Object#finalize()} method, with a log message
      * warning of the leak.
      *
      * @return the handle
-     * @throws IOException if a handle could not be acquired
+     * @throws RemotingException if a handle could not be acquired
      */
-    Handle<RequestHandler> getHandle() throws IOException;
+    Handle<RequestHandlerSource> getHandle() throws IOException;
 
     /**
-     * Close this request handler.  The outcome of any outstanding requests is not defined, though implementations
-     * should make an effort to cancel any outstanding requests.
-     *
-     * @throws RemotingException if the client endpoint could not be closed
+     * Close this request handler source immediately.
      */
     void close() throws IOException;
 
     /**
-     * Add a handler that is called when the request handler is closed.
+     * Add a handler that is called when the request handler source is closed.
      *
      * @param handler the handler to be called
      */
-    void addCloseHandler(final CloseHandler<? super RequestHandler> handler);
+    void addCloseHandler(final CloseHandler<? super RequestHandlerSource> handler);
 }

@@ -22,9 +22,9 @@
 
 package org.jboss.remoting.core;
 
-import org.jboss.remoting.spi.remote.RequestHandlerSource;
-import org.jboss.remoting.spi.remote.RequestHandler;
-import org.jboss.remoting.spi.remote.Handle;
+import org.jboss.remoting.spi.RequestHandlerSource;
+import org.jboss.remoting.spi.RequestHandler;
+import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.AbstractAutoCloseable;
 import org.jboss.remoting.RequestListener;
 import org.jboss.remoting.CloseHandler;

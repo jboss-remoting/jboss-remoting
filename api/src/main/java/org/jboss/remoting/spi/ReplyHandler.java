@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.spi.remote;
+package org.jboss.remoting.spi;
 
 import java.io.IOException;
 

@@ -30,7 +30,7 @@ import org.jboss.marshalling.Unmarshaller;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
-import org.jboss.remoting.spi.remote.ReplyHandler;
+import org.jboss.remoting.spi.ReplyHandler;
 import org.jboss.remoting.spi.SpiUtils;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.ReplyException;

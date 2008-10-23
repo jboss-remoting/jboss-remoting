@@ -23,24 +23,17 @@
 package org.jboss.remoting.protocol.multiplex;
 
 import org.jboss.xnio.channels.AllocatedMessageChannel;
-import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.Connector;
-import org.jboss.xnio.Acceptor;
 import org.jboss.xnio.log.Logger;
-import org.jboss.remoting.spi.remote.RequestHandler;
-import org.jboss.remoting.spi.remote.RequestHandlerSource;
-import org.jboss.remoting.spi.remote.ReplyHandler;
-import org.jboss.remoting.spi.remote.RemoteRequestContext;
-import org.jboss.remoting.spi.remote.Handle;
+import org.jboss.remoting.spi.RequestHandler;
+import org.jboss.remoting.spi.RequestHandlerSource;
+import org.jboss.remoting.spi.ReplyHandler;
+import org.jboss.remoting.spi.RemoteRequestContext;
+import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.SpiUtils;
 import org.jboss.remoting.spi.AbstractAutoCloseable;
-import org.jboss.remoting.spi.stream.StreamDetector;
-import org.jboss.remoting.spi.stream.StreamSerializerFactory;
-import org.jboss.remoting.spi.stream.StreamProvider;
 import static org.jboss.remoting.util.CollectionUtil.concurrentIntegerMap;
 import org.jboss.remoting.util.CollectionUtil;
 import org.jboss.remoting.util.ConcurrentIntegerMap;
@@ -84,11 +77,6 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
     private final Executor executor;
     // buffer allocator for outbound message assembly
     private final BufferAllocator<ByteBuffer> allocator;
-    private final StreamDetector streamDetector;
-    private final Connector<A, AllocatedMessageChannel> messageConnector;
-    private final Acceptor<A, AllocatedMessageChannel> messageAcceptor;
-    private final Connector<A, StreamChannel> streamConnector;
-    private final Acceptor<A, StreamChannel> streamAcceptor;
 
     // running on remote node
     private final ConcurrentIntegerMap<ReplyHandler> remoteRequests = concurrentIntegerMap();
@@ -119,18 +107,13 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
 
     private volatile AllocatedMessageChannel channel;
 
-    public MultiplexHandler(final Endpoint endpoint, final RemotingChannelConfiguration configuration, final StreamProvider<A> streamProvider) {
+    public MultiplexHandler(final Endpoint endpoint, final RemotingChannelConfiguration configuration) {
         this.endpoint = endpoint;
-        messageConnector = streamProvider.getMessageChannelConnector();
-        messageAcceptor = streamProvider.getMessageChannelAcceptor();
-        streamConnector = streamProvider.getStreamChannelConnector();
-        streamAcceptor = streamProvider.getStreamChannelAcceptor();
         allocator = configuration.getAllocator();
         executor = configuration.getExecutor();
         marshallerFactory = configuration.getMarshallerFactory();
         marshallingConfiguration = configuration.getMarshallingConfiguration();
         linkMetric = configuration.getLinkMetric();
-        streamDetector = configuration.getStreamDetector();
     }
 
     public void handleOpened(final AllocatedMessageChannel channel) {
@@ -805,13 +788,6 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
                 final RequestHandlerSource requestHandlerSource = (RequestHandlerSource) o;
                 
             } else {
-                final StreamSerializerFactory ssf = streamDetector.detectStream(o);
-                if (ssf != null) {
-                    final IoHandler<? super AllocatedMessageChannel> streamHandler = ssf.getLocalSide(o, new StreamContextImpl(executor, marshallerFactory, marshallingConfiguration));
-                    // todo - this should really be the "server" side
-                    final IoFuture<AllocatedMessageChannel> futureChannel = messageConnector.connectTo(null, streamHandler);
-                    
-                }
             }
             return null;
         }

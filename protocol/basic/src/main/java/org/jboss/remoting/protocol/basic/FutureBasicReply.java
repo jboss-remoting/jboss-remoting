@@ -24,7 +24,7 @@ package org.jboss.remoting.protocol.basic;
 
 import org.jboss.xnio.AbstractIoFuture;
 import org.jboss.xnio.IoFuture;
-import org.jboss.remoting.spi.remote.RemoteRequestContext;
+import org.jboss.remoting.spi.RemoteRequestContext;
 import java.io.IOException;
 
 /**

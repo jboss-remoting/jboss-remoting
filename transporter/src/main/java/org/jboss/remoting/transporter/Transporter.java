@@ -24,8 +24,8 @@ package org.jboss.remoting.transporter;
 
 import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.Client;
-import org.jboss.remoting.spi.remote.RequestHandler;
-import org.jboss.remoting.spi.remote.Handle;
+import org.jboss.remoting.spi.RequestHandler;
+import org.jboss.remoting.spi.Handle;
 import org.jboss.xnio.IoUtils;
 import java.io.IOException;
 import java.lang.reflect.Proxy;
