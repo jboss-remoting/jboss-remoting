@@ -109,7 +109,6 @@ final class IdentityIntMap<T> {
                 values[idx] = value;
                 return;
             }
-            hc++;
         }
     }
 
