@@ -99,21 +99,37 @@ public final class MultiplexConfiguration {
     }
 
     /**
-     * Get the executor to use to execute
-     * @return
+     * Get the executor to use to execute handlers.
+     *
+     * @return the executor
      */
     public Executor getExecutor() {
         return executor;
     }
 
+    /**
+     * Set the executor to use to execute handlers.
+     *
+     * @param executor the executor
+     */
     public void setExecutor(final Executor executor) {
         this.executor = executor;
     }
 
+    /**
+     * Get the buffer allocator to use for outbound messages on this connection.
+     *
+     * @return the allocator
+     */
     public BufferAllocator<ByteBuffer> getAllocator() {
         return allocator;
     }
 
+    /**
+     * Set the buffer allocator to use for outbound messages on this connection.
+     *
+     * @param allocator the allocator
+     */
     public void setAllocator(final BufferAllocator<ByteBuffer> allocator) {
         this.allocator = allocator;
     }
