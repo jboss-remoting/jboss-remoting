@@ -35,7 +35,7 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
      * locally, a {@code ReplyException} is thrown.  In this case the operation is known to have completed without error
      * but the actual detailed reply cannot be known.  In cases where the reply would be ignored anyway, this exception
      * type may be safely ignored (possibly logging it for informational purposes).  This exception is typically caused
-     * by an {@code ObjectStreamException} thrown while marshalling the reply, though other causes are also possible.
+     * by an {@code ObjectStreamException} thrown while unmarshalling the reply, though other causes are also possible.
      * <p/>
      * If the result of the operation is known to be impossible to ascertain, then an {@code IndeterminateOutcomeException}
      * is thrown.  Possible causes of this condition include (but are not limited to) the connection to the remote side
