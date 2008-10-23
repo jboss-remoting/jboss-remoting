@@ -29,7 +29,7 @@ import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Configuration;
 
 /**
- *
+ * A configuration object for the multiplex protocol.
  */
 public final class MultiplexConfiguration {
     private MarshallerFactory marshallerFactory;
@@ -38,33 +38,70 @@ public final class MultiplexConfiguration {
     private Executor executor;
     private BufferAllocator<ByteBuffer> allocator;
 
+    /**
+     * Construct a new instance.
+     */
     public MultiplexConfiguration() {
     }
 
+    /**
+     * Get the marshaller factory to use for messages transmitted and received by this multiplex connection.
+     *
+     * @return the marshaller factory
+     */
     public MarshallerFactory getMarshallerFactory() {
         return marshallerFactory;
     }
 
+    /**
+     * Set the marshaller factory to use for messages transmitted and received by this multiplex connection.
+     *
+     * @param marshallerFactory the marshaller factory
+     */
     public void setMarshallerFactory(final MarshallerFactory marshallerFactory) {
         this.marshallerFactory = marshallerFactory;
     }
 
+    /**
+     * Get the marshaller configuration to pass into the marshaller factory.
+     *
+     * @return the configuration
+     */
     public Configuration getMarshallingConfiguration() {
         return marshallingConfiguration;
     }
 
+    /**
+     * Set the marshaller configuration to pass into the marshaller factory.
+     *
+     * @param marshallingConfiguration the configuration
+     */
     public void setMarshallingConfiguration(final Configuration marshallingConfiguration) {
         this.marshallingConfiguration = marshallingConfiguration;
     }
 
+    /**
+     * Get the link metric to assign to this multiplex connection.
+     *
+     * @return the link metric
+     */
     public int getLinkMetric() {
         return linkMetric;
     }
 
+    /**
+     * Set the link metric to assign to this multiplex connection.
+     *
+     * @param linkMetric the link metric
+     */
     public void setLinkMetric(final int linkMetric) {
         this.linkMetric = linkMetric;
     }
 
+    /**
+     * Get the executor to use to execute
+     * @return
+     */
     public Executor getExecutor() {
         return executor;
     }

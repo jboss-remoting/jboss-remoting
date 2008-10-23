@@ -27,6 +27,6 @@ import org.jboss.xnio.channels.WritableMessageChannel;
 /**
  *
  */
-public interface WriteHandler {
+interface WriteHandler {
     boolean handleWrite(WritableMessageChannel channel);
 }

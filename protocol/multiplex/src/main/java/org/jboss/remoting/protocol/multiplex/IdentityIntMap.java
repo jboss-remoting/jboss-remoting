@@ -27,7 +27,7 @@ import java.util.Arrays;
 /**
  *
  */
-public final class IdentityIntMap<T> {
+final class IdentityIntMap<T> {
 
     private int[] values;
     private Object[] keys;

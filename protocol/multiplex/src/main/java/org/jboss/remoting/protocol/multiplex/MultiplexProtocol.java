@@ -27,6 +27,7 @@ import org.jboss.remoting.SimpleCloseable;
 import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.spi.RequestHandlerSource;
 import org.jboss.remoting.spi.Handle;
+import org.jboss.remoting.spi.AbstractSimpleCloseable;
 import org.jboss.xnio.IoHandlerFactory;
 import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.IoFuture;
@@ -34,6 +35,7 @@ import org.jboss.xnio.AbstractConvertingIoFuture;
 import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.channels.AllocatedMessageChannel;
 import java.io.IOException;
+import java.util.concurrent.Executor;
 
 /**
  *
@@ -74,5 +76,16 @@ public final class MultiplexProtocol {
                 };
             }
         };
+    }
+
+    private abstract static class AbstractConnection extends AbstractSimpleCloseable {
+
+        protected AbstractConnection(final Executor executor) {
+            super(executor);
+        }
+
+        public String toString() {
+            return "connection <" + Integer.toString(hashCode()) + ">";
+        }
     }
 }

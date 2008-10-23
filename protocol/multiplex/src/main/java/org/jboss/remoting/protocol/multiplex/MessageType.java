@@ -25,7 +25,7 @@ package org.jboss.remoting.protocol.multiplex;
 /**
  * The type of a protocol message.
  */
-public enum MessageType {
+enum MessageType {
 
     // One-way request, no return value may be sent
     // Two-way request, return value is expected

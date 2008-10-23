@@ -32,7 +32,7 @@ import org.jboss.xnio.channels.WritableMessageChannel;
 /**
  *
  */
-public final class SimpleWriteHandler implements WriteHandler {
+final class SimpleWriteHandler implements WriteHandler {
     private static final Logger log = Logger.getLogger(SimpleWriteHandler.class);
 
     private final BufferAllocator<ByteBuffer> allocator;

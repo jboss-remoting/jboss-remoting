@@ -63,10 +63,8 @@ import java.io.InterruptedIOException;
 
 /**
  * Protocol handler for the basic message-oriented Remoting protocol.
- *
- * @param <A> stream channel address type (Void if streams are not supported)
  */
-public final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
+final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
 
     private static final Logger log = Logger.getLogger(MultiplexHandler.class);
 
