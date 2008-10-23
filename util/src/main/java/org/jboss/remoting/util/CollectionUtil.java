@@ -3,7 +3,6 @@ package org.jboss.remoting.util;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Enumeration;
@@ -345,78 +344,6 @@ public final class CollectionUtil {
     }
 
     /**
-     * Run a translation function for each element of an {@code Enumeration}.
-     *
-     * @param input the input data
-     * @param translator the translator
-     * @return the translated data
-     */
-    public static <I,O> Enumeration<O> translate(final Enumeration<I> input, final Translator<I, O> translator) {
-        return new Enumeration<O>() {
-            public boolean hasMoreElements() {
-                return input.hasMoreElements();
-            }
-
-            public O nextElement() {
-                return translator.translate(input.nextElement());
-            }
-        };
-    }
-
-    /**
-     * Run a translation function for each element of an {@code Iterator}.
-     *
-     * @param input the input data
-     * @param translator the translator
-     * @return the translated data
-     */
-    public static <I,O> Iterator<O> translate(final Iterator<I> input, final Translator<I, O> translator) {
-        return new Iterator<O>() {
-            public boolean hasNext() {
-                return input.hasNext();
-            }
-
-            public O next() {
-                return translator.translate(input.next());
-            }
-
-            public void remove() {
-                input.remove();
-            }
-        };
-    }
-
-    /**
-     * Run a translation function for each element of an {@code Iterable}.
-     *
-     * @param input the input data
-     * @param translator the translator
-     * @return the translated data
-     */
-    public static <I,O> Iterable<O> translate(final Iterable<I> input, final Translator<I, O> translator) {
-        return new Iterable<O>() {
-            public Iterator<O> iterator() {
-                return translate(input.iterator(), translator);
-            }
-        };
-    }
-
-    /**
-     * Run a translation function for each element of a {@code List}, returning an {@code ArrayList}.
-     *
-     * @param input the input list
-     * @param translator the translator
-     * @return the translated data
-     */
-    public static <I,O> ArrayList<O> translate(final List<I> input, final Translator<I, O> translator) {
-        final ArrayList<O> output = new ArrayList<O>(input.size());
-        for (I item : input) {
-            output.add(translator.translate(item));
-        }
-        return output;
-    }
-
-    /**
      * Create an iterable view of a string split by a given delimiter.
      *
      * @param delimiter the delimiter
@@ -554,71 +481,6 @@ public final class CollectionUtil {
             }
         }
         return true;
-    }
-
-    public static AttributeMap emptyAttributeMap() {
-        return EMPTY_ATTRIBUTE_MAP;
-    }
-
-    private static final AttributeMap EMPTY_ATTRIBUTE_MAP = new EmptyAttributeMap();
-
-    private static final class EmptyAttributeMap implements AttributeMap {
-
-        public <T> T get(final AttributeKey<T> key) {
-            return null;
-        }
-
-        public <T> T put(final AttributeKey<T> key, final T value) {
-            throw new UnsupportedOperationException("put()");
-        }
-
-        public <T> T remove(final AttributeKey<T> key) {
-            return null;
-        }
-
-        public <T> boolean remove(final AttributeKey<T> key, final T value) {
-            return false;
-        }
-
-        public <T> T putIfAbsent(final AttributeKey<T> key, final T value) {
-            throw new UnsupportedOperationException("putIfAbsent()");
-        }
-
-        public <T> boolean replace(final AttributeKey<T> key, final T oldValue, final T newValue) {
-            return false;
-        }
-
-        public <T> boolean containsKey(final AttributeKey<T> key) {
-            return false;
-        }
-
-        public <T> boolean containsValue(final T value) {
-            return false;
-        }
-
-        public Iterable<Entry<?>> entries() {
-            return emptyIterable();
-        }
-
-        public Set<AttributeKey<?>> keySet() {
-            return Collections.emptySet();
-        }
-
-        public Collection<?> values() {
-            return Collections.emptySet();
-        }
-
-        public boolean isEmpty() {
-            return true;
-        }
-
-        public int size() {
-            return 0;
-        }
-
-        public void clear() {
-            // might as well let it succeed
-        }
     }
 
     /**
@@ -852,5 +714,18 @@ public final class CollectionUtil {
      */
     public static <T> Iterable<T> combine(final Iterable<? extends T> first, final Iterable<? extends T> second, final Iterable<? extends T> third, final Iterable<? extends T> fourth) {
         return combine(combine(first, second), combine(third, fourth));
+    }
+
+    private static final class DelegateIterable<T> implements Iterable<T> {
+
+        private final Iterable<T> delegate;
+
+        public DelegateIterable(final Iterable<T> delegate) {
+            this.delegate = delegate;
+        }
+
+        public Iterator<T> iterator() {
+            return delegate.iterator();
+        }
     }
 }

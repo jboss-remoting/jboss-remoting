@@ -26,7 +26,6 @@ public class RemotingMetaData implements BeanMetaDataFactory, Serializable {
     private static final long serialVersionUID = 1L;
 
     private List<EndpointMetaData> endpoints;
-    private List<SessionMetaData> sessions;
 
     /**
      * Get the list of nested endpoints as metadata.
@@ -48,25 +47,6 @@ public class RemotingMetaData implements BeanMetaDataFactory, Serializable {
     }
 
     /**
-     * Get the list of nested sessions as metadata.
-     *
-     * @return the session metadata list
-     */
-    public List<SessionMetaData> getSessions() {
-        return sessions;
-    }
-
-    /**
-     * Set the list of nested sessions as metadata.
-     *
-     * @param sessions the session metadata list
-     */
-    @XmlElement(name = "session")
-    public void setSessions(final List<SessionMetaData> sessions) {
-        this.sessions = sessions;
-    }
-
-    /**
      * Create a duplicate of this object.
      *
      * @return a duplicate of this object
@@ -76,9 +56,6 @@ public class RemotingMetaData implements BeanMetaDataFactory, Serializable {
         metaData.endpoints = new ArrayList<EndpointMetaData>();
         for (EndpointMetaData endpointMetaData : endpoints) {
             metaData.endpoints.add(endpointMetaData.clone());
-        }
-        for (SessionMetaData sessionMetaData : sessions) {
-            metaData.sessions.add(sessionMetaData.clone());
         }
         return metaData;
     }
@@ -93,9 +70,6 @@ public class RemotingMetaData implements BeanMetaDataFactory, Serializable {
         final List<BeanMetaData> metaDataList = CollectionUtil.arrayList();
         for (EndpointMetaData endpointMetaData : endpoints) {
             metaDataList.addAll(endpointMetaData.getBeans());
-        }
-        for (SessionMetaData sessionMetaData : sessions) {
-            metaDataList.addAll(sessionMetaData.getBeans());
         }
         return Collections.unmodifiableList(metaDataList);
     }
