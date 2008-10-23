@@ -85,19 +85,6 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
     IoFuture<O> send(I request) throws IOException;
 
     /**
-     * Send a request asynchronously, ignoring the reply.
-     * </p>
-     * Uses the default invocation policy for handling remote invocations. If the remote side manipulates a stream, it
-     * MAY fail with an exception (e.g. if this method is called on a client with no threads to handle streaming).
-     * <p/>
-     * Returns immediately.
-     *
-     * @param request the request to send
-     * @throws IOException if the request could not be sent
-     */
-    void sendOneWay(I request) throws IOException;
-
-    /**
      * Get the attribute map.  This map holds metadata about the current clinet.
      *
      * @return the attribute map

@@ -87,13 +87,6 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         return futureReply;
     }
 
-    public void sendOneWay(final I request) throws IOException {
-        if (! isOpen()) {
-            throw new IOException("Client is not open");
-        }
-        handle.getResource().receiveRequest(request);
-    }
-
     public String toString() {
         return "client instance <" + Integer.toString(hashCode()) + ">";
     }

@@ -49,8 +49,6 @@ import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.SimpleCloseable;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.IndeterminateOutcomeException;
-import org.jboss.remoting.ReplyException;
-import org.jboss.remoting.RemoteReplyException;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.ByteOutput;
@@ -169,40 +167,6 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
             }
             log.trace("Received message %s, type %s", buffer, msgType);
             switch (msgType) {
-                case REQUEST_ONEWAY: {
-                    final int clientId = buffer.getInt();
-                    final Handle<RequestHandler> handle = forwardedClients.get(clientId);
-                    if (handle == null) {
-                        log.trace("Request on invalid client ID %d", Integer.valueOf(clientId));
-                        return;
-                    }
-                    final Object payload;
-                    try {
-                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
-                        try {
-                            unmarshaller.start(Marshalling.createByteInput(buffer));
-                            try {
-                                payload = unmarshaller.readObject();
-                                unmarshaller.finish();
-                            } catch (ClassNotFoundException e) {
-                                log.trace("Class not found in one-way request for client ID %d", Integer.valueOf(clientId));
-                                break;
-                            }
-                        } finally {
-                            IoUtils.safeClose(unmarshaller);
-                        }
-                    } catch (IOException ex) {
-                        log.error(ex, "Failed to unmarshal a one-way request");
-                        break;
-                    }
-                    final RequestHandler requestHandler = handle.getResource();
-                    try {
-                        requestHandler.receiveRequest(payload);
-                    } catch (Throwable t) {
-                        log.error(t, "One-way request handler unexpectedly threw an exception");
-                    }
-                    break;
-                }
                 case REQUEST: {
                     final int clientId = buffer.getInt();
                     final Handle<RequestHandler> handle = forwardedClients.get(clientId);
@@ -628,40 +592,6 @@ public final class MultiplexHandler<A> implements IoHandler<AllocatedMessageChan
                     }
                 }
             });
-        }
-
-        public void receiveRequest(final Object request) {
-            log.trace("Sending outbound one-way request of type %s", request == null ? "null" : request.getClass());
-            try {
-                final List<ByteBuffer> bufferList;
-                final Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
-                try {
-                    bufferList = new ArrayList<ByteBuffer>();
-                    final ByteOutput output = createByteOutput(allocator, bufferList);
-                    try {
-                        marshaller.write(MessageType.REQUEST_ONEWAY.getId());
-                        marshaller.writeInt(identifier);
-                        marshaller.writeObject(request);
-                        marshaller.close();
-                        output.close();
-                    } finally {
-                        IoUtils.safeClose(output);
-                    }
-                } finally {
-                    IoUtils.safeClose(marshaller);
-                }
-                try {
-                    registerWriter(channel, new SimpleWriteHandler(allocator, bufferList));
-                } catch (InterruptedException e) {
-                    log.trace(e, "receiveRequest was interrupted");
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-            } catch (Throwable t) {
-                // ignore
-                log.trace(t, "receiveRequest failed with an exception");
-                return;
-            }
         }
 
         public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler handler) {

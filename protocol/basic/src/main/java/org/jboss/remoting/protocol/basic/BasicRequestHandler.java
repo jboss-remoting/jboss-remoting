@@ -59,20 +59,6 @@ final class BasicRequestHandler extends AbstractAutoCloseable<RequestHandler> im
         requestSequence = new AtomicInteger();
     }
 
-    public void receiveRequest(final Object request) {
-        reqLock.lock();
-        try {
-            marshaller.write(1);
-            marshaller.writeObject(request);
-            marshaller.flush();
-        } catch (IOException e) {
-            log.error(e, "Error receiving request");
-            IoUtils.safeClose(this);
-        } finally {
-            reqLock.unlock();
-        }
-    }
-
     public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler replyHandler) {
         reqLock.lock();
         try {

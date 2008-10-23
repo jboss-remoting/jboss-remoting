@@ -64,12 +64,6 @@ final class BasicServerRequestConsumer implements Runnable {
                         // done.
                         return;
                     }
-                    case 1: {
-                        // one-way request
-                        final Object request = unmarshaller.readObject();
-                        requestHandler.receiveRequest(request);
-                        break;
-                    }
                     case 2: {
                         // two-way request
                         final int requestId = requestSequence++;

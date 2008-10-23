@@ -34,14 +34,6 @@ import java.io.IOException;
 public interface RequestHandler extends HandleableCloseable<RequestHandler> {
 
     /**
-     * Receive a one-way request from a remote system.  This method is intended to be called by protocol handlers.  No
-     * reply will be sent back to the client.
-     *
-     * @param request the request
-     */
-    void receiveRequest(Object request);
-
-    /**
      * Receive a request from a remote system.  This method is intended to be called by protocol handlers.  If the
      * request cannot be accepted for some reason, the
      * {@link ReplyHandler#handleException(java.io.IOException)}

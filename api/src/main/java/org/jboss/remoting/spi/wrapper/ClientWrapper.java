@@ -59,13 +59,6 @@ public class ClientWrapper<I, O> implements Client<I, O> {
     /**
      * {@inheritDoc}  This implementation calls the same method on the delegate object.
      */
-    public void sendOneWay(final I request) throws IOException {
-        delegate.sendOneWay(request);
-    }
-
-    /**
-     * {@inheritDoc}  This implementation calls the same method on the delegate object.
-     */
     public ConcurrentMap<Object, Object> getAttributes() {
         return delegate.getAttributes();
     }

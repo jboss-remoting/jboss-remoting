@@ -58,20 +58,6 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
         this(executor, requestListener, new ClientContextImpl(executor));
     }
 
-    public void receiveRequest(final Object request) {
-        final RequestContextImpl<O> context = new RequestContextImpl<O>(clientContext);
-        context.execute(new Runnable() {
-            @SuppressWarnings({ "unchecked" })
-            public void run() {
-                try {
-                    requestListener.handleRequest(context, (I) request);
-                } catch (Throwable t) {
-                    log.error(t, "Unexpected exception in request listener");
-                }
-            }
-        });
-    }
-
     public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler replyHandler) {
         final RequestContextImpl<O> context = new RequestContextImpl<O>(replyHandler, clientContext);
         context.execute(new Runnable() {

@@ -28,7 +28,6 @@ package org.jboss.remoting.protocol.multiplex;
 public enum MessageType {
 
     // One-way request, no return value may be sent
-    REQUEST_ONEWAY(1),
     // Two-way request, return value is expected
     REQUEST(2),
     // Reply
@@ -72,7 +71,6 @@ public enum MessageType {
      */
     public static MessageType getMessageType(final int id) {
         switch (id) {
-            case 1: return REQUEST_ONEWAY;
             case 2: return REQUEST;
             case 3: return REPLY;
             case 4: return CANCEL_REQUEST;
