@@ -60,14 +60,6 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
         executor = new RequestListenerExecutor(clientContext.getExecutor(), this);
     }
 
-    // todo - used by one-way requests... :|
-    RequestContextImpl(final ClientContextImpl clientContext) {
-        this.clientContext = clientContext;
-        //noinspection ThisEscapedInObjectConstruction
-        executor = new RequestListenerExecutor(clientContext.getExecutor(), this);
-        replyHandler = null;
-    }
-
     public ClientContext getContext() {
         return clientContext;
     }
@@ -80,12 +72,12 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
 
     public void sendReply(final O reply) throws IOException, IllegalStateException {
         if (! closed.getAndSet(true)) {
-            if (replyHandler != null) try {
+            try {
                 replyHandler.handleReply(reply);
             } catch (IOException e) {
                 SpiUtils.safeHandleException(replyHandler, new RemoteReplyException("Remote reply failed", e));
                 throw e;
-            } else throw new IllegalStateException("Cannot send a reply to a one-way invocation");
+            }
         } else {
             throw new IllegalStateException("Reply already sent");
         }
@@ -93,9 +85,7 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
 
     public void sendFailure(final String msg, final Throwable cause) throws IOException, IllegalStateException {
         if (! closed.getAndSet(true)) {
-            if (replyHandler != null) {
-                replyHandler.handleException(new RemoteExecutionException(msg, cause));
-            } else throw new IllegalStateException("Cannot send a reply to a one-way invocation");
+            replyHandler.handleException(new RemoteExecutionException(msg, cause));
         } else {
             throw new IllegalStateException("Reply already sent");
         }
@@ -103,12 +93,12 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
 
     public void sendCancelled() throws IOException, IllegalStateException {
         if (! closed.getAndSet(true)) {
-            if (replyHandler != null) try {
+            try {
                 replyHandler.handleCancellation();
             } catch (IOException e) {
                 // this is highly unlikely to succeed
                 SpiUtils.safeHandleException(replyHandler, new RemoteReplyException("Remote cancellation acknowledgement failed", e));
-            } else throw new IllegalStateException("Cannot send a reply to a one-way invocation");
+            }
         } else {
             throw new IllegalStateException("Reply already sent");
         }
