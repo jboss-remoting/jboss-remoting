@@ -28,7 +28,7 @@ import org.jboss.remoting.spi.Handle;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.channels.ChannelOutputStream;
 import org.jboss.xnio.channels.ChannelInputStream;
-import org.jboss.marshalling.Configuration;
+import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.Marshaller;
@@ -52,7 +52,7 @@ public final class BasicProtocol {
 
     public static final void createServer(final Handle<RequestHandler> requestHandlerHandle, final StreamChannel streamChannel, final BasicConfiguration configuration) throws IOException {
         final RequestHandler requestHandler = requestHandlerHandle.getResource();
-        final Configuration marshallerConfiguration = configuration.getMarshallingConfiguration();
+        final MarshallingConfiguration marshallerConfiguration = configuration.getMarshallingConfiguration();
         final MarshallerFactory marshallerFactory = configuration.getMarshallerFactory();
         final Marshaller marshaller = marshallerFactory.createMarshaller(marshallerConfiguration);
         final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallerConfiguration);
@@ -60,12 +60,14 @@ public final class BasicProtocol {
         marshaller.start(Marshalling.createByteOutput(new ChannelOutputStream(streamChannel)));
         unmarshaller.start(Marshalling.createByteInput(new ChannelInputStream(streamChannel)));
         final BlockingQueue<FutureBasicReply> replyQueue = new LinkedBlockingQueue<FutureBasicReply>();
+        // todo - handle rejected execution...
         executor.execute(new BasicServerReplyTransmitter(replyQueue, marshaller, streamChannel, requestHandlerHandle));
+        // todo - handle rejected execution...
         executor.execute(new BasicServerRequestConsumer(unmarshaller, requestHandler, replyQueue, streamChannel, requestHandlerHandle));
     }
 
     public static final Handle<RequestHandler> createClient(final StreamChannel streamChannel, final BasicConfiguration configuration) throws IOException {
-        final Configuration marshallerConfiguration = configuration.getMarshallingConfiguration();
+        final MarshallingConfiguration marshallerConfiguration = configuration.getMarshallingConfiguration();
         final MarshallerFactory marshallerFactory = configuration.getMarshallerFactory();
         final Marshaller marshaller = marshallerFactory.createMarshaller(marshallerConfiguration);
         final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallerConfiguration);
@@ -74,6 +76,7 @@ public final class BasicProtocol {
         unmarshaller.start(Marshalling.createByteInput(new ChannelInputStream(streamChannel)));
         final Lock reqLock = new ReentrantLock();
         final Queue<ReplyHandler> replyQueue = new LinkedList<ReplyHandler>();
+        // todo - handle rejected execution...
         executor.execute(new BasicHandlerReplyConsumer(unmarshaller, streamChannel, reqLock, replyQueue));
         return new BasicRequestHandler(reqLock, marshaller, replyQueue, streamChannel, executor).getHandle();
     }

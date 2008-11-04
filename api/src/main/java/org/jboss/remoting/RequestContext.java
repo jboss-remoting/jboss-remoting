@@ -1,6 +1,7 @@
 package org.jboss.remoting;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.io.IOException;
 
 /**
@@ -74,5 +75,5 @@ public interface RequestContext<O> extends Executor {
      *
      * @param command the task to execute
      */
-    void execute(Runnable command);
+    void execute(Runnable command) throws RejectedExecutionException;
 }

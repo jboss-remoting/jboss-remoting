@@ -22,6 +22,18 @@ public interface HandleableCloseable<T> extends Closeable {
      * takes place.
      *
      * @param handler the close handler
+     * @return a key which may be used to later remove this handler
      */
-    void addCloseHandler(CloseHandler<? super T> handler);
+    Key addCloseHandler(CloseHandler<? super T> handler);
+
+    /**
+     * A key which may be used to remove this handler.
+     */
+    interface Key {
+
+        /**
+         * Remove the registered handler.  Calling this method more than once has no additional effect.
+         */
+        void remove();
+    }
 }

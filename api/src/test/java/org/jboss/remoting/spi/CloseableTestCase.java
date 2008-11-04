@@ -27,11 +27,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.xnio.IoUtils;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.test.support.LoggingHelper;
-import org.jboss.remoting.spi.Handle;
 
 /**
  *
@@ -177,6 +177,19 @@ public final class CloseableTestCase extends TestCase {
             }
         } finally {
             executorService.shutdownNow();
+        }
+    }
+
+    public void testHandlerRemoval() throws Throwable {
+        final Executor executor = IoUtils.directExecutor();
+        final AbstractAutoCloseable<Object> closeable = new AbstractAutoCloseable<Object>(executor) {
+            // empty
+        };
+        final Handle<Object> rootHandle = closeable.getHandle();
+        try {
+
+        } finally {
+            IoUtils.safeClose(closeable);
         }
     }
 }

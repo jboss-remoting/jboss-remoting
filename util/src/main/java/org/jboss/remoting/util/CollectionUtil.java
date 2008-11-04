@@ -69,15 +69,6 @@ public final class CollectionUtil {
     }
 
     /**
-     * Create a concurrent integer-keyed map.
-     *
-     * @return a concurrent integer-keyed map
-     */
-    public static <V> ConcurrentIntegerMap<V> concurrentIntegerMap() {
-        return new EmulatedConcurrentIntegerHashMap<V>(CollectionUtil.<Integer, V>concurrentMap());
-    }
-
-    /**
      * Create a synchronized map that obeys the contract for {@code ConcurrentMap}.
      *
      * @param original the map to be wrapped

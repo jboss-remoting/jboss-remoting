@@ -23,7 +23,7 @@
 package org.jboss.remoting;
 
 /**
- * An exception indicating that a the remote side tried and failed to send a reply message; the remote side would be
+ * An exception indicating that a the remote side tried and failed to send a reply message.  The remote side would be
  * aware of this type of failure, so the outcome is determinate; thus it extends {@code RemoteExecutionException}.
  */
 public class RemoteReplyException extends RemoteExecutionException {

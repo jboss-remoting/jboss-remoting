@@ -34,19 +34,19 @@ import org.jboss.remoting.spi.RemoteRequestContext;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.SpiUtils;
 import org.jboss.remoting.spi.AbstractAutoCloseable;
-import static org.jboss.remoting.util.CollectionUtil.concurrentIntegerMap;
 import org.jboss.remoting.util.CollectionUtil;
-import org.jboss.remoting.util.ConcurrentIntegerMap;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.SimpleCloseable;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.IndeterminateOutcomeException;
+import org.jboss.remoting.ReplyException;
+import org.jboss.remoting.RemoteServiceConfiguration;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.ByteOutput;
 import org.jboss.marshalling.Marshaller;
-import org.jboss.marshalling.Configuration;
+import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.ObjectTable;
 import org.jboss.marshalling.Marshalling;
 import java.util.concurrent.BlockingQueue;
@@ -60,6 +60,7 @@ import java.nio.BufferUnderflowException;
 import java.io.IOException;
 import java.io.InvalidClassException;
 import java.io.InterruptedIOException;
+import java.io.InvalidObjectException;
 
 /**
  * Protocol handler for the basic message-oriented Remoting protocol.
@@ -70,40 +71,41 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
 
     //--== Connection configuration items ==--
     private final MarshallerFactory marshallerFactory;
-    private final Configuration marshallingConfiguration;
+    private final MarshallingConfiguration marshallingConfiguration;
     private final int linkMetric;
     private final Executor executor;
     // buffer allocator for outbound message assembly
     private final BufferAllocator<ByteBuffer> allocator;
 
     // running on remote node
-    private final ConcurrentIntegerMap<ReplyHandler> remoteRequests = concurrentIntegerMap();
+    private final IntegerBiMap<ReplyHandler> remoteRequests = IdentityHashIntegerBiMap.createSynchronizing();
     // running on local node
-    private final ConcurrentIntegerMap<RemoteRequestContext> localRequests = concurrentIntegerMap();
+    private final IntegerBiMap<RemoteRequestContext> localRequests = IdentityHashIntegerBiMap.createSynchronizing();
     // sequence for remote requests
     private final AtomicInteger requestSequence = new AtomicInteger();
 
     // clients whose requests get forwarded to the remote side
     // even #s were opened from services forwarded to us (our sequence)
     // odd #s were forwarded directly to us (remote sequence)
-    private final ConcurrentIntegerMap<RequestHandler> remoteClients = concurrentIntegerMap();
+    private final IntegerBiMap<RequestHandler> remoteClients = IdentityHashIntegerBiMap.createSynchronizing();
     // forwarded to remote side (handled on this side)
-    private final ConcurrentIntegerMap<Handle<RequestHandler>> forwardedClients = concurrentIntegerMap();
-    // sequence for forwarded clients (unsigned; shift left one bit, add one)
+    private final IntegerResourceBiMap<RequestHandler> forwardedClients = IdentityHashIntegerResourceBiMap.createSynchronizing();
+    // sequence for forwarded clients (shift left one bit, add one, limit is 2^30)
     private final AtomicInteger forwardedClientSequence = new AtomicInteger();
-    // sequence for clients created from services forwarded to us (unsigned; shift left one bit)
+    // sequence for clients created from services forwarded to us (shift left one bit, limit is 2^30)
     private final AtomicInteger remoteClientSequence = new AtomicInteger();
 
     // services forwarded to us
-    private final ConcurrentIntegerMap<RequestHandlerSource> remoteServices = concurrentIntegerMap();
+    private final IntegerBiMap<RequestHandlerSource> remoteServices = IdentityHashIntegerBiMap.createSynchronizing();
     // forwarded to remote side (handled on this side)
-    private final ConcurrentIntegerMap<Handle<RequestHandlerSource>> forwardedServices = concurrentIntegerMap();
+    private final IntegerResourceBiMap<RequestHandlerSource> forwardedServices = IdentityHashIntegerResourceBiMap.createSynchronizing();
     // sequence for forwarded services
-    private final AtomicInteger serviceSequence = new AtomicInteger();
+    private final AtomicInteger forwardedServiceSequence = new AtomicInteger();
 
     private final Endpoint endpoint;
 
     private volatile AllocatedMessageChannel channel;
+    private static final StackTraceElement[] emptyStackTraceElements = new StackTraceElement[0];
 
     public MultiplexHandler(final Endpoint endpoint, final MultiplexConfiguration configuration) {
         this.endpoint = endpoint;
@@ -112,6 +114,28 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
         marshallerFactory = configuration.getMarshallerFactory();
         marshallingConfiguration = configuration.getMarshallingConfiguration();
         linkMetric = configuration.getLinkMetric();
+    }
+
+    // sequence methods
+
+    int nextRequest() {
+        return requestSequence.getAndIncrement() & 0x7fffffff;
+    }
+
+    int nextForwardedClient() {
+        return (forwardedClientSequence.getAndIncrement() << 1 | 1) & 0x7fffffff;
+    }
+
+    int nextRemoteClient() {
+        return remoteClientSequence.getAndIncrement() << 1 & 0x7fffffff;
+    }
+
+    int nextForwardedService() {
+        return forwardedServiceSequence.getAndIncrement() & 0x7fffffff;
+    }
+
+    void setChannel(final AllocatedMessageChannel channel) {
+        this.channel = channel;
     }
 
     public void handleOpened(final AllocatedMessageChannel channel) {
@@ -165,18 +189,40 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
                                 payload = unmarshaller.readObject();
                                 unmarshaller.finish();
                             } catch (ClassNotFoundException e) {
-                                log.trace("Class not found in request ID %d for client ID %d", Integer.valueOf(requestId), Integer.valueOf(clientId));
-                                // todo - send request receive failed message
                                 break;
                             }
                         } finally {
                             IoUtils.safeClose(unmarshaller);
                         }
-                    } catch (IOException ex) {
+                    } catch (Exception ex) {
+                        // IOException | ClassNotFoundException
                         log.trace("Failed to unmarshal a request (%s), sending %s", ex, MessageType.REQUEST_RECEIVE_FAILED);
-                        // todo send a request failure message
+                        try {
+                            final Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
+                            try {
+                                List<ByteBuffer> buffers = new ArrayList<ByteBuffer>();
+                                marshaller.start(createByteOutput(allocator, buffers));
+                                marshaller.write(MessageType.REQUEST_RECEIVE_FAILED.getId());
+                                final IOException ioe = new IOException("Request receive failed");
+                                ex.setStackTrace(emptyStackTraceElements);
+                                ioe.initCause(ex);
+                                ioe.setStackTrace(emptyStackTraceElements);
+                                marshaller.writeObject(ioe);
+                                marshaller.finish();
+                                registerWriter(channel, new SimpleWriteHandler(allocator, buffers));
+                            } catch (InterruptedException e1) {
+                                Thread.currentThread().interrupt();
+                                log.debug("Remoting channel handler thread interrupted; closing channel");
+                                IoUtils.safeClose(channel);
+                            } finally {
+                                IoUtils.safeClose(marshaller);
+                            }
+                        } catch (IOException ioe) {
+                            log.warn("Failed to send notification of failure to unmarshal a request: %s", ioe);
+                        }
                         break;
                     }
+                    // request received OK
                     final RequestHandler requestHandler = handle.getResource();
                     requestHandler.receiveRequest(payload, new ReplyHandlerImpl(channel, requestId, allocator));
                     break;
@@ -207,7 +253,7 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
                     } catch (IOException ex) {
                         log.trace("Failed to unmarshal a reply (%s), sending a ReplyException", ex);
                         // todo
-                        SpiUtils.safeHandleException(replyHandler, ex);
+                        SpiUtils.safeHandleException(replyHandler, new ReplyException("Unmarshal failed", ex));
                         break;
                     }
                     SpiUtils.safeHandleReply(replyHandler, payload);
@@ -238,9 +284,24 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
                         log.trace("Got reply to unknown request %d", Integer.valueOf(requestId));
                         break;
                     }
-                    final String reason = readUTFZ(buffer);
-                    
-                    // todo - throw a new ReplyException
+                    final IOException cause;
+                    try {
+                        final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
+                        try {
+                            unmarshaller.start(Marshalling.createByteInput(buffer));
+                            cause = (IOException) unmarshaller.readObject();
+                            unmarshaller.finish();
+                        } finally {
+                            IoUtils.safeClose(unmarshaller);
+                        }
+                    } catch (IOException e) {
+                        SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Remote operation failed; the remote exception could not be read", e));
+                        break;
+                    } catch (ClassNotFoundException e) {
+                        SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Remote operation failed; the remote exception could not be read", e));
+                        break;
+                    }
+                    SpiUtils.safeHandleException(replyHandler, cause);
                     break;
                 }
                 case REQUEST_FAILED: {
@@ -250,13 +311,13 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
                         log.trace("Got reply to unknown request %d", Integer.valueOf(requestId));
                         break;
                     }
-                    final Throwable cause;
+                    final IOException cause;
                     try {
                         final Unmarshaller unmarshaller = marshallerFactory.createUnmarshaller(marshallingConfiguration);
                         try {
                             unmarshaller.start(Marshalling.createByteInput(buffer));
                             try {
-                                cause = (Throwable) unmarshaller.readObject();
+                                cause = (IOException) unmarshaller.readObject();
                             } catch (ClassNotFoundException e) {
                                 replyHandler.handleException(new InvalidClassException("Class not found: " + e.toString()));
                                 log.trace("Class not found in exception reply to request ID %d", Integer.valueOf(requestId));
@@ -339,7 +400,11 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
                     final int calcMetric = baseMetric + linkMetric;
                     if (calcMetric > 0) {
                         try {
-                            final SimpleCloseable closeable = endpoint.registerRemoteService(serviceType, groupName, endpointName, handlerSource, calcMetric);
+                            final RemoteServiceConfiguration config = new RemoteServiceConfiguration();
+                            config.setServiceType(serviceType);
+                            config.setGroupName(groupName);
+                            config.setEndpointName(endpointName);
+                            final SimpleCloseable closeable = endpoint.registerRemoteService(config);
                             // todo - something with that closeable
                         } catch (IOException e) {
                             log.error(e, "Unable to register remote service");
@@ -436,15 +501,14 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
         }
 
         public void handleException(final IOException exception) throws IOException {
-            ByteBuffer buffer = allocator.allocate();
-            buffer.put((byte) MessageType.REQUEST_FAILED.getId());
-            buffer.putInt(requestId);
             try {
                 final Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
                 try {
                     final List<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
                     final ByteOutput output = createByteOutput(allocator, bufferList);
                     try {
+                        marshaller.write(MessageType.REQUEST_FAILED.getId());
+                        marshaller.writeInt(requestId);
                         marshaller.start(output);
                         marshaller.writeObject(exception);
                         marshaller.close();
@@ -561,7 +625,7 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
             this.allocator = allocator;
             addCloseHandler(new CloseHandler<RequestHandler>() {
                 public void handleClose(final RequestHandler closed) {
-                    remoteClients.remove(identifier, this);
+                    remoteClients.remove(identifier);
                     ByteBuffer buffer = allocator.allocate();
                     buffer.put((byte) MessageType.CLIENT_CLOSE.getId());
                     buffer.putInt(identifier);
@@ -587,10 +651,8 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
                         marshaller.write(MessageType.REQUEST.getId());
                         marshaller.writeInt(identifier);
 
-                        int id;
-                        do {
-                            id = requestSequence.getAndIncrement();
-                        } while (remoteRequests.putIfAbsent(id, handler) != null);
+                        final int id = nextRequest();
+                        remoteRequests.put(id, handler);
                         marshaller.writeInt(id);
                         marshaller.writeObject(request);
                         marshaller.close();
@@ -683,15 +745,13 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
         }
 
         public Handle<RequestHandler> createRequestHandler() throws IOException {
-            int id;
-            do {
-                id = remoteClientSequence.getAndIncrement() << 1;
-            } while (remoteClients.putIfAbsent(id, new RequestHandlerImpl(id, MultiplexHandler.this.allocator)) != null);
-            final int clientId = id;
+            final int id = nextRemoteClient();
+            final RequestHandler requestHandler = new RequestHandlerImpl(id, MultiplexHandler.this.allocator);
+            remoteClients.put(id, requestHandler);
             final ByteBuffer buffer = allocator.allocate();
             buffer.put((byte) MessageType.CLIENT_OPEN.getId());
             buffer.putInt(identifier);
-            buffer.putInt(clientId);
+            buffer.putInt(id);
             buffer.flip();
             // todo - probably should bail out if we're interrupted?
             boolean intr = false;
@@ -699,7 +759,7 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
                 try {
                     registerWriter(channel, new SimpleWriteHandler(allocator, buffer));
                     try {
-                        return new RequestHandlerImpl(clientId, allocator).getHandle();
+                        return new RequestHandlerImpl(id, allocator).getHandle();
                     } finally {
                         if (intr) {
                             Thread.currentThread().interrupt();
@@ -769,25 +829,32 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
         };
     }
 
+    private final ProtocolObjectTableWriter protocolObjectTableWriter = new ProtocolObjectTableWriter();
+
     public class ProtocolObjectTableWriter implements ObjectTable.Writer {
 
         public void writeObject(final Marshaller marshaller, final Object o) throws IOException {
-            
+            final RequestHandler requestHandler = (RequestHandler) o;
+            final int existingId = forwardedClients.get(requestHandler, -1);
+            marshaller.write(1);
+            if (existingId == -1) {
+                final int newId = nextForwardedClient();
+                forwardedClients.put(newId, requestHandler.getHandle());
+                marshaller.writeInt(newId);
+            } else {
+                marshaller.writeInt(existingId);
+            }
         }
     }
 
     public class ProtocolObjectTable implements ObjectTable {
 
-        public Writer getObjectWriter(final Object o) throws IOException /* fixed in beta2 */ {
+        public Writer getObjectWriter(final Object o) throws IOException {
             if (o instanceof RequestHandler) {
-                final RequestHandler requestHandler = (RequestHandler) o;
-
-            } else if (o instanceof RequestHandlerSource) {
-                final RequestHandlerSource requestHandlerSource = (RequestHandlerSource) o;
-                
+                return protocolObjectTableWriter;
             } else {
+                return null;
             }
-            return null;
         }
 
         public Object readObject(final Unmarshaller unmarshaller) throws IOException, ClassNotFoundException {
@@ -795,18 +862,18 @@ final class MultiplexHandler implements IoHandler<AllocatedMessageChannel> {
                 case 1: {
                     // remote client
                     final int id = unmarshaller.readInt();
+                    return remoteClients.get(id);
                 }
                 case 2: {
                     // remote client source
-                }
-                case 3: {
-                    // stream
+                    final int id = unmarshaller.readInt();
+                    return remoteServices.get(id);
                 }
                 default: {
                     // invalid
+                    throw new InvalidObjectException("Invalid ID sent for protocol object table");
                 }
             }
-            return null;
         }
     }
 }

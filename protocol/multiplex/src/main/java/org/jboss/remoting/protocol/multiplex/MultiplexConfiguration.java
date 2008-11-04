@@ -26,14 +26,14 @@ import java.util.concurrent.Executor;
 import java.nio.ByteBuffer;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.marshalling.MarshallerFactory;
-import org.jboss.marshalling.Configuration;
+import org.jboss.marshalling.MarshallingConfiguration;
 
 /**
  * A configuration object for the multiplex protocol.
  */
 public final class MultiplexConfiguration {
     private MarshallerFactory marshallerFactory;
-    private Configuration marshallingConfiguration;
+    private MarshallingConfiguration marshallingConfiguration;
     private int linkMetric;
     private Executor executor;
     private BufferAllocator<ByteBuffer> allocator;
@@ -67,7 +67,7 @@ public final class MultiplexConfiguration {
      *
      * @return the configuration
      */
-    public Configuration getMarshallingConfiguration() {
+    public MarshallingConfiguration getMarshallingConfiguration() {
         return marshallingConfiguration;
     }
 
@@ -76,7 +76,7 @@ public final class MultiplexConfiguration {
      *
      * @param marshallingConfiguration the configuration
      */
-    public void setMarshallingConfiguration(final Configuration marshallingConfiguration) {
+    public void setMarshallingConfiguration(final MarshallingConfiguration marshallingConfiguration) {
         this.marshallingConfiguration = marshallingConfiguration;
     }
 

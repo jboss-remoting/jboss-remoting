@@ -42,15 +42,25 @@ public final class ClientSourceExternalizer implements Externalizer {
         this.endpoint = endpoint;
     }
 
-    @SuppressWarnings({ "unchecked" })
-    public void writeExternal(final Object o, final ObjectOutput output) throws IOException {
-        output.writeObject(((ClientSourceImpl) o).getRequestHandlerSourceHandle().getResource());
+    private static <I, O> void doWriteExternal(final ClientSourceImpl<I, O> clientSource, final ObjectOutput output) throws IOException {
+        output.writeObject(clientSource.getRequestClass());
+        output.writeObject(clientSource.getReplyClass());
+        output.writeObject(clientSource.getRequestHandlerSourceHandle().getResource());
     }
 
-    @SuppressWarnings({ "unchecked" })
+    public void writeExternal(final Object o, final ObjectOutput output) throws IOException {
+        doWriteExternal((ClientSourceImpl<?, ?>) o, output);
+    }
+
+    private <I, O> ClientSourceImpl<I, O> doCreateExternal(Class<I> requestClass, Class<O> replyClass, RequestHandlerSource handlerSource) throws IOException {
+        return new ClientSourceImpl<I, O>(handlerSource.getHandle(), endpoint, requestClass, replyClass);
+    }
+
     public Object createExternal(final Class<?> aClass, final ObjectInput input, final Creator creator) throws IOException, ClassNotFoundException {
-        final RequestHandlerSource handler = (RequestHandlerSource) input.readObject();
-        return new ClientSourceImpl(handler.getHandle(), endpoint);
+        final Class<?> requestClass = (Class<?>) input.readObject();
+        final Class<?> replyClass = (Class<?>) input.readObject();
+        final RequestHandlerSource handlerSource = (RequestHandlerSource) input.readObject();
+        return doCreateExternal(requestClass, replyClass, handlerSource);
     }
 
     public void readExternal(final Object o, final ObjectInput input) throws IOException, ClassNotFoundException {

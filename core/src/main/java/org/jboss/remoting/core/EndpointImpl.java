@@ -11,6 +11,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.security.AccessController;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.ClientSource;
 import org.jboss.remoting.CloseHandler;
@@ -18,6 +19,9 @@ import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.RequestListener;
 import org.jboss.remoting.ServiceListener;
 import org.jboss.remoting.SimpleCloseable;
+import org.jboss.remoting.LocalServiceConfiguration;
+import org.jboss.remoting.EndpointPermission;
+import org.jboss.remoting.RemoteServiceConfiguration;
 import org.jboss.remoting.spi.AbstractSimpleCloseable;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.RequestHandler;
@@ -36,12 +40,14 @@ import org.jboss.xnio.log.Logger;
 /**
  *
  */
-public class EndpointImpl implements Endpoint {
+public final class EndpointImpl implements Endpoint {
 
     static {
         // Print Remoting "greeting" message
         Logger.getLogger("org.jboss.remoting").info("JBoss Remoting version %s", Version.VERSION);
     }
+
+    private static final Logger log = Logger.getLogger(Endpoint.class);
 
     private String name;
 
@@ -54,6 +60,13 @@ public class EndpointImpl implements Endpoint {
     private final Object serviceLock = new Object();
     private final Map<Object, ServiceListenerRegistration> serviceListenerMap = CollectionUtil.hashMap();
     private final Set<ServiceRegistration> serviceRegistrations = CollectionUtil.hashSet();
+
+    private static final EndpointPermission CREATE_REQUEST_HANDLER_PERM = new EndpointPermission("createRequestHandler");
+    private static final EndpointPermission REGISTER_SERVICE_PERM = new EndpointPermission("registerService");
+    private static final EndpointPermission CREATE_CLIENT_PERM = new EndpointPermission("createClient");
+    private static final EndpointPermission CREATE_CLIENT_SOURCE_PERM = new EndpointPermission("createClientSource");
+    private static final EndpointPermission REGISTER_REMOTE_SERVICE_PERM = new EndpointPermission("registerRemoteService");
+    private static final EndpointPermission ADD_SERVICE_LISTENER_PERM = new EndpointPermission("addServiceListener");
 
     public EndpointImpl() {
     }
@@ -135,14 +148,23 @@ public class EndpointImpl implements Endpoint {
         return endpointMap;
     }
 
-    public <I, O> Handle<RequestHandler> createRequestHandler(final RequestListener<I, O> requestListener) throws IOException {
-        final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(executor, requestListener);
+    public <I, O> Handle<RequestHandler> createRequestHandler(final RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
+        AccessController.checkPermission(CREATE_REQUEST_HANDLER_PERM);
+        LocalRequestHandler.Config<I, O> config = new LocalRequestHandler.Config<I,O>(requestClass, replyClass);
+        config.setExecutor(executor);
+        config.setRequestListener(requestListener);
+        config.setClientContext(new ClientContextImpl(executor));
+        final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(config);
         localRequestHandler.addCloseHandler(remover);
         localRequestHandler.open();
         return localRequestHandler.getHandle();
     }
 
-    public <I, O> Handle<RequestHandlerSource> createRequestHandlerSource(final RequestListener<I, O> requestListener, final String serviceType, final String groupName) throws IOException {
+    public <I, O> Handle<RequestHandlerSource> registerService(final LocalServiceConfiguration<I, O> configuration) throws IOException {
+        AccessController.checkPermission(REGISTER_SERVICE_PERM);
+        final String serviceType = configuration.getServiceType();
+        final String groupName = configuration.getGroupName();
+        final int metric = configuration.getMetric();
         if (serviceType == null) {
             throw new NullPointerException("serviceType is null");
         }
@@ -155,7 +177,13 @@ public class EndpointImpl implements Endpoint {
         if (groupName.length() == 0) {
             throw new IllegalArgumentException("groupName is empty");
         }
-        final LocalRequestHandlerSource<I, O> localRequestHandlerSource = new LocalRequestHandlerSource<I, O>(executor, requestListener);
+        if (metric < 0) {
+            throw new IllegalArgumentException("metric must be greater than or equal to zero");
+        }
+        final LocalRequestHandlerSource.Config<I, O> config = new LocalRequestHandlerSource.Config<I,O>(configuration.getRequestClass(), configuration.getReplyClass());
+        config.setRequestListener(configuration.getRequestListener());
+        config.setExecutor(executor);
+        final LocalRequestHandlerSource<I, O> localRequestHandlerSource = new LocalRequestHandlerSource<I, O>(config);
         final ServiceRegistration registration = new ServiceRegistration(serviceType, groupName, name, localRequestHandlerSource);
         final AbstractSimpleCloseable newHandle = new AbstractSimpleCloseable(executor) {
             protected void closeAction() throws IOException {
@@ -169,11 +197,11 @@ public class EndpointImpl implements Endpoint {
             serviceRegistrations.add(registration);
             for (final ServiceListenerRegistration slr : serviceListenerMap.values()) {
                 final ServiceListener listener = slr.getServiceListener();
-                slr.getExecutor().execute(new Runnable() {
-                    public void run() {
-                        listener.localServiceCreated(slr.handle, serviceType, groupName, localRequestHandlerSource);
-                    }
-                });
+                try {
+                    listener.localServiceCreated(slr.handle, serviceType, groupName, localRequestHandlerSource);
+                } catch (Throwable t) {
+                    logListenerError(t);
+                }
             }
         }
         localRequestHandlerSource.addCloseHandler(remover);
@@ -181,11 +209,16 @@ public class EndpointImpl implements Endpoint {
         return localRequestHandlerSource.getHandle();
     }
 
-    public <I, O> Client<I, O> createClient(final RequestHandler requestHandler) throws IOException {
+    private static void logListenerError(final Throwable t) {
+        log.error(t, "Service listener threw an exception");
+    }
+
+    public <I, O> Client<I, O> createClient(final RequestHandler requestHandler, final Class<I> requestType, final Class<O> replyType) throws IOException {
+        AccessController.checkPermission(CREATE_CLIENT_PERM);
         boolean ok = false;
         final Handle<RequestHandler> handle = requestHandler.getHandle();
         try {
-            final ClientImpl<I, O> client = new ClientImpl<I, O>(handle, executor);
+            final ClientImpl<I, O> client = new ClientImpl<I, O>(handle, executor, requestType, replyType);
             client.addCloseHandler(new CloseHandler<Client<I, O>>() {
                 public void handleClose(final Client<I, O> closed) {
                     IoUtils.safeClose(handle);
@@ -200,11 +233,12 @@ public class EndpointImpl implements Endpoint {
         }
     }
 
-    public <I, O> ClientSource<I, O> createClientSource(final RequestHandlerSource requestHandlerSource) throws IOException {
+    public <I, O> ClientSource<I, O> createClientSource(final RequestHandlerSource requestHandlerSource, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
+        AccessController.checkPermission(CREATE_CLIENT_SOURCE_PERM);
         boolean ok = false;
         final Handle<RequestHandlerSource> handle = requestHandlerSource.getHandle();
         try {
-            final ClientSourceImpl<I, O> clientSource = new ClientSourceImpl<I, O>(handle, this);
+            final ClientSourceImpl<I, O> clientSource = new ClientSourceImpl<I, O>(handle, this, requestClass, replyClass);
             ok = true;
             return clientSource;
         } finally {
@@ -214,7 +248,7 @@ public class EndpointImpl implements Endpoint {
         }
     }
 
-    public <I, O> IoFuture<ClientSource<I, O>> locateService(final URI serviceUri) throws IllegalArgumentException {
+    public <I, O> IoFuture<ClientSource<I, O>> locateService(final URI serviceUri, final Class<I> requestClass, final Class<O> replyClass) throws IllegalArgumentException {
         if (serviceUri == null) {
             throw new NullPointerException("serviceUri is null");
         }
@@ -262,7 +296,7 @@ public class EndpointImpl implements Endpoint {
                         }
                         try {
                             // match!
-                            final ClientSource<I, O> clientSource = createClientSource(requestHandlerSource);
+                            final ClientSource<I, O> clientSource = createClientSource(requestHandlerSource, requestClass, replyClass);
                             futureClientSource.setResult(clientSource);
                         } catch (IOException e) {
                             futureClientSource.setException(e);
@@ -282,14 +316,23 @@ public class EndpointImpl implements Endpoint {
                 handlerSource = candidates.get(idx).getHandlerSource();
             }
             try {
-                return new FinishedIoFuture<ClientSource<I,O>>(EndpointImpl.this.<I, O>createClientSource(handlerSource));
+                return new FinishedIoFuture<ClientSource<I,O>>(createClientSource(handlerSource, requestClass, replyClass));
             } catch (IOException e) {
                 return new FailedIoFuture<ClientSource<I,O>>(e);
             }
         }
     }
 
-    public SimpleCloseable registerRemoteService(final String serviceType, final String groupName, final String endpointName, final RequestHandlerSource handlerSource, final int metric) throws IllegalArgumentException, IOException {
+    public SimpleCloseable registerRemoteService(final RemoteServiceConfiguration configuration) throws IllegalArgumentException, IOException {
+        AccessController.checkPermission(REGISTER_REMOTE_SERVICE_PERM);
+        final RequestHandlerSource handlerSource = configuration.getRequestHandlerSource();
+        final String serviceType = configuration.getServiceType();
+        final String groupName = configuration.getGroupName();
+        final String endpointName = configuration.getEndpointName();
+        final int metric = configuration.getMetric();
+        if (handlerSource == null) {
+            throw new NullPointerException("handlerSource is null");
+        }
         if (serviceType == null) {
             throw new NullPointerException("serviceType is null");
         }
@@ -327,21 +370,21 @@ public class EndpointImpl implements Endpoint {
             serviceRegistrations.add(registration);
             for (final ServiceListenerRegistration slr : serviceListenerMap.values()) {
                 final ServiceListener listener = slr.getServiceListener();
-                slr.getExecutor().execute(new Runnable() {
-                    public void run() {
-                        listener.remoteServiceRegistered(slr.handle, endpointName, serviceType, groupName, metric, handlerSource, newHandle);
-                    }
-                });
+                try {
+                    listener.remoteServiceRegistered(slr.handle, endpointName, serviceType, groupName, metric, handlerSource, newHandle);
+                } catch (Throwable t) {
+                    logListenerError(t);
+                }
             }
         }
         return newHandle;
     }
 
     public SimpleCloseable addServiceListener(final ServiceListener serviceListener, final boolean onlyNew) {
+        AccessController.checkPermission(ADD_SERVICE_LISTENER_PERM);
         final Object key = new Object();
         synchronized (serviceLock) {
-            final Executor orderedExecutor = getOrderedExecutor();
-            final ServiceListenerRegistration registration = new ServiceListenerRegistration(serviceListener, orderedExecutor);
+            final ServiceListenerRegistration registration = new ServiceListenerRegistration(serviceListener);
             serviceListenerMap.put(key, registration);
             final AbstractSimpleCloseable handle = new AbstractSimpleCloseable(executor) {
                 protected void closeAction() throws IOException {
@@ -353,18 +396,14 @@ public class EndpointImpl implements Endpoint {
             registration.setHandle(handle);
             if (! onlyNew) {
                 for (final ServiceRegistration reg : serviceRegistrations) {
-                    if (reg.isRemote()) { // x is remote
-                        orderedExecutor.execute(new Runnable() {
-                            public void run() {
-                                serviceListener.remoteServiceRegistered(handle, reg.getEndpointName(), reg.getServiceType(), reg.getGroupName(), reg.getMetric(), reg.getHandlerSource(), reg.getHandle());
-                            }
-                        });
-                    } else { // x is local
-                        orderedExecutor.execute(new Runnable() {
-                            public void run() {
-                                serviceListener.localServiceCreated(handle, reg.getServiceType(), reg.getGroupName(), reg.getHandlerSource());
-                            }
-                        });
+                    try {
+                        if (reg.isRemote()) { // x is remote
+                            serviceListener.remoteServiceRegistered(handle, reg.getEndpointName(), reg.getServiceType(), reg.getGroupName(), reg.getMetric(), reg.getHandlerSource(), reg.getHandle());
+                        } else { // x is local
+                            serviceListener.localServiceCreated(handle, reg.getServiceType(), reg.getGroupName(), reg.getHandlerSource());
+                        }
+                    } catch (Throwable t) {
+                        logListenerError(t);
                     }
                 }
             }
@@ -374,20 +413,14 @@ public class EndpointImpl implements Endpoint {
 
     private static final class ServiceListenerRegistration {
         private final ServiceListener serviceListener;
-        private final Executor executor;
         private volatile SimpleCloseable handle;
 
-        private ServiceListenerRegistration(final ServiceListener serviceListener, final Executor executor) {
+        private ServiceListenerRegistration(final ServiceListener serviceListener) {
             this.serviceListener = serviceListener;
-            this.executor = executor;
         }
 
         ServiceListener getServiceListener() {
             return serviceListener;
-        }
-
-        Executor getExecutor() {
-            return executor;
         }
 
         void setHandle(final SimpleCloseable handle) {

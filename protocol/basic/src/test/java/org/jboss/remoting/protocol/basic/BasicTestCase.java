@@ -40,7 +40,7 @@ import org.jboss.remoting.Client;
 import org.jboss.remoting.test.support.LoggingHelper;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.Handle;
-import org.jboss.marshalling.Configuration;
+import org.jboss.marshalling.MarshallingConfiguration;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -61,7 +61,7 @@ public final class BasicTestCase extends TestCase {
         final BasicConfiguration configuration = new BasicConfiguration();
         configuration.setExecutor(executor);
         configuration.setMarshallerFactory(new RiverMarshallerFactory());
-        final Configuration marshallingConfiguration = new Configuration();
+        final MarshallingConfiguration marshallingConfiguration = new MarshallingConfiguration();
         configuration.setMarshallingConfiguration(marshallingConfiguration);
         final Endpoint endpoint = Remoting.createEndpoint("test");
         final Handle<RequestHandler> requestHandlerHandle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
@@ -77,7 +77,7 @@ public final class BasicTestCase extends TestCase {
                     }
                 }
             }
-        });
+        }, INIT_ME, INIT_ME2);
         final ChannelSource<StreamChannel> channelSource = xnio.createPipeServer(executor, IoUtils.singletonHandlerFactory(new IoHandler<StreamChannel>() {
             public void handleOpened(final StreamChannel channel) {
                 try {
@@ -101,7 +101,7 @@ public final class BasicTestCase extends TestCase {
         }));
         final IoFuture<StreamChannel> futureChannel = channelSource.open(IoUtils.nullHandler());
         final Handle<RequestHandler> clientHandlerHandle = BasicProtocol.createClient(futureChannel.get(), configuration);
-        final Client<Object,Object> client = endpoint.createClient(clientHandlerHandle.getResource());
+        final Client<Object,Object> client = endpoint.createClient(clientHandlerHandle.getResource(), requestType, replyType);
         System.out.println("Reply is:" + client.invoke("GORBA!"));
 
     }

@@ -26,13 +26,15 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jboss.remoting.RemotingException;
+import org.jboss.remoting.CloseHandler;
 import org.jboss.xnio.log.Logger;
+import org.jboss.xnio.IoUtils;
 
 /**
  * A closeable implementation that supports reference counting.  Since the initial reference count is zero, implementors
  * must be careful to ensure that the first operation invoked is a call to {@link #getHandle()}.
  */
-public abstract class AbstractAutoCloseable<T> extends AbstractHandleableCloseable<T> {
+public abstract class AbstractAutoCloseable<T> extends AbstractHandleableCloseable<T> implements AutoCloseable<T> {
 
     private final AtomicInteger refcount = new AtomicInteger(0);
     private final Executor executor;
@@ -100,12 +102,20 @@ public abstract class AbstractAutoCloseable<T> extends AbstractHandleableCloseab
     }
 
     private final class HandleImpl extends AbstractHandleableCloseable<Handle<T>> implements Handle<T> {
+        private final Key key;
+
         private HandleImpl() throws IOException {
             super(AbstractAutoCloseable.this.executor);
+            key = AbstractAutoCloseable.this.addCloseHandler(new CloseHandler<T>() {
+                public void handleClose(final T closed) {
+                    IoUtils.safeClose(HandleImpl.this);
+                }
+            });
             inc();
         }
 
         protected void closeAction() throws IOException {
+            key.remove();
             dec();
         }
 

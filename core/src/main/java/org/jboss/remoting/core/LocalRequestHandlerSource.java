@@ -40,19 +40,27 @@ public final class LocalRequestHandlerSource<I, O> extends AbstractAutoCloseable
     private final RequestListener<I, O> requestListener;
     private final ServiceContextImpl serviceContext;
     private final Executor executor;
+    private final Class<I> requestClass;
+    private final Class<O> replyClass;
 
     private static final Logger log = Logger.getLogger(LocalRequestHandlerSource.class);
 
-    LocalRequestHandlerSource(final Executor executor, final RequestListener<I, O> requestListener) {
-        super(executor);
-        this.requestListener = requestListener;
-        this.executor = executor;
+    LocalRequestHandlerSource(final Config<I, O> config) {
+        super(config.getExecutor());
+        requestClass = config.getRequestClass();
+        replyClass = config.getReplyClass();
+        requestListener = config.getRequestListener();
+        executor = config.getExecutor();
         serviceContext = new ServiceContextImpl(executor);
     }
 
     public Handle<RequestHandler> createRequestHandler() throws IOException {
         if (isOpen()) {
-            final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(executor, this, requestListener);
+            final LocalRequestHandler.Config<I, O> config = new LocalRequestHandler.Config<I, O>(requestClass, replyClass);
+            config.setExecutor(executor);
+            config.setRequestListener(requestListener);
+            config.setClientContext(new ClientContextImpl(serviceContext));
+            final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(config);
             localRequestHandler.open();
             return localRequestHandler.getHandle();
         } else {
@@ -85,5 +93,41 @@ public final class LocalRequestHandlerSource<I, O> extends AbstractAutoCloseable
 
     public String toString() {
         return "local request handler source <" + Integer.toString(hashCode(), 16) + "> (request listener = " + String.valueOf(requestListener) + ")";
+    }
+
+    static class Config<I, O> {
+        private final Class<I> requestClass;
+        private final Class<O> replyClass;
+        private Executor executor;
+        private RequestListener<I, O> requestListener;
+
+        Config(final Class<I> requestClass, final Class<O> replyClass) {
+            this.requestClass = requestClass;
+            this.replyClass = replyClass;
+        }
+
+        public Class<I> getRequestClass() {
+            return requestClass;
+        }
+
+        public Class<O> getReplyClass() {
+            return replyClass;
+        }
+
+        public Executor getExecutor() {
+            return executor;
+        }
+
+        public void setExecutor(final Executor executor) {
+            this.executor = executor;
+        }
+
+        public RequestListener<I, O> getRequestListener() {
+            return requestListener;
+        }
+
+        public void setRequestListener(final RequestListener<I, O> requestListener) {
+            this.requestListener = requestListener;
+        }
     }
 }

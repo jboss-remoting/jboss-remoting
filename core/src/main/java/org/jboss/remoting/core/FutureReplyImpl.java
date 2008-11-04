@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.jboss.remoting.spi.RemoteRequestContext;
 import org.jboss.remoting.spi.ReplyHandler;
+import org.jboss.remoting.ReplyException;
 import org.jboss.xnio.AbstractIoFuture;
 import org.jboss.xnio.IoFuture;
 
@@ -35,11 +36,13 @@ import org.jboss.xnio.IoFuture;
 public final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
 
     private final Executor executor;
+    private final Class<O> replyType;
     private final ReplyHandler replyHandler = new Handler();
     private volatile RemoteRequestContext remoteRequestContext;
 
-    public FutureReplyImpl(final Executor executor) {
+    public FutureReplyImpl(final Executor executor, final Class<O> replyType) {
         this.executor = executor;
+        this.replyType = replyType;
     }
 
     void setRemoteRequestContext(final RemoteRequestContext remoteRequestContext) {
@@ -62,9 +65,15 @@ public final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
 
     private final class Handler implements ReplyHandler {
 
-        @SuppressWarnings({ "unchecked" })
         public void handleReply(final Object reply) {
-            setResult((O) reply);
+            final O actualReply;
+            try {
+                actualReply = replyType.cast(reply);
+            } catch (ClassCastException e) {
+                setException(new ReplyException("Reply was of the wrong type (got <" + reply.getClass().getName() + ">; expected <? extends " + replyType.getName() + ">"));
+                return;
+            }
+            setResult(actualReply);
         }
 
         public void handleException(final IOException exception) {

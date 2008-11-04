@@ -24,14 +24,12 @@ package org.jboss.remoting.spi;
 
 import java.io.IOException;
 import org.jboss.remoting.CloseHandler;
-import org.jboss.remoting.HandleableCloseable;
-import org.jboss.remoting.RemotingException;
 
 /**
  * A request handler, which can be passed to remote endpoints.  Remote systems can then use the handler
  * to make invocations, or they may forward a handler on to other remote systems.
  */
-public interface RequestHandler extends HandleableCloseable<RequestHandler> {
+public interface RequestHandler extends AutoCloseable<RequestHandler> {
 
     /**
      * Receive a request from a remote system.  This method is intended to be called by protocol handlers.  If the
@@ -60,7 +58,7 @@ public interface RequestHandler extends HandleableCloseable<RequestHandler> {
      * Close this request handler.  The outcome of any outstanding requests is not defined, though implementations
      * should make an effort to cancel any outstanding requests.
      *
-     * @throws RemotingException if the client endpoint could not be closed
+     * @throws java.io.IOException if the client endpoint could not be closed
      */
     void close() throws IOException;
 
@@ -69,5 +67,5 @@ public interface RequestHandler extends HandleableCloseable<RequestHandler> {
      *
      * @param handler the handler to be called
      */
-    void addCloseHandler(final CloseHandler<? super RequestHandler> handler);
+    Key addCloseHandler(final CloseHandler<? super RequestHandler> handler);
 }

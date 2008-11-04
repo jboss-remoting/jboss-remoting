@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.Executor;
 import org.jboss.remoting.ClientContext;
 import org.jboss.remoting.IndeterminateOutcomeException;
 import org.jboss.remoting.RemoteExecutionException;
@@ -51,13 +52,16 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
     private boolean cancelled;
     // @protectedby cancelLock
     private Set<RequestCancelHandler<O>> cancelHandlers;
-    private final RequestListenerExecutor executor;
+    private final RequestListenerExecutor interruptingExecutor;
+    private final Class<O> replyClass;
 
-    RequestContextImpl(final ReplyHandler replyHandler, final ClientContextImpl clientContext) {
+    RequestContextImpl(final ReplyHandler replyHandler, final ClientContextImpl clientContext, final Class<O> replyClass) {
         this.replyHandler = replyHandler;
         this.clientContext = clientContext;
+        this.replyClass = replyClass;
+        final Executor executor = clientContext.getExecutor();
         //noinspection ThisEscapedInObjectConstruction
-        executor = new RequestListenerExecutor(clientContext.getExecutor(), this);
+        interruptingExecutor = new RequestListenerExecutor(executor, this);
     }
 
     public ClientContext getContext() {
@@ -72,8 +76,15 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
 
     public void sendReply(final O reply) throws IOException, IllegalStateException {
         if (! closed.getAndSet(true)) {
+            final O actualReply;
             try {
-                replyHandler.handleReply(reply);
+                actualReply = replyClass.cast(reply);
+            } catch (ClassCastException e) {
+                SpiUtils.safeHandleException(replyHandler, new RemoteReplyException("Remote reply was the wrong type", e));
+                throw e;
+            }
+            try {
+                replyHandler.handleReply(actualReply);
             } catch (IOException e) {
                 SpiUtils.safeHandleException(replyHandler, new RemoteReplyException("Remote reply failed", e));
                 throw e;
@@ -118,7 +129,7 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
     }
 
     public void execute(final Runnable command) {
-        executor.execute(command);
+        interruptingExecutor.execute(command);
     }
 
     protected void cancel() {
@@ -127,7 +138,7 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
                 cancelled = true;
                 if (cancelHandlers != null) {
                     for (final RequestCancelHandler<O> handler : cancelHandlers) {
-                        executor.execute(new Runnable() {
+                        interruptingExecutor.execute(new Runnable() {
                             public void run() {
                                 SpiUtils.safeNotifyCancellation(handler, RequestContextImpl.this);
                             }
@@ -135,7 +146,7 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
                     }
                     cancelHandlers = null;
                 }
-                executor.interruptAll();
+                interruptingExecutor.interruptAll();
             }
         }
     }

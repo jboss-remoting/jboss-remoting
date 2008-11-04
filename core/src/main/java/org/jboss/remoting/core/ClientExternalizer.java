@@ -42,15 +42,25 @@ public final class ClientExternalizer implements Externalizer {
         this.endpoint = endpoint;
     }
 
-    @SuppressWarnings({ "unchecked" })
-    public void writeExternal(final Object o, final ObjectOutput output) throws IOException {
-        output.writeObject(((ClientImpl)o).getRequestHandlerHandle().getResource());
+    private static <I, O> void doWriteExternal(final ClientImpl<I, O> client, final ObjectOutput output) throws IOException {
+        output.writeObject(client.getRequestClass());
+        output.writeObject(client.getReplyClass());
+        output.writeObject(client.getRequestHandlerHandle().getResource());
     }
 
-    @SuppressWarnings({ "unchecked" })
+    public void writeExternal(final Object o, final ObjectOutput output) throws IOException {
+        doWriteExternal((ClientImpl<?, ?>) o, output);
+    }
+
+    private <I, O> ClientImpl<I, O> doCreateExternal(Class<I> requestClass, Class<O> replyClass, RequestHandler handler) throws IOException {
+        return new ClientImpl<I, O>(handler.getHandle(), endpoint.getExecutor(), requestClass, replyClass);
+    }
+
     public Object createExternal(final Class<?> aClass, final ObjectInput input, final Creator creator) throws IOException, ClassNotFoundException {
+        final Class<?> requestClass = (Class<?>) input.readObject();
+        final Class<?> replyClass = (Class<?>) input.readObject();
         final RequestHandler handler = (RequestHandler) input.readObject();
-        return new ClientImpl(handler.getHandle(), endpoint.getExecutor());
+        return doCreateExternal(requestClass, replyClass, handler);
     }
 
     public void readExternal(final Object o, final ObjectInput input) throws IOException, ClassNotFoundException {

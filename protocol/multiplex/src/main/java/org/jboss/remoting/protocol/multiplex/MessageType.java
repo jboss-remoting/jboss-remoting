@@ -27,16 +27,26 @@ package org.jboss.remoting.protocol.multiplex;
  */
 enum MessageType {
 
-    // One-way request, no return value may be sent
-    // Two-way request, return value is expected
+    /**
+     * The request part of a request-response sequence, sent from the Client to the RequestListener.
+     */
     REQUEST(2),
-    // Reply
+    /**
+     * The reply part of a request-response sequence, sent from the RequestListener to the Client.
+     */
     REPLY(3),
-    // Attempt to cancel a request
+    /**
+     * A cancellation request for an outstanding request, sent from the Client to the RequestListener.
+     */
     CANCEL_REQUEST(4),
-    // Acknowledge that a request was cancelled
+    /**
+     * Acknowlegement that a request was cancelled, sent from the RequestListener to the Client.
+     */
     CANCEL_ACK(5),
-    // Request failed due to protocol or unmarshalling problem
+    /**
+     * Message that the request could not be received on the remote end, sent from to the Client from the
+     * protocol handler as a 
+     */
     REQUEST_RECEIVE_FAILED(6),
     // Request failed due to exception
     REQUEST_FAILED(7),

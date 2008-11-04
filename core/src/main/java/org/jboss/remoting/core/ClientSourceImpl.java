@@ -39,11 +39,15 @@ public final class ClientSourceImpl<I, O> extends AbstractHandleableCloseable<Cl
 
     private final Handle<RequestHandlerSource> handle;
     private final Endpoint endpoint;
+    private final Class<I> requestClass;
+    private final Class<O> replyClass;
 
-    ClientSourceImpl(final Handle<RequestHandlerSource> handle, final EndpointImpl endpoint) {
+    ClientSourceImpl(final Handle<RequestHandlerSource> handle, final EndpointImpl endpoint, final Class<I> requestClass, final Class<O> replyClass) {
         super(endpoint.getExecutor());
         this.handle = handle;
         this.endpoint = endpoint;
+        this.requestClass = requestClass;
+        this.replyClass = replyClass;
     }
 
     protected void closeAction() throws IOException {
@@ -56,7 +60,7 @@ public final class ClientSourceImpl<I, O> extends AbstractHandleableCloseable<Cl
         }
         final Handle<RequestHandler> clientHandle = handle.getResource().createRequestHandler();
         try {
-            return endpoint.createClient(clientHandle.getResource());
+            return endpoint.createClient(clientHandle.getResource(), requestClass, replyClass);
         } finally {
             IoUtils.safeClose(clientHandle);
         }
@@ -68,5 +72,13 @@ public final class ClientSourceImpl<I, O> extends AbstractHandleableCloseable<Cl
 
     Handle<RequestHandlerSource> getRequestHandlerSourceHandle() {
         return handle;
+    }
+
+    Class<I> getRequestClass() {
+        return requestClass;
+    }
+
+    Class<O> getReplyClass() {
+        return replyClass;
     }
 }

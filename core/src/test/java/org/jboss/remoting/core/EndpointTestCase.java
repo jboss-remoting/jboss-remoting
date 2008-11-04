@@ -92,7 +92,7 @@ public final class EndpointTestCase extends TestCase {
                             }
                         }
                     }
-                });
+                }, INIT_ME, INIT_ME2);
                 final RequestHandler requestHandler = handle.getResource();
                 try {
                     requestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
@@ -100,7 +100,7 @@ public final class EndpointTestCase extends TestCase {
                             clientEndpointClosed.set(true);
                         }
                     });
-                    final Client<Object,Object> client = endpoint.createClient(requestHandler);
+                    final Client<Object,Object> client = endpoint.createClient(requestHandler, requestType, replyType);
                     try {
                         client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
                             public void handleClose(final Client<Object, Object> closed) {
@@ -151,7 +151,7 @@ public final class EndpointTestCase extends TestCase {
                             }
                         }
                     }
-                });
+                }, INIT_ME, INIT_ME2);
                 final RequestHandler requestHandler = handle.getResource();
                 try {
                     requestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
@@ -159,7 +159,7 @@ public final class EndpointTestCase extends TestCase {
                             clientEndpointClosed.set(true);
                         }
                     });
-                    final Client<Object,Object> client = endpoint.createClient(requestHandler);
+                    final Client<Object,Object> client = endpoint.createClient(requestHandler, requestType, replyType);
                     try {
                         client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
                             public void handleClose(final Client<Object, Object> closed) {

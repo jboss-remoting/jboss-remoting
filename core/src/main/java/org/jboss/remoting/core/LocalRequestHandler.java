@@ -24,9 +24,11 @@ package org.jboss.remoting.core;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.RequestListener;
+import org.jboss.remoting.RemoteRequestException;
 import org.jboss.remoting.spi.AbstractAutoCloseable;
 import org.jboss.remoting.spi.RemoteRequestContext;
 import org.jboss.remoting.spi.ReplyHandler;
@@ -41,37 +43,44 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
 
     private final RequestListener<I, O> requestListener;
     private final ClientContextImpl clientContext;
+    private final Class<I> requestClass;
+    private final Class<O> replyClass;
 
     private static final Logger log = Logger.getLogger(LocalRequestHandler.class);
 
-    private LocalRequestHandler(final Executor executor, final RequestListener<I, O> requestListener, final ClientContextImpl clientContext) {
-        super(executor);
-        this.requestListener = requestListener;
-        this.clientContext = clientContext;
-    }
-
-    LocalRequestHandler(final Executor executor, final LocalRequestHandlerSource<I, O> service, final RequestListener<I, O> requestListener) {
-        this(executor, requestListener, new ClientContextImpl(service.getServiceContext()));
-    }
-
-    LocalRequestHandler(final Executor executor, final RequestListener<I, O> requestListener) {
-        this(executor, requestListener, new ClientContextImpl(executor));
+    LocalRequestHandler(Config<I, O> config) {
+        super(config.getExecutor());
+        requestListener = config.getRequestListener();
+        clientContext = config.getClientContext();
+        requestClass = config.getRequestClass();
+        replyClass = config.getReplyClass();
     }
 
     public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler replyHandler) {
-        final RequestContextImpl<O> context = new RequestContextImpl<O>(replyHandler, clientContext);
-        context.execute(new Runnable() {
-            @SuppressWarnings({ "unchecked" })
-            public void run() {
-                try {
-                    requestListener.handleRequest(context, (I) request);
-                } catch (RemoteExecutionException e) {
-                    SpiUtils.safeHandleException(replyHandler, e);
-                } catch (Throwable t) {
-                    SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Request handler threw an exception", t));
-                }
+        final RequestContextImpl<O> context = new RequestContextImpl<O>(replyHandler, clientContext, replyClass);
+        try {
+            final I castRequest;
+            try {
+                castRequest = requestClass.cast(request);
+            } catch (ClassCastException e) {
+                SpiUtils.safeHandleException(replyHandler, new RemoteRequestException("Request is the wrong type; expected " + requestClass + " but got " + request.getClass()));
+                return SpiUtils.getBlankRemoteRequestContext();
             }
-        });
+            context.execute(new Runnable() {
+                public void run() {
+                    try {
+                        requestListener.handleRequest(context, castRequest);
+                    } catch (RemoteExecutionException e) {
+                        SpiUtils.safeHandleException(replyHandler, e);
+                    } catch (Throwable t) {
+                        SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Request handler threw an exception", t));
+                    }
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            SpiUtils.safeHandleException(replyHandler, new RemoteRequestException("Execution was rejected (server may be too busy)", e));
+            return SpiUtils.getBlankRemoteRequestContext();
+        }
         return new RemoteRequestContext() {
             public void cancel() {
                 context.cancel();
@@ -100,5 +109,51 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
 
     public String toString() {
         return "local request handler <" + Integer.toString(hashCode(), 16) + "> (request listener = " + String.valueOf(requestListener) + ")";
+    }
+
+    static class Config<I, O> {
+        private final Class<I> requestClass;
+        private final Class<O> replyClass;
+
+        private Executor executor;
+        private RequestListener<I, O> requestListener;
+        private ClientContextImpl clientContext;
+
+        Config(final Class<I> requestClass, final Class<O> replyClass) {
+            this.requestClass = requestClass;
+            this.replyClass = replyClass;
+        }
+
+        public Class<I> getRequestClass() {
+            return requestClass;
+        }
+
+        public Class<O> getReplyClass() {
+            return replyClass;
+        }
+
+        public Executor getExecutor() {
+            return executor;
+        }
+
+        public void setExecutor(final Executor executor) {
+            this.executor = executor;
+        }
+
+        public RequestListener<I, O> getRequestListener() {
+            return requestListener;
+        }
+
+        public void setRequestListener(final RequestListener<I, O> requestListener) {
+            this.requestListener = requestListener;
+        }
+
+        public ClientContextImpl getClientContext() {
+            return clientContext;
+        }
+
+        public void setClientContext(final ClientContextImpl clientContext) {
+            this.clientContext = clientContext;
+        }
     }
 }

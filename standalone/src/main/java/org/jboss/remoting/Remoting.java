@@ -32,19 +32,19 @@ public final class Remoting {
         }
     }
 
-    public static <I, O> Client<I, O> createLocalClient(Endpoint endpoint, RequestListener<I, O> requestListener) throws IOException {
-        final Handle<RequestHandler> handle = endpoint.createRequestHandler(requestListener);
+    public static <I, O> Client<I, O> createLocalClient(final Endpoint endpoint, final RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
+        final Handle<RequestHandler> handle = endpoint.createRequestHandler(requestListener, requestClass, replyClass);
         try {
-            return endpoint.createClient(handle.getResource());
+            return endpoint.createClient(handle.getResource(), requestClass, replyClass);
         } finally {
             IoUtils.safeClose(handle);
         }
     }
 
-    public static <I, O> ClientSource<I, O> createLocalClientSource(Endpoint endpoint, RequestListener<I, O> requestListener, final String serviceType, final String groupName) throws IOException {
-        final Handle<RequestHandlerSource> handle = endpoint.createRequestHandlerSource(requestListener, serviceType, groupName);
+    public static <I, O> ClientSource<I, O> createLocalClientSource(final Endpoint endpoint, final LocalServiceConfiguration<I, O> config) throws IOException {
+        final Handle<RequestHandlerSource> handle = endpoint.registerService(config);
         try {
-            return endpoint.createClientSource(handle.getResource());
+            return endpoint.createClientSource(handle.getResource(), config.getRequestClass(), config.getReplyClass());
         } finally {
             IoUtils.safeClose(handle);
         }

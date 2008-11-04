@@ -23,49 +23,49 @@
 package org.jboss.remoting;
 
 /**
- * An exception type indicating that an operation completed and a reply was received, but it could not be delivered
- * to the client.  Possible causes include (but are not limited to) class cast problems and unmarshalling problems.
+ * Remote request exception.  Indicates that the request arrived at the remote side, but the handler could not be
+ * executed for some reason (for example, the request sent might not be of the correct type).
  */
-public class ReplyException extends RemotingException {
+public final class RemoteRequestException extends RemotingException {
 
-    private static final long serialVersionUID = 5562116026829381932L;
+    private static final long serialVersionUID = 5494334026096542700L;
 
     /**
-     * Constructs a <tt>ReplyException</tt> with no detail message. The cause is not initialized, and may subsequently be
-     * initialized by a call to {@link #initCause(Throwable) initCause}.
+     * Constructs a <tt>RemoteRequestException</tt> with no detail message. The cause is not initialized, and may
+     * subsequently be initialized by a call to {@link #initCause(Throwable) initCause}.
      */
-    public ReplyException() {
+    public RemoteRequestException() {
     }
 
     /**
-     * Constructs a <tt>ReplyException</tt> with the specified detail message. The cause is not initialized, and may
+     * Constructs a <tt>RemoteRequestException</tt> with the specified detail message. The cause is not initialized, and may
      * subsequently be initialized by a call to {@link #initCause(Throwable) initCause}.
      *
      * @param msg the detail message
      */
-    public ReplyException(String msg) {
+    public RemoteRequestException(String msg) {
         super(msg);
     }
 
     /**
-     * Constructs a <tt>ReplyException</tt> with the specified cause. The detail message is set to:
+     * Constructs a <tt>RemoteRequestException</tt> with the specified cause. The detail message is set to:
      * <pre>
      *  (cause == null ? null : cause.toString())</pre>
      * (which typically contains the class and detail message of <tt>cause</tt>).
      *
      * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
      */
-    public ReplyException(Throwable cause) {
+    public RemoteRequestException(Throwable cause) {
         super(cause);
     }
 
     /**
-     * Constructs a <tt>ReplyException</tt> with the specified detail message and cause.
+     * Constructs a <tt>RemoteRequestException</tt> with the specified detail message and cause.
      *
      * @param msg the detail message
      * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
      */
-    public ReplyException(String msg, Throwable cause) {
+    public RemoteRequestException(String msg, Throwable cause) {
         super(msg, cause);
     }
 }

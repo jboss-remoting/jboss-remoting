@@ -3,7 +3,7 @@ package org.jboss.remoting;
 /**
  * An exception that is thrown when an operation terminates in such a way that the outcome cannot be known.
  */
-public class IndeterminateOutcomeException extends RemoteExecutionException {
+public class IndeterminateOutcomeException extends RemotingException {
 
     private static final long serialVersionUID = 6304843915977033800L;
 

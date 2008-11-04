@@ -50,5 +50,5 @@ public interface Handle<T> extends HandleableCloseable<Handle<T>> {
      *
      * @param handler the handler
      */
-    void addCloseHandler(final CloseHandler<? super Handle<T>> handler);
+    Key addCloseHandler(final CloseHandler<? super Handle<T>> handler);
 }

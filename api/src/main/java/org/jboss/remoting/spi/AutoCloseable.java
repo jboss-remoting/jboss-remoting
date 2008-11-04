@@ -20,32 +20,14 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.util;
+package org.jboss.remoting.spi;
+
+import org.jboss.remoting.HandleableCloseable;
+import java.io.IOException;
 
 /**
- * A concurrent map that is keyed by integer.
+ *
  */
-public interface ConcurrentIntegerMap<V> {
-
-    V get(int key);
-
-    V put(int key, V value);
-
-    V putIfAbsent(int key, V value);
-
-    V remove(int key);
-
-    boolean remove(int key, Object oldValue);
-
-    V replace(int key, V value);
-
-    boolean replace(int key, V oldValue, V newValue);
-
-    void clear();
-
-    boolean isEmpty();
-
-    boolean equals(Object other);
-
-    int hashCode();
+public interface AutoCloseable<T> extends HandleableCloseable<T> {
+    Handle<T> getHandle() throws IOException;
 }

@@ -50,9 +50,9 @@ public final class Transporter {
      */
     public static <T> T createTransporter(Endpoint endpoint, Class<T> interfaceType, T instance) throws IOException {
         boolean ok = false;
-        final Handle<RequestHandler> requestHandlerHandle = endpoint.createRequestHandler(new TransporterRequestListener<T>(instance));
+        final Handle<RequestHandler> requestHandlerHandle = endpoint.createRequestHandler(new TransporterRequestListener<T>(instance), TransporterInvocation.class, Object.class);
         try {
-            final Client<TransporterInvocation,Object> client = endpoint.createClient(requestHandlerHandle.getResource());
+            final Client<TransporterInvocation,Object> client = endpoint.createClient(requestHandlerHandle.getResource(), TransporterInvocation.class, Object.class);
             try {
                 requestHandlerHandle.close();
                 final T proxy = createProxy(interfaceType, client);
@@ -68,8 +68,7 @@ public final class Transporter {
         }
     }
 
-    @SuppressWarnings({ "unchecked" })
     private static <T> T createProxy(final Class<T> interfaceType, final Client<TransporterInvocation, Object> client) {
-        return (T) Proxy.newProxyInstance(interfaceType.getClassLoader(), new Class<?>[] { interfaceType }, new TransporterInvocationHandler(client));
+        return interfaceType.cast(Proxy.newProxyInstance(interfaceType.getClassLoader(), new Class<?>[] { interfaceType }, new TransporterInvocationHandler(client)));
     }
 }

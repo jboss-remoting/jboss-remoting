@@ -23,7 +23,7 @@
 package org.jboss.remoting.protocol.basic;
 
 import org.jboss.marshalling.MarshallerFactory;
-import org.jboss.marshalling.Configuration;
+import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.xnio.BufferAllocator;
 import java.util.concurrent.Executor;
 import java.nio.ByteBuffer;
@@ -33,7 +33,7 @@ import java.nio.ByteBuffer;
  */
 public final class BasicConfiguration {
     private MarshallerFactory marshallerFactory;
-    private Configuration marshallingConfiguration;
+    private MarshallingConfiguration marshallingConfiguration;
     private int linkMetric;
     private Executor executor;
     private BufferAllocator<ByteBuffer> allocator;
@@ -46,11 +46,11 @@ public final class BasicConfiguration {
         this.marshallerFactory = marshallerFactory;
     }
 
-    public Configuration getMarshallingConfiguration() {
+    public MarshallingConfiguration getMarshallingConfiguration() {
         return marshallingConfiguration;
     }
 
-    public void setMarshallingConfiguration(final Configuration marshallingConfiguration) {
+    public void setMarshallingConfiguration(final MarshallingConfiguration marshallingConfiguration) {
         this.marshallingConfiguration = marshallingConfiguration;
     }
 

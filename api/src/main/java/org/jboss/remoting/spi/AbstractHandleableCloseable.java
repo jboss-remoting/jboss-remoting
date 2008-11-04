@@ -126,12 +126,17 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
     /**
      * {@inheritDoc}
      */
-    public void addCloseHandler(final CloseHandler<? super T> handler) {
+    public Key addCloseHandler(final CloseHandler<? super T> handler) {
         synchronized (closeLock) {
             if (closeHandlers == null) {
                 closeHandlers = new HashSet<CloseHandler<? super T>>();
             }
             closeHandlers.add(handler);
+            return new Key() {
+                public void remove() {
+                    closeHandlers.remove(handler);
+                }
+            };
         }
     }
 
