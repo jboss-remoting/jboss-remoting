@@ -48,7 +48,9 @@ public final class MultiplexProtocol {
     /**
      * Create a request server for the multiplex protocol.
      *
-     * @return a handler factory for passing to an XNIO server @param executor the executor to use for invocations @param configuration
+     * @param endpoint the endpoint
+     * @param configuration the configuration
+     * @return a handler factory for passing to an XNIO server
      */
     public static IoHandlerFactory<AllocatedMessageChannel> createServer(final Endpoint endpoint, final MultiplexConfiguration configuration) {
         return new IoHandlerFactory<AllocatedMessageChannel>() {
@@ -61,8 +63,11 @@ public final class MultiplexProtocol {
     /**
      * Create a request client for the multiplex protocol.
      *
+     * @param endpoint the endpoint
+     * @param configuration the configuration
+     * @param channelSource the XNIO channel source to use to establish the connection @param allocator the buffer allocator to use
      * @return a handle which may be used to close the connection
-     * @throws IOException if an error occurs @param executor the executor to use for invocations @param channelSource the XNIO channel source to use to establish the connection @param allocator the buffer allocator to use @param configuration
+     * @throws IOException if an error occurs
      */
     public static IoFuture<SimpleCloseable> connect(final Endpoint endpoint, final MultiplexConfiguration configuration, final ChannelSource<AllocatedMessageChannel> channelSource) throws IOException {
         final MultiplexHandler multiplexHandler = new MultiplexHandler(endpoint, configuration);
@@ -85,7 +90,7 @@ public final class MultiplexProtocol {
         }
 
         public String toString() {
-            return "connection <" + Integer.toString(hashCode()) + ">";
+            return "Remoting multiplex connection <" + Integer.toString(hashCode()) + ">";
         }
     }
 }

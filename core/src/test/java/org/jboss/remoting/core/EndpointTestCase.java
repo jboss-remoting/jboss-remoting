@@ -37,6 +37,7 @@ import org.jboss.remoting.test.support.LoggingHelper;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 
 /**
  *
@@ -45,6 +46,8 @@ public final class EndpointTestCase extends TestCase {
     static {
         LoggingHelper.init();
     }
+
+    private static final Logger log = Logger.getLogger(EndpointTestCase.class);
 
     private static void safeStop(EndpointImpl endpoint) {
         try {
@@ -92,7 +95,7 @@ public final class EndpointTestCase extends TestCase {
                             }
                         }
                     }
-                }, INIT_ME, INIT_ME2);
+                }, Object.class, Object.class);
                 final RequestHandler requestHandler = handle.getResource();
                 try {
                     requestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
@@ -100,7 +103,7 @@ public final class EndpointTestCase extends TestCase {
                             clientEndpointClosed.set(true);
                         }
                     });
-                    final Client<Object,Object> client = endpoint.createClient(requestHandler, requestType, replyType);
+                    final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
                     try {
                         client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
                             public void handleClose(final Client<Object, Object> closed) {
@@ -144,14 +147,10 @@ public final class EndpointTestCase extends TestCase {
                         try {
                             context.sendReply(replyObj);
                         } catch (IOException e) {
-                            try {
-                                context.sendFailure(e.getMessage(), e);
-                            } catch (IOException e1) {
-                                fail("double fault");
-                            }
+                            log.error(e, "Error sending reply!");
                         }
                     }
-                }, INIT_ME, INIT_ME2);
+                }, Object.class, Object.class);
                 final RequestHandler requestHandler = handle.getResource();
                 try {
                     requestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
@@ -159,7 +158,7 @@ public final class EndpointTestCase extends TestCase {
                             clientEndpointClosed.set(true);
                         }
                     });
-                    final Client<Object,Object> client = endpoint.createClient(requestHandler, requestType, replyType);
+                    final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
                     try {
                         client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
                             public void handleClose(final Client<Object, Object> closed) {

@@ -99,6 +99,7 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
     /**
      * {@inheritDoc}
      */
+    @SuppressWarnings({ "unchecked" })
     public final void close() throws IOException {
         if (! closed.getAndSet(true)) {
             log.trace("Closed %s", this);
@@ -113,7 +114,7 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
                                 }
                             });
                         } catch (RejectedExecutionException ree) {
-                            log.warn("Unable to execute close handler (execution rejected) for %s (%s)", this, ree.getMessage());
+                            SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this);
                         }
                     }
                     closeHandlers = null;
@@ -134,7 +135,12 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
             closeHandlers.add(handler);
             return new Key() {
                 public void remove() {
-                    closeHandlers.remove(handler);
+                    synchronized (closeLock) {
+                        final Set<CloseHandler<? super T>> closeHandlers = AbstractHandleableCloseable.this.closeHandlers;
+                        if (closeHandlers != null) {
+                            closeHandlers.remove(handler);
+                        }
+                    }
                 }
             };
         }

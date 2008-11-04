@@ -11,7 +11,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.security.AccessController;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.ClientSource;
 import org.jboss.remoting.CloseHandler;
@@ -149,7 +148,10 @@ public final class EndpointImpl implements Endpoint {
     }
 
     public <I, O> Handle<RequestHandler> createRequestHandler(final RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
-        AccessController.checkPermission(CREATE_REQUEST_HANDLER_PERM);
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(CREATE_REQUEST_HANDLER_PERM);
+        }
         LocalRequestHandler.Config<I, O> config = new LocalRequestHandler.Config<I,O>(requestClass, replyClass);
         config.setExecutor(executor);
         config.setRequestListener(requestListener);
@@ -161,7 +163,10 @@ public final class EndpointImpl implements Endpoint {
     }
 
     public <I, O> Handle<RequestHandlerSource> registerService(final LocalServiceConfiguration<I, O> configuration) throws IOException {
-        AccessController.checkPermission(REGISTER_SERVICE_PERM);
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(REGISTER_SERVICE_PERM);
+        }
         final String serviceType = configuration.getServiceType();
         final String groupName = configuration.getGroupName();
         final int metric = configuration.getMetric();
@@ -214,7 +219,10 @@ public final class EndpointImpl implements Endpoint {
     }
 
     public <I, O> Client<I, O> createClient(final RequestHandler requestHandler, final Class<I> requestType, final Class<O> replyType) throws IOException {
-        AccessController.checkPermission(CREATE_CLIENT_PERM);
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(CREATE_CLIENT_PERM);
+        }
         boolean ok = false;
         final Handle<RequestHandler> handle = requestHandler.getHandle();
         try {
@@ -234,7 +242,10 @@ public final class EndpointImpl implements Endpoint {
     }
 
     public <I, O> ClientSource<I, O> createClientSource(final RequestHandlerSource requestHandlerSource, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
-        AccessController.checkPermission(CREATE_CLIENT_SOURCE_PERM);
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(CREATE_CLIENT_SOURCE_PERM);
+        }
         boolean ok = false;
         final Handle<RequestHandlerSource> handle = requestHandlerSource.getHandle();
         try {
@@ -324,7 +335,10 @@ public final class EndpointImpl implements Endpoint {
     }
 
     public SimpleCloseable registerRemoteService(final RemoteServiceConfiguration configuration) throws IllegalArgumentException, IOException {
-        AccessController.checkPermission(REGISTER_REMOTE_SERVICE_PERM);
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(REGISTER_REMOTE_SERVICE_PERM);
+        }
         final RequestHandlerSource handlerSource = configuration.getRequestHandlerSource();
         final String serviceType = configuration.getServiceType();
         final String groupName = configuration.getGroupName();
@@ -381,7 +395,10 @@ public final class EndpointImpl implements Endpoint {
     }
 
     public SimpleCloseable addServiceListener(final ServiceListener serviceListener, final boolean onlyNew) {
-        AccessController.checkPermission(ADD_SERVICE_LISTENER_PERM);
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(ADD_SERVICE_LISTENER_PERM);
+        }
         final Object key = new Object();
         synchronized (serviceLock) {
             final ServiceListenerRegistration registration = new ServiceListenerRegistration(serviceListener);

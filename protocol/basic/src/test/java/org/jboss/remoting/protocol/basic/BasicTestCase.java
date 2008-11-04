@@ -77,7 +77,7 @@ public final class BasicTestCase extends TestCase {
                     }
                 }
             }
-        }, INIT_ME, INIT_ME2);
+        }, Object.class, Object.class);
         final ChannelSource<StreamChannel> channelSource = xnio.createPipeServer(executor, IoUtils.singletonHandlerFactory(new IoHandler<StreamChannel>() {
             public void handleOpened(final StreamChannel channel) {
                 try {
@@ -101,7 +101,7 @@ public final class BasicTestCase extends TestCase {
         }));
         final IoFuture<StreamChannel> futureChannel = channelSource.open(IoUtils.nullHandler());
         final Handle<RequestHandler> clientHandlerHandle = BasicProtocol.createClient(futureChannel.get(), configuration);
-        final Client<Object,Object> client = endpoint.createClient(clientHandlerHandle.getResource(), requestType, replyType);
+        final Client<Object,Object> client = endpoint.createClient(clientHandlerHandle.getResource(), Object.class, Object.class);
         System.out.println("Reply is:" + client.invoke("GORBA!"));
 
     }
