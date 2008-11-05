@@ -83,7 +83,7 @@ public class SynchronizedQueue<T> implements BlockingQueue<T> {
         }
     }
 
-    public <T> T[] toArray(final T[] a) {
+    public <U> U[] toArray(final U[] a) {
         synchronized(monitor) {
             //noinspection SuspiciousToArrayCall
             return delegate.toArray(a);

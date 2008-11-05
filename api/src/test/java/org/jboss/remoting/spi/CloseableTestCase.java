@@ -187,7 +187,7 @@ public final class CloseableTestCase extends TestCase {
         };
         final Handle<Object> rootHandle = closeable.getHandle();
         try {
-
+            // todo - something with that rootHandle
         } finally {
             IoUtils.safeClose(closeable);
         }

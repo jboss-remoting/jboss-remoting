@@ -33,9 +33,9 @@ public final class RequestListenerExecutor implements Executor {
 
     private final Set<Task> tasks = CollectionUtil.synchronizedHashSet();
     private final Executor executor;
-    private final RequestContextImpl requestContext;
+    private final RequestContextImpl<?> requestContext;
 
-    public RequestListenerExecutor(final Executor executor, final RequestContextImpl context) {
+    public RequestListenerExecutor(final Executor executor, final RequestContextImpl<?> context) {
         this.executor = executor;
         requestContext = context;
     }

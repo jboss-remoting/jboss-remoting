@@ -75,6 +75,7 @@ public final class MultiplexProtocol {
         return new AbstractConvertingIoFuture<SimpleCloseable, AllocatedMessageChannel>(futureChannel) {
             protected SimpleCloseable convert(final AllocatedMessageChannel channel) throws RemotingException {
                 return new AbstractConnection(configuration.getExecutor()) {
+                    // todo - this method is not called by anyone?
                     public Handle<RequestHandlerSource> getServiceForId(final int id) throws IOException {
                         return multiplexHandler.getRemoteService(id).getHandle();
                     }

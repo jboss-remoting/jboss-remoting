@@ -48,7 +48,6 @@ import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.CloseableExecutor;
 import org.jboss.xnio.ChannelSource;
-import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.IoHandlerFactory;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.Buffers;

@@ -504,7 +504,7 @@ public final class CollectionUtil {
 
     private static final Iterator<?> EMPTY_ITERATOR = new EmptyIterator();
 
-    private static final class EmptyIterator implements Iterator {
+    private static final class EmptyIterator implements Iterator<Object> {
 
         public boolean hasNext() {
             return false;

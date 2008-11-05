@@ -31,7 +31,7 @@ public final class WeakHashSet<T> implements Set<T> {
         return map.keySet().toArray();
     }
 
-    public <T> T[] toArray(final T[] a) {
+    public <U> U[] toArray(final U[] a) {
         return map.keySet().toArray(a);
     }
 

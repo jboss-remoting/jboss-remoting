@@ -108,7 +108,6 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
                     for (final CloseHandler<? super T> handler : closeHandlers) {
                         try {
                             executor.execute(new Runnable() {
-                                @SuppressWarnings({ "unchecked" })
                                 public void run() {
                                     SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this);
                                 }
