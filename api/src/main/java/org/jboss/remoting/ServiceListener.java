@@ -30,27 +30,79 @@ import org.jboss.remoting.spi.RequestHandlerSource;
 public interface ServiceListener {
 
     /**
-     * Receive notification that a local service was added.  To receive a notification when it is closed, register a
-     * close handler on the provided {@code requestHandlerSource} parameter.
+     * Receive notification that a service was registered.
      *
      * @param listenerHandle the handle to this listener
-     * @param serviceType the service type string
-     * @param groupName the group name string
-     * @param requestHandlerSource the request handler source
+     * @param info the servce information
      */
-    void localServiceCreated(SimpleCloseable listenerHandle, String serviceType, String groupName, RequestHandlerSource requestHandlerSource);
+    void serviceRegistered(SimpleCloseable listenerHandle, ServiceInfo info);
 
     /**
-     * Receive notification that a remote service was registered.  To receive a notification when it is unregistered, register a
-     * close handler on the provided {@code handle} parameter.
-     *
-     * @param listenerHandle the handle to this listener
-     * @param endpointName the remote endpoint name
-     * @param serviceType the service type string
-     * @param groupName the group name string
-     * @param metric the metric value
-     * @param requestHandlerSource the request handler source
-     * @param handle the handle to the registration
+     * 
      */
-    void remoteServiceRegistered(SimpleCloseable listenerHandle, String endpointName, String serviceType, String groupName, int metric, RequestHandlerSource requestHandlerSource, SimpleCloseable handle);
+    final class ServiceInfo {
+        private String endpointName;
+        private String serviceType;
+        private String groupName;
+        private boolean remote;
+        private int metric;
+        private RequestHandlerSource requestHandlerSource;
+        private SimpleCloseable registrationHandle;
+
+        public String getServiceType() {
+            return serviceType;
+        }
+
+        public void setServiceType(final String serviceType) {
+            this.serviceType = serviceType;
+        }
+
+        public String getGroupName() {
+            return groupName;
+        }
+
+        public void setGroupName(final String groupName) {
+            this.groupName = groupName;
+        }
+
+        public int getMetric() {
+            return metric;
+        }
+
+        public void setMetric(final int metric) {
+            this.metric = metric;
+        }
+
+        public RequestHandlerSource getRequestHandlerSource() {
+            return requestHandlerSource;
+        }
+
+        public void setRequestHandlerSource(final RequestHandlerSource requestHandlerSource) {
+            this.requestHandlerSource = requestHandlerSource;
+        }
+
+        public SimpleCloseable getRegistrationHandle() {
+            return registrationHandle;
+        }
+
+        public void setRegistrationHandle(final SimpleCloseable registrationHandle) {
+            this.registrationHandle = registrationHandle;
+        }
+
+        public String getEndpointName() {
+            return endpointName;
+        }
+
+        public void setEndpointName(final String endpointName) {
+            this.endpointName = endpointName;
+        }
+
+        public boolean isRemote() {
+            return remote;
+        }
+
+        public void setRemote(final boolean remote) {
+            this.remote = remote;
+        }
+    }
 }

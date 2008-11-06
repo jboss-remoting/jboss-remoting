@@ -203,7 +203,15 @@ public final class EndpointImpl implements Endpoint {
             for (final ServiceListenerRegistration slr : serviceListenerMap.values()) {
                 final ServiceListener listener = slr.getServiceListener();
                 try {
-                    listener.localServiceCreated(slr.handle, serviceType, groupName, localRequestHandlerSource);
+                    final ServiceListener.ServiceInfo serviceInfo = new ServiceListener.ServiceInfo();
+                    serviceInfo.setEndpointName(name);
+                    serviceInfo.setGroupName(groupName);
+                    serviceInfo.setServiceType(serviceType);
+                    serviceInfo.setMetric(metric);
+                    serviceInfo.setRegistrationHandle(newHandle);
+                    serviceInfo.setRemote(false);
+                    serviceInfo.setRequestHandlerSource(localRequestHandlerSource);
+                    listener.serviceRegistered(slr.handle, serviceInfo);
                 } catch (Throwable t) {
                     logListenerError(t);
                 }
@@ -287,12 +295,11 @@ public final class EndpointImpl implements Endpoint {
             if (size == 0) {
                 final FutureClientSource<I, O> futureClientSource = new FutureClientSource<I, O>();
                 final SimpleCloseable listenerHandle = addServiceListener(new ServiceListener() {
-
-                    public void localServiceCreated(final SimpleCloseable listenerHandle, final String addedServiceType, final String addedGroupName, final RequestHandlerSource requestHandlerSource) {
-                        remoteServiceRegistered(listenerHandle, name, addedServiceType, addedGroupName, 0, requestHandlerSource, null);
-                    }
-
-                    public void remoteServiceRegistered(final SimpleCloseable listenerHandle, final String addedEndpointName, final String addedServiceType, final String addedGroupName, final int metric, final RequestHandlerSource requestHandlerSource, final SimpleCloseable handle) {
+                    public void serviceRegistered(final SimpleCloseable listenerHandle, final ServiceInfo info) {
+                        final String addedEndpointName = info.getEndpointName();
+                        final String addedServiceType = info.getServiceType();
+                        final String addedGroupName = info.getGroupName();
+                        final RequestHandlerSource requestHandlerSource = info.getRequestHandlerSource();
                         if (endpointName != null && endpointName.length() > 0 && !endpointName.equals(addedEndpointName)) {
                             // no match
                             return;
@@ -385,7 +392,15 @@ public final class EndpointImpl implements Endpoint {
             for (final ServiceListenerRegistration slr : serviceListenerMap.values()) {
                 final ServiceListener listener = slr.getServiceListener();
                 try {
-                    listener.remoteServiceRegistered(slr.handle, endpointName, serviceType, groupName, metric, handlerSource, newHandle);
+                    final ServiceListener.ServiceInfo info = new ServiceListener.ServiceInfo();
+                    info.setEndpointName(endpointName);
+                    info.setGroupName(groupName);
+                    info.setMetric(metric);
+                    info.setRegistrationHandle(newHandle);
+                    info.setRemote(true);
+                    info.setRequestHandlerSource(handlerSource);
+                    info.setServiceType(serviceType);
+                    listener.serviceRegistered(slr.handle, info);
                 } catch (Throwable t) {
                     logListenerError(t);
                 }
@@ -414,11 +429,15 @@ public final class EndpointImpl implements Endpoint {
             if (! onlyNew) {
                 for (final ServiceRegistration reg : serviceRegistrations) {
                     try {
-                        if (reg.isRemote()) { // x is remote
-                            serviceListener.remoteServiceRegistered(handle, reg.getEndpointName(), reg.getServiceType(), reg.getGroupName(), reg.getMetric(), reg.getHandlerSource(), reg.getHandle());
-                        } else { // x is local
-                            serviceListener.localServiceCreated(handle, reg.getServiceType(), reg.getGroupName(), reg.getHandlerSource());
-                        }
+                        final ServiceListener.ServiceInfo info = new ServiceListener.ServiceInfo();
+                        info.setEndpointName(reg.getEndpointName());
+                        info.setGroupName(reg.getGroupName());
+                        info.setMetric(reg.getMetric());
+                        info.setRegistrationHandle(reg.getHandle());
+                        info.setRemote(reg.isRemote());
+                        info.setRequestHandlerSource(reg.getHandlerSource());
+                        info.setServiceType(reg.getServiceType());
+                        serviceListener.serviceRegistered(handle, info);
                     } catch (Throwable t) {
                         logListenerError(t);
                     }

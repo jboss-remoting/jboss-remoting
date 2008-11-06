@@ -65,7 +65,7 @@ public final class MultiplexProtocol {
      *
      * @param endpoint the endpoint
      * @param configuration the configuration
-     * @param channelSource the XNIO channel source to use to establish the connection @param allocator the buffer allocator to use
+     * @param channelSource the XNIO channel source to use to establish the connection
      * @return a handle which may be used to close the connection
      * @throws IOException if an error occurs
      */
