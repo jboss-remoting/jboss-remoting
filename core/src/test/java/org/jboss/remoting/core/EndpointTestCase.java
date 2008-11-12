@@ -217,4 +217,54 @@ public final class EndpointTestCase extends TestCase {
             executorService.shutdownNow();
         }
     }
+
+    public void testUnsentReply2() throws Throwable {
+        final EndpointImpl endpoint = new EndpointImpl();
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final Object requestObj = new Object();
+        try {
+            endpoint.setExecutor(executorService);
+            endpoint.start();
+            try {
+                final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
+                    public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
+                        assertEquals(request, requestObj);
+                        context.execute(new Runnable() {
+                            public void run() {
+                                context.execute(new Runnable() {
+                                    public void run() {
+                                        context.execute(new Runnable() {
+                                            public void run() {
+                                            }
+                                        });
+                                    }
+                                });
+                                context.execute(new Runnable() {
+                                    public void run() {
+                                    }
+                                });
+                            }
+                        });
+                        context.execute(new Runnable() {
+                            public void run() {
+                            }
+                        });
+                    }
+                }, Object.class, Object.class);
+                final RequestHandler requestHandler = handle.getResource();
+                try {
+                    final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
+                    final IoFuture<Object> futureReply = client.send(requestObj);
+                    assertEquals(IoFuture.Status.FAILED, futureReply.await(500L, TimeUnit.MILLISECONDS));
+                    assertTrue(futureReply.getException() instanceof IndeterminateOutcomeException);
+                } finally {
+                    IoUtils.safeClose(requestHandler);
+                }
+            } finally {
+                safeStop(endpoint);
+            }
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
 }
