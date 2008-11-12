@@ -33,10 +33,12 @@ import org.jboss.remoting.RequestContext;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.Client;
+import org.jboss.remoting.IndeterminateOutcomeException;
 import org.jboss.remoting.test.support.LoggingHelper;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -180,6 +182,37 @@ public final class EndpointTestCase extends TestCase {
             assertTrue(executorService.awaitTermination(1L, TimeUnit.SECONDS));
             assertTrue(clientEndpointClosed.get());
             assertTrue(clientClosed.get());
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    public void testUnsentReply() throws Throwable {
+        final EndpointImpl endpoint = new EndpointImpl();
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final Object requestObj = new Object();
+        try {
+            endpoint.setExecutor(executorService);
+            endpoint.start();
+            try {
+                final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
+                    public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
+                        assertEquals(request, requestObj);
+                        // don't send a reply!!
+                    }
+                }, Object.class, Object.class);
+                final RequestHandler requestHandler = handle.getResource();
+                try {
+                    final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
+                    final IoFuture<Object> futureReply = client.send(requestObj);
+                    assertEquals(IoFuture.Status.FAILED, futureReply.await(500L, TimeUnit.MILLISECONDS));
+                    assertTrue(futureReply.getException() instanceof IndeterminateOutcomeException);
+                } finally {
+                    IoUtils.safeClose(requestHandler);
+                }
+            } finally {
+                safeStop(endpoint);
+            }
         } finally {
             executorService.shutdownNow();
         }
