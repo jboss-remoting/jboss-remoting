@@ -156,7 +156,7 @@ public final class RequestContextImpl<O> implements RequestContext<O> {
     }
 
     void finishTask() {
-        if (taskCount.decrementAndGet() == 0 && closed.getAndSet(true)) {
+        if (taskCount.decrementAndGet() == 0 && ! closed.getAndSet(true)) {
             // no response sent!  send back IndeterminateOutcomeException
             SpiUtils.safeHandleException(replyHandler, new IndeterminateOutcomeException("No reply was sent by the request listener"));
         }
