@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.IndeterminateOutcomeException;
+import org.jboss.remoting.RemoteRequestException;
 import org.jboss.remoting.core.util.QueueExecutor;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.RemoteRequestContext;
@@ -57,7 +58,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         if (! isOpen()) {
             throw new IOException("Client is not open");
         }
-        final I actualRequest = requestClass.cast(request);
+        final I actualRequest = castRequest(request);
         final QueueExecutor executor = new QueueExecutor();
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor, replyClass);
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
@@ -85,15 +86,30 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         if (! isOpen()) {
             throw new IOException("Client is not open");
         }
+        final I actualRequest = castRequest(request);
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor, replyClass);
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
-        final RemoteRequestContext requestContext = handle.getResource().receiveRequest(request, replyHandler);
+        final RemoteRequestContext requestContext = handle.getResource().receiveRequest(actualRequest, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         return futureReply;
     }
 
+    /**
+     * Since type is erased, it's possible that the wrong type was passed.
+     * @param request
+     * @return
+     * @throws RemoteRequestException
+     */
+    private I castRequest(final Object request) throws RemoteRequestException {
+        try {
+            return requestClass.cast(request);
+        } catch (ClassCastException e) {
+            throw new RemoteRequestException("Invalid request type sent (got <" + request.getClass().getName() + ">, expected <? extends " + requestClass.getName() + ">");
+        }
+    }
+
     public String toString() {
-        return "client instance <" + Integer.toString(hashCode()) + ">";
+        return "client instance <" + Integer.toHexString(hashCode()) + ">";
     }
 
     Handle<RequestHandler> getRequestHandlerHandle() {
