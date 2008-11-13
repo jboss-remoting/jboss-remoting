@@ -26,7 +26,7 @@ package org.jboss.remoting;
  * Remote request exception.  Indicates that the request arrived at the remote side, but the handler could not be
  * executed for some reason (for example, the request sent might not be of the correct type).
  */
-public final class RemoteRequestException extends RemotingException {
+public class RemoteRequestException extends RemotingException {
 
     private static final long serialVersionUID = 5494334026096542700L;
 

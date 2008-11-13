@@ -110,6 +110,7 @@ public interface Endpoint {
      * You must have the {@link org.jboss.remoting.EndpointPermission registerRemoteService EndpointPermission} to invoke this method.
      *
      * @param configuration the remote service configuration
+     * @return a closeable that may be used to remove the registration
      * @throws IllegalArgumentException if one of the given arguments was not valid
      * @throws IOException if an error occurs with the registration
      */
