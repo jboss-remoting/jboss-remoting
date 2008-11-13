@@ -32,9 +32,10 @@ import org.jboss.xnio.log.Logger;
  * Utility methods for Remoting service providers.
  */
 public final class SpiUtils {
+
     private SpiUtils() {}
 
-    private static final Logger log = Logger.getLogger(SpiUtils.class);
+    private static final Logger heLog = Logger.getLogger("org.jboss.remoting.handler-errors");
 
     /**
      * Safely notify a reply handler of an exception.
@@ -46,7 +47,7 @@ public final class SpiUtils {
         try {
             replyHandler.handleException(exception);
         } catch (Throwable t) {
-            log.debug(t, "Failed to properly handle exception");
+            heLog.debug(t, "Failed to properly handle exception");
         }
     }
 
@@ -61,7 +62,7 @@ public final class SpiUtils {
         try {
             replyHandler.handleReply(reply);
         } catch (Throwable t) {
-            log.debug(t, "Failed to properly handle reply");
+            heLog.debug(t, "Failed to properly handle reply");
         }
     }
 
@@ -74,7 +75,7 @@ public final class SpiUtils {
         try {
             replyHandler.handleCancellation();
         } catch (Throwable t) {
-            log.debug(t, "Failed to properly handle cancellation");
+            heLog.debug(t, "Failed to properly handle cancellation");
         }
     }
 
@@ -88,7 +89,7 @@ public final class SpiUtils {
         try {
             handler.notifyCancel(requestContext);
         } catch (Throwable t) {
-            log.error(t, "Request cancel handler threw an exception");
+            heLog.error(t, "Request cancel handler threw an exception");
         }
     }
 
@@ -103,7 +104,7 @@ public final class SpiUtils {
         try {
             handler.handleClose(closed);
         } catch (Throwable t) {
-            log.error(t, "Close handler threw an exception");
+            heLog.error(t, "Close handler threw an exception");
         }
     }
 
