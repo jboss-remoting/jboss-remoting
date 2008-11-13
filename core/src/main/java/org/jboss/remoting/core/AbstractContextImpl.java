@@ -51,6 +51,6 @@ public abstract class AbstractContextImpl<T> extends AbstractHandleableCloseable
     }
 
     public String toString() {
-        return "generic context instance <" + Integer.toString(hashCode()) + ">";
+        return "generic context instance <" + Integer.toHexString(hashCode()) + ">";
     }
 }
