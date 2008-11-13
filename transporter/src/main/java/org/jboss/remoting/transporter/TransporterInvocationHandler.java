@@ -27,6 +27,7 @@ import java.lang.reflect.Method;
 import java.io.IOException;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.RemoteExecutionException;
+import org.jboss.xnio.IoUtils;
 
 /**
  *
@@ -45,6 +46,14 @@ public final class TransporterInvocationHandler implements InvocationHandler {
             throw e.getCause();
         } catch (IOException e) {
             throw new IllegalStateException("Method invocation failed", e);
+        }
+    }
+
+    protected void finalize() throws Throwable {
+        try {
+            super.finalize();
+        } finally {
+            IoUtils.safeClose(client);
         }
     }
 }
