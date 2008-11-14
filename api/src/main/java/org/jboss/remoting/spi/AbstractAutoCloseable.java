@@ -23,12 +23,16 @@
 package org.jboss.remoting.spi;
 
 import java.io.IOException;
+import java.io.Closeable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.lang.ref.WeakReference;
 import org.jboss.remoting.RemotingException;
 import org.jboss.remoting.CloseHandler;
+import org.jboss.remoting.HandleableCloseable;
 import org.jboss.xnio.log.Logger;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.WeakCloseable;
 
 /**
  * A closeable implementation that supports reference counting.  Since the initial reference count is zero, implementors
@@ -98,24 +102,20 @@ public abstract class AbstractAutoCloseable<T> extends AbstractHandleableCloseab
      * @throws RemotingException if the resource is closed
      */
     public Handle<T> getHandle() throws IOException {
-        return new HandleImpl();
+        final HandleImpl handle = new HandleImpl();
+        final Key key = addCloseHandler(new HandleCloseHandler<T>(handle));
+        handle.addCloseHandler(new KeyCloseHandler<Handle<T>>(key));
+        return handle;
     }
 
     private final class HandleImpl extends AbstractHandleableCloseable<Handle<T>> implements Handle<T> {
-        private final Key key;
 
         private HandleImpl() throws IOException {
             super(AbstractAutoCloseable.this.executor);
-            key = AbstractAutoCloseable.this.addCloseHandler(new CloseHandler<T>() {
-                public void handleClose(final T closed) {
-                    IoUtils.safeClose(HandleImpl.this);
-                }
-            });
             inc();
         }
 
         protected void closeAction() throws IOException {
-            key.remove();
             dec();
         }
 
@@ -125,11 +125,36 @@ public abstract class AbstractAutoCloseable<T> extends AbstractHandleableCloseab
         }
 
         public String toString() {
-            return "handle <" + Integer.toString(hashCode(), 16) + "> to " + String.valueOf(AbstractAutoCloseable.this);
+            return "handle <" + Integer.toHexString(hashCode()) + "> to " + String.valueOf(AbstractAutoCloseable.this);
+        }
+    }
+
+    private static class HandleCloseHandler<T> implements CloseHandler<T> {
+
+        private final Closeable handle;
+
+        public HandleCloseHandler(final Handle<T> handle) {
+            this.handle = new WeakCloseable(new WeakReference<Closeable>(handle));
+        }
+
+        public void handleClose(final T closed) {
+            IoUtils.safeClose(handle);
+        }
+    }
+
+    private static class KeyCloseHandler<T> implements CloseHandler<T> {
+        private final Key key;
+
+        public KeyCloseHandler(final Key key) {
+            this.key = key;
+        }
+
+        public void handleClose(final T closed) {
+            key.remove();
         }
     }
 
     public String toString() {
-        return "generic resource <" + Integer.toString(hashCode(), 16) + ">";
+        return "generic resource <" + Integer.toHexString(hashCode()) + ">";
     }
 }
