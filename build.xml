@@ -1144,7 +1144,7 @@
     <!-- JAVADOCS                                       -->
     <!-- ============================================== -->
 
-    <target name="api-javadoc" depends="api,core,standalone,util,lib.apiviz,lib.marshalling-api,lib.xnio-api">
+    <target name="api-javadoc" depends="api,core,standalone,transporter,util,lib.apiviz,lib.marshalling-api,lib.xnio-api">
         <delete dir="api/target/main/docs"/>
         <mkdir dir="api/target/main/docs"/>
         <javadoc destdir="api/target/main/docs" author="false" version="false" use="false" windowtitle="JBoss Remoting API">
