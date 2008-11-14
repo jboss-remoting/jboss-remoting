@@ -84,6 +84,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                 channel.resumeReads();
                 return;
             }
+            log.trace("Received message:\n%s", Buffers.createDumper(buffer, 8, 1));
             final MessageType msgType;
             try {
                 msgType = MessageType.getMessageType(buffer.get() & 0xff);
@@ -91,7 +92,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                 log.trace("Received invalid message type");
                 return;
             }
-            log.trace("Received message type %s; dump:\n%s", msgType, Buffers.createDumper(buffer, 8, 1));
+            log.trace("Decoded message type %s", msgType);
             switch (msgType) {
                 case REQUEST: {
                     final int clientId = buffer.getInt();
