@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.test.support.LoggingHelper;
 
@@ -40,6 +41,8 @@ public final class CloseableTestCase extends TestCase {
     static {
         LoggingHelper.init();
     }
+
+    public static final Logger log = Logger.getLogger(CloseableTestCase.class);
 
     public void testBasic() throws Throwable {
         final ExecutorService executorService = Executors.newCachedThreadPool();

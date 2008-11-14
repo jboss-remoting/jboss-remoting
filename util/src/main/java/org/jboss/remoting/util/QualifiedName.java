@@ -100,9 +100,18 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
 
     public static QualifiedName parse(String path) {
         List<String> decoded = new ArrayList<String>();
+        boolean first = true;
         for (String segment : CollectionUtil.split("/", path)) {
-            if (segment.length() == 0) {
-                throw new IllegalArgumentException("Empty segment in path");
+            if (first) {
+                if (segment.length() > 0) {
+                    throw new IllegalArgumentException("Relative paths are not allowed");
+                }
+                first = false;
+                continue;
+            } else {
+                if (segment.length() == 0) {
+                    throw new IllegalArgumentException("Empty segment in path");
+                }
             }
             try {
                 decoded.add(URLDecoder.decode(segment, "utf-8"));

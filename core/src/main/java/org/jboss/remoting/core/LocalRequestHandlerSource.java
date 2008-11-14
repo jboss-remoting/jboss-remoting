@@ -43,7 +43,7 @@ public final class LocalRequestHandlerSource<I, O> extends AbstractAutoCloseable
     private final Class<I> requestClass;
     private final Class<O> replyClass;
 
-    private static final Logger log = Logger.getLogger(LocalRequestHandlerSource.class);
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.listener-source");
 
     LocalRequestHandlerSource(final Config<I, O> config) {
         super(config.getExecutor());

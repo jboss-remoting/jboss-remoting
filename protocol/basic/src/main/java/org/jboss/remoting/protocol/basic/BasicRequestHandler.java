@@ -42,7 +42,7 @@ import java.io.IOException;
  */
 final class BasicRequestHandler extends AbstractAutoCloseable<RequestHandler> implements RequestHandler {
 
-    private static final Logger log = Logger.getLogger(BasicRequestHandler.class);
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.basic");
 
     private final AtomicInteger requestSequence;
     private final Lock reqLock;
@@ -77,6 +77,8 @@ final class BasicRequestHandler extends AbstractAutoCloseable<RequestHandler> im
                     } catch (IOException e) {
                         log.error(e, "Error writing cancel request");
                         IoUtils.safeClose(BasicRequestHandler.this);
+                    } finally {
+                        reqLock.unlock();
                     }
                 }
             };

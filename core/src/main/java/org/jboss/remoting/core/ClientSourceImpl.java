@@ -26,28 +26,42 @@ import java.io.IOException;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.ClientSource;
 import org.jboss.remoting.Endpoint;
+import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.spi.AbstractHandleableCloseable;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.RequestHandlerSource;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
 public final class ClientSourceImpl<I, O> extends AbstractHandleableCloseable<ClientSource<I, O>> implements ClientSource<I, O> {
 
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.client-source"); 
+
     private final Handle<RequestHandlerSource> handle;
     private final Endpoint endpoint;
     private final Class<I> requestClass;
     private final Class<O> replyClass;
 
-    ClientSourceImpl(final Handle<RequestHandlerSource> handle, final EndpointImpl endpoint, final Class<I> requestClass, final Class<O> replyClass) {
+    private ClientSourceImpl(final Handle<RequestHandlerSource> handle, final EndpointImpl endpoint, final Class<I> requestClass, final Class<O> replyClass) {
         super(endpoint.getExecutor());
         this.handle = handle;
         this.endpoint = endpoint;
         this.requestClass = requestClass;
         this.replyClass = replyClass;
+    }
+
+    static <I, O> ClientSourceImpl<I, O> create(final Handle<RequestHandlerSource> handle, final EndpointImpl endpoint, final Class<I> requestClass, final Class<O> replyClass) {
+        final ClientSourceImpl<I, O> csi = new ClientSourceImpl<I, O>(handle, endpoint, requestClass, replyClass);
+        handle.addCloseHandler(new CloseHandler<Handle<RequestHandlerSource>>() {
+            public void handleClose(final Handle<RequestHandlerSource> closed) {
+                IoUtils.safeClose(csi);
+            }
+        });
+        return csi;
     }
 
     protected void closeAction() throws IOException {

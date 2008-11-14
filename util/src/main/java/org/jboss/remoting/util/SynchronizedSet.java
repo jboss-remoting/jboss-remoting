@@ -11,7 +11,7 @@ public class SynchronizedSet<K> extends SynchronizedCollection<K> implements Set
         super(delegate);
     }
 
-    protected SynchronizedSet(final Set<K> delegate, final Object monitor) {
+    public SynchronizedSet(final Set<K> delegate, final Object monitor) {
         super(delegate, monitor);
     }
 }

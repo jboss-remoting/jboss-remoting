@@ -24,7 +24,10 @@ package org.jboss.remoting.protocol.multiplex;
 
 import org.jboss.remoting.spi.AutoCloseable;
 import org.jboss.remoting.spi.Handle;
+import org.jboss.remoting.util.SynchronizedSet;
+import org.jboss.remoting.util.SynchronizedCollection;
 import java.util.Iterator;
+import java.util.Collection;
 
 /**
  *
@@ -39,6 +42,8 @@ interface IntegerResourceBiMap<T extends AutoCloseable<T>> extends Iterable<Hand
     Handle<T> remove(int key);
 
     void remove(T key);
+
+    Collection<Handle<T>> getKeys();
 
     class Util {
 
@@ -83,6 +88,10 @@ interface IntegerResourceBiMap<T extends AutoCloseable<T>> extends Iterable<Hand
                 synchronized (lock) {
                     orig.remove(key);
                 }
+            }
+
+            public Collection<Handle<T>> getKeys() {
+                return new SynchronizedCollection<Handle<T>>(orig.getKeys(), lock);
             }
 
             public Iterator<Handle<T>> iterator() {

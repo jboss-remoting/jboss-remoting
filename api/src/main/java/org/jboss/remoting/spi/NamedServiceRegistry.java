@@ -23,6 +23,9 @@
 package org.jboss.remoting.spi;
 
 import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.Collections;
 import java.io.IOException;
 import org.jboss.remoting.util.QualifiedName;
 import org.jboss.remoting.util.CollectionUtil;
@@ -73,6 +76,10 @@ public final class NamedServiceRegistry {
 
     public Handle<RequestHandlerSource> lookupService(QualifiedName path) {
         return map.get(path);
+    }
+
+    public Set<Map.Entry<QualifiedName, Handle<RequestHandlerSource>>> getEntrySet() {
+        return Collections.unmodifiableSet(map.entrySet());
     }
 
     public String toString() {

@@ -25,7 +25,6 @@ package org.jboss.remoting.core;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
-import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.RequestListener;
 import org.jboss.remoting.RemoteRequestException;
@@ -46,7 +45,7 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
     private final Class<I> requestClass;
     private final Class<O> replyClass;
 
-    private static final Logger log = Logger.getLogger(LocalRequestHandler.class);
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.listener");
 
     LocalRequestHandler(Config<I, O> config) {
         super(config.getExecutor());
@@ -88,18 +87,17 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
         };
     }
 
+    protected void closeAction() throws IOException {
+        try {
+            requestListener.handleClientClose(clientContext);
+        } catch (Throwable t) {
+            log.error(t, "Unexpected exception in request listener client close handler method");
+        }
+    }
+
     void open() throws IOException {
         try {
             requestListener.handleClientOpen(clientContext);
-            addCloseHandler(new CloseHandler<RequestHandler>() {
-                public void handleClose(final RequestHandler closed) {
-                    try {
-                        requestListener.handleClientClose(clientContext);
-                    } catch (Throwable t) {
-                        log.error(t, "Unexpected exception in request listener client close handler method");
-                    }
-                }
-            });
         } catch (Throwable t) {
             final IOException ioe = new IOException("Failed to open client context");
             ioe.initCause(t);

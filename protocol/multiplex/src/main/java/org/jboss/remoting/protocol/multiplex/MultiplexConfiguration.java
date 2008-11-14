@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.MarshallingConfiguration;
+import org.jboss.remoting.spi.NamedServiceRegistry;
 
 /**
  * A configuration object for the multiplex protocol.
@@ -37,6 +38,7 @@ public final class MultiplexConfiguration {
     private int linkMetric;
     private Executor executor;
     private BufferAllocator<ByteBuffer> allocator;
+    private NamedServiceRegistry namedServiceRegistry;
 
     /**
      * Construct a new instance.
@@ -132,5 +134,23 @@ public final class MultiplexConfiguration {
      */
     public void setAllocator(final BufferAllocator<ByteBuffer> allocator) {
         this.allocator = allocator;
+    }
+
+    /**
+     * Get the named service registry for this connection.
+     *
+     * @return the registry
+     */
+    public NamedServiceRegistry getNamedServiceRegistry() {
+        return namedServiceRegistry;
+    }
+
+    /**
+     * Set the named service registry for this connection.
+     *
+     * @param namedServiceRegistry the registry
+     */
+    public void setNamedServiceRegistry(final NamedServiceRegistry namedServiceRegistry) {
+        this.namedServiceRegistry = namedServiceRegistry;
     }
 }

@@ -363,7 +363,7 @@ public final class CollectionUtil {
                                 return subject.substring(position, nextDelim);
                             }
                         } finally {
-                            position = nextDelim;
+                            position = nextDelim == -1 ? -1 : nextDelim + 1;
                         }
                     }
 

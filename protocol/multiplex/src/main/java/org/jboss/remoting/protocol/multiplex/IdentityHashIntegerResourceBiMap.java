@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Collections;
+import java.util.Collection;
 import org.jboss.remoting.spi.AutoCloseable;
 import org.jboss.remoting.spi.Handle;
 
@@ -71,6 +73,10 @@ final class IdentityHashIntegerResourceBiMap<T extends AutoCloseable<T>> impleme
 
     public void remove(final T key) {
         leftMap.remove(rightMap.remove(key));
+    }
+
+    public Collection<Handle<T>> getKeys() {
+        return Collections.unmodifiableCollection(leftMap.values());
     }
 
     public static <T extends AutoCloseable<T>> IntegerResourceBiMap<T> create() {

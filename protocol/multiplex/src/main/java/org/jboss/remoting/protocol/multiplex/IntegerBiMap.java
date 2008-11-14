@@ -22,6 +22,9 @@
 
 package org.jboss.remoting.protocol.multiplex;
 
+import org.jboss.remoting.util.SynchronizedSet;
+import java.util.Set;
+
 /**
  *
  */
@@ -32,9 +35,13 @@ interface IntegerBiMap<T> {
 
     void put(int key1, T key2);
 
+    boolean putIfAbsent(int key1, T key2);
+
     T remove(int key);
 
     void remove(T key);
+
+    Set<T> getKeys();
 
     class Util {
 
@@ -69,6 +76,12 @@ interface IntegerBiMap<T> {
                 }
             }
 
+            public boolean putIfAbsent(final int key1, final T key2) {
+                synchronized (lock) {
+                    return orig.putIfAbsent(key1, key2);
+                }
+            }
+
             public T remove(final int key) {
                 synchronized (lock) {
                     return orig.remove(key);
@@ -79,6 +92,10 @@ interface IntegerBiMap<T> {
                 synchronized (lock) {
                     orig.remove(key);
                 }
+            }
+
+            public Set<T> getKeys() {
+                return new SynchronizedSet<T>(orig.getKeys(), lock);
             }
         }
 

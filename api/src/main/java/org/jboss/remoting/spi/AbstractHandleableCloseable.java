@@ -42,7 +42,7 @@ import org.jboss.xnio.log.Logger;
  */
 public abstract class AbstractHandleableCloseable<T> implements HandleableCloseable<T> {
 
-    private static final Logger log = Logger.getLogger(AbstractHandleableCloseable.class);
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.resource");
 
     protected final Executor executor;
     private final Object closeLock = new Object();

@@ -22,12 +22,7 @@
 
 package org.jboss.remoting.protocol.multiplex;
 
-import org.jboss.remoting.RemotingException;
-import org.jboss.remoting.SimpleCloseable;
 import org.jboss.remoting.Endpoint;
-import org.jboss.remoting.spi.RequestHandlerSource;
-import org.jboss.remoting.spi.Handle;
-import org.jboss.remoting.spi.AbstractSimpleCloseable;
 import org.jboss.xnio.IoHandlerFactory;
 import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.IoFuture;
@@ -35,7 +30,6 @@ import org.jboss.xnio.AbstractConvertingIoFuture;
 import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.channels.AllocatedMessageChannel;
 import java.io.IOException;
-import java.util.concurrent.Executor;
 
 /**
  *
@@ -55,7 +49,7 @@ public final class MultiplexProtocol {
     public static IoHandlerFactory<AllocatedMessageChannel> createServer(final Endpoint endpoint, final MultiplexConfiguration configuration) {
         return new IoHandlerFactory<AllocatedMessageChannel>() {
             public IoHandler<? super AllocatedMessageChannel> createHandler() {
-                return new MultiplexHandler(endpoint, configuration);
+                return new SimpleMultiplexHandler(endpoint, configuration);
             }
         };
     }
@@ -69,29 +63,13 @@ public final class MultiplexProtocol {
      * @return a handle which may be used to close the connection
      * @throws IOException if an error occurs
      */
-    public static IoFuture<SimpleCloseable> connect(final Endpoint endpoint, final MultiplexConfiguration configuration, final ChannelSource<AllocatedMessageChannel> channelSource) throws IOException {
-        final MultiplexHandler multiplexHandler = new MultiplexHandler(endpoint, configuration);
-        final IoFuture<AllocatedMessageChannel> futureChannel = channelSource.open(multiplexHandler);
-        return new AbstractConvertingIoFuture<SimpleCloseable, AllocatedMessageChannel>(futureChannel) {
-            protected SimpleCloseable convert(final AllocatedMessageChannel channel) throws RemotingException {
-                return new AbstractConnection(configuration.getExecutor()) {
-                    // todo - this method is not called by anyone?
-                    public Handle<RequestHandlerSource> getServiceForId(final int id) throws IOException {
-                        return multiplexHandler.getRemoteService(id).getHandle();
-                    }
-                };
+    public static IoFuture<MultiplexConnection> connect(final Endpoint endpoint, final MultiplexConfiguration configuration, final ChannelSource<AllocatedMessageChannel> channelSource) throws IOException {
+        final SimpleMultiplexHandler handler = new SimpleMultiplexHandler(endpoint, configuration);
+        final IoFuture<AllocatedMessageChannel> futureChannel = channelSource.open(handler);
+        return new AbstractConvertingIoFuture<MultiplexConnection, AllocatedMessageChannel>(futureChannel) {
+            protected MultiplexConnection convert(final AllocatedMessageChannel channel) throws IOException {
+                return handler.getConnection().get();
             }
         };
-    }
-
-    private abstract static class AbstractConnection extends AbstractSimpleCloseable {
-
-        protected AbstractConnection(final Executor executor) {
-            super(executor);
-        }
-
-        public String toString() {
-            return "Remoting multiplex connection <" + Integer.toString(hashCode()) + ">";
-        }
     }
 }

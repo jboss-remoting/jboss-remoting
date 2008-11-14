@@ -27,27 +27,42 @@ import java.util.concurrent.Executor;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.IndeterminateOutcomeException;
 import org.jboss.remoting.RemoteRequestException;
+import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.core.util.QueueExecutor;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.RemoteRequestContext;
 import org.jboss.remoting.spi.ReplyHandler;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
 public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implements Client<I, O> {
 
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.client");
+
     private final Handle<RequestHandler> handle;
     private final Class<I> requestClass;
     private final Class<O> replyClass;
 
-    ClientImpl(final Handle<RequestHandler> handle, final Executor executor, final Class<I> requestClass, final Class<O> replyClass) {
+    private ClientImpl(final Handle<RequestHandler> handle, final Executor executor, final Class<I> requestClass, final Class<O> replyClass) {
         super(executor);
         this.handle = handle;
         this.requestClass = requestClass;
         this.replyClass = replyClass;
+    }
+
+    static <I, O> ClientImpl<I, O> create(final Handle<RequestHandler> handle, final Executor executor, final Class<I> requestClass, final Class<O> replyClass) {
+        final ClientImpl<I, O> ci = new ClientImpl<I, O>(handle, executor, requestClass, replyClass);
+        handle.addCloseHandler(new CloseHandler<Handle<RequestHandler>>() {
+            public void handleClose(final Handle<RequestHandler> closed) {
+                IoUtils.safeClose(ci);
+            }
+        });
+        return ci;
     }
 
     protected void closeAction() throws IOException {

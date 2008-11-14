@@ -29,7 +29,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.lang.ref.WeakReference;
 import org.jboss.remoting.RemotingException;
 import org.jboss.remoting.CloseHandler;
-import org.jboss.remoting.HandleableCloseable;
 import org.jboss.xnio.log.Logger;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.WeakCloseable;
@@ -40,10 +39,10 @@ import org.jboss.xnio.WeakCloseable;
  */
 public abstract class AbstractAutoCloseable<T> extends AbstractHandleableCloseable<T> implements AutoCloseable<T> {
 
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.resource");
+
     private final AtomicInteger refcount = new AtomicInteger(0);
     private final Executor executor;
-
-    private static final Logger log = Logger.getLogger(AbstractAutoCloseable.class);
 
     /**
      * Basic constructor.

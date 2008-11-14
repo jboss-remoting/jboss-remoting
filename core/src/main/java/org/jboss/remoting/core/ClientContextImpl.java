@@ -25,11 +25,14 @@ package org.jboss.remoting.core;
 import java.util.concurrent.Executor;
 import org.jboss.remoting.ClientContext;
 import org.jboss.remoting.ServiceContext;
+import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
 public final class ClientContextImpl extends AbstractContextImpl<ClientContext> implements ClientContext {
+
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.client-context");
 
     private final ServiceContextImpl serviceContext;
 

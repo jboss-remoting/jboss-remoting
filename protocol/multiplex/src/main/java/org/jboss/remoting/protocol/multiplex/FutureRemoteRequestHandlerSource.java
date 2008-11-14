@@ -22,11 +22,25 @@
 
 package org.jboss.remoting.protocol.multiplex;
 
-import org.jboss.xnio.channels.WritableMessageChannel;
+import org.jboss.xnio.AbstractIoFuture;
+import org.jboss.xnio.IoFuture;
+import org.jboss.remoting.spi.RequestHandlerSource;
+import java.io.IOException;
 
 /**
  *
  */
-interface WriteHandler {
-    boolean handleWrite(WritableMessageChannel channel);
+public final class FutureRemoteRequestHandlerSource extends AbstractIoFuture<RequestHandlerSource> {
+
+    public IoFuture<RequestHandlerSource> cancel() {
+        return this;
+    }
+
+    protected boolean setException(final IOException exception) {
+        return super.setException(exception);
+    }
+
+    protected boolean setResult(final RequestHandlerSource result) {
+        return super.setResult(result);
+    }
 }

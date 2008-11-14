@@ -53,7 +53,7 @@ public final class ClientExternalizer implements Externalizer {
     }
 
     private <I, O> ClientImpl<I, O> doCreateExternal(Class<I> requestClass, Class<O> replyClass, RequestHandler handler) throws IOException {
-        return new ClientImpl<I, O>(handler.getHandle(), endpoint.getExecutor(), requestClass, replyClass);
+        return ClientImpl.create(handler.getHandle(), endpoint.getExecutor(), requestClass, replyClass);
     }
 
     public Object createExternal(final Class<?> aClass, final ObjectInput input, final Creator creator) throws IOException, ClassNotFoundException {

@@ -46,7 +46,7 @@ public final class EndpointImpl implements Endpoint {
         Logger.getLogger("org.jboss.remoting").info("JBoss Remoting version %s", Version.VERSION);
     }
 
-    private static final Logger log = Logger.getLogger(Endpoint.class);
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.endpoint");
 
     private String name;
 
@@ -234,12 +234,7 @@ public final class EndpointImpl implements Endpoint {
         boolean ok = false;
         final Handle<RequestHandler> handle = requestHandler.getHandle();
         try {
-            final ClientImpl<I, O> client = new ClientImpl<I, O>(handle, executor, requestType, replyType);
-            client.addCloseHandler(new CloseHandler<Client<I, O>>() {
-                public void handleClose(final Client<I, O> closed) {
-                    IoUtils.safeClose(handle);
-                }
-            });
+            final ClientImpl<I, O> client = ClientImpl.create(handle, executor, requestType, replyType);
             ok = true;
             return client;
         } finally {
@@ -257,7 +252,7 @@ public final class EndpointImpl implements Endpoint {
         boolean ok = false;
         final Handle<RequestHandlerSource> handle = requestHandlerSource.getHandle();
         try {
-            final ClientSourceImpl<I, O> clientSource = new ClientSourceImpl<I, O>(handle, this, requestClass, replyClass);
+            final ClientSourceImpl<I, O> clientSource = ClientSourceImpl.create(handle, this, requestClass, replyClass);
             ok = true;
             return clientSource;
         } finally {

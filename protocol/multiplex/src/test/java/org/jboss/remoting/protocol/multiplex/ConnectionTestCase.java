@@ -29,12 +29,10 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CountDownLatch;
-import java.net.URI;
 import java.io.IOException;
 import junit.framework.TestCase;
 import org.jboss.remoting.core.EndpointImpl;
 import org.jboss.remoting.test.support.LoggingHelper;
-import org.jboss.remoting.SimpleCloseable;
 import org.jboss.remoting.LocalServiceConfiguration;
 import org.jboss.remoting.RequestListener;
 import org.jboss.remoting.ClientContext;
@@ -43,6 +41,10 @@ import org.jboss.remoting.RequestContext;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.ClientSource;
 import org.jboss.remoting.Client;
+import org.jboss.remoting.util.QualifiedName;
+import org.jboss.remoting.spi.NamedServiceRegistry;
+import org.jboss.remoting.spi.RequestHandlerSource;
+import org.jboss.remoting.spi.Handle;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Xnio;
@@ -91,12 +93,10 @@ public final class ConnectionTestCase extends TestCase {
                         configuration.setExecutor(closeableExecutor);
                         configuration.setLinkMetric(10);
                         configuration.setMarshallerFactory(new RiverMarshallerFactory());
+                        final NamedServiceRegistry registry = new NamedServiceRegistry();
+                        configuration.setNamedServiceRegistry(registry);
                         final MarshallingConfiguration marshallingConfiguration = new MarshallingConfiguration();
                         configuration.setMarshallingConfiguration(marshallingConfiguration);
-                        final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = MultiplexProtocol.createServer(remoteEndpoint, configuration);
-                        final ChannelSource<AllocatedMessageChannel> channelSource = Channels.convertStreamToAllocatedMessage(xnio.createPipeServer(Channels.convertStreamToAllocatedMessage(handlerFactory, 16384, 16384)), 16384, 16384);
-                        final IoFuture<SimpleCloseable> future = MultiplexProtocol.connect(endpoint, configuration, channelSource);
-                        future.get();
                         final LocalServiceConfiguration<Object, Object> localServiceConfiguration = new LocalServiceConfiguration<Object, Object>(new RequestListener<Object, Object>() {
                             public void handleClientOpen(final ClientContext context) {
                                 log.debug("Client open");
@@ -125,15 +125,43 @@ public final class ConnectionTestCase extends TestCase {
                         localServiceConfiguration.setServiceType("connection.test");
                         localServiceConfiguration.setGroupName("testgroup");
                         localServiceConfiguration.setMetric(10);
-                        remoteEndpoint.registerService(localServiceConfiguration);
-                        final IoFuture<ClientSource<Object,Object>> futureClientSource = endpoint.locateService(new URI("jrs:connection.test::"), Object.class, Object.class);
-                        assertEquals(IoFuture.Status.DONE, futureClientSource.await(1L, TimeUnit.SECONDS));
-                        final ClientSource<Object, Object> clientSource = futureClientSource.get();
-                        final Client<Object,Object> client = clientSource.createClient();
-                        final IoFuture<Object> futureReply = client.send(REQUEST);
-                        assertEquals(IoFuture.Status.DONE, futureReply.await(1L, TimeUnit.SECONDS));
-                        assertEquals(REPLY, futureReply.get());
-                        assertTrue(latch.await(1L, TimeUnit.SECONDS));
+                        final Handle<RequestHandlerSource> requestHandlerSourceHandle = remoteEndpoint.registerService(localServiceConfiguration);
+                        try {
+                            registry.registerService(QualifiedName.parse("/test/connectiontest"), requestHandlerSourceHandle.getResource());
+                            final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = MultiplexProtocol.createServer(remoteEndpoint, configuration);
+                            final ChannelSource<AllocatedMessageChannel> channelSource = Channels.convertStreamToAllocatedMessage(xnio.createPipeServer(Channels.convertStreamToAllocatedMessage(handlerFactory, 16384, 16384)), 16384, 16384);
+                            final IoFuture<MultiplexConnection> future = MultiplexProtocol.connect(endpoint, configuration, channelSource);
+                            final MultiplexConnection connection = future.get();
+                            try {
+                                final Handle<RequestHandlerSource> remoteHandlerSource = connection.openRemoteService(QualifiedName.parse("/test/connectiontest"));
+                                try {
+                                    final ClientSource<Object, Object> clientSource = endpoint.createClientSource(remoteHandlerSource.getResource(), Object.class, Object.class);
+                                    try {
+                                        final Client<Object,Object> client = clientSource.createClient();
+                                        try {
+                                            final IoFuture<Object> futureReply = client.send(REQUEST);
+                                            assertEquals(IoFuture.Status.DONE, futureReply.await(1L, TimeUnit.SECONDS));
+                                            assertEquals(REPLY, futureReply.get());
+                                            client.close();
+                                            clientSource.close();
+                                            remoteHandlerSource.close();
+                                            connection.close();
+                                            assertTrue(latch.await(1L, TimeUnit.SECONDS));
+                                        } finally {
+                                            IoUtils.safeClose(client);
+                                        }
+                                    } finally {
+                                        IoUtils.safeClose(clientSource);
+                                    }
+                                } finally {
+                                    IoUtils.safeClose(remoteHandlerSource);
+                                }
+                            } finally {
+                                IoUtils.safeClose(connection);
+                            }
+                        } finally {
+                            IoUtils.safeClose(requestHandlerSourceHandle);
+                        }
                     } finally {
                         endpoint.stop();
                     }

@@ -24,6 +24,8 @@ package org.jboss.remoting.protocol.multiplex;
 
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Set;
+import java.util.Collections;
 
 /**
  *
@@ -59,6 +61,17 @@ final class IdentityHashIntegerBiMap<T> implements IntegerBiMap<T> {
         leftMap.remove(oldKey1Obj);
     }
 
+    public boolean putIfAbsent(final int key1, final T key2) {
+        final Integer key1Obj = Integer.valueOf(key1);
+        if (leftMap.containsKey(key1Obj)) {
+            return false;
+        }
+        final T oldKey2 = leftMap.put(key1Obj, key2);
+        rightMap.put(key2, key1Obj);
+        rightMap.remove(oldKey2);
+        return true;
+    }
+
     public T remove(final int key) {
         final T oldRightKey = leftMap.remove(Integer.valueOf(key));
         rightMap.remove(oldRightKey);
@@ -67,6 +80,10 @@ final class IdentityHashIntegerBiMap<T> implements IntegerBiMap<T> {
 
     public void remove(final T key) {
         leftMap.remove(rightMap.remove(key));
+    }
+
+    public Set<T> getKeys() {
+        return Collections.unmodifiableSet(rightMap.keySet());
     }
 
     public static <T> IntegerBiMap<T> create() {

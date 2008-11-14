@@ -15,7 +15,7 @@ public class SynchronizedCollection<V> implements Collection<V> {
         monitor = this;
     }
 
-    protected SynchronizedCollection(final Collection<V> delegate, final Object monitor) {
+    public SynchronizedCollection(final Collection<V> delegate, final Object monitor) {
         this.delegate = delegate;
         this.monitor = monitor;
     }
