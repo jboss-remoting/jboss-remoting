@@ -633,6 +633,7 @@
             <sysproperty key="ant.library.dir" value="${ant.home}/lib"/>
             <sysproperty key="lib.junit.local" value="${lib.junit.local}"/>
             <sysproperty key="lib.marshalling-api.local" value="${lib.marshalling-api.local}"/>
+            <sysproperty key="lib.river.local" value="${lib.river.local}"/>
             <sysproperty key="lib.xnio-api.local" value="${lib.xnio-api.local}"/>
             <sysproperty key="lib.xnio-nio.local" value="${lib.xnio-nio.local}"/>
             <jvmarg line="${test.jvmargs}"/>

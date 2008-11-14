@@ -25,6 +25,8 @@ grant codeBase "file:${build.home}/protocol/multiplex/target/test/classes/-"
 {
     permission java.lang.RuntimePermission "modifyThread"; // for executor control
     permission java.net.SocketPermission "*:*", "accept, connect, resolve";
+    permission org.jboss.remoting.EndpointPermission "createRequestHandler";
+    permission org.jboss.remoting.EndpointPermission "createClient";
 };
 
 // Permissions for Remoting itself
