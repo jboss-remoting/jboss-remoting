@@ -1,4 +1,4 @@
-package org.jboss.remoting.util;
+package org.jboss.remoting;
 
 import java.net.URI;
 import java.net.URISyntaxException;
