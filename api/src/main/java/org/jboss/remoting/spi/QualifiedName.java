@@ -32,24 +32,49 @@ import java.net.URLEncoder;
 import java.io.UnsupportedEncodingException;
 
 /**
- *
+ * A qualified name for service registration.  A qualified name is a path-like structure comprised of a series of
+ * zero or more name segments.  The string representation of a qualified name is a sequence of a forward slash
+ * ({@code /}) followed by a non-empty URL-encoded name segment.
  */
 public final class QualifiedName implements Comparable<QualifiedName>, Iterable<String> {
-    private final String[] segments;
-    private static final QualifiedName ROOT_NAME = new QualifiedName(new String[0]);
 
-    public QualifiedName(final String[] segments) {
-        if (segments == null) {
+    /**
+     * The root name.
+     */
+    public static final QualifiedName ROOT_NAME = new QualifiedName(new String[0]);
+
+    private final String[] segments;
+
+    /**
+     * Create a new qualified name from the given name segments.
+     *
+     * @param nameSegments the name segments
+     * @throws NullPointerException if {@code nameSegments} is {@code null} or if any element of that array is {@code null}
+     * @throws IllegalArgumentException if an element of {@code nameSegments} is an empty string
+     */
+    public QualifiedName(final String[] nameSegments) throws NullPointerException, IllegalArgumentException {
+        if (nameSegments == null) {
             throw new NullPointerException("segments is null");
         }
+        String[] segments = nameSegments.clone();
         for (String s : segments) {
             if (s == null) {
-                throw new NullPointerException("a segment is null");
+                throw new NullPointerException("Null segment");
+            }
+            if (s.length() == 0) {
+                throw new IllegalArgumentException("Empty segment");
             }
         }
         this.segments = segments;
     }
 
+    /**
+     * Compare this qualified name to another for equality.  Returns {@code true} if both names have the same number of segments
+     * with the same content.
+     *
+     * @param o the object to compare to
+     * @return {@code true} if the given object is a qualified name which is equal to this name
+     */
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (! (o instanceof QualifiedName)) return false;
@@ -58,10 +83,25 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
         return true;
     }
 
+    /**
+     * Get the hash code of this qualified name.  Equal to the return value of {@link Arrays#hashCode(Object[]) Arrays.hashCode(segments)}
+     * where {@code segments} is the array of decoded segment strings.
+     *
+     * @return the hash code
+     */
     public int hashCode() {
         return Arrays.hashCode(segments);
     }
 
+    /**
+     * Compare this qualified name to another.  Each segment is compared in turn; if they are equal then the comparison
+     * carries on to the next segment.  If all leading segments are equal but one qualified name has more segments,
+     * then the longer name is said to come after the shorter name.
+     *
+     * @param o the other name
+     * @return {@code 0} if the elements are equal, {@code -1} if this name comes before the given name, or {@code 1} if
+     *      this name comes after the given name
+     */
     public int compareTo(final QualifiedName o) {
         if (this == o) return 0;
         String[] a = segments;
@@ -83,6 +123,12 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
         }
     }
 
+    /**
+     * Get the string representation of this qualified name.  The root name is "{@code /}"; all other names are comprised
+     * of one or more consecutive character sequences of a forward slash followed by one or more URL-encoded characters.
+     *
+     * @return the string representation of this name
+     */
     public String toString() {
         StringBuilder builder = new StringBuilder();
         if (segments.length == 0) {
@@ -99,6 +145,14 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
         return builder.toString();
     }
 
+    /**
+     * Parse a qualified name.  A qualified name must consist of either a single forward slash ("{@code /}") or else
+     * a series of path components, each comprised of a single forward slash followed by a URL-encoded series of non-forward-slash
+     * characters.
+     *
+     * @param path the path
+     * @return the qualified name
+     */
     public static QualifiedName parse(String path) {
         List<String> decoded = new ArrayList<String>();
         final int len = path.length();
@@ -130,6 +184,11 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
         return new QualifiedName(decoded.toArray(new String[decoded.size()]));
     }
 
+    /**
+     * Get an iterator over the sequence of strings.
+     *
+     * @return an iterator
+     */
     public Iterator<String> iterator() {
         return new Iterator<String>() {
             int i;
@@ -152,6 +211,11 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
         };
     }
 
+    /**
+     * Get the number of segments in this name.
+     *
+     * @return the number of segments
+     */
     public int length() {
         return segments.length;
     }
