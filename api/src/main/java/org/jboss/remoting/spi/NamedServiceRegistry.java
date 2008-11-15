@@ -34,16 +34,31 @@ import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 
 /**
- *
+ * A registry associating names with services.  Specifically, the name is associated with a handle to a request handler
+ * source instance; this handle is owned by the registry, so closing the handle will remove the entry.
  */
 public final class NamedServiceRegistry {
     public static final Logger log = Logger.getLogger("org.jboss.remoting.named-registry");
 
     private final ConcurrentMap<QualifiedName, Handle<RequestHandlerSource>> map = new ConcurrentHashMap<QualifiedName, Handle<RequestHandlerSource>>();
 
+    /**
+     * Construct a new empty registry.
+     */
     public NamedServiceRegistry() {
     }
 
+    /**
+     * Register a service at the given path.  If the given service is closed, an exception will be thrown.  Returns
+     * a handle to the service which may be used to unregister this service from the registry.  In addition, if the
+     * service is closed, the registration will be automatically removed.  To monitor the registration, add a close
+     * handler to the returned handle.
+     *
+     * @param path the path of the service registration
+     * @param service the service
+     * @return a handle which can be used to unregister the service
+     * @throws IOException if an error occurs
+     */
     public Handle<RequestHandlerSource> registerService(final QualifiedName path, final RequestHandlerSource service) throws IOException {
         if (path == null) {
             throw new NullPointerException("path is null");
@@ -73,14 +88,28 @@ public final class NamedServiceRegistry {
         }
     }
 
+    /**
+     * Find a service at a location in the registry.
+     *
+     * @param path the path
+     * @return a handle to the service, or {@code null} if it is not found
+     */
     public Handle<RequestHandlerSource> lookupService(QualifiedName path) {
         return map.get(path);
     }
 
+    /**
+     * Get an unmodifiable view of the entry set of the registry.
+     *
+     * @return a set view
+     */
     public Set<Map.Entry<QualifiedName, Handle<RequestHandlerSource>>> getEntrySet() {
         return Collections.unmodifiableSet(map.entrySet());
     }
 
+    /**
+     * Returns a brief description of this object.
+     */
     public String toString() {
         return "named service registry <" + Integer.toHexString(hashCode()) + ">";
     }
