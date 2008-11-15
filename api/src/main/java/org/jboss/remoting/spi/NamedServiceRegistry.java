@@ -38,7 +38,7 @@ import org.jboss.xnio.log.Logger;
  * source instance; this handle is owned by the registry, so closing the handle will remove the entry.
  */
 public final class NamedServiceRegistry {
-    public static final Logger log = Logger.getLogger("org.jboss.remoting.named-registry");
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.named-registry");
 
     private final ConcurrentMap<QualifiedName, Handle<RequestHandlerSource>> map = new ConcurrentHashMap<QualifiedName, Handle<RequestHandlerSource>>();
 
