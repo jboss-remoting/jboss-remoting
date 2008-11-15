@@ -36,6 +36,7 @@ import java.io.UnsupportedEncodingException;
  */
 public final class QualifiedName implements Comparable<QualifiedName>, Iterable<String> {
     private final String[] segments;
+    private static final QualifiedName ROOT_NAME = new QualifiedName(new String[0]);
 
     public QualifiedName(final String[] segments) {
         if (segments == null) {
@@ -106,6 +107,9 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
         }
         if (path.charAt(0) != '/') {
             throw new IllegalArgumentException("Relative paths are not allowed");
+        }
+        if (len == 1) {
+            return ROOT_NAME;
         }
         int segStart = 0;
         int segEnd;
