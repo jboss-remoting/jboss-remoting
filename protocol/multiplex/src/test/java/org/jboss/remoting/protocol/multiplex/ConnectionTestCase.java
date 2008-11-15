@@ -68,7 +68,7 @@ public final class ConnectionTestCase extends TestCase {
         LoggingHelper.init();
     }
 
-    public static final Logger log = Logger.getLogger(ConnectionTestCase.class);
+    public static final Logger log = Logger.getLogger(ConnectionTestCase.class.getSimpleName());
 
     public void testConnection() throws Throwable {
         final String REQUEST = "request";
@@ -120,6 +120,10 @@ public final class ConnectionTestCase extends TestCase {
                             public void handleClientClose(final ClientContext context) {
                                 log.debug("Client closed");
                                 latch.countDown();
+                            }
+
+                            public String toString() {
+                                return "TestListener";
                             }
                         }, Object.class, Object.class);
                         localServiceConfiguration.setServiceType("connection.test");
