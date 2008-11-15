@@ -37,7 +37,7 @@ import org.jboss.remoting.spi.RequestHandlerSource;
 import org.jboss.remoting.ReplyException;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.ServiceRegistrationException;
-import org.jboss.remoting.util.QualifiedName;
+import org.jboss.remoting.spi.QualifiedName;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.Marshalling;
 import org.jboss.marshalling.Marshaller;

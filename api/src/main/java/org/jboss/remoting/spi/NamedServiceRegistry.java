@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Collections;
 import java.io.IOException;
-import org.jboss.remoting.util.QualifiedName;
 import org.jboss.remoting.util.CollectionUtil;
 import org.jboss.remoting.ServiceRegistrationException;
 import org.jboss.remoting.CloseHandler;

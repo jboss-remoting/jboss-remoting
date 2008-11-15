@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.util;
+package org.jboss.remoting.spi;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +30,7 @@ import java.util.NoSuchElementException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.io.UnsupportedEncodingException;
+import org.jboss.remoting.util.CollectionUtil;
 
 /**
  *
