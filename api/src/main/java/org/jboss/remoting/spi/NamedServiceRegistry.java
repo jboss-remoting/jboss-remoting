@@ -23,11 +23,11 @@
 package org.jboss.remoting.spi;
 
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.Collections;
 import java.io.IOException;
-import org.jboss.remoting.util.CollectionUtil;
 import org.jboss.remoting.ServiceRegistrationException;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.xnio.IoUtils;
@@ -39,7 +39,7 @@ import org.jboss.xnio.log.Logger;
 public final class NamedServiceRegistry {
     public static final Logger log = Logger.getLogger("org.jboss.remoting.named-registry");
 
-    private final ConcurrentMap<QualifiedName, Handle<RequestHandlerSource>> map = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<QualifiedName, Handle<RequestHandlerSource>> map = new ConcurrentHashMap<QualifiedName, Handle<RequestHandlerSource>>();
 
     public NamedServiceRegistry() {
     }

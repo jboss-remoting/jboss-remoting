@@ -30,7 +30,6 @@ import java.util.NoSuchElementException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.io.UnsupportedEncodingException;
-import org.jboss.remoting.util.CollectionUtil;
 
 /**
  *
@@ -101,18 +100,20 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
 
     public static QualifiedName parse(String path) {
         List<String> decoded = new ArrayList<String>();
-        boolean first = true;
-        for (String segment : CollectionUtil.split("/", path)) {
-            if (first) {
-                if (segment.length() > 0) {
-                    throw new IllegalArgumentException("Relative paths are not allowed");
-                }
-                first = false;
-                continue;
-            } else {
-                if (segment.length() == 0) {
-                    throw new IllegalArgumentException("Empty segment in path");
-                }
+        final int len = path.length();
+        if (len < 1) {
+            throw new IllegalArgumentException("Empty path");
+        }
+        if (path.charAt(0) != '/') {
+            throw new IllegalArgumentException("Relative paths are not allowed");
+        }
+        int segStart = 0;
+        int segEnd;
+        do {
+            segEnd = path.indexOf('/', segStart + 1);
+            String segment = segEnd == -1 ? path.substring(segStart + 1) : path.substring(segStart + 1, segEnd);
+            if (segment.length() == 0) {
+                throw new IllegalArgumentException(segEnd == -1 ? "Invalid trailing slash" : "Empty segment in path");
             }
             try {
                 decoded.add(URLDecoder.decode(segment, "utf-8"));
@@ -120,7 +121,8 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
                 // cannot happen
                 throw new IllegalStateException(e);
             }
-        }
+            segStart = segEnd;
+        } while (segEnd != -1);
         return new QualifiedName(decoded.toArray(new String[decoded.size()]));
     }
 

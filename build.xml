@@ -252,7 +252,6 @@
             <classpath>
                 <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
-                <path refid="util.classpath"/>
             </classpath>
         </javac>
         <touch file="api/target/main/.lastcompile" verbose="false"/>
@@ -305,7 +304,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="testing-support.classpath"/>
-                <path refid="util.classpath"/>
                 <pathelement location="api/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
@@ -337,7 +335,7 @@
         <delete dir="api/target"/>
     </target>
 
-    <target name="api" description="Build the API module" depends="lib.marshalling-api,lib.xnio-api,util,api.compile">
+    <target name="api" description="Build the API module" depends="lib.marshalling-api,lib.xnio-api,api.compile">
         <path id="api.classpath">
             <pathelement location="api/target/main/classes"/>
         </path>
@@ -1077,9 +1075,6 @@
                 <include name="**/*.class"/>
             </zipfileset>
             <zipfileset dir="transporter/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-            <zipfileset dir="util/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
         </jar>
