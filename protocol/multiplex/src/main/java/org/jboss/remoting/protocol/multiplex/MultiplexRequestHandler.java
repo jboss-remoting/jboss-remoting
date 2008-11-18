@@ -66,7 +66,7 @@ final class MultiplexRequestHandler extends AbstractAutoCloseable<RequestHandler
     }
 
     public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler handler) {
-        log.trace("Sending outbound request of type %s", request == null ? "null" : request.getClass());
+        log.trace("Sending outbound request (request id = %d) (type is %s)", request == null ? "null" : request.getClass());
         final List<ByteBuffer> bufferList;
         final MultiplexConnection connection = this.connection;
         try {
@@ -85,7 +85,6 @@ final class MultiplexRequestHandler extends AbstractAutoCloseable<RequestHandler
                     marshaller.close();
                     output.close();
                     connection.doBlockingWrite(bufferList);
-                    log.trace("Sent request %s", request);
                     return new RemoteRequestContextImpl(id, connection);
                 } finally {
                     IoUtils.safeClose(output);
@@ -101,7 +100,7 @@ final class MultiplexRequestHandler extends AbstractAutoCloseable<RequestHandler
     }
 
     public String toString() {
-        return "forwarding request handler <" + Integer.toString(hashCode(), 16) + "> (id = " + identifier + ")";
+        return "forwarding request handler <" + Integer.toString(hashCode(), 16) + "> (id = " + identifier + ") for " + connection;
     }
 }
 
@@ -120,6 +119,7 @@ final class RemoteRequestContextImpl implements RemoteRequestContext {
 
     public void cancel() {
         if (! cancelSent.getAndSet(true)) try {
+            log.trace("Sending cancel request from %s", this);
             final ByteBuffer buffer = ByteBuffer.allocate(5);
             buffer.put((byte) MessageType.CANCEL_REQUEST.getId());
             buffer.putInt(id);
@@ -131,6 +131,6 @@ final class RemoteRequestContextImpl implements RemoteRequestContext {
     }
 
     public String toString() {
-        return "remote request context (multiplex) <" + Integer.toString(hashCode(), 16) + "> (id = " + id + ")";
+        return "remote request context <" + Integer.toString(hashCode(), 16) + "> (request id = " + id + ") for " + connection;
     }
 }

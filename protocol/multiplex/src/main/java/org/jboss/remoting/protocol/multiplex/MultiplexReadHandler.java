@@ -84,7 +84,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                 channel.resumeReads();
                 return;
             }
-            log.trace("Received message:\n%s", Buffers.createDumper(buffer, 8, 1));
+            log.trace("Received raw message:\n%s", Buffers.createDumper(buffer, 8, 1));
             final MessageType msgType;
             try {
                 msgType = MessageType.getMessageType(buffer.get() & 0xff);
@@ -92,7 +92,6 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                 log.trace("Received invalid message type");
                 return;
             }
-            log.trace("Decoded message type %s", msgType);
             switch (msgType) {
                 case REQUEST: {
                     final int clientId = buffer.getInt();
@@ -109,6 +108,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                             unmarshaller.start(Marshalling.createByteInput(buffer));
                             payload = unmarshaller.readObject();
                             unmarshaller.finish();
+                            log.trace("Received inbound request (client id = %d, request id = %d) (type is %s)", Integer.valueOf(clientId), Integer.valueOf(requestId), payload == null ? "null" : payload.getClass());
                         } finally {
                             IoUtils.safeClose(unmarshaller);
                         }
@@ -155,6 +155,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                             unmarshaller.start(Marshalling.createByteInput(buffer));
                             payload = unmarshaller.readObject();
                             unmarshaller.finish();
+                            log.trace("Received inbound reply (id = %d) (type is %s)", Integer.valueOf(requestId), payload == null ? "null" : payload.getClass());
                         } finally {
                             IoUtils.safeClose(unmarshaller);
                         }
@@ -171,6 +172,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                     final int requestId = buffer.getInt();
                     final RemoteRequestContext context = connection.getLocalRequest(requestId);
                     if (context != null) {
+                        log.trace("Received inbound cancel request (request id = %d) to %s", Integer.valueOf(requestId), context);
                         context.cancel();
                     }
                     break;
@@ -179,6 +181,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                     final int requestId = buffer.getInt();
                     final ReplyHandler replyHandler = connection.getRemoteRequest(requestId);
                     if (replyHandler != null) {
+                        log.trace("Received inbound cancel acknowledge (request id = %d) to ", Integer.valueOf(requestId), replyHandler);
                         SpiUtils.safeHandleCancellation(replyHandler);
                     }
                     break;
@@ -187,7 +190,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                     final int requestId = buffer.getInt();
                     final ReplyHandler replyHandler = connection.removeRemoteRequest(requestId);
                     if (replyHandler == null) {
-                        log.trace("Got reply to unknown request %d", Integer.valueOf(requestId));
+                        log.trace("Got a failure reply to unknown request %d to %s", Integer.valueOf(requestId), replyHandler);
                         break;
                     }
                     final IOException cause;
@@ -197,13 +200,16 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                             unmarshaller.start(Marshalling.createByteInput(buffer));
                             cause = (IOException) unmarshaller.readObject();
                             unmarshaller.finish();
+                            log.trace("Received inbound request receive failure notification to %s: %s", replyHandler, cause);
                         } finally {
                             IoUtils.safeClose(unmarshaller);
                         }
                     } catch (IOException e) {
+                        log.trace("Received inbound request receive failure notification; the remote exception could not be read: %s", e);
                         SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Remote operation failed; the remote exception could not be read", e));
                         break;
                     } catch (ClassNotFoundException e) {
+                        log.trace("Received inbound request receive failure notification; the remote exception could not be read: %s", e);
                         SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Remote operation failed; the remote exception could not be read", e));
                         break;
                     }
@@ -224,11 +230,14 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                             unmarshaller.start(Marshalling.createByteInput(buffer));
                             try {
                                 cause = (IOException) unmarshaller.readObject();
+                                log.trace("Received inbound request failure notification: %s", cause);
                             } catch (ClassNotFoundException e) {
+                                log.trace("Received inbound request failure notification; the remote exception could not be read: %s", e);
                                 SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Remote request failed (and an ClassNotFoundException occurred when attempting to unmarshal the cause)"));
                                 log.trace(e, "Class not found in exception reply to request ID %d", Integer.valueOf(requestId));
                                 break;
                             } catch (ClassCastException e) {
+                                log.trace("Received inbound request failure notification; the remote exception could not be read: %s", e);
                                 SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Remote request failed (and an ClassCastException occurred when attempting to unmarshal the cause)"));
                                 log.trace(e, "Class cast exception in exception reply to request ID %d", Integer.valueOf(requestId));
                                 break;
@@ -237,7 +246,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                             IoUtils.safeClose(unmarshaller);
                         }
                     } catch (IOException ex) {
-                        log.trace("Failed to unmarshal an exception reply (%s), sending a generic execution exception");
+                        log.trace("Received inbound request failure notification; the remote exception could not be read: %s", ex);
                         SpiUtils.safeHandleException(replyHandler, new RemoteExecutionException("Remote request failed (and an unexpected I/O error occurred when attempting to read the cause)"));
                         break;
                     }
@@ -251,6 +260,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                         log.warn("Got client close message for unknown client %d", Integer.valueOf(clientId));
                         break;
                     }
+                    log.trace("Received inbound client close for %s", handle);
                     IoUtils.safeClose(handle);
                     break;
                 }
@@ -278,6 +288,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                 case SERVICE_OPEN_REQUEST: {
                     final int serviceId = buffer.getInt();
                     final QualifiedName qualifiedName = MultiplexConnection.getQualifiedName(buffer);
+                    log.trace("Received a service open request for service %d on path \"%s\"", Integer.valueOf(serviceId), qualifiedName);
                     final Handle<RequestHandlerSource> service = connection.getService(qualifiedName);
                     if (service == null) {
                         ByteBuffer replyBuffer = ByteBuffer.allocate(5);
@@ -285,6 +296,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                         replyBuffer.putInt(serviceId);
                         replyBuffer.flip();
                         try {
+                            log.trace("Sending a service-open-not-found message for request for service %d on path \"%s\"", Integer.valueOf(serviceId), qualifiedName);
                             connection.doBlockingWrite(replyBuffer);
                         } catch (IOException e) {
                             log.error(e, "Failed to send an error reply to an invalid service open request");
@@ -301,6 +313,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                         replyBuffer.putInt(serviceId);
                         replyBuffer.flip();
                         try {
+                            log.trace("Sending a service-open-failed message for request for service %d on path \"%s\"", Integer.valueOf(serviceId), qualifiedName);
                             connection.doBlockingWrite(replyBuffer);
                         } catch (IOException e2) {
                             log.trace(e, "Failed to send an exception reply to a service open request");
@@ -313,6 +326,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                     replyBuffer.putInt(serviceId);
                     replyBuffer.flip();
                     try {
+                        log.trace("Sending a service open reply message for request for service %d on path \"%s\"", Integer.valueOf(serviceId), qualifiedName);
                         connection.doBlockingWrite(replyBuffer);
                     } catch (IOException e) {
                         log.trace(e, "Failed to send a reply to a service open request");
@@ -323,6 +337,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                 case SERVICE_OPEN_NOT_FOUND:
                 case SERVICE_OPEN_FORBIDDEN: {
                     final int serviceId = buffer.getInt();
+                    log.trace("Received a service open failure (%s) message for service %d", msgType, Integer.valueOf(serviceId));
                     final FutureRemoteRequestHandlerSource future = connection.removeFutureRemoteService(serviceId);
                     if (future == null) {
                         log.trace("Service open failure reply received for unknown service ID %d", Integer.valueOf(serviceId));
@@ -342,6 +357,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                         log.trace("Service open reply received for unknown service ID %d", Integer.valueOf(serviceId));
                         break;
                     }
+                    log.trace("Received a service open reply message for service %d for %s", Integer.valueOf(serviceId), future);
                     final MultiplexRequestHandlerSource requestHandlerSource = new MultiplexRequestHandlerSource(serviceId, connection);
                     future.setResult(requestHandlerSource);
                     break;
@@ -349,6 +365,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                 case SERVICE_CLOSE_NOTIFY: {
                     final int serviceId = buffer.getInt();
                     final FutureRemoteRequestHandlerSource future = connection.removeFutureRemoteService(serviceId);
+                    log.trace("Received a service close notify message for service %d for %s", Integer.valueOf(serviceId), future);
                     future.addNotifier(new IoFuture.HandlingNotifier<RequestHandlerSource>() {
                         public void handleDone(final RequestHandlerSource result) {
                             IoUtils.safeClose(result);

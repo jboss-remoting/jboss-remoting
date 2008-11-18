@@ -24,6 +24,7 @@ package org.jboss.remoting.protocol.multiplex;
 
 import org.jboss.remoting.spi.ReplyHandler;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.ByteOutput;
 import java.nio.ByteBuffer;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
  *
  */
 final class MultiplexReplyHandler implements ReplyHandler {
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.multiplex.reply-handler");
 
     private final int requestId;
     private final MultiplexConnection connection;
@@ -45,6 +47,7 @@ final class MultiplexReplyHandler implements ReplyHandler {
     }
 
     public void handleReply(final Object reply) throws IOException {
+        log.trace("Sending outbound reply (request id = %d) (type is %s)", Integer.valueOf(requestId), reply == null ? "null" : reply.getClass());
         final MultiplexConnection connection = this.connection;
         final Marshaller marshaller = connection.getMarshallerFactory().createMarshaller(connection.getMarshallingConfiguration());
         try {
@@ -58,6 +61,7 @@ final class MultiplexReplyHandler implements ReplyHandler {
                 marshaller.close();
                 output.close();
                 connection.doBlockingWrite(bufferList);
+                log.trace("Sent reply %s", reply);
             } finally {
                 IoUtils.safeClose(output);
             }
@@ -94,5 +98,9 @@ final class MultiplexReplyHandler implements ReplyHandler {
         buffer.putInt(requestId);
         buffer.flip();
         connection.doBlockingWrite(buffer);
+    }
+
+    public String toString() {
+        return "forwarding reply handler <" + Integer.toString(hashCode(), 16) + "> (request id = " + requestId + ") for " + connection;
     }
 }

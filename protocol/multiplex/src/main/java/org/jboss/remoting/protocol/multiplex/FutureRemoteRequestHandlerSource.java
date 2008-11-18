@@ -43,4 +43,8 @@ public final class FutureRemoteRequestHandlerSource extends AbstractIoFuture<Req
     protected boolean setResult(final RequestHandlerSource result) {
         return super.setResult(result);
     }
+
+    public String toString() {
+        return "future remote request handler source <" + Integer.toHexString(hashCode()) + ">";
+    }
 }

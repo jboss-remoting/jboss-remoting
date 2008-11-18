@@ -141,11 +141,36 @@ public final class MultiplexConnection extends AbstractHandleableCloseable<Multi
     }
 
     void doBlockingWrite(ByteBuffer... buffers) throws IOException {
+        log.trace("Sending message:\n%s", new MultiDumper(buffers));
         if (buffers.length == 1) doBlockingWrite(buffers[0]); else for (;;) {
             if (channel.send(buffers)) {
                 return;
             }
             channel.awaitWritable();
+        }
+    }
+
+    private static final class MultiDumper {
+        private final ByteBuffer[] buffers;
+
+        public MultiDumper(final ByteBuffer[] buffers) {
+            this.buffers = buffers;
+        }
+
+        public String toString() {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < buffers.length; i++) {
+                ByteBuffer buffer = buffers[i];
+                builder.append("Buffer ");
+                builder.append(i);
+                builder.append(":\n");
+                try {
+                    Buffers.dump(buffer, builder, 8, 1);
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
+            return builder.toString();
         }
     }
 
@@ -256,6 +281,7 @@ public final class MultiplexConnection extends AbstractHandleableCloseable<Multi
     }
 
     public Handle<RequestHandlerSource> openRemoteService(final QualifiedName name) throws IOException {
+        log.trace("Sending request to open remote service \"%s\"", name);
         final FutureRemoteRequestHandlerSource future = new FutureRemoteRequestHandlerSource();
         int id;
         for (;;) {
@@ -272,7 +298,7 @@ public final class MultiplexConnection extends AbstractHandleableCloseable<Multi
         doBlockingWrite(buffer);
         try {
             final Handle<RequestHandlerSource> handle = future.getInterruptibly().getHandle();
-            log.trace("Opened %s to %s", handle, this);
+            log.trace("Opened %s", handle);
             return handle;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -426,7 +452,7 @@ public final class MultiplexConnection extends AbstractHandleableCloseable<Multi
     }
 
     public String toString() {
-        return "multiplex connection <" + Integer.toHexString(hashCode()) + "> on " + channel;
+        return "multiplex connection <" + Integer.toHexString(hashCode()) + "> via " + channel;
     }
 
     @SuppressWarnings({ "unchecked" })

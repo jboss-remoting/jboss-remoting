@@ -57,6 +57,7 @@ final class MultiplexRequestHandlerSource extends AbstractAutoCloseable<RequestH
     }
 
     public Handle<RequestHandler> createRequestHandler() throws IOException {
+        log.trace("Creating new request handler from %s", this);
         final int id = connection.nextRemoteClient();
         final RequestHandler requestHandler = new MultiplexRequestHandler(id, connection);
         boolean ok = false;
@@ -70,6 +71,7 @@ final class MultiplexRequestHandlerSource extends AbstractAutoCloseable<RequestH
                 buffer.flip();
                 connection.doBlockingWrite(buffer);
                 final Handle<RequestHandler> handlerHandle = new MultiplexRequestHandler(id, connection).getHandle();
+                log.trace("Created new request handler with a handle of %s", handlerHandle);
                 ok = true;
                 return handlerHandle;
             } finally {
@@ -85,6 +87,6 @@ final class MultiplexRequestHandlerSource extends AbstractAutoCloseable<RequestH
     }
 
     public String toString() {
-        return "forwarding request handler source <" + Integer.toString(hashCode(), 16) + "> (id = " + identifier + ")";
+        return "forwarding request handler source <" + Integer.toString(hashCode(), 16) + "> (id = " + identifier + ") for " + connection;
     }
 }
