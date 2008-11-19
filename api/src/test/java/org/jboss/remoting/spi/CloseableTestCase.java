@@ -198,7 +198,7 @@ public final class CloseableTestCase extends TestCase {
                 }
             });
             key.remove();
-            closeable.close();
+            rootHandle.close();
             assertFalse(handlerCalled.get());
         } finally {
             IoUtils.safeClose(closeable);
