@@ -22,7 +22,7 @@
 
 package org.jboss.remoting.protocol.multiplex;
 
-import org.jboss.remoting.util.SynchronizedSet;
+import org.jboss.remoting.core.util.SynchronizedSet;
 import java.util.Set;
 
 /**

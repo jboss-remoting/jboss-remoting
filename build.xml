@@ -365,7 +365,6 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
-                <path refid="util.classpath"/>
             </classpath>
         </javac>
         <path id="compat.classpath">
@@ -378,7 +377,7 @@
         <delete dir="compat/target"/>
     </target>
 
-    <target name="compat" description="Build the compat module" depends="api,util,compat.compile"/>
+    <target name="compat" description="Build the compat module" depends="api,compat.compile"/>
 
     <!-- core module -->
 
@@ -404,7 +403,6 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
-                <path refid="util.classpath"/>
                 <path refid="version.classpath"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
@@ -436,7 +434,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
-                <path refid="util.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.junit.local}"/>
@@ -463,7 +460,6 @@
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
                 <path refid="testing-support.classpath"/>
-                <path refid="util.classpath"/>
                 <pathelement location="core/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
@@ -478,7 +474,7 @@
         </junit>
     </target>
 
-    <target name="core.test" depends="api,core,testing-support,util,core.test.compile">
+    <target name="core.test" depends="api,core,testing-support,core.test.compile">
         <antcall inheritall="true" inheritrefs="true" target="core.test.pseudotarget">
             <param name="extension" value=".txt"/>
             <param name="message" value="Running with no security manager"/>
@@ -495,7 +491,7 @@
         <delete dir="core/target"/>
     </target>
 
-    <target name="core" description="Build the core module" depends="api,util,version,core.compile">
+    <target name="core" description="Build the core module" depends="api,version,core.compile">
         <path id="core.classpath">
             <pathelement location="core/target/main/classes"/>
         </path>
@@ -526,7 +522,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
-                <path refid="util.classpath"/>
                 <pathelement location="${lib.jaxb-api.local}"/>
                 <pathelement location="${lib.jboss-common-logging-spi.local}"/>
                 <pathelement location="${lib.jboss-common-core.local}"/>
@@ -546,7 +541,7 @@
         <delete dir="mc-deployers/target"/>
     </target>
 
-    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jaxb-api,lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-dependency,lib.jboss-managed,lib.jbossxb,api,core,util,mc-deployers.compile">
+    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jaxb-api,lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jbossmc-dependency,lib.jboss-managed,lib.jbossxb,api,core,mc-deployers.compile">
         <path id="mc-deployers.classpath">
             <pathelement location="mc-deployers/target/main/classes"/>
         </path>
@@ -577,7 +572,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
-                <path refid="util.classpath"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
@@ -609,7 +603,6 @@
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
                 <path refid="protocol.multiplex.classpath"/>
-                <path refid="util.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.junit.local}"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
@@ -641,7 +634,6 @@
                 <path refid="core.classpath"/>
                 <path refid="protocol.multiplex.classpath"/>
                 <path refid="testing-support.classpath"/>
-                <path refid="util.classpath"/>
                 <pathelement location="protocol/multiplex/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
@@ -658,7 +650,7 @@
         </junit>
     </target>
 
-    <target name="protocol.multiplex.test" depends="lib.xnio-nio,api,core,protocol.multiplex,testing-support,util,protocol.multiplex.test.compile">
+    <target name="protocol.multiplex.test" depends="lib.xnio-nio,api,core,protocol.multiplex,testing-support,protocol.multiplex.test.compile">
         <antcall inheritall="true" inheritrefs="true" target="protocol.multiplex.test.pseudotarget">
             <param name="extension" value=".txt"/>
             <param name="message" value="Running with no security manager"/>
@@ -675,7 +667,7 @@
         <delete dir="protocol/multiplex/target"/>
     </target>
 
-    <target name="protocol.multiplex" description="Build the protocol.multiplex module" depends="lib.xnio-api,api,core,util,protocol.multiplex.compile">
+    <target name="protocol.multiplex" description="Build the protocol.multiplex module" depends="lib.xnio-api,api,core,protocol.multiplex.compile">
         <path id="protocol.multiplex.classpath">
             <pathelement location="protocol/multiplex/target/main/classes"/>
         </path>
@@ -706,7 +698,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
-                <path refid="util.classpath"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
@@ -739,7 +730,6 @@
                 <path refid="core.classpath"/>
                 <path refid="protocol.basic.classpath"/>
                 <path refid="standalone.classpath"/>
-                <path refid="util.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.junit.local}"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
@@ -772,7 +762,6 @@
                 <path refid="protocol.basic.classpath"/>
                 <path refid="standalone.classpath"/>
                 <path refid="testing-support.classpath"/>
-                <path refid="util.classpath"/>
                 <pathelement location="protocol/basic/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
@@ -789,7 +778,7 @@
         </junit>
     </target>
 
-    <target name="protocol.basic.test" depends="lib.river,lib.xnio-nio,api,core,protocol.basic,standalone,testing-support,util,protocol.basic.test.compile">
+    <target name="protocol.basic.test" depends="lib.river,lib.xnio-nio,api,core,protocol.basic,standalone,testing-support,protocol.basic.test.compile">
         <antcall inheritall="true" inheritrefs="true" target="protocol.basic.test.pseudotarget">
             <param name="extension" value=".txt"/>
             <param name="message" value="Running with no security manager"/>
@@ -806,7 +795,7 @@
         <delete dir="protocol/basic/target"/>
     </target>
 
-    <target name="protocol.basic" description="Build the protocol.basic module" depends="lib.xnio-api,api,core,util,protocol.basic.compile">
+    <target name="protocol.basic" description="Build the protocol.basic module" depends="lib.xnio-api,api,core,protocol.basic.compile">
         <path id="protocol.basic.classpath">
             <pathelement location="protocol/basic/target/main/classes"/>
         </path>
@@ -837,7 +826,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="standalone.classpath"/>
-                <path refid="util.classpath"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
@@ -848,7 +836,7 @@
         <delete dir="samples/target"/>
     </target>
 
-    <target name="samples" description="Build the samples module" depends="api,standalone,util,samples.compile">
+    <target name="samples" description="Build the samples module" depends="api,standalone,samples.compile">
         <path id="samples.classpath">
             <pathelement location="samples/target/main/classes"/>
         </path>
@@ -879,7 +867,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
-                <path refid="util.classpath"/>
                 <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
@@ -890,7 +877,7 @@
         <delete dir="standalone/target"/>
     </target>
 
-    <target name="standalone" description="Build the standalone module" depends="lib.xnio-api,api,core,util,standalone.compile">
+    <target name="standalone" description="Build the standalone module" depends="lib.xnio-api,api,core,standalone.compile">
         <path id="standalone.classpath">
             <pathelement location="standalone/target/main/classes"/>
         </path>
@@ -976,45 +963,6 @@
         </path>
     </target>
 
-    <!-- Utility module -->
-
-    <target name="util.compile.depcheck">
-        <mkdir dir="util/target/main"/>
-        <uptodate property="util.compile.uptodate" targetfile="util/target/main/.lastcompile">
-            <srcfiles dir="util/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="util.compile" depends="util.compile.depcheck" unless="util.compile.uptodate">
-        <mkdir dir="util/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="util/src/main/java"
-                destdir="util/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <pathelement location="${lib.xnio-api.local}"/>
-            </classpath>
-        </javac>
-        <touch file="util/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="util.clean">
-        <delete dir="util/target"/>
-    </target>
-
-    <target name="util" description="Build the utilities module" depends="lib.xnio-api,util.compile">
-        <path id="util.classpath">
-            <pathelement location="util/target/main/classes"/>
-        </path>
-    </target>
-
     <!-- version module -->
 
     <target name="version.compile.depcheck">
@@ -1057,7 +1005,7 @@
     <!-- JARS - Keep in alpha order by jar name         -->
     <!-- ============================================== -->
 
-    <target name="api-jar" description="Build the API JAR" depends="api,transporter,util,version">
+    <target name="api-jar" description="Build the API JAR" depends="api,transporter,version">
         <delete file="jboss-remoting-api.jar"/>
         <jar jarfile="jboss-remoting-api.jar">
             <manifest>
@@ -1103,7 +1051,7 @@
         </jar>
     </target>
 
-    <target name="standalone-jar" description="Build the standalone JAR" depends="api,core,standalone,transporter,util,version">
+    <target name="standalone-jar" description="Build the standalone JAR" depends="api,core,standalone,transporter,version">
         <delete file="jboss-remoting-standalone.jar"/>
         <jar jarfile="jboss-remoting-standalone.jar">
             <manifest>
@@ -1129,9 +1077,6 @@
             <zipfileset dir="transporter/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
-            <zipfileset dir="util/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
         </jar>
     </target>
 
@@ -1139,7 +1084,7 @@
     <!-- JAVADOCS                                       -->
     <!-- ============================================== -->
 
-    <target name="api-javadoc" depends="api,core,standalone,transporter,util,lib.apiviz,lib.marshalling-api,lib.xnio-api">
+    <target name="api-javadoc" depends="api,core,standalone,transporter,lib.apiviz,lib.marshalling-api,lib.xnio-api">
         <delete dir="api/target/main/docs"/>
         <mkdir dir="api/target/main/docs"/>
         <javadoc destdir="api/target/main/docs" author="false" version="false" use="false" windowtitle="JBoss Remoting API">
@@ -1147,7 +1092,6 @@
             <packageset dir="api/src/main/java"/>
             <packageset dir="standalone/src/main/java"/>
             <packageset dir="transporter/src/main/java"/>
-            <packageset dir="util/src/main/java"/>
             <doctitle><![CDATA[<h1>JBoss Remoting 3</h1>]]></doctitle>
             <bottom><![CDATA[<i>Copyright &#169; 2008 JBoss, a division of Red Hat, Inc.</i>]]></bottom>
             <link href="http://java.sun.com/j2se/1.5.0/docs/api/"/>
@@ -1158,7 +1102,6 @@
                 <path refid="api.classpath"/>
                 <path refid="standalone.classpath"/>
                 <path refid="transporter.classpath"/>
-                <path refid="util.classpath"/>
                 <pathelement location="${lib.xnio-api.local}"/>
                 <pathelement location="${lib.marshalling-api.local}"/>
             </classpath>
@@ -1170,9 +1113,9 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,protocol.multiplex,samples,standalone,testing-support,transporter,util"/>
+    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,protocol.multiplex,samples,standalone,testing-support,transporter"/>
 
-    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,standalone.clean,testing-support.clean,transporter.clean,util.clean"/>
+    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,standalone.clean,testing-support.clean,transporter.clean"/>
 
     <!-- JARs: These should be the third-to-last targets in the file -->
 

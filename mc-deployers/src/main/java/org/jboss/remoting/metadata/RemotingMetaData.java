@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import org.jboss.beans.metadata.spi.BeanMetaData;
 import org.jboss.beans.metadata.spi.BeanMetaDataFactory;
-import org.jboss.remoting.util.CollectionUtil;
+import org.jboss.remoting.core.util.CollectionUtil;
 import org.jboss.xb.annotations.JBossXmlSchema;
 
 import javax.xml.bind.annotation.XmlElement;

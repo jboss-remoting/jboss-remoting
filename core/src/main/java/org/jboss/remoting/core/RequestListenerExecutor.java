@@ -24,7 +24,7 @@ package org.jboss.remoting.core;
 
 import java.util.Set;
 import java.util.concurrent.Executor;
-import org.jboss.remoting.util.CollectionUtil;
+import org.jboss.remoting.core.util.CollectionUtil;
 
 /**
  *

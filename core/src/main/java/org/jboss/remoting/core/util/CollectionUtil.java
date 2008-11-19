@@ -1,4 +1,4 @@
-package org.jboss.remoting.util;
+package org.jboss.remoting.core.util;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -21,8 +21,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import static org.jboss.remoting.util.ConcurrentReferenceHashMap.ReferenceType.STRONG;
-import static org.jboss.remoting.util.ConcurrentReferenceHashMap.ReferenceType.WEAK;
+import static org.jboss.remoting.core.util.ConcurrentReferenceHashMap.ReferenceType.STRONG;
+import static org.jboss.remoting.core.util.ConcurrentReferenceHashMap.ReferenceType.WEAK;
 
 /**
  * A set of helpful utility functions for collections.

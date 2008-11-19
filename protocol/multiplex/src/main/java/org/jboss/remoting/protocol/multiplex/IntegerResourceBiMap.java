@@ -24,8 +24,7 @@ package org.jboss.remoting.protocol.multiplex;
 
 import org.jboss.remoting.spi.AutoCloseable;
 import org.jboss.remoting.spi.Handle;
-import org.jboss.remoting.util.SynchronizedSet;
-import org.jboss.remoting.util.SynchronizedCollection;
+import org.jboss.remoting.core.util.SynchronizedCollection;
 import java.util.Iterator;
 import java.util.Collection;
 
