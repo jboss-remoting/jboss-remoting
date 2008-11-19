@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 import org.jboss.remoting.CloseHandler;
+import org.jboss.remoting.HandleableCloseable;
 import org.jboss.remoting.test.support.LoggingHelper;
 
 /**
@@ -184,13 +185,21 @@ public final class CloseableTestCase extends TestCase {
     }
 
     public void testHandlerRemoval() throws Throwable {
+        final AtomicBoolean handlerCalled = new AtomicBoolean();
         final Executor executor = IoUtils.directExecutor();
         final AbstractAutoCloseable<Object> closeable = new AbstractAutoCloseable<Object>(executor) {
             // empty
         };
         final Handle<Object> rootHandle = closeable.getHandle();
         try {
-            // todo - something with that rootHandle
+            final HandleableCloseable.Key key = closeable.addCloseHandler(new CloseHandler<Object>() {
+                public void handleClose(final Object closed) {
+                    handlerCalled.set(true);
+                }
+            });
+            key.remove();
+            closeable.close();
+            assertFalse(handlerCalled.get());
         } finally {
             IoUtils.safeClose(closeable);
         }
