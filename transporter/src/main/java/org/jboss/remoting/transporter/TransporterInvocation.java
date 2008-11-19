@@ -57,6 +57,9 @@ public final class TransporterInvocation implements Externalizable {
         if (len != args.length) {
             throw new IllegalStateException("parameter types and/or args length changed");
         }
+        if (len > 0xffff) {
+            throw new IllegalArgumentException("too many parameters");
+        }
         out.writeShort(len);
         for (Class<?> type : parameterTypes) {
             out.writeObject(type);
