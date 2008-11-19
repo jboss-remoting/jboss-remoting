@@ -70,11 +70,11 @@ public final class TransporterInvocation implements Externalizable {
         name = (String) in.readObject();
         final int cnt = in.readShort() & 0xffff;
         final Class<?>[] parameterTypes = new Class<?>[cnt];
-        for (short i = 0; i < cnt; i ++) {
+        for (int i = 0; i < cnt; i ++) {
             parameterTypes[i] = (Class<?>) in.readObject();
         }
         final Object[] args = new Object[cnt];
-        for (short i = 0; i < cnt; i ++) {
+        for (int i = 0; i < cnt; i ++) {
             args[i] = in.readObject();
         }
         this.parameterTypes = parameterTypes;
