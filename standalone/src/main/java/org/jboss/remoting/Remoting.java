@@ -61,14 +61,14 @@ public final class Remoting {
         }
     }
 
-    private static class AlwaysBlockingQueue<T> implements BlockingQueue<T> {
-        private final BlockingQueue<T> delegate;
+    private static class AlwaysBlockingQueue<E> implements BlockingQueue<E> {
+        private final BlockingQueue<E> delegate;
 
-        public AlwaysBlockingQueue(final BlockingQueue<T> delegate) {
+        public AlwaysBlockingQueue(final BlockingQueue<E> delegate) {
             this.delegate = delegate;
         }
 
-        public boolean offer(final T o) {
+        public boolean offer(final E o) {
             try {
                 delegate.put(o);
                 return true;
@@ -78,19 +78,19 @@ public final class Remoting {
             }
         }
 
-        public boolean offer(final T o, final long timeout, final TimeUnit unit) throws InterruptedException {
+        public boolean offer(final E o, final long timeout, final TimeUnit unit) throws InterruptedException {
             return delegate.offer(o, timeout, unit);
         }
 
-        public T poll(final long timeout, final TimeUnit unit) throws InterruptedException {
+        public E poll(final long timeout, final TimeUnit unit) throws InterruptedException {
             return delegate.poll(timeout, unit);
         }
 
-        public T take() throws InterruptedException {
+        public E take() throws InterruptedException {
             return delegate.take();
         }
 
-        public void put(final T o) throws InterruptedException {
+        public void put(final E o) throws InterruptedException {
             delegate.put(o);
         }
 
@@ -98,31 +98,31 @@ public final class Remoting {
             return delegate.remainingCapacity();
         }
 
-        public boolean add(final T o) {
+        public boolean add(final E o) {
             return delegate.add(o);
         }
 
-        public int drainTo(final Collection<? super T> c) {
+        public int drainTo(final Collection<? super E> c) {
             return delegate.drainTo(c);
         }
 
-        public int drainTo(final Collection<? super T> c, final int maxElements) {
+        public int drainTo(final Collection<? super E> c, final int maxElements) {
             return delegate.drainTo(c, maxElements);
         }
 
-        public T poll() {
+        public E poll() {
             return delegate.poll();
         }
 
-        public T remove() {
+        public E remove() {
             return delegate.remove();
         }
 
-        public T peek() {
+        public E peek() {
             return delegate.peek();
         }
 
-        public T element() {
+        public E element() {
             return delegate.element();
         }
 
@@ -138,7 +138,7 @@ public final class Remoting {
             return delegate.contains(o);
         }
 
-        public Iterator<T> iterator() {
+        public Iterator<E> iterator() {
             return delegate.iterator();
         }
 
@@ -147,6 +147,7 @@ public final class Remoting {
         }
 
         public <T> T[] toArray(final T[] a) {
+            //noinspection SuspiciousToArrayCall
             return delegate.toArray(a);
         }
 
@@ -158,7 +159,7 @@ public final class Remoting {
             return delegate.containsAll(c);
         }
 
-        public boolean addAll(final Collection<? extends T> c) {
+        public boolean addAll(final Collection<? extends E> c) {
             return delegate.addAll(c);
         }
 
