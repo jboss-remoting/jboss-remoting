@@ -68,7 +68,7 @@ public final class TransporterInvocation implements Externalizable {
 
     public void readExternal(final ObjectInput in) throws IOException, ClassNotFoundException {
         name = (String) in.readObject();
-        final short cnt = in.readShort();
+        final int cnt = in.readShort() & 0xffff;
         final Class<?>[] parameterTypes = new Class<?>[cnt];
         for (short i = 0; i < cnt; i ++) {
             parameterTypes[i] = (Class<?>) in.readObject();
@@ -77,6 +77,8 @@ public final class TransporterInvocation implements Externalizable {
         for (short i = 0; i < cnt; i ++) {
             args[i] = in.readObject();
         }
+        this.parameterTypes = parameterTypes;
+        this.args = args;
     }
 
     public String getName() {
