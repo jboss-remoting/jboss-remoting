@@ -79,13 +79,9 @@ public final class ConnectionTestCase extends TestCase {
             final BufferAllocator<ByteBuffer> allocator = Buffers.createHeapByteBufferAllocator(1024);
             final Xnio xnio = NioXnio.create();
             try {
-                final EndpointImpl remoteEndpoint = new EndpointImpl();
-                remoteEndpoint.setExecutor(closeableExecutor);
-                remoteEndpoint.start();
+                final EndpointImpl remoteEndpoint = new EndpointImpl(closeableExecutor, "left-side");
                 try {
-                    final EndpointImpl endpoint = new EndpointImpl();
-                    endpoint.setExecutor(closeableExecutor);
-                    endpoint.start();
+                    final EndpointImpl endpoint = new EndpointImpl(closeableExecutor, "right-side");
                     try {
                         final CountDownLatch latch = new CountDownLatch(1);
                         final MultiplexConfiguration configuration = new MultiplexConfiguration();
@@ -167,10 +163,10 @@ public final class ConnectionTestCase extends TestCase {
                             IoUtils.safeClose(requestHandlerSourceHandle);
                         }
                     } finally {
-                        endpoint.stop();
+                        IoUtils.safeClose(endpoint);
                     }
                 } finally {
-                    remoteEndpoint.stop();
+                    IoUtils.safeClose(remoteEndpoint);
                 }
             } finally {
                 IoUtils.safeClose(xnio);

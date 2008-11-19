@@ -11,7 +11,7 @@ import org.jboss.xnio.IoFuture;
 /**
  * A potential participant in a JBoss Remoting communications relationship.
  */
-public interface Endpoint {
+public interface Endpoint extends HandleableCloseable<Endpoint> {
     /**
      * Get the endpoint attribute map.  This is a storage area for any data associated with this endpoint, including
      * (but not limited to) connection and protocol information, and application information.

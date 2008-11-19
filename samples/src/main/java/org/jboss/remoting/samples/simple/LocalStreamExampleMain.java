@@ -45,7 +45,7 @@ public final class LocalStreamExampleMain {
                 IoUtils.safeClose(client);
             }
         } finally {
-            Remoting.closeEndpoint(endpoint);
+            IoUtils.safeClose(endpoint);
         }
     }
 }

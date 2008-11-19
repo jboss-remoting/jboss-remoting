@@ -57,52 +57,83 @@ public final class BasicTestCase extends TestCase {
 
     public static void testConnect() throws Throwable {
         ExecutorService executor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-        Xnio xnio = NioXnio.create(executor, 2, 2, 2);
-        final BasicConfiguration configuration = new BasicConfiguration();
-        configuration.setExecutor(executor);
-        configuration.setMarshallerFactory(new RiverMarshallerFactory());
-        final MarshallingConfiguration marshallingConfiguration = new MarshallingConfiguration();
-        configuration.setMarshallingConfiguration(marshallingConfiguration);
-        final Endpoint endpoint = Remoting.createEndpoint("test");
-        final Handle<RequestHandler> requestHandlerHandle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
-            public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
-                System.out.println("Got a request! " + request.toString());
+        try {
+            Xnio xnio = NioXnio.create(executor, 2, 2, 2);
+            try {
+                final BasicConfiguration configuration = new BasicConfiguration();
+                configuration.setExecutor(executor);
+                configuration.setMarshallerFactory(new RiverMarshallerFactory());
+                final MarshallingConfiguration marshallingConfiguration = new MarshallingConfiguration();
+                configuration.setMarshallingConfiguration(marshallingConfiguration);
+                final Endpoint endpoint = Remoting.createEndpoint(executor, "test");
                 try {
-                    context.sendReply("GOOMBA");
-                } catch (IOException e) {
+                    final Handle<RequestHandler> requestHandlerHandle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
+                        public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
+                            System.out.println("Got a request! " + request.toString());
+                            try {
+                                context.sendReply("GOOMBA");
+                            } catch (IOException e) {
+                                try {
+                                    context.sendFailure("Failed", e);
+                                } catch (IOException e1) {
+                                    // buh
+                                }
+                            }
+                        }
+                    }, Object.class, Object.class);
                     try {
-                        context.sendFailure("Failed", e);
-                    } catch (IOException e1) {
-                        // buh
+                        final ChannelSource<StreamChannel> channelSource = xnio.createPipeServer(executor, IoUtils.singletonHandlerFactory(new IoHandler<StreamChannel>() {
+                            public void handleOpened(final StreamChannel channel) {
+                                try {
+                                    System.out.println("Opening channel");
+                                    BasicProtocol.createServer(requestHandlerHandle, channel, configuration);
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                    IoUtils.safeClose(channel);
+                                }
+                            }
+
+                            public void handleReadable(final StreamChannel channel) {
+                            }
+
+                            public void handleWritable(final StreamChannel channel) {
+                            }
+
+                            public void handleClosed(final StreamChannel channel) {
+                                System.out.println("Closing channel");
+                            }
+                        }));
+                        final IoFuture<StreamChannel> futureChannel = channelSource.open(IoUtils.nullHandler());
+                        assertEquals(IoFuture.Status.DONE, futureChannel.await(1L, TimeUnit.SECONDS));
+                        final StreamChannel channel = futureChannel.get();
+                        try {
+                            final Handle<RequestHandler> clientHandlerHandle = BasicProtocol.createClient(channel, configuration);
+                            try {
+                                final Client<Object,Object> client = endpoint.createClient(clientHandlerHandle.getResource(), Object.class, Object.class);
+                                try {
+                                    final IoFuture<Object> futureReply = client.send("GORBA!");
+                                    assertEquals(IoFuture.Status.DONE, futureReply.await(500L, TimeUnit.MILLISECONDS));
+                                    System.out.println("Reply is:" + futureReply.get());
+                                } finally {
+                                    IoUtils.safeClose(client);
+                                }
+                            } finally {
+                                IoUtils.safeClose(clientHandlerHandle);
+                            }
+                        } finally {
+                            IoUtils.safeClose(channel);
+                        }
+                    } finally {
+                        IoUtils.safeClose(requestHandlerHandle);
                     }
+                } finally {
+                    IoUtils.safeClose(endpoint);
                 }
+            } finally {
+                IoUtils.safeClose(xnio);
             }
-        }, Object.class, Object.class);
-        final ChannelSource<StreamChannel> channelSource = xnio.createPipeServer(executor, IoUtils.singletonHandlerFactory(new IoHandler<StreamChannel>() {
-            public void handleOpened(final StreamChannel channel) {
-                try {
-                    System.out.println("Opening channel");
-                    BasicProtocol.createServer(requestHandlerHandle, channel, configuration);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    IoUtils.safeClose(channel);
-                }
-            }
-
-            public void handleReadable(final StreamChannel channel) {
-            }
-
-            public void handleWritable(final StreamChannel channel) {
-            }
-
-            public void handleClosed(final StreamChannel channel) {
-                System.out.println("Closing channel");
-            }
-        }));
-        final IoFuture<StreamChannel> futureChannel = channelSource.open(IoUtils.nullHandler());
-        final Handle<RequestHandler> clientHandlerHandle = BasicProtocol.createClient(futureChannel.get(), configuration);
-        final Client<Object,Object> client = endpoint.createClient(clientHandlerHandle.getResource(), Object.class, Object.class);
-        System.out.println("Reply is:" + client.invoke("GORBA!"));
-
+        } finally {
+            executor.shutdownNow();
+        }
     }
 }

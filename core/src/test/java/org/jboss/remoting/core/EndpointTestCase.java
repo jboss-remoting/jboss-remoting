@@ -51,21 +51,11 @@ public final class EndpointTestCase extends TestCase {
 
     private static final Logger log = Logger.getLogger(EndpointTestCase.class);
 
-    private static void safeStop(EndpointImpl endpoint) {
-        try {
-            endpoint.stop();
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
-    }
-
     public void testCreate() throws Throwable {
-        final EndpointImpl endpoint = new EndpointImpl();
         final ExecutorService executorService = Executors.newCachedThreadPool();
+        final EndpointImpl endpoint = new EndpointImpl(executorService, "foo");
         try {
-            endpoint.setExecutor(executorService);
-            endpoint.start();
-            endpoint.stop();
+            endpoint.close();
             executorService.shutdown();
             assertTrue(executorService.awaitTermination(1L, TimeUnit.SECONDS));
         } finally {
@@ -76,72 +66,11 @@ public final class EndpointTestCase extends TestCase {
     public void testLocalClientInvoke() throws Throwable {
         final AtomicBoolean clientEndpointClosed = new AtomicBoolean(false);
         final AtomicBoolean clientClosed = new AtomicBoolean(false);
-        final EndpointImpl endpoint = new EndpointImpl();
         final ExecutorService executorService = Executors.newCachedThreadPool();
-        final Object requestObj = new Object();
-        final Object replyObj = new Object();
         try {
-            endpoint.setExecutor(executorService);
-            endpoint.start();
-            try {
-                final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
-                    public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
-                        assertEquals(request, requestObj);
-                        try {
-                            context.sendReply(replyObj);
-                        } catch (IOException e) {
-                            try {
-                                context.sendFailure(e.getMessage(), e);
-                            } catch (IOException e1) {
-                                fail("double fault");
-                            }
-                        }
-                    }
-                }, Object.class, Object.class);
-                final RequestHandler requestHandler = handle.getResource();
-                try {
-                    requestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
-                        public void handleClose(final RequestHandler closed) {
-                            clientEndpointClosed.set(true);
-                        }
-                    });
-                    final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
-                    try {
-                        client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
-                            public void handleClose(final Client<Object, Object> closed) {
-                                clientClosed.set(true);
-                            }
-                        });
-                        assertEquals(replyObj, client.invoke(requestObj));
-                        client.close();
-                    } finally {
-                        IoUtils.safeClose(client);
-                    }
-                } finally {
-                    IoUtils.safeClose(requestHandler);
-                }
-            } finally {
-                safeStop(endpoint);
-            }
-            executorService.shutdown();
-            assertTrue(executorService.awaitTermination(1L, TimeUnit.SECONDS));
-            assertTrue(clientEndpointClosed.get());
-            assertTrue(clientClosed.get());
-        } finally {
-            executorService.shutdownNow();
-        }
-    }
-
-    public void testLocalClientSend() throws Throwable {
-        final AtomicBoolean clientEndpointClosed = new AtomicBoolean(false);
-        final AtomicBoolean clientClosed = new AtomicBoolean(false);
-        final EndpointImpl endpoint = new EndpointImpl();
-        final ExecutorService executorService = Executors.newCachedThreadPool();
-        final Object requestObj = new Object();
-        final Object replyObj = new Object();
-        try {
-            endpoint.setExecutor(executorService);
-            endpoint.start();
+            final EndpointImpl endpoint = new EndpointImpl(executorService, "test-endpoint");
+            final Object requestObj = new Object();
+            final Object replyObj = new Object();
             try {
                 final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
@@ -153,65 +82,136 @@ public final class EndpointTestCase extends TestCase {
                         }
                     }
                 }, Object.class, Object.class);
-                final RequestHandler requestHandler = handle.getResource();
                 try {
-                    requestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
-                        public void handleClose(final RequestHandler closed) {
-                            clientEndpointClosed.set(true);
-                        }
-                    });
-                    final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
+                    final RequestHandler requestHandler = handle.getResource();
                     try {
-                        client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
-                            public void handleClose(final Client<Object, Object> closed) {
-                                clientClosed.set(true);
+                        requestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
+                            public void handleClose(final RequestHandler closed) {
+                                clientEndpointClosed.set(true);
                             }
                         });
-                        assertEquals(replyObj, client.send(requestObj).get());
-                        client.close();
+                        final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
+                        try {
+                            client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
+                                public void handleClose(final Client<Object, Object> closed) {
+                                    clientClosed.set(true);
+                                }
+                            });
+                            handle.close();
+                            assertEquals(replyObj, client.invoke(requestObj));
+                            client.close();
+                            executorService.shutdown();
+                            assertTrue(executorService.awaitTermination(1L, TimeUnit.SECONDS));
+                            assertTrue(clientEndpointClosed.get());
+                            assertTrue(clientClosed.get());
+                        } finally {
+                            IoUtils.safeClose(client);
+                        }
                     } finally {
-                        IoUtils.safeClose(client);
+                        IoUtils.safeClose(requestHandler);
                     }
                 } finally {
-                    IoUtils.safeClose(requestHandler);
+                    IoUtils.safeClose(handle);
                 }
             } finally {
-                safeStop(endpoint);
+                IoUtils.safeClose(endpoint);
             }
-            executorService.shutdown();
-            assertTrue(executorService.awaitTermination(1L, TimeUnit.SECONDS));
-            assertTrue(clientEndpointClosed.get());
-            assertTrue(clientClosed.get());
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    public void testLocalClientSend() throws Throwable {
+        final AtomicBoolean clientEndpointClosed = new AtomicBoolean(false);
+        final AtomicBoolean clientClosed = new AtomicBoolean(false);
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+        try {
+            final EndpointImpl endpoint = new EndpointImpl(executorService, "test-endpoint");
+            try {
+                final Object requestObj = new Object();
+                final Object replyObj = new Object();
+                final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
+                    public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
+                        assertEquals(request, requestObj);
+                        try {
+                            context.sendReply(replyObj);
+                        } catch (IOException e) {
+                            log.error(e, "Error sending reply!");
+                        }
+                    }
+                }, Object.class, Object.class);
+                try {
+                    final RequestHandler requestHandler = handle.getResource();
+                    try {
+                        requestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
+                            public void handleClose(final RequestHandler closed) {
+                                clientEndpointClosed.set(true);
+                            }
+                        });
+                        final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
+                        try {
+                            client.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
+                                public void handleClose(final Client<Object, Object> closed) {
+                                    clientClosed.set(true);
+                                }
+                            });
+                            handle.close();
+                            final IoFuture<Object> futureReply = client.send(requestObj);
+                            assertEquals(IoFuture.Status.DONE, futureReply.await(1L, TimeUnit.SECONDS));
+                            assertEquals(replyObj, futureReply.get());
+                            client.close();
+                            executorService.shutdown();
+                            assertTrue(executorService.awaitTermination(1L, TimeUnit.SECONDS));
+                            assertTrue(clientEndpointClosed.get());
+                            assertTrue(clientClosed.get());
+                        } finally {
+                            IoUtils.safeClose(client);
+                        }
+                    } finally {
+                        IoUtils.safeClose(requestHandler);
+                    }
+                } finally {
+                    IoUtils.safeClose(handle);
+                }
+            } finally {
+                IoUtils.safeClose(endpoint);
+            }
         } finally {
             executorService.shutdownNow();
         }
     }
 
     public void testUnsentReply() throws Throwable {
-        final EndpointImpl endpoint = new EndpointImpl();
         final ExecutorService executorService = Executors.newCachedThreadPool();
-        final Object requestObj = new Object();
         try {
-            endpoint.setExecutor(executorService);
-            endpoint.start();
+            final EndpointImpl endpoint = new EndpointImpl(executorService, "test-endpoint");
             try {
+                final Object requestObj = new Object();
                 final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         // don't send a reply!!
                     }
                 }, Object.class, Object.class);
-                final RequestHandler requestHandler = handle.getResource();
                 try {
-                    final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
-                    final IoFuture<Object> futureReply = client.send(requestObj);
-                    assertEquals(IoFuture.Status.FAILED, futureReply.await(500L, TimeUnit.MILLISECONDS));
-                    assertTrue(futureReply.getException() instanceof IndeterminateOutcomeException);
+                    final RequestHandler requestHandler = handle.getResource();
+                    try {
+                        final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
+                        try {
+                            final IoFuture<Object> futureReply = client.send(requestObj);
+                            assertEquals(IoFuture.Status.FAILED, futureReply.await(500L, TimeUnit.MILLISECONDS));
+                            assertTrue(futureReply.getException() instanceof IndeterminateOutcomeException);
+                        } finally {
+                            IoUtils.safeClose(client);
+                        }
+                    } finally {
+                        IoUtils.safeClose(requestHandler);
+                    }
                 } finally {
-                    IoUtils.safeClose(requestHandler);
+                    IoUtils.safeClose(handle);
                 }
             } finally {
-                safeStop(endpoint);
+                IoUtils.safeClose(endpoint);
             }
         } finally {
             executorService.shutdownNow();
@@ -219,13 +219,11 @@ public final class EndpointTestCase extends TestCase {
     }
 
     public void testUnsentReply2() throws Throwable {
-        final EndpointImpl endpoint = new EndpointImpl();
         final ExecutorService executorService = Executors.newCachedThreadPool();
-        final Object requestObj = new Object();
         try {
-            endpoint.setExecutor(executorService);
-            endpoint.start();
+            final EndpointImpl endpoint = new EndpointImpl(executorService, "test-endpoint");
             try {
+                final Object requestObj = new Object();
                 final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
@@ -249,19 +247,28 @@ public final class EndpointTestCase extends TestCase {
                             public void run() {
                             }
                         });
+                        // don't send a reply!!
                     }
                 }, Object.class, Object.class);
-                final RequestHandler requestHandler = handle.getResource();
                 try {
-                    final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
-                    final IoFuture<Object> futureReply = client.send(requestObj);
-                    assertEquals(IoFuture.Status.FAILED, futureReply.await(500L, TimeUnit.MILLISECONDS));
-                    assertTrue(futureReply.getException() instanceof IndeterminateOutcomeException);
+                    final RequestHandler requestHandler = handle.getResource();
+                    try {
+                        final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
+                        try {
+                            final IoFuture<Object> futureReply = client.send(requestObj);
+                            assertEquals(IoFuture.Status.FAILED, futureReply.await(500L, TimeUnit.MILLISECONDS));
+                            assertTrue(futureReply.getException() instanceof IndeterminateOutcomeException);
+                        } finally {
+                            IoUtils.safeClose(client);
+                        }
+                    } finally {
+                        IoUtils.safeClose(requestHandler);
+                    }
                 } finally {
-                    IoUtils.safeClose(requestHandler);
+                    IoUtils.safeClose(handle);
                 }
             } finally {
-                safeStop(endpoint);
+                IoUtils.safeClose(endpoint);
             }
         } finally {
             executorService.shutdownNow();

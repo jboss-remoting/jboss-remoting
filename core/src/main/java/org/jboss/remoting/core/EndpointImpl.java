@@ -1,19 +1,16 @@
 package org.jboss.remoting.core;
 
-import java.io.Closeable;
 import java.io.IOException;
+import java.io.Closeable;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.lang.ref.WeakReference;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.ClientSource;
-import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.RequestListener;
 import org.jboss.remoting.ServiceListener;
@@ -22,24 +19,26 @@ import org.jboss.remoting.LocalServiceConfiguration;
 import org.jboss.remoting.EndpointPermission;
 import org.jboss.remoting.RemoteServiceConfiguration;
 import org.jboss.remoting.ServiceURI;
+import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.core.util.OrderedExecutorFactory;
 import org.jboss.remoting.core.util.CollectionUtil;
-import org.jboss.remoting.core.util.NamingThreadFactory;
-import org.jboss.remoting.spi.AbstractSimpleCloseable;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.RequestHandlerSource;
+import org.jboss.remoting.spi.AbstractHandleableCloseable;
+import org.jboss.remoting.spi.AbstractSimpleCloseable;
 import org.jboss.remoting.version.Version;
 import org.jboss.xnio.FailedIoFuture;
 import org.jboss.xnio.FinishedIoFuture;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.WeakCloseable;
 import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
-public final class EndpointImpl implements Endpoint {
+public final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implements Endpoint {
 
     static {
         // Print Remoting "greeting" message
@@ -48,12 +47,10 @@ public final class EndpointImpl implements Endpoint {
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.endpoint");
 
-    private String name;
+    private final String name;
 
-    private OrderedExecutorFactory orderedExecutorFactory;
-    private ExecutorService executorService;
+    private final OrderedExecutorFactory orderedExecutorFactory;
 
-    private final Set<Closeable> resources = CollectionUtil.synchronizedWeakHashSet();
     private final ConcurrentMap<Object, Object> endpointMap = CollectionUtil.concurrentMap();
 
     private final Object serviceLock = new Object();
@@ -67,81 +64,28 @@ public final class EndpointImpl implements Endpoint {
     private static final EndpointPermission REGISTER_REMOTE_SERVICE_PERM = new EndpointPermission("registerRemoteService");
     private static final EndpointPermission ADD_SERVICE_LISTENER_PERM = new EndpointPermission("addServiceListener");
 
-    public EndpointImpl() {
-    }
-
-    // Dependencies
-
-    private Executor executor;
-
-    public Executor getExecutor() {
-        return executor;
-    }
-
-    Executor getOrderedExecutor() {
-        return orderedExecutorFactory.getOrderedExecutor();
-    }
-
-    public void setExecutor(final Executor executor) {
+    public EndpointImpl(final Executor executor, final String name) {
+        super(executor);
         this.executor = executor;
+        this.name = name;
         orderedExecutorFactory = new OrderedExecutorFactory(executor);
     }
 
-    // Configuration
+    private final Executor executor;
 
-    public void setName(final String name) {
-        this.name = name;
+    protected Executor getOrderedExecutor() {
+        return orderedExecutorFactory.getOrderedExecutor();
     }
+
+    protected Executor getExecutor() {
+        return executor;
+    }
+
+    // Endpoint implementation
 
     public String getName() {
         return name;
     }
-
-    // Lifecycle
-
-    public void start() {
-        // todo security check
-        if (executor == null) {
-            executor = executorService = Executors.newCachedThreadPool(new NamingThreadFactory(Executors.defaultThreadFactory(), "Remoting endpoint %s"));
-            setExecutor(executorService);
-        }
-    }
-
-    public void stop() {
-        // todo security check
-        boolean intr = false;
-        try {
-            for (Closeable resource : resources) {
-                IoUtils.safeClose(resource);
-            }
-            synchronized (resources) {
-                while (! resources.isEmpty()) {
-                    try {
-                        resources.wait();
-                    } catch (InterruptedException e) {
-                        intr = true;
-                    }
-                }
-            }
-            if (executorService != null) {
-                executorService.shutdown();
-                boolean done = false;
-                do try {
-                    done = executorService.awaitTermination(30L, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    intr = true;
-                } while (! done);
-                executorService = null;
-                executor = null;
-            }
-        } finally {
-            if (intr) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
-    // Endpoint implementation
 
     public ConcurrentMap<Object, Object> getAttributes() {
         return endpointMap;
@@ -152,12 +96,22 @@ public final class EndpointImpl implements Endpoint {
         if (sm != null) {
             sm.checkPermission(CREATE_REQUEST_HANDLER_PERM);
         }
-        LocalRequestHandler.Config<I, O> config = new LocalRequestHandler.Config<I,O>(requestClass, replyClass);
+        LocalRequestHandler.Config<I, O> config = new LocalRequestHandler.Config<I, O>(requestClass, replyClass);
         config.setExecutor(executor);
         config.setRequestListener(requestListener);
         config.setClientContext(new ClientContextImpl(executor));
         final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(config);
-        localRequestHandler.addCloseHandler(remover);
+        final WeakCloseable lrhCloseable = new WeakCloseable(new WeakReference<Closeable>(localRequestHandler));
+        final Key key = addCloseHandler(new CloseHandler<Endpoint>() {
+            public void handleClose(final Endpoint closed) {
+                IoUtils.safeClose(lrhCloseable);
+            }
+        });
+        localRequestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
+            public void handleClose(final RequestHandler closed) {
+                key.remove();
+            }
+        });
         localRequestHandler.open();
         return localRequestHandler.getHandle();
     }
@@ -217,7 +171,17 @@ public final class EndpointImpl implements Endpoint {
                 }
             }
         }
-        localRequestHandlerSource.addCloseHandler(remover);
+        final WeakCloseable lrhCloseable = new WeakCloseable(new WeakReference<Closeable>(localRequestHandlerSource));
+        final Key key = addCloseHandler(new CloseHandler<Endpoint>() {
+            public void handleClose(final Endpoint closed) {
+                IoUtils.safeClose(lrhCloseable);
+            }
+        });
+        localRequestHandlerSource.addCloseHandler(new CloseHandler<RequestHandlerSource>() {
+            public void handleClose(final RequestHandlerSource closed) {
+                key.remove();
+            }
+        });
         localRequestHandlerSource.open();
         return localRequestHandlerSource.getHandle();
     }
@@ -235,6 +199,17 @@ public final class EndpointImpl implements Endpoint {
         final Handle<RequestHandler> handle = requestHandler.getHandle();
         try {
             final ClientImpl<I, O> client = ClientImpl.create(handle, executor, requestType, replyType);
+            final WeakCloseable lrhCloseable = new WeakCloseable(new WeakReference<Closeable>(client));
+            final Key key = addCloseHandler(new CloseHandler<Endpoint>() {
+                public void handleClose(final Endpoint closed) {
+                    IoUtils.safeClose(lrhCloseable);
+                }
+            });
+            client.addCloseHandler(new CloseHandler<Client>() {
+                public void handleClose(final Client closed) {
+                    key.remove();
+                }
+            });
             ok = true;
             return client;
         } finally {
@@ -253,6 +228,17 @@ public final class EndpointImpl implements Endpoint {
         final Handle<RequestHandlerSource> handle = requestHandlerSource.getHandle();
         try {
             final ClientSourceImpl<I, O> clientSource = ClientSourceImpl.create(handle, this, requestClass, replyClass);
+            final WeakCloseable lrhCloseable = new WeakCloseable(new WeakReference<Closeable>(clientSource));
+            final Key key = addCloseHandler(new CloseHandler<Endpoint>() {
+                public void handleClose(final Endpoint closed) {
+                    IoUtils.safeClose(lrhCloseable);
+                }
+            });
+            clientSource.addCloseHandler(new CloseHandler<ClientSource>() {
+                public void handleClose(final ClientSource closed) {
+                    key.remove();
+                }
+            });
             ok = true;
             return clientSource;
         } finally {
@@ -456,20 +442,6 @@ public final class EndpointImpl implements Endpoint {
 
         void setHandle(final SimpleCloseable handle) {
             this.handle = handle;
-        }
-    }
-
-    private final ResourceRemover remover = new ResourceRemover();
-
-    private final class ResourceRemover implements CloseHandler<Closeable> {
-        public void handleClose(final Closeable closed) {
-            synchronized (resources)
-            {
-                resources.remove(closed);
-                if (resources.isEmpty()) {
-                    resources.notifyAll();
-                }
-            }
         }
     }
 

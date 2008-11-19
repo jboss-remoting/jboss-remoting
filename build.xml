@@ -338,6 +338,8 @@
     <target name="api" description="Build the API module" depends="lib.marshalling-api,lib.xnio-api,api.compile">
         <path id="api.classpath">
             <pathelement location="api/target/main/classes"/>
+            <pathelement location="${lib.xnio-api.local}"/>
+            <pathelement location="${lib.marshalling-api.local}"/>
         </path>
     </target>
 
@@ -404,8 +406,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="version.classpath"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="core/target/main/.lastcompile" verbose="false"/>
@@ -435,9 +435,7 @@
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
                 <path refid="testing-support.classpath"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="core/target/test/.lastcompile" verbose="false"/>
@@ -462,8 +460,6 @@
                 <path refid="testing-support.classpath"/>
                 <pathelement location="core/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
             <batchtest fork="yes" todir="core/target/test-results"
                        haltonfailure="no">
@@ -605,9 +601,7 @@
                 <path refid="protocol.multiplex.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.river.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
                 <pathelement location="${lib.xnio-nio.local}"/>
             </classpath>
         </javac>
@@ -636,9 +630,7 @@
                 <path refid="testing-support.classpath"/>
                 <pathelement location="protocol/multiplex/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.river.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
                 <pathelement location="${lib.xnio-nio.local}"/>
             </classpath>
             <batchtest fork="yes" todir="protocol/multiplex/target/test-results"
@@ -732,9 +724,7 @@
                 <path refid="standalone.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.river.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
                 <pathelement location="${lib.xnio-nio.local}"/>
             </classpath>
         </javac>
@@ -764,9 +754,7 @@
                 <path refid="testing-support.classpath"/>
                 <pathelement location="protocol/basic/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
                 <pathelement location="${lib.river.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
                 <pathelement location="${lib.xnio-nio.local}"/>
             </classpath>
             <batchtest fork="yes" todir="protocol/basic/target/test-results"

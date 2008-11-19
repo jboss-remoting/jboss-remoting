@@ -27,7 +27,7 @@ public final class LocalBasicExampleMain {
                 IoUtils.safeClose(client);
             }
         } finally {
-            Remoting.closeEndpoint(endpoint);
+            IoUtils.safeClose(endpoint);
         }
     }
 }
