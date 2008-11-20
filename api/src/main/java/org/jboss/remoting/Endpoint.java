@@ -104,7 +104,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
 
     /**
      * Register a remotely available service.<p>
-     * The remote endpoint may not have the same name as this endpoint.  The group name and service type must be
+     * The remote endpoint must not have the same name as this endpoint.  The group name and service type must be
      * non-{@code null} and non-empty.  The metric must be greater than zero.
      *
      * You must have the {@link org.jboss.remoting.EndpointPermission registerRemoteService EndpointPermission} to invoke this method.
