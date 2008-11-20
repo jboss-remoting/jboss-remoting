@@ -281,8 +281,6 @@
                 <path refid="api.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="api/target/test/.lastcompile" verbose="false"/>
@@ -306,8 +304,6 @@
                 <path refid="testing-support.classpath"/>
                 <pathelement location="api/target/test/classes"/>
                 <pathelement location="${lib.junit.local}"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
             <batchtest fork="yes" todir="api/target/test-results"
                        haltonfailure="no">
@@ -568,8 +564,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="protocol/multiplex/target/main/.lastcompile" verbose="false"/>
@@ -690,8 +684,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
-                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="protocol/basic/target/main/.lastcompile" verbose="false"/>
@@ -814,7 +806,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="standalone.classpath"/>
-                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="samples/target/main/.lastcompile" verbose="false"/>
@@ -855,7 +846,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
-                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="standalone/target/main/.lastcompile" verbose="false"/>
@@ -935,7 +925,6 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
-                <pathelement location="${lib.xnio-api.local}"/>
             </classpath>
         </javac>
         <touch file="transporter/target/main/.lastcompile" verbose="false"/>
@@ -1090,8 +1079,6 @@
                 <path refid="api.classpath"/>
                 <path refid="standalone.classpath"/>
                 <path refid="transporter.classpath"/>
-                <pathelement location="${lib.xnio-api.local}"/>
-                <pathelement location="${lib.marshalling-api.local}"/>
             </classpath>
         </javadoc>
     </target>
