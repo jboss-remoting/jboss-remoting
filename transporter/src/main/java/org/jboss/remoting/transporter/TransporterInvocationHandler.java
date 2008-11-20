@@ -25,15 +25,18 @@ package org.jboss.remoting.transporter;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.io.IOException;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentHashMap;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.xnio.IoUtils;
 
 /**
- *
+ * The transporter reflection invocation handler.
  */
 public final class TransporterInvocationHandler implements InvocationHandler {
     private final Client<TransporterInvocation, Object> client;
+    private final ConcurrentMap<Method, TransporterMethodDescriptor> descriptorCache = new ConcurrentHashMap<Method, TransporterMethodDescriptor>();
 
     public TransporterInvocationHandler(final Client<TransporterInvocation, Object> client) {
         this.client = client;
@@ -41,7 +44,20 @@ public final class TransporterInvocationHandler implements InvocationHandler {
 
     public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
         try {
-            return client.invoke(new TransporterInvocation(method.getName(), method.getParameterTypes(), args));
+            final TransporterMethodDescriptor descriptor;
+            final TransporterMethodDescriptor cachedDescriptor = descriptorCache.get(method);
+            if (cachedDescriptor == null) {
+                final TransporterMethodDescriptor newDescriptor = new TransporterMethodDescriptor(method.getName(), method.getParameterTypes());
+                final TransporterMethodDescriptor suddenDescriptor = descriptorCache.putIfAbsent(method, newDescriptor);
+                if (suddenDescriptor != null) {
+                    descriptor = suddenDescriptor;
+                } else {
+                    descriptor = newDescriptor;
+                }
+            } else {
+                descriptor = cachedDescriptor;
+            }
+            return client.invoke(new TransporterInvocation(descriptor, args));
         } catch (RemoteExecutionException e) {
             throw e.getCause();
         } catch (IOException e) {

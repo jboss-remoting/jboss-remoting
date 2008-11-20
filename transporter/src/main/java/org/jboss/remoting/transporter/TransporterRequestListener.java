@@ -30,7 +30,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.io.IOException;
 
 /**
- *
+ * Transporter request listener.  Used to implement the receiving end of a transporter invocation.
  */
 public final class TransporterRequestListener<T> extends AbstractRequestListener<TransporterInvocation,Object> {
     private final T target;
@@ -41,7 +41,8 @@ public final class TransporterRequestListener<T> extends AbstractRequestListener
 
     public void handleRequest(final RequestContext<Object> context, final TransporterInvocation request) throws RemoteExecutionException {
         try {
-            final Method method = target.getClass().getMethod(request.getName(), request.getParameterTypes());
+            final TransporterMethodDescriptor methodDescriptor = request.getMethodDescriptor();
+            final Method method = target.getClass().getMethod(methodDescriptor.getName(), methodDescriptor.getParameterTypes());
             method.invoke(target, request.getArgs());
         } catch (NoSuchMethodException e) {
             doSendFailure(context, new NoSuchMethodError("No such method on the remote side: " + e.getMessage()));
@@ -52,9 +53,9 @@ public final class TransporterRequestListener<T> extends AbstractRequestListener
         }
     }
 
-    private void doSendFailure(final RequestContext<Object> context, final Throwable throwable) {
+    private static void doSendFailure(final RequestContext<Object> context, final Throwable throwable) {
         try {
-            context.sendFailure(null, throwable);
+            context.sendFailure("", throwable);
         } catch (IOException e) {
             e.printStackTrace();
         }

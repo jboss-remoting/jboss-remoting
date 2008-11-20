@@ -26,73 +26,101 @@ import java.io.Externalizable;
 import java.io.ObjectOutput;
 import java.io.IOException;
 import java.io.ObjectInput;
+import java.io.InvalidClassException;
+import org.jboss.marshalling.Creator;
 
 /**
- *
+ * An invocation made on a transporter.  Instances of this class are used internally by transporters to represent
+ * a method call that is being forwarded to a remote instance.  This class is not part of the public API and should
+ * not be used directly, as members may be added or removed without notice.
  */
-public final class TransporterInvocation implements Externalizable {
+public final class TransporterInvocation {
 
-    private static final long serialVersionUID = -1643169469978213945L;
-    private String name;
-    private Class<?>[] parameterTypes;
-    private Object[] args;
+    private final TransporterMethodDescriptor methodDescriptor;
+    private final Object[] args;
 
-    public TransporterInvocation() {
-    }
-
-    public TransporterInvocation(final String name, final Class<?>[] parameterTypes, final Object[] args) {
-        if (parameterTypes.length != args.length) {
+    /**
+     * Construct an intialized instance.
+     *
+     * @param methodDescriptor
+     * @param args the arguments
+     */
+    public TransporterInvocation(final TransporterMethodDescriptor methodDescriptor, final Object[] args) {
+        if (methodDescriptor.getParameterTypes().length != args.length) {
             throw new IllegalArgumentException("parameter type array length differs from arg array length");
         }
-        this.name = name;
-        this.parameterTypes = parameterTypes;
+        this.methodDescriptor = methodDescriptor;
         this.args = args;
     }
 
-    public void writeExternal(final ObjectOutput out) throws IOException {
-        out.writeObject(name);
-        final Class<?>[] parameterTypes = this.parameterTypes;
-        final Object[] args = this.args;
-        final int len = parameterTypes.length;
-        if (len != args.length) {
-            throw new IllegalStateException("parameter types and/or args length changed");
-        }
-        if (len > 0xffff) {
-            throw new IllegalArgumentException("too many parameters");
-        }
-        out.writeShort(len);
-        for (Class<?> type : parameterTypes) {
-            out.writeObject(type);
-        }
-        for (Object arg : args) {
-            out.writeObject(arg);
-        }
+    /**
+     * Get the method descriptor.
+     *
+     * @return the method descriptor
+     */
+    public TransporterMethodDescriptor getMethodDescriptor() {
+        return methodDescriptor;
     }
 
-    public void readExternal(final ObjectInput in) throws IOException, ClassNotFoundException {
-        name = (String) in.readObject();
-        final int cnt = in.readShort() & 0xffff;
-        final Class<?>[] parameterTypes = new Class<?>[cnt];
-        for (int i = 0; i < cnt; i ++) {
-            parameterTypes[i] = (Class<?>) in.readObject();
-        }
-        final Object[] args = new Object[cnt];
-        for (int i = 0; i < cnt; i ++) {
-            args[i] = in.readObject();
-        }
-        this.parameterTypes = parameterTypes;
-        this.args = args;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public Class<?>[] getParameterTypes() {
-        return parameterTypes;
-    }
-
+    /**
+     * Get the method call arguments.
+     *
+     * @return the method call arguments
+     */
     public Object[] getArgs() {
         return args;
+    }
+
+    /**
+     * An externalizer for a transporter invocation.
+     */
+    public static final class Externalizer implements org.jboss.marshalling.Externalizer, Externalizable {
+
+        private static final long serialVersionUID = 6676707007545161200L;
+
+        /** {@inheritDoc} */
+        public void writeExternal(final Object o, final ObjectOutput output) throws IOException {
+            if (o instanceof TransporterInvocation) {
+                final TransporterInvocation invocation = (TransporterInvocation) o;
+                final TransporterMethodDescriptor methodDescriptor = invocation.methodDescriptor;
+                output.writeObject(methodDescriptor);
+                final Object[] args = invocation.args;
+                final int len = methodDescriptor.getParameterTypes().length;
+                if (len != args.length) {
+                    throw new IllegalStateException("argument length mismatch");
+                }
+                for (Object arg : args) {
+                    output.writeObject(arg);
+                }
+            } else {
+                throw new InvalidClassException(o.getClass().getName(), "Wrong class for externalizer");
+            }
+        }
+
+        /** {@inheritDoc} */
+        public Object createExternal(final Class<?> objectClass, final ObjectInput input, final Creator creator) throws IOException, ClassNotFoundException {
+            final TransporterMethodDescriptor methodDescriptor = (TransporterMethodDescriptor) input.readObject();
+            final int cnt = methodDescriptor.getParameterTypes().length;
+            final Object[] args = new Object[cnt];
+            for (int i = 0; i < cnt; i ++) {
+                args[i] = input.readObject();
+            }
+            return new TransporterInvocation(methodDescriptor, args);
+        }
+
+        /** {@inheritDoc} */
+        public void readExternal(final Object o, final ObjectInput input) throws IOException, ClassNotFoundException {
+            // already initialized
+        }
+
+        /** {@inheritDoc} */
+        public void writeExternal(final ObjectOutput out) throws IOException {
+            // no fields
+        }
+
+        /** {@inheritDoc} */
+        public void readExternal(final ObjectInput in) throws IOException, ClassNotFoundException {
+            // no fields
+        }
     }
 }
