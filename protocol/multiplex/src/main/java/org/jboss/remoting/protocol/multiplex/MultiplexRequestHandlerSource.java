@@ -87,6 +87,6 @@ final class MultiplexRequestHandlerSource extends AbstractAutoCloseable<RequestH
     }
 
     public String toString() {
-        return "forwarding request handler source <" + Integer.toString(hashCode(), 16) + "> (id = " + identifier + ") for " + connection;
+        return "forwarding request handler source <" + Integer.toHexString(hashCode()) + "> (id = " + identifier + ") for " + connection;
     }
 }

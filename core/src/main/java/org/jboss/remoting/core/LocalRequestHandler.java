@@ -106,7 +106,7 @@ public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<Reque
     }
 
     public String toString() {
-        return "local request handler <" + Integer.toString(hashCode(), 16) + "> (request listener = " + String.valueOf(requestListener) + ")";
+        return "local request handler <" + Integer.toHexString(hashCode()) + "> (request listener = " + String.valueOf(requestListener) + ")";
     }
 
     static class Config<I, O> {

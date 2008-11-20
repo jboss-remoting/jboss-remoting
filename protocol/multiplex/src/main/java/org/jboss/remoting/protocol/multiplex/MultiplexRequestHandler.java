@@ -100,7 +100,7 @@ final class MultiplexRequestHandler extends AbstractAutoCloseable<RequestHandler
     }
 
     public String toString() {
-        return "forwarding request handler <" + Integer.toString(hashCode(), 16) + "> (id = " + identifier + ") for " + connection;
+        return "forwarding request handler <" + Integer.toHexString(hashCode()) + "> (id = " + identifier + ") for " + connection;
     }
 }
 
@@ -131,6 +131,6 @@ final class RemoteRequestContextImpl implements RemoteRequestContext {
     }
 
     public String toString() {
-        return "remote request context <" + Integer.toString(hashCode(), 16) + "> (request id = " + id + ") for " + connection;
+        return "remote request context <" + Integer.toHexString(hashCode()) + "> (request id = " + id + ") for " + connection;
     }
 }

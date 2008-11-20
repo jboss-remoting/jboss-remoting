@@ -96,6 +96,6 @@ final class BasicRequestHandler extends AbstractAutoCloseable<RequestHandler> im
     }
 
     public String toString() {
-        return "basic protocol handler <" + Integer.toString(hashCode(), 16) + ">";
+        return "basic protocol handler <" + Integer.toHexString(hashCode()) + ">";
     }
 }

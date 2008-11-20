@@ -92,7 +92,7 @@ public final class LocalRequestHandlerSource<I, O> extends AbstractAutoCloseable
     }
 
     public String toString() {
-        return "local request handler source <" + Integer.toString(hashCode(), 16) + "> (request listener = " + String.valueOf(requestListener) + ")";
+        return "local request handler source <" + Integer.toHexString(hashCode()) + "> (request listener = " + String.valueOf(requestListener) + ")";
     }
 
     static class Config<I, O> {

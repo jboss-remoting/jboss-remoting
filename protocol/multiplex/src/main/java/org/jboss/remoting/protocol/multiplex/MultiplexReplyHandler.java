@@ -101,6 +101,6 @@ final class MultiplexReplyHandler implements ReplyHandler {
     }
 
     public String toString() {
-        return "forwarding reply handler <" + Integer.toString(hashCode(), 16) + "> (request id = " + requestId + ") for " + connection;
+        return "forwarding reply handler <" + Integer.toHexString(hashCode()) + "> (request id = " + requestId + ") for " + connection;
     }
 }
