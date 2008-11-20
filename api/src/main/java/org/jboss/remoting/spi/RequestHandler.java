@@ -28,6 +28,10 @@ import org.jboss.remoting.CloseHandler;
 /**
  * A request handler, which can be passed to remote endpoints.  Remote systems can then use the handler
  * to make invocations, or they may forward a handler on to other remote systems.
+ * <p>
+ * This is an internal Remoting interface, intended to be implemented only by Remoting internals and protocol implementations.
+ * It should not be implemented by end-users, as members may be added without notice.  Applications should instead use
+ * the {@link org.jboss.remoting.Client Client} and {@link org.jboss.remoting.RequestListener RequestListener} interfaces.
  */
 public interface RequestHandler extends AutoCloseable<RequestHandler> {
 

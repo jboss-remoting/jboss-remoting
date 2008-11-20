@@ -26,8 +26,16 @@ import org.jboss.remoting.HandleableCloseable;
 import java.io.IOException;
 
 /**
- *
+ * A closeable resource which closes automatically when the number of active handles reaches zero.  Handles are considered
+ * active until they are closed.
  */
 public interface AutoCloseable<T> extends HandleableCloseable<T> {
+
+    /**
+     * Get a handle to this resource.  When the number of open handles reaches zero, the resource will be closed.
+     *
+     * @return a handle
+     * @throws IOException if an error occurs, particularly if this resource is already closed
+     */
     Handle<T> getHandle() throws IOException;
 }

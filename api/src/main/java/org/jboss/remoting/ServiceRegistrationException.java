@@ -22,10 +22,8 @@
 
 package org.jboss.remoting;
 
-import org.jboss.remoting.RemotingException;
-
 /**
- *
+ * A service registration exception, thrown when registering a service fails for some reason.
  */
 public class ServiceRegistrationException extends RemotingException {
 

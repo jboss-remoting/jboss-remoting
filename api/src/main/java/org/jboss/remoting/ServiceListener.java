@@ -38,7 +38,7 @@ public interface ServiceListener {
     void serviceRegistered(SimpleCloseable listenerHandle, ServiceInfo info);
 
     /**
-     * 
+     * Information about a registered service.
      */
     final class ServiceInfo {
         private String endpointName;
@@ -49,58 +49,134 @@ public interface ServiceListener {
         private RequestHandlerSource requestHandlerSource;
         private SimpleCloseable registrationHandle;
 
+        /**
+         * Construct a new instance.
+         */
+        public ServiceInfo() {
+        }
+
+        /**
+         * Get the service type.
+         *
+         * @return the service type
+         */
         public String getServiceType() {
             return serviceType;
         }
 
+        /**
+         * Set the service type.
+         *
+         * @param serviceType the service type
+         */
         public void setServiceType(final String serviceType) {
             this.serviceType = serviceType;
         }
 
+        /**
+         * Get the group name.
+         *
+         * @return the group name
+         */
         public String getGroupName() {
             return groupName;
         }
 
+        /**
+         * Set the group name.
+         *
+         * @param groupName the group name
+         */
         public void setGroupName(final String groupName) {
             this.groupName = groupName;
         }
 
+        /**
+         * Get the metric.
+         *
+         * @return the metric
+         */
         public int getMetric() {
             return metric;
         }
 
+        /**
+         * Set the metric.
+         *
+         * @param metric the metric
+         */
         public void setMetric(final int metric) {
             this.metric = metric;
         }
 
+        /**
+         * Get the request handler source.
+         *
+         * @return the request handler source
+         */
         public RequestHandlerSource getRequestHandlerSource() {
             return requestHandlerSource;
         }
 
+        /**
+         * Set the request handler source.
+         *
+         * @param requestHandlerSource the request handler source
+         */
         public void setRequestHandlerSource(final RequestHandlerSource requestHandlerSource) {
             this.requestHandlerSource = requestHandlerSource;
         }
 
+        /**
+         * Get the registration handle.  Closing this handle will remove the registration.
+         *
+         * @return the registration handle
+         */
         public SimpleCloseable getRegistrationHandle() {
             return registrationHandle;
         }
 
+        /**
+         * Set the registration handle.
+         *
+         * @param registrationHandle the registration handle
+         */
         public void setRegistrationHandle(final SimpleCloseable registrationHandle) {
             this.registrationHandle = registrationHandle;
         }
 
+        /**
+         * Get the endpoint name.  For local services, this will be the name of the local endpoint.
+         *
+         * @return the endpoint name
+         */
         public String getEndpointName() {
             return endpointName;
         }
 
+        /**
+         * Set the endpoint name.
+         *
+         * @param endpointName the endpoint name
+         */
         public void setEndpointName(final String endpointName) {
             this.endpointName = endpointName;
         }
 
+        /**
+         * Determine whether this service is remote.
+         *
+         * @return {@code true} if this service is remote
+         */
         public boolean isRemote() {
             return remote;
         }
 
+        /**
+         * Specify whether this service is remote.
+         *
+         * @param remote {@code true} if this service is remote
+         */
         public void setRemote(final boolean remote) {
             this.remote = remote;
         }

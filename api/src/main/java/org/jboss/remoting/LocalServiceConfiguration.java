@@ -33,44 +33,96 @@ public final class LocalServiceConfiguration<I, O> {
     private String groupName;
     private int metric;
 
+    /**
+     * Construct a new instance.
+     *
+     * @param requestListener the request listener
+     * @param requestClass the request class
+     * @param replyClass the reply class
+     */
     public LocalServiceConfiguration(final RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) {
         this.requestListener = requestListener;
         this.requestClass = requestClass;
         this.replyClass = replyClass;
     }
 
+    /**
+     * Get the request listener for this service.
+     *
+     * @return the request listener
+     */
     public RequestListener<I, O> getRequestListener() {
         return requestListener;
     }
 
+    /**
+     * Get the request class.
+     *
+     * @return the request class
+     */
     public Class<I> getRequestClass() {
         return requestClass;
     }
 
+    /**
+     * Get the reply class.
+     *
+     * @return the reply class
+     */
     public Class<O> getReplyClass() {
         return replyClass;
     }
 
+    /**
+     * Get the service type.
+     *
+     * @return the service type
+     */
     public String getServiceType() {
         return serviceType;
     }
 
+    /**
+     * Set the service type.
+     *
+     * @param serviceType the service type
+     */
     public void setServiceType(final String serviceType) {
         this.serviceType = serviceType;
     }
 
+    /**
+     * Get the group name.
+     *
+     * @return the group name
+     */
     public String getGroupName() {
         return groupName;
     }
 
+    /**
+     * Set the group name.
+     *
+     * @param groupName the group name
+     */
     public void setGroupName(final String groupName) {
         this.groupName = groupName;
     }
 
+    /**
+     * Get the metric.
+     *
+     * @return the metric
+     */
     public int getMetric() {
         return metric;
     }
 
+    /**
+     * Set the metric.
+     *
+     * @param metric the metric
+     */
     public void setMetric(final int metric) {
         this.metric = metric;
     }

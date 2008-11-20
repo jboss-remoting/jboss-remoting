@@ -27,7 +27,7 @@ import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.HandleableCloseable;
 
 /**
- * A handle to a local resource.
+ * A handle to a reference-counted {@link org.jboss.remoting.spi.AutoCloseable AutoCloseable} resource.
  */
 public interface Handle<T> extends HandleableCloseable<Handle<T>> {
 
@@ -39,7 +39,8 @@ public interface Handle<T> extends HandleableCloseable<Handle<T>> {
     T getResource();
 
     /**
-     * Close this reference.
+     * Close this handle.  If this is the last handle to be closed, also close the resource (throwing any exception
+     * that may result).
      *
      * @throws IOException if the close failed
      */

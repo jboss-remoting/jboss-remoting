@@ -82,6 +82,7 @@ public final class SpiUtils {
     /**
      * Safely notify a request listener's cancel handler of cancellation.
      *
+     * @param <O> the reply type
      * @param handler the request cancel handler
      * @param requestContext the request context
      */
@@ -108,6 +109,11 @@ public final class SpiUtils {
         }
     }
 
+    /**
+     * Get a remote request context that simply ignores a cancel request.
+     *
+     * @return a blank remote request context
+     */
     public static RemoteRequestContext getBlankRemoteRequestContext() {
         return BLANK_REMOTE_REQUEST_CONTEXT;
     }

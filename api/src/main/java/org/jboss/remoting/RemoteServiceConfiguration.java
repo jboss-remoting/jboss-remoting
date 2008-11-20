@@ -25,7 +25,7 @@ package org.jboss.remoting;
 import org.jboss.remoting.spi.RequestHandlerSource;
 
 /**
- *
+ * A configuration for registering a remote service with an endpoint.
  */
 public final class RemoteServiceConfiguration {
     private String serviceType;
@@ -34,42 +34,98 @@ public final class RemoteServiceConfiguration {
     private RequestHandlerSource requestHandlerSource;
     private int metric;
 
+    /**
+     * Construct a new instance.
+     */
+    public RemoteServiceConfiguration() {
+    }
+
+    /**
+     * Get the service type.
+     *
+     * @return the service type
+     */
     public String getServiceType() {
         return serviceType;
     }
 
+    /**
+     * Set the service type.
+     *
+     * @param serviceType the service type
+     */
     public void setServiceType(final String serviceType) {
         this.serviceType = serviceType;
     }
 
+    /**
+     * Get the service group name.
+     *
+     * @return the group name
+     */
     public String getGroupName() {
         return groupName;
     }
 
+    /**
+     * Set the service group name.
+     *
+     * @param groupName the group name
+     */
     public void setGroupName(final String groupName) {
         this.groupName = groupName;
     }
 
+    /**
+     * Get the remote endpoint name.
+     *
+     * @return the remote endpoint name
+     */
     public String getEndpointName() {
         return endpointName;
     }
 
+    /**
+     * Set the remote endpoint name.
+     *
+     * @param endpointName the remote endpoint name
+     */
     public void setEndpointName(final String endpointName) {
         this.endpointName = endpointName;
     }
 
+    /**
+     * Get the request handler source of the remote service.
+     *
+     * @return the request handler source
+     */
     public RequestHandlerSource getRequestHandlerSource() {
         return requestHandlerSource;
     }
 
+    /**
+     * Set the request handler source of the remote service.
+     *
+     * @param requestHandlerSource the request handler source
+     */
     public void setRequestHandlerSource(final RequestHandlerSource requestHandlerSource) {
         this.requestHandlerSource = requestHandlerSource;
     }
 
+    /**
+     * Get the metric of the remote service.
+     *
+     * @return the metric
+     */
     public int getMetric() {
         return metric;
     }
 
+    /**
+     * Set the metric of the remote service.
+     *
+     * @param metric the metric
+     */
     public void setMetric(final int metric) {
         this.metric = metric;
     }
