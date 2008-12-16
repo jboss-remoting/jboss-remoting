@@ -57,6 +57,7 @@ public final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> im
     private final Map<Object, ServiceListenerRegistration> serviceListenerMap = CollectionUtil.hashMap();
     private final Set<ServiceRegistration> serviceRegistrations = CollectionUtil.hashSet();
 
+    private static final EndpointPermission CREATE_ENDPOINT_PERM = new EndpointPermission("createEndpoint");
     private static final EndpointPermission CREATE_REQUEST_HANDLER_PERM = new EndpointPermission("createRequestHandler");
     private static final EndpointPermission REGISTER_SERVICE_PERM = new EndpointPermission("registerService");
     private static final EndpointPermission CREATE_CLIENT_PERM = new EndpointPermission("createClient");
@@ -66,6 +67,10 @@ public final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> im
 
     public EndpointImpl(final Executor executor, final String name) {
         super(executor);
+        final SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(CREATE_ENDPOINT_PERM);
+        }
         this.executor = executor;
         this.name = name;
         orderedExecutorFactory = new OrderedExecutorFactory(executor);
