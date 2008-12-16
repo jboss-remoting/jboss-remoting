@@ -101,7 +101,7 @@ public final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> im
         config.setRequestListener(requestListener);
         config.setClientContext(new ClientContextImpl(executor));
         final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(config);
-        final WeakCloseable lrhCloseable = new WeakCloseable(new WeakReference<Closeable>(localRequestHandler));
+        final WeakCloseable lrhCloseable = new WeakCloseable(localRequestHandler);
         final Key key = addCloseHandler(new CloseHandler<Endpoint>() {
             public void handleClose(final Endpoint closed) {
                 IoUtils.safeClose(lrhCloseable);
