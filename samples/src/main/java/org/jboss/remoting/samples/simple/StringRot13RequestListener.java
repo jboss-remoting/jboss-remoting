@@ -4,19 +4,25 @@ import java.io.IOException;
 import org.jboss.remoting.AbstractRequestListener;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.RequestContext;
+import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
 public final class StringRot13RequestListener extends AbstractRequestListener<String, String> {
 
+    private static final Logger log = Logger.getLogger("jboss.example.string-rot-13");
+
     public void handleRequest(final RequestContext<String> readerRequestContext, final String request) throws RemoteExecutionException {
+        log.info("Received request: \"%s\"", request);
         try {
             StringBuilder b = new StringBuilder(request.length());
             for (int i = 0; i < request.length(); i ++) {
                 b.append(rot13(request.charAt(i)));
             }
-            readerRequestContext.sendReply(b.toString());
+            final String reply = b.toString();
+            log.info("Sending reply: \"%s\"", reply);
+            readerRequestContext.sendReply(reply);
         } catch (IOException e) {
             throw new RemoteExecutionException("Failed to send reply", e);
         }
