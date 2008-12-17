@@ -804,7 +804,10 @@
                 debug="true">
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
+                <pathelement location="${lib.marshalling-api.local}"/>
+                <pathelement location="${lib.river.local}"/>
                 <path refid="api.classpath"/>
+                <path refid="protocol.multiplex.classpath"/>
                 <path refid="standalone.classpath"/>
             </classpath>
         </javac>
@@ -815,7 +818,7 @@
         <delete dir="samples/target"/>
     </target>
 
-    <target name="samples" description="Build the samples module" depends="api,standalone,samples.compile">
+    <target name="samples" description="Build the samples module" depends="lib.marshalling-api,lib.river,api,protocol.multiplex,standalone,samples.compile">
         <path id="samples.classpath">
             <pathelement location="samples/target/main/classes"/>
         </path>
