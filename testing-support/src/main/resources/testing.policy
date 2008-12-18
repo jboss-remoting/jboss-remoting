@@ -9,6 +9,7 @@ grant codeBase "file:${build.home}/api/target/test/classes/-"
 grant codeBase "file:${build.home}/core/target/test/classes/-"
 {
     permission java.lang.RuntimePermission "modifyThread"; // for executor control
+    permission org.jboss.remoting.EndpointPermission "createEndpoint";
     permission org.jboss.remoting.EndpointPermission "createRequestHandler";
     permission org.jboss.remoting.EndpointPermission "createClient";
 };
@@ -16,6 +17,7 @@ grant codeBase "file:${build.home}/core/target/test/classes/-"
 grant codeBase "file:${build.home}/protocol/basic/target/test/classes/-"
 {
     permission java.lang.RuntimePermission "modifyThread"; // for executor control
+    permission org.jboss.remoting.EndpointPermission "createEndpoint";
     permission org.jboss.remoting.EndpointPermission "createRequestHandler";
     permission org.jboss.remoting.EndpointPermission "createClient";
 };
@@ -23,6 +25,7 @@ grant codeBase "file:${build.home}/protocol/basic/target/test/classes/-"
 grant codeBase "file:${build.home}/protocol/multiplex/target/test/classes/-"
 {
     permission java.lang.RuntimePermission "modifyThread"; // for executor control
+    permission org.jboss.remoting.EndpointPermission "createEndpoint";
     permission org.jboss.remoting.EndpointPermission "createRequestHandler";
     permission org.jboss.remoting.EndpointPermission "createClient";
     permission org.jboss.remoting.EndpointPermission "createClientSource";
@@ -47,6 +50,10 @@ grant codeBase "file:${build.home}/protocol/basic/target/main/classes/-"
     permission java.util.PropertyPermission "jboss.remoting.*", "read";
 };
 
+grant codeBase "file:${build.home}/standalone/target/main/classes/-"
+{
+    permission org.jboss.remoting.EndpointPermission "createEndpoint";
+};
 
 // Support classes
 
