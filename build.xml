@@ -79,8 +79,8 @@
 
     <target name="lib.marshalling-api" depends="jboss.repository">
         <mvn:dependencies pathId="lib.marshalling-api.classpath">
-            <remoteRepository refid="jboss.repository"/>
-            <dependency groupId="org.jboss.marshalling" artifactId="marshalling-api" version="1.0.0.GA"/>
+            <mvn:remoteRepository refid="jboss.repository"/>
+            <mvn:dependency groupId="org.jboss.marshalling" artifactId="marshalling-api" version="1.0.0.GA"/>
         </mvn:dependencies>
         <property name="lib.marshalling-api.local" refid="lib.marshalling-api.classpath"/>
     </target>
@@ -89,8 +89,8 @@
 
     <target name="lib.river" depends="jboss.repository">
         <mvn:dependencies pathId="lib.river.classpath">
-            <remoteRepository refid="jboss.repository"/>
-            <dependency groupId="org.jboss.marshalling" artifactId="river" version="1.0.0.GA"/>
+            <mvn:remoteRepository refid="jboss.repository"/>
+            <mvn:dependency groupId="org.jboss.marshalling" artifactId="river" version="1.0.0.GA"/>
         </mvn:dependencies>
         <property name="lib.river.local" refid="lib.river.classpath"/>
     </target>
@@ -99,8 +99,8 @@
 
     <target name="lib.xnio-api" depends="jboss.repository">
         <mvn:dependencies pathId="lib.xnio-api.classpath">
-            <remoteRepository refid="jboss.repository"/>
-            <dependency groupId="org.jboss.xnio" artifactId="xnio-api" version="1.2.0.CR1"/>
+            <mvn:remoteRepository refid="jboss.repository"/>
+            <mvn:dependency groupId="org.jboss.xnio" artifactId="xnio-api" version="1.2.0.CR1"/>
         </mvn:dependencies>
         <property name="lib.xnio-api.local" refid="lib.xnio-api.classpath"/>
     </target>
@@ -109,8 +109,8 @@
 
     <target name="lib.xnio-nio" depends="jboss.repository">
         <mvn:dependencies pathId="lib.xnio-nio.classpath">
-            <remoteRepository refid="jboss.repository"/>
-            <dependency groupId="org.jboss.xnio" artifactId="xnio-nio" version="1.2.0.CR1"/>
+            <mvn:remoteRepository refid="jboss.repository"/>
+            <mvn:dependency groupId="org.jboss.xnio" artifactId="xnio-nio" version="1.2.0.CR1"/>
         </mvn:dependencies>
         <property name="lib.xnio-nio.local" refid="lib.xnio-nio.classpath"/>
     </target>
