@@ -11,7 +11,7 @@ public final class Version {
     /**
      * The version.
      */
-    public static final String VERSION = "3.0.0.Beta2";
+    public static final String VERSION = "3.0.0.CR1";
 
     /**
      * Print the version to {@code System.out}.
