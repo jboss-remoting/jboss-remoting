@@ -40,7 +40,7 @@ import org.jboss.remoting.test.support.LoggingHelper;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.marshalling.MarshallingConfiguration;
-import org.jboss.marshalling.river.RiverMarshallerFactory;
+import org.jboss.river.RiverMarshallerFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
