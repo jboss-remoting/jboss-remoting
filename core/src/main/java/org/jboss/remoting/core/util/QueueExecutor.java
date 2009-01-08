@@ -2,8 +2,8 @@ package org.jboss.remoting.core.util;
 
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.Executor;
 import org.jboss.xnio.log.Logger;
+import org.jboss.xnio.CloseableExecutor;
 
 /**
  * An executor designed to run all submitted tasks in the current thread.  The queue is run continuously
@@ -11,7 +11,7 @@ import org.jboss.xnio.log.Logger;
  * Only one thread should invoke the {@code runQueue()} method, which will run until the executor is
  * shut down.
  */
-public final class QueueExecutor implements Executor {
+public final class QueueExecutor implements CloseableExecutor {
     private static final Logger log = org.jboss.xnio.log.Logger.getLogger(QueueExecutor.class);
 
     private final Queue<Runnable> queue = new LinkedList<Runnable>();
@@ -88,7 +88,7 @@ public final class QueueExecutor implements Executor {
         }
     }
 
-    public void shutdown() {
+    public void close() {
         synchronized(queue) {
             switch (state) {
                 case WAITING:

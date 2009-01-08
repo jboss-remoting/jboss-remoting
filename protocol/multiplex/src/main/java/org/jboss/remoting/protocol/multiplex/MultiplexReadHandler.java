@@ -24,7 +24,6 @@ package org.jboss.remoting.protocol.multiplex;
 
 import org.jboss.xnio.IoReadHandler;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.log.Logger;
 import org.jboss.xnio.channels.AllocatedMessageChannel;
@@ -366,11 +365,7 @@ public final class MultiplexReadHandler implements IoReadHandler<AllocatedMessag
                     final int serviceId = buffer.getInt();
                     final FutureRemoteRequestHandlerSource future = connection.removeFutureRemoteService(serviceId);
                     log.trace("Received a service close notify message for service %d for %s", Integer.valueOf(serviceId), future);
-                    future.addNotifier(new IoFuture.HandlingNotifier<RequestHandlerSource>() {
-                        public void handleDone(final RequestHandlerSource result) {
-                            IoUtils.safeClose(result);
-                        }
-                    });
+                    future.addNotifier(IoUtils.<RequestHandlerSource>closingNotifier(), null);
                     break;
                 }
                 case SERVICE_CLOSE_REQUEST: {

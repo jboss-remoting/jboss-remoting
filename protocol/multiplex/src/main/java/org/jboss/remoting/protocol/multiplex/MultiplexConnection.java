@@ -26,7 +26,6 @@ import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.xnio.BufferAllocator;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.log.Logger;
 import org.jboss.xnio.channels.AllocatedMessageChannel;
@@ -47,7 +46,6 @@ import java.util.List;
 import java.nio.ByteBuffer;
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.io.Closeable;
 
 /**
  *
@@ -437,7 +435,7 @@ public final class MultiplexConnection extends AbstractHandleableCloseable<Multi
             IoUtils.safeClose(x);
         }
         for (FutureRemoteRequestHandlerSource future : remoteServices.getKeys()) {
-            future.addNotifier(MultiplexConnection.<RequestHandlerSource>closingNotifier());
+            future.addNotifier(IoUtils.<RequestHandlerSource>closingNotifier(), null);
         }
         // Things running locally
         for (RemoteRequestContext localRequest : localRequests.getKeys()) {
@@ -453,18 +451,5 @@ public final class MultiplexConnection extends AbstractHandleableCloseable<Multi
 
     public String toString() {
         return "multiplex connection <" + Integer.toHexString(hashCode()) + "> via " + channel;
-    }
-
-    @SuppressWarnings({ "unchecked" })
-    private static <T extends Closeable> IoFuture.Notifier<T> closingNotifier() {
-        return (IoFuture.Notifier<T>) CLOSING_NOTIFIER;
-    }
-
-    private static final ClosingNotifier CLOSING_NOTIFIER = new ClosingNotifier();
-
-    private static class ClosingNotifier extends IoFuture.HandlingNotifier<Closeable> {
-        public void handleDone(final Closeable result) {
-            IoUtils.safeClose(result);
-        }
     }
 }

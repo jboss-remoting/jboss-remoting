@@ -100,7 +100,7 @@
     <target name="lib.xnio-api" depends="jboss.repository">
         <mvn:dependencies pathId="lib.xnio-api.classpath">
             <mvn:remoteRepository refid="jboss.repository"/>
-            <mvn:dependency groupId="org.jboss.xnio" artifactId="xnio-api" version="1.2.0.CR1"/>
+            <mvn:dependency groupId="org.jboss.xnio" artifactId="xnio-api" version="1.2.0.CR2"/>
         </mvn:dependencies>
         <property name="lib.xnio-api.local" refid="lib.xnio-api.classpath"/>
     </target>
@@ -110,7 +110,7 @@
     <target name="lib.xnio-nio" depends="jboss.repository">
         <mvn:dependencies pathId="lib.xnio-nio.classpath">
             <mvn:remoteRepository refid="jboss.repository"/>
-            <mvn:dependency groupId="org.jboss.xnio" artifactId="xnio-nio" version="1.2.0.CR1"/>
+            <mvn:dependency groupId="org.jboss.xnio" artifactId="xnio-nio" version="1.2.0.CR2"/>
         </mvn:dependencies>
         <property name="lib.xnio-nio.local" refid="lib.xnio-nio.classpath"/>
     </target>

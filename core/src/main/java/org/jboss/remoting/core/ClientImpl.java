@@ -79,11 +79,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
         final RemoteRequestContext requestContext = handle.getResource().receiveRequest(actualRequest, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
-        futureReply.addNotifier(new IoFuture.Notifier<O>() {
-            public void notify(final IoFuture<O> future) {
-                executor.shutdown();
-            }
-        });
+        futureReply.addNotifier(IoUtils.<O>attachmentClosingNotifier(), executor);
         executor.runQueue();
         try {
             return futureReply.getInterruptibly();
