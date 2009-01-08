@@ -24,6 +24,8 @@ package org.jboss.remoting;
 
 /**
  * A configuration for a service to be deployed into the endpoint.
+ *
+ * @apiviz.exclude
  */
 public final class LocalServiceConfiguration<I, O> {
     private final RequestListener<I, O> requestListener;

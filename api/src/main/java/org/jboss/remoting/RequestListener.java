@@ -5,6 +5,8 @@ package org.jboss.remoting;
  *
  * @param <I> the request type
  * @param <O> the reply type
+ *
+ * @apiviz.landmark
  */
 public interface RequestListener<I, O> {
     /**

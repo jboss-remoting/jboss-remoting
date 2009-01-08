@@ -26,6 +26,8 @@ import org.jboss.remoting.spi.RequestHandlerSource;
 
 /**
  * A listener for watching service registrations on an endpoint.
+ *
+ * @apiviz.landmark
  */
 public interface ServiceListener {
 
@@ -39,6 +41,8 @@ public interface ServiceListener {
 
     /**
      * Information about a registered service.
+     *
+     * @apiviz.exclude
      */
     final class ServiceInfo {
         private String endpointName;

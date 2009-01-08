@@ -30,7 +30,7 @@ import org.jboss.remoting.protocol.multiplex.MultiplexConfiguration;
 import org.jboss.remoting.spi.RequestHandlerSource;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.NamedServiceRegistry;
-import org.jboss.remoting.spi.QualifiedName;
+import org.jboss.remoting.QualifiedName;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoHandlerFactory;

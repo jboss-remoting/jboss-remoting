@@ -5,6 +5,8 @@ import java.util.concurrent.ConcurrentMap;
 /**
  * The server-side context of a service.  Used to hold state relating to a service (known as a {@code ContextSource} on
  * the client side).
+ *
+ * @apiviz.exclude
  */
 public interface ServiceContext extends HandleableCloseable<ServiceContext> {
 

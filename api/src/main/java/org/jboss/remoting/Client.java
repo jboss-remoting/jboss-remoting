@@ -11,6 +11,8 @@ import org.jboss.xnio.IoFuture;
  *
  * @param <I> the request type
  * @param <O> the reply type
+ *
+ * @apiviz.landmark
  */
 public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
     /**

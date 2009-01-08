@@ -24,6 +24,7 @@ package org.jboss.remoting.spi;
 
 import junit.framework.TestCase;
 import org.jboss.remoting.test.support.LoggingHelper;
+import org.jboss.remoting.QualifiedName;
 import java.util.Iterator;
 
 /**

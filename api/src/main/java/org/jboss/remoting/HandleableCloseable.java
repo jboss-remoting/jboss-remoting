@@ -7,6 +7,8 @@ import java.io.Closeable;
  * A Remoting resource that can be closed.
  *
  * @param <T> the type that is passed to the close handler
+ *
+ * @apiviz.exclude
  */
 public interface HandleableCloseable<T> extends Closeable {
 
@@ -28,6 +30,8 @@ public interface HandleableCloseable<T> extends Closeable {
 
     /**
      * A key which may be used to remove this handler.
+     *
+     * @apiviz.exclude
      */
     interface Key {
 

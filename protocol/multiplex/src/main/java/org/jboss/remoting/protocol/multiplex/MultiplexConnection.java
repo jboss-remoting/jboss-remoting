@@ -37,7 +37,7 @@ import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.NamedServiceRegistry;
 import org.jboss.remoting.spi.SpiUtils;
 import org.jboss.remoting.spi.AbstractHandleableCloseable;
-import org.jboss.remoting.spi.QualifiedName;
+import org.jboss.remoting.QualifiedName;
 import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.IndeterminateOutcomeException;
 import java.util.concurrent.Executor;

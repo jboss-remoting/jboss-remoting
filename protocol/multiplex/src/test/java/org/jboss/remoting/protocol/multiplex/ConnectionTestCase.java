@@ -41,7 +41,7 @@ import org.jboss.remoting.RequestContext;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.ClientSource;
 import org.jboss.remoting.Client;
-import org.jboss.remoting.spi.QualifiedName;
+import org.jboss.remoting.QualifiedName;
 import org.jboss.remoting.spi.NamedServiceRegistry;
 import org.jboss.remoting.spi.RequestHandlerSource;
 import org.jboss.remoting.spi.Handle;

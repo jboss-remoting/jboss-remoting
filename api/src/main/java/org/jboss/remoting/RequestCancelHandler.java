@@ -4,6 +4,8 @@ package org.jboss.remoting;
  * A handler for request listeners to receive a notification when a request was cancelled.
  *
  * @param <O> the reply type
+ *
+ * @apiviz.exclude
  */
 public interface RequestCancelHandler<O> {
 

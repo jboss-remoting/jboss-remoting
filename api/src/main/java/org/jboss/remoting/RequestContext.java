@@ -9,6 +9,8 @@ import java.io.IOException;
  * specified in this interface.
  *
  * @param <O> the reply type
+ *
+ * @apiviz.exclude
  */
 public interface RequestContext<O> extends Executor {
     /**

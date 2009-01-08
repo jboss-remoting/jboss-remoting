@@ -5,6 +5,8 @@ import java.net.URISyntaxException;
 
 /**
  * A parser for JBoss Remoting URI types.
+ *
+ * @apiviz.exclude
  */
 public final class ServiceURI {
     public static final String SCHEME = "jrs";

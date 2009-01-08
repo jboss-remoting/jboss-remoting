@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.io.IOException;
 import org.jboss.remoting.ServiceRegistrationException;
 import org.jboss.remoting.CloseHandler;
+import org.jboss.remoting.QualifiedName;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 

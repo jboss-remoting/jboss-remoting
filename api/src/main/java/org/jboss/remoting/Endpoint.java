@@ -10,6 +10,8 @@ import org.jboss.xnio.IoFuture;
 
 /**
  * A potential participant in a JBoss Remoting communications relationship.
+ *
+ * @apiviz.landmark
  */
 public interface Endpoint extends HandleableCloseable<Endpoint> {
     /**

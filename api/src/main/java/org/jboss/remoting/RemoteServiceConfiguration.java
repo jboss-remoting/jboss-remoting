@@ -26,6 +26,8 @@ import org.jboss.remoting.spi.RequestHandlerSource;
 
 /**
  * A configuration for registering a remote service with an endpoint.
+ *
+ * @apiviz.exclude
  */
 public final class RemoteServiceConfiguration {
     private String serviceType;

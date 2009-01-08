@@ -4,6 +4,8 @@ package org.jboss.remoting;
  * A handler which is notified of a resource close.
  *
  * @param <T> the type of resource
+ *
+ * @apiviz.exclude
  */
 public interface CloseHandler<T> {
 

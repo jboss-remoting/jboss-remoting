@@ -18,6 +18,8 @@ import org.jboss.xnio.log.Logger;
 /**
  * The standalone interface into Remoting.  This class contains static methods that are useful to standalone programs
  * for managing endpoints and services in a simple fashion.
+ *
+ * @apiviz.landmark
  */
 public final class Remoting {
 

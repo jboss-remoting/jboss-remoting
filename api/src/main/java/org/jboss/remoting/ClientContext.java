@@ -4,6 +4,8 @@ import java.util.concurrent.ConcurrentMap;
 
 /**
  * The server context for a single remote client instance.
+ *
+ * @apiviz.exclude
  */
 public interface ClientContext extends HandleableCloseable<ClientContext> {
     /**
