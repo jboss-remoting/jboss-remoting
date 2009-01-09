@@ -1,7 +1,9 @@
-package org.jboss.remoting.version;
+package org.jboss.remoting;
 
 /**
  * The version of Remoting.
+ *
+ * @apiviz.exclude
  */
 public final class Version {
 

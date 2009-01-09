@@ -229,7 +229,7 @@
             <path refid="lib.xnio-api.classpath"/>
             <path refid="lib.marshalling-api.classpath"/>
         </path>
-        <java classpathref="api.classpath" classname="org.jboss.remoting.version.Version" outputproperty="version"/>
+        <java classpathref="api.classpath" classname="org.jboss.remoting.Version" outputproperty="version"/>
         <property name="version" value="UNKNOWN"/>
     </target>
 

@@ -27,7 +27,7 @@ import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.RequestHandlerSource;
 import org.jboss.remoting.spi.AbstractHandleableCloseable;
 import org.jboss.remoting.spi.AbstractSimpleCloseable;
-import org.jboss.remoting.version.Version;
+import org.jboss.remoting.Version;
 import org.jboss.xnio.FailedIoFuture;
 import org.jboss.xnio.FinishedIoFuture;
 import org.jboss.xnio.IoFuture;

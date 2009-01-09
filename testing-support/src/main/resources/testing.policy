@@ -37,6 +37,7 @@ grant codeBase "file:${build.home}/protocol/multiplex/target/test/classes/-"
 grant codeBase "file:${build.home}/api/target/main/classes/-"
 {
     permission java.util.PropertyPermission "jboss.remoting.*", "read";
+    permission org.jboss.remoting.EndpointPermission "*";
 };
 
 grant codeBase "file:${build.home}/core/target/main/classes/-"
@@ -48,11 +49,6 @@ grant codeBase "file:${build.home}/core/target/main/classes/-"
 grant codeBase "file:${build.home}/protocol/basic/target/main/classes/-"
 {
     permission java.util.PropertyPermission "jboss.remoting.*", "read";
-};
-
-grant codeBase "file:${build.home}/standalone/target/main/classes/-"
-{
-    permission org.jboss.remoting.EndpointPermission "createEndpoint";
 };
 
 // Support classes
