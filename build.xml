@@ -598,7 +598,6 @@
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
                 <path refid="protocol.basic.classpath"/>
-                <path refid="standalone.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <path refid="lib.junit.classpath"/>
                 <path refid="lib.river.classpath"/>
@@ -627,7 +626,6 @@
                 <path refid="api.classpath"/>
                 <path refid="core.classpath"/>
                 <path refid="protocol.basic.classpath"/>
-                <path refid="standalone.classpath"/>
                 <path refid="testing-support.classpath"/>
                 <pathelement location="protocol/basic/target/test/classes"/>
                 <path refid="lib.junit.classpath"/>
@@ -643,7 +641,7 @@
         </junit>
     </target>
 
-    <target name="protocol.basic.test" depends="lib.river,lib.xnio-nio,api,core,protocol.basic,standalone,testing-support,protocol.basic.test.compile">
+    <target name="protocol.basic.test" depends="lib.river,lib.xnio-nio,api,core,protocol.basic,testing-support,protocol.basic.test.compile">
         <antcall inheritall="true" inheritrefs="true" target="protocol.basic.test.pseudotarget">
             <param name="extension" value=".txt"/>
             <param name="message" value="Running with no security manager"/>
@@ -691,7 +689,6 @@
             <classpath>
                 <path refid="api.classpath"/>
                 <path refid="protocol.multiplex.classpath"/>
-                <path refid="standalone.classpath"/>
                 <path refid="lib.river.classpath"/>
             </classpath>
         </javac>
@@ -702,49 +699,9 @@
         <delete dir="samples/target"/>
     </target>
 
-    <target name="samples" description="Build the samples module" depends="lib.marshalling-api,lib.river,api,protocol.multiplex,standalone,samples.compile">
+    <target name="samples" description="Build the samples module" depends="lib.marshalling-api,lib.river,api,protocol.multiplex,samples.compile">
         <path id="samples.classpath">
             <pathelement location="samples/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- standalone module -->
-
-    <target name="standalone.compile.depcheck">
-        <mkdir dir="standalone/target/main"/>
-        <uptodate property="standalone.compile.uptodate" targetfile="standalone/target/main/.lastcompile">
-            <srcfiles dir="standalone/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="standalone.compile" depends="standalone.compile.depcheck" unless="standalone.compile.uptodate">
-        <mkdir dir="standalone/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="standalone/src/main/java"
-                destdir="standalone/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="core.classpath"/>
-            </classpath>
-        </javac>
-        <touch file="standalone/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="standalone.clean">
-        <delete dir="standalone/target"/>
-    </target>
-
-    <target name="standalone" description="Build the standalone module" depends="lib.xnio-api,api,core,standalone.compile">
-        <path id="standalone.classpath">
-            <pathelement location="standalone/target/main/classes"/>
         </path>
     </target>
 
@@ -961,81 +918,16 @@
         </jar>
     </target>
 
-    <target name="standalone-jar" description="Build the standalone JAR" depends="api,core,standalone,transporter,version">
-        <delete file="jboss-remoting-standalone.jar"/>
-        <jar jarfile="jboss-remoting-standalone.jar">
-            <manifest>
-                <attribute name="Created-By" value="${java.vm.version} (${java.vm.vendor})"/>
-                <attribute name="Specification-Title" value="JBoss Remoting"/>
-                <attribute name="Specification-Version" value="${version}"/>
-                <attribute name="Specification-Vendor" value="JBoss (http://www.jboss.org/)"/>
-                <attribute name="Implementation-Title" value="JBoss Remoting - Standalone Version"/>
-                <attribute name="Implementation-URL" value="http://labs.jboss.org/jbossremoting/"/>
-                <attribute name="Implementation-Version" value="${version}"/>
-                <attribute name="Implementation-Vendor" value="JBoss, a division of Red Hat, Inc."/>
-                <attribute name="Implementation-Vendor-Id" value="http://www.jboss.org"/>
-            </manifest>
-            <zipfileset dir="api/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-            <zipfileset dir="core/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-            <zipfileset dir="standalone/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-            <zipfileset dir="transporter/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-            <zipfileset dir="version/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-        </jar>
-    </target>
-
-    <target name="standalone-source-jar" description="Build the standalone source JAR" depends="api,core,standalone,transporter,version">
-        <delete file="jboss-remoting-standalone-source.jar"/>
-        <jar jarfile="jboss-remoting-standalone-source.jar">
-            <manifest>
-                <attribute name="Created-By" value="${java.vm.version} (${java.vm.vendor})"/>
-                <attribute name="Specification-Title" value="JBoss Remoting Source"/>
-                <attribute name="Specification-Version" value="${version}"/>
-                <attribute name="Specification-Vendor" value="JBoss (http://www.jboss.org/)"/>
-                <attribute name="Implementation-Title" value="JBoss Remoting Source - Standalone Version"/>
-                <attribute name="Implementation-URL" value="http://labs.jboss.org/jbossremoting/"/>
-                <attribute name="Implementation-Version" value="${version}"/>
-                <attribute name="Implementation-Vendor" value="JBoss, a division of Red Hat, Inc."/>
-                <attribute name="Implementation-Vendor-Id" value="http://www.jboss.org"/>
-            </manifest>
-            <zipfileset dir="api/src/main/java">
-                <include name="**/*.java"/>
-            </zipfileset>
-            <zipfileset dir="core/src/main/java">
-                <include name="**/*.java"/>
-            </zipfileset>
-            <zipfileset dir="standalone/src/main/java">
-                <include name="**/*.java"/>
-            </zipfileset>
-            <zipfileset dir="transporter/src/main/java">
-                <include name="**/*.java"/>
-            </zipfileset>
-            <zipfileset dir="version/src/main/java">
-                <include name="**/*.java"/>
-            </zipfileset>
-        </jar>
-    </target>
-
     <!-- ============================================== -->
     <!-- JAVADOCS                                       -->
     <!-- ============================================== -->
 
-    <target name="api-javadoc" description="Build the API JavaDoc" depends="api,core,standalone,transporter,lib.apiviz,lib.marshalling-api,lib.xnio-api">
+    <target name="api-javadoc" description="Build the API JavaDoc" depends="api,core,transporter,lib.apiviz,lib.marshalling-api,lib.xnio-api">
         <delete dir="api/target/main/docs"/>
         <mkdir dir="api/target/main/docs"/>
         <javadoc destdir="api/target/main/docs" author="false" version="false" use="false" windowtitle="JBoss Remoting API">
             <doclet name="${lib.apiviz.doclet}" pathref="lib.apiviz.classpath"/>
             <packageset dir="api/src/main/java"/>
-            <packageset dir="standalone/src/main/java"/>
             <packageset dir="transporter/src/main/java"/>
             <doctitle><![CDATA[<h1>JBoss Remoting, version ${version}</h1>]]></doctitle>
             <header><![CDATA[JBoss Remoting ${version}]]></header>
@@ -1047,7 +939,6 @@
             <classpath>
                 <path refid="core.classpath"/>
                 <path refid="api.classpath"/>
-                <path refid="standalone.classpath"/>
                 <path refid="transporter.classpath"/>
             </classpath>
         </javadoc>
@@ -1069,7 +960,7 @@
     <!-- Distribution target                            -->
     <!-- ============================================== -->
 
-    <target name="dist" description="Build distribution zip file" depends="api-jar,api-source-jar,api-javadoc-zip,core-jar,core-source-jar,standalone-jar,standalone-source-jar">
+    <target name="dist" description="Build distribution zip file" depends="api-jar,api-source-jar,api-javadoc-zip,core-jar,core-source-jar">
         <delete file="jboss-remoting.zip"/>
         <zip zipfile="jboss-remoting.zip">
             <zipfileset dir="${basedir}">
@@ -1078,8 +969,6 @@
                 <include name="jboss-remoting-api-source.jar"/>
                 <include name="jboss-remoting-core.jar"/>
                 <include name="jboss-remoting-core-source.jar"/>
-                <include name="jboss-remoting-standalone.jar"/>
-                <include name="jboss-remoting-standalone-source.jar"/>
                 <include name="jboss-remoting-javadoc.zip"/>
             </zipfileset>
         </zip>
@@ -1090,13 +979,13 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,protocol.multiplex,samples,standalone,testing-support,transporter"/>
+    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,protocol.multiplex,samples,testing-support,transporter"/>
 
-    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,standalone.clean,testing-support.clean,transporter.clean"/>
+    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,testing-support.clean,transporter.clean"/>
 
     <!-- JARs: These should be the third-to-last targets in the file -->
 
-    <target name="all-jars" description="Build all the JARs" depends="api-jar,core-jar,standalone-jar"/>
+    <target name="all-jars" description="Build all the JARs" depends="api-jar,core-jar"/>
 
     <!-- fetch: These should be the second-to-last targets in the file -->
 

@@ -7,7 +7,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.Executors;
-import org.jboss.remoting.core.EndpointImpl;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.RequestHandlerSource;
 import org.jboss.remoting.spi.Handle;
@@ -31,20 +30,22 @@ public final class Remoting {
      * @param name the name of the endpoint
      * @return the endpoint
      */
-    public static Endpoint createEndpoint(final String name) {
+    public static Endpoint createEndpoint(final String name) throws IOException {
         return createEndpoint(name, 10);
     }
 
     /**
      * Create an endpoint.  The endpoint will create its own thread pool with a maximum of {@code maxThreads} threads.
      *
+     * You must have the {@link org.jboss.remoting.EndpointPermission createEndpoint EndpointPermission} to invoke this method.
+     *
      * @param name the name of the endpoint
      * @param maxThreads the maximum thread count
      * @return the endpoint
      */
-    public static Endpoint createEndpoint(final String name, final int maxThreads) {
+    public static Endpoint createEndpoint(final String name, final int maxThreads) throws IOException {
         final CloseableExecutor executor = createExecutor(maxThreads);
-        final EndpointImpl endpoint = new EndpointImpl(executor, name);
+        final Endpoint endpoint = createEndpoint(executor, name);
         endpoint.addCloseHandler(new CloseHandler<Endpoint>() {
             public void handleClose(final Endpoint closed) {
                 IoUtils.safeClose(executor);
@@ -85,8 +86,12 @@ public final class Remoting {
      * @param name the name of the endpoint
      * @return the endpoint
      */
-    public static Endpoint createEndpoint(final Executor executor, final String name) {
-        return new EndpointImpl(executor, name);
+    public static Endpoint createEndpoint(final Executor executor, final String name) throws IOException {
+        try {
+            return (Endpoint) Class.forName("org.jboss.remoting.core.EndpointImpl").getConstructor(Executor.class, String.class).newInstance(executor, name);
+        } catch (Exception e) {
+            throw new EndpointException("Unable to create endpoint", e);
+        }
     }
 
     /**
@@ -127,6 +132,54 @@ public final class Remoting {
             return endpoint.createClientSource(handle.getResource(), config.getRequestClass(), config.getReplyClass());
         } finally {
             IoUtils.safeClose(handle);
+        }
+    }
+
+    /**
+     * An exception indicating that there was a problem creating an endpoint.
+     *
+     * @apiviz.exclude
+     */
+    public static final class EndpointException extends RemotingException {
+        private static final long serialVersionUID = -9157350594373125152L;
+
+        /**
+         * Constructs a <tt>EndpointException</tt> with no detail message. The cause is not initialized, and may
+         * subsequently be initialized by a call to {@link #initCause(Throwable) initCause}.
+         */
+        public EndpointException() {
+        }
+
+        /**
+         * Constructs a <tt>EndpointException</tt> with the specified detail message. The cause is not initialized, and
+         * may subsequently be initialized by a call to {@link #initCause(Throwable) initCause}.
+         *
+         * @param msg the detail message
+         */
+        public EndpointException(String msg) {
+            super(msg);
+        }
+
+        /**
+         * Constructs a <tt>EndpointException</tt> with the specified cause. The detail message is set to:
+         * <pre>
+         *  (cause == null ? null : cause.toString())</pre>
+         * (which typically contains the class and detail message of <tt>cause</tt>).
+         *
+         * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
+         */
+        public EndpointException(Throwable cause) {
+            super(cause);
+        }
+
+        /**
+         * Constructs a <tt>EndpointException</tt> with the specified detail message and cause.
+         *
+         * @param msg the detail message
+         * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
+         */
+        public EndpointException(String msg, Throwable cause) {
+            super(msg, cause);
         }
     }
 

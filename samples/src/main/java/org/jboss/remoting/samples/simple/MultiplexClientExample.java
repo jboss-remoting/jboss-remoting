@@ -67,61 +67,63 @@ public final class MultiplexClientExample {
     }
 
     public static void main(String[] args) {
-        final Endpoint endpoint = Remoting.createEndpoint("example-client-endpoint");
         try {
-            // now create the client
-            final NamedServiceRegistry serviceRegistry = new NamedServiceRegistry();
-            final MultiplexConfiguration config = new MultiplexConfiguration();
-            config.setNamedServiceRegistry(serviceRegistry);
-            config.setAllocator(Buffers.createHeapByteBufferAllocator(1024));
-            config.setMarshallerFactory(new RiverMarshallerFactory());
-            config.setExecutor(IoUtils.directExecutor());
-            config.setLinkMetric(100);
-            config.setMarshallingConfiguration(new MarshallingConfiguration());
-            final Xnio xnio = Xnio.create();
+            final Endpoint endpoint = Remoting.createEndpoint("example-client-endpoint");
             try {
-                final ConfigurableFactory<CloseableTcpConnector> tcpConnectorFactory = xnio.createTcpConnector();
-                final CloseableTcpConnector closeableTcpConnector = tcpConnectorFactory.create();
+                // now create the client
+                final NamedServiceRegistry serviceRegistry = new NamedServiceRegistry();
+                final MultiplexConfiguration config = new MultiplexConfiguration();
+                config.setNamedServiceRegistry(serviceRegistry);
+                config.setAllocator(Buffers.createHeapByteBufferAllocator(1024));
+                config.setMarshallerFactory(new RiverMarshallerFactory());
+                config.setExecutor(IoUtils.directExecutor());
+                config.setLinkMetric(100);
+                config.setMarshallingConfiguration(new MarshallingConfiguration());
+                final Xnio xnio = Xnio.create();
                 try {
-                    final ChannelSource<AllocatedMessageChannel> channelSource = Channels.convertStreamToAllocatedMessage(closeableTcpConnector.createChannelSource(new InetSocketAddress("localhost", 10000)), 1024, 1024);
-                    final IoFuture<MultiplexConnection> futureConnection = MultiplexProtocol.connect(endpoint, config, channelSource);
-                    final MultiplexConnection connection = futureConnection.get();
+                    final ConfigurableFactory<CloseableTcpConnector> tcpConnectorFactory = xnio.createTcpConnector();
+                    final CloseableTcpConnector closeableTcpConnector = tcpConnectorFactory.create();
                     try {
-                        final Handle<RequestHandlerSource> handle = connection.openRemoteService(QualifiedName.parse("/jboss/example/string-rot-13"));
+                        final ChannelSource<AllocatedMessageChannel> channelSource = Channels.convertStreamToAllocatedMessage(closeableTcpConnector.createChannelSource(new InetSocketAddress("localhost", 10000)), 1024, 1024);
+                        final IoFuture<MultiplexConnection> futureConnection = MultiplexProtocol.connect(endpoint, config, channelSource);
+                        final MultiplexConnection connection = futureConnection.get();
                         try {
-                            final ClientSource<String, String> clientSource = endpoint.createClientSource(handle.getResource(), String.class, String.class);
+                            final Handle<RequestHandlerSource> handle = connection.openRemoteService(QualifiedName.parse("/jboss/example/string-rot-13"));
                             try {
-                                final Client<String, String> client = clientSource.createClient();
+                                final ClientSource<String, String> clientSource = endpoint.createClientSource(handle.getResource(), String.class, String.class);
                                 try {
-                                    System.out.println("Enter text, send EOF to terminate");
-                                    final BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
-                                    String line;
-                                    while ((line = inputReader.readLine()) != null) {
-                                        System.out.println("Response: " + client.invoke(line));
+                                    final Client<String, String> client = clientSource.createClient();
+                                    try {
+                                        System.out.println("Enter text, send EOF to terminate");
+                                        final BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
+                                        String line;
+                                        while ((line = inputReader.readLine()) != null) {
+                                            System.out.println("Response: " + client.invoke(line));
+                                        }
+                                        System.out.println("Done!");
+                                    } finally {
+                                        IoUtils.safeClose(client);
                                     }
-                                    System.out.println("Done!");
                                 } finally {
-                                    IoUtils.safeClose(client);
+                                    IoUtils.safeClose(clientSource);
                                 }
                             } finally {
-                                IoUtils.safeClose(clientSource);
+                                IoUtils.safeClose(handle);
                             }
                         } finally {
-                            IoUtils.safeClose(handle);
+                            IoUtils.safeClose(connection);
                         }
                     } finally {
-                        IoUtils.safeClose(connection);
+                        IoUtils.safeClose(closeableTcpConnector);
                     }
                 } finally {
-                    IoUtils.safeClose(closeableTcpConnector);
+                    IoUtils.safeClose(xnio);
                 }
             } finally {
-                IoUtils.safeClose(xnio);
+                IoUtils.safeClose(endpoint);
             }
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            IoUtils.safeClose(endpoint);
         }
     }
 }

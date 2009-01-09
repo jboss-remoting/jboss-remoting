@@ -110,11 +110,11 @@ public final class MultiplexServerExample {
                 } finally {
                     IoUtils.safeClose(handle);
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
             } finally {
                 IoUtils.safeClose(endpoint);
             }
+        } catch (IOException e) {
+            e.printStackTrace();
         } finally {
             IoUtils.safeClose(executor);
         }
