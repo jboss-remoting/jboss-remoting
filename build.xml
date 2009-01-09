@@ -229,6 +229,8 @@
             <path refid="lib.xnio-api.classpath"/>
             <path refid="lib.marshalling-api.classpath"/>
         </path>
+        <java classpathref="api.classpath" classname="org.jboss.remoting.version.Version" outputproperty="version"/>
+        <property name="version" value="UNKNOWN"/>
     </target>
 
     <!-- compat module -->
@@ -293,7 +295,6 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
-                <path refid="version.classpath"/>
             </classpath>
         </javac>
         <touch file="core/target/main/.lastcompile" verbose="false"/>
@@ -375,7 +376,7 @@
         <delete dir="core/target"/>
     </target>
 
-    <target name="core" description="Build the core module" depends="api,version,core.compile">
+    <target name="core" description="Build the core module" depends="api,core.compile">
         <path id="core.classpath">
             <pathelement location="core/target/main/classes"/>
         </path>
@@ -745,88 +746,11 @@
         </path>
     </target>
 
-    <!-- transporter module -->
-
-    <target name="transporter.compile.depcheck">
-        <mkdir dir="transporter/target/main"/>
-        <uptodate property="transporter.compile.uptodate" targetfile="transporter/target/main/.lastcompile">
-            <srcfiles dir="transporter/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="transporter.compile" depends="transporter.compile.depcheck" unless="transporter.compile.uptodate">
-        <mkdir dir="transporter/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="transporter/src/main/java"
-                destdir="transporter/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-            </classpath>
-        </javac>
-        <touch file="transporter/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="transporter.clean">
-        <delete dir="transporter/target"/>
-    </target>
-
-    <target name="transporter" description="Build the transporter module" depends="api,lib.xnio-api,transporter.compile">
-        <path id="transporter.classpath">
-            <pathelement location="transporter/target/main/classes"/>
-        </path>
-    </target>
-
-    <!-- version module -->
-
-    <target name="version.compile.depcheck">
-        <mkdir dir="version/target/main"/>
-        <uptodate property="version.compile.uptodate" targetfile="version/target/main/.lastcompile">
-            <srcfiles dir="version/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="version.compile" depends="version.compile.depcheck" unless="version.compile.uptodate">
-        <mkdir dir="version/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="version/src/main/java"
-                destdir="version/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-        </javac>
-        <touch file="version/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="version.clean">
-        <delete dir="version/target"/>
-    </target>
-
-    <target name="version" description="Build the version module" depends="version.compile">
-        <path id="version.classpath">
-            <pathelement location="version/target/main/classes"/>
-        </path>
-        <java classpathref="version.classpath" classname="org.jboss.remoting.version.Version" outputproperty="version"/>
-        <property name="version" value="UNKNOWN"/>
-    </target>
-
     <!-- ============================================== -->
     <!-- JARS - Keep in alpha order by jar name         -->
     <!-- ============================================== -->
 
-    <target name="api-jar" description="Build the API JAR" depends="api,transporter,version">
+    <target name="api-jar" description="Build the API JAR" depends="api">
         <delete file="jboss-remoting-api.jar"/>
         <jar jarfile="jboss-remoting-api.jar">
             <manifest>
@@ -843,16 +767,10 @@
             <zipfileset dir="api/target/main/classes">
                 <include name="**/*.class"/>
             </zipfileset>
-            <zipfileset dir="transporter/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
-            <zipfileset dir="version/target/main/classes">
-                <include name="**/*.class"/>
-            </zipfileset>
         </jar>
     </target>
 
-    <target name="api-source-jar" description="Build the API source JAR" depends="api,transporter,version">
+    <target name="api-source-jar" description="Build the API source JAR" depends="api">
         <delete file="jboss-remoting-api-source.jar"/>
         <jar jarfile="jboss-remoting-api-source.jar">
             <manifest>
@@ -869,16 +787,10 @@
             <zipfileset dir="api/src/main/java">
                 <include name="**/*.java"/>
             </zipfileset>
-            <zipfileset dir="transporter/src/main/java">
-                <include name="**/*.java"/>
-            </zipfileset>
-            <zipfileset dir="version/src/main/java">
-                <include name="**/*.java"/>
-            </zipfileset>
         </jar>
     </target>
 
-    <target name="core-jar" description="Build the Core JAR" depends="core,version">
+    <target name="core-jar" description="Build the Core JAR" depends="core">
         <delete file="jboss-remoting-core.jar"/>
         <jar jarfile="jboss-remoting-core.jar">
             <manifest>
@@ -898,7 +810,7 @@
         </jar>
     </target>
 
-    <target name="core-source-jar" description="Build the Core source JAR" depends="core,version">
+    <target name="core-source-jar" description="Build the Core source JAR" depends="core">
         <delete file="jboss-remoting-core-source.jar"/>
         <jar jarfile="jboss-remoting-core-source.jar">
             <manifest>
@@ -922,13 +834,12 @@
     <!-- JAVADOCS                                       -->
     <!-- ============================================== -->
 
-    <target name="api-javadoc" description="Build the API JavaDoc" depends="api,core,transporter,lib.apiviz,lib.marshalling-api,lib.xnio-api">
+    <target name="api-javadoc" description="Build the API JavaDoc" depends="api,core,lib.apiviz,lib.marshalling-api,lib.xnio-api">
         <delete dir="api/target/main/docs"/>
         <mkdir dir="api/target/main/docs"/>
         <javadoc destdir="api/target/main/docs" author="false" version="false" use="false" windowtitle="JBoss Remoting API">
             <doclet name="${lib.apiviz.doclet}" pathref="lib.apiviz.classpath"/>
             <packageset dir="api/src/main/java"/>
-            <packageset dir="transporter/src/main/java"/>
             <doctitle><![CDATA[<h1>JBoss Remoting, version ${version}</h1>]]></doctitle>
             <header><![CDATA[JBoss Remoting ${version}]]></header>
             <footer><![CDATA[JBoss Remoting ${version}]]></footer>
@@ -939,7 +850,6 @@
             <classpath>
                 <path refid="core.classpath"/>
                 <path refid="api.classpath"/>
-                <path refid="transporter.classpath"/>
             </classpath>
         </javadoc>
     </target>
@@ -979,9 +889,7 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,protocol.multiplex,samples,testing-support,transporter"/>
-
-    <target name="clean-core" description="Clean all core targets" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,testing-support.clean,transporter.clean"/>
+    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,protocol.multiplex,samples,testing-support"/>
 
     <!-- JARs: These should be the third-to-last targets in the file -->
 
@@ -995,7 +903,7 @@
 
     <target name="all" description="Build everything" depends="all-core,all-jars,api-javadoc"/>
 
-    <target name="clean" description="Clean out all build files" depends="clean-core,version.clean"/>
+    <target name="clean" description="Clean out all build files" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,testing-support.clean"/>
 
     <target name="test" description="Run all tests" depends="api.test,core.test,protocol.basic.test,protocol.multiplex.test"/>
 
