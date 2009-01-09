@@ -29,7 +29,7 @@ import java.util.HashMap;
 import java.util.Collections;
 
 /**
- *
+ * A base class resolver which maps Remoting 2 classes to their compatible placeholders.
  */
 public abstract class CompatabilityClassResolver extends AbstractClassResolver {
 
