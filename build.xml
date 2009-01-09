@@ -382,49 +382,6 @@
         </path>
     </target>
 
-    <!-- mc-deployers module -->
-
-    <target name="mc-deployers.compile.depcheck">
-        <mkdir dir="mc-deployers/target/main"/>
-        <uptodate property="mc-deployers.compile.uptodate" targetfile="mc-deployers/target/main/.lastcompile">
-            <srcfiles dir="mc-deployers/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="mc-deployers.compile" depends="mc-deployers.compile.depcheck" unless="mc-deployers.compile.uptodate">
-        <mkdir dir="mc-deployers/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="mc-deployers/src/main/java"
-                destdir="mc-deployers/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="core.classpath"/>
-                <path refid="lib.jaxb-api.classpath"/>
-                <path refid="lib.jbossmc-kernel.classpath"/>
-                <path refid="lib.jbossxb.classpath"/>
-            </classpath>
-        </javac>
-        <touch file="mc-deployers/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="mc-deployers.clean">
-        <delete dir="mc-deployers/target"/>
-    </target>
-
-    <target name="mc-deployers" description="Build the mc-deployers module" depends="lib.jaxb-api,lib.jbossmc-kernel,lib.jbossxb,api,core,mc-deployers.compile">
-        <path id="mc-deployers.classpath">
-            <pathelement location="mc-deployers/target/main/classes"/>
-        </path>
-    </target>
-
     <!-- protocol.multiplex module -->
 
     <target name="protocol.multiplex.compile.depcheck">
@@ -889,7 +846,7 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,compat,core,mc-deployers,protocol.basic,protocol.multiplex,samples,testing-support"/>
+    <target name="all-core" description="Build all core targets" depends="api,compat,core,protocol.basic,protocol.multiplex,samples,testing-support"/>
 
     <!-- JARs: These should be the third-to-last targets in the file -->
 
@@ -903,7 +860,7 @@
 
     <target name="all" description="Build everything" depends="all-core,all-jars,api-javadoc"/>
 
-    <target name="clean" description="Clean out all build files" depends="api.clean,compat.clean,core.clean,mc-deployers.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,testing-support.clean"/>
+    <target name="clean" description="Clean out all build files" depends="api.clean,compat.clean,core.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,testing-support.clean"/>
 
     <target name="test" description="Run all tests" depends="api.test,core.test,protocol.basic.test,protocol.multiplex.test"/>
 
