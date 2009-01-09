@@ -848,13 +848,9 @@
 
     <target name="all-core" description="Build all core targets" depends="api,compat,core,protocol.basic,protocol.multiplex,samples,testing-support"/>
 
-    <!-- JARs: These should be the third-to-last targets in the file -->
+    <!-- JARs: These should be the second-to-last targets in the file -->
 
     <target name="all-jars" description="Build all the JARs" depends="api-jar,core-jar"/>
-
-    <!-- fetch: These should be the second-to-last targets in the file -->
-
-    <!--<target name="all-fetch" description="Pre-fetch all external libraries" depends="lib.jboss-common-core,lib.jboss-common-logging-spi,lib.jboss-deployers-core-spi,lib.jboss-deployers-spi,lib.jboss-deployers-structure-spi,lib.jbossmc-kernel,lib.jboss-managed,lib.jbossxb,lib.marshalling-api,lib.servlet"/>-->
 
     <!-- all: These should be the last targets in the file -->
 
