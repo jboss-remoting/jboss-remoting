@@ -38,33 +38,6 @@
         </mvn:dependencies>
     </target>
 
-    <!-- External library: JAXB API -->
-
-    <target name="lib.jaxb-api" depends="jboss.repository">
-        <mvn:dependencies pathId="lib.jaxb-api.classpath">
-            <mvn:remoteRepository refid="jboss.repository"/>
-            <mvn:dependency groupId="sun-jaxb" artifactId="jaxb-api" version="2.1.9"/>
-        </mvn:dependencies>
-    </target>
-
-    <!-- External library: JBoss Microcontainer kernel -->
-
-    <target name="lib.jbossmc-kernel" depends="jboss.repository">
-        <mvn:dependencies pathId="lib.jbossmc-kernel.classpath">
-            <mvn:remoteRepository refid="jboss.repository"/>
-            <mvn:dependency groupId="org.jboss.microcontainer" artifactId="jboss-kernel" version="2.0.1.GA"/>
-        </mvn:dependencies>
-    </target>
-
-    <!-- External library: JBossXB -->
-
-    <target name="lib.jbossxb" depends="jboss.repository">
-        <mvn:dependencies pathId="lib.jbossxb.classpath">
-            <mvn:remoteRepository refid="jboss.repository"/>
-            <mvn:dependency groupId="org.jboss" artifactId="jbossxb" version="2.0.0.GA"/>
-        </mvn:dependencies>
-    </target>
-
     <!-- External library: JUnit -->
 
     <target name="lib.junit" depends="jboss.repository">
@@ -232,44 +205,6 @@
         <java classpathref="api.classpath" classname="org.jboss.remoting.Version" outputproperty="version"/>
         <property name="version" value="UNKNOWN"/>
     </target>
-
-    <!-- compat module -->
-
-    <target name="compat.compile.depcheck">
-        <mkdir dir="compat/target/main"/>
-        <uptodate property="compat.compile.uptodate" targetfile="compat/target/main/.lastcompile">
-            <srcfiles dir="compat/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="compat.compile" depends="compat.compile.depcheck" unless="compat.compile.uptodate">
-        <mkdir dir="compat/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="compat/src/main/java"
-                destdir="compat/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-            </classpath>
-        </javac>
-        <path id="compat.classpath">
-            <pathelement location="compat/target/main/classes"/>
-        </path>
-        <touch file="compat/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="compat.clean">
-        <delete dir="compat/target"/>
-    </target>
-
-    <target name="compat" description="Build the compat module" depends="api,compat.compile"/>
 
     <!-- core module -->
 
@@ -846,7 +781,7 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,compat,core,protocol.basic,protocol.multiplex,samples,testing-support"/>
+    <target name="all-core" description="Build all core targets" depends="api,core,protocol.basic,protocol.multiplex,samples,testing-support"/>
 
     <!-- JARs: These should be the second-to-last targets in the file -->
 
@@ -856,7 +791,7 @@
 
     <target name="all" description="Build everything" depends="all-core,all-jars,api-javadoc"/>
 
-    <target name="clean" description="Clean out all build files" depends="api.clean,compat.clean,core.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,testing-support.clean"/>
+    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,protocol.basic.clean,protocol.multiplex.clean,samples.clean,testing-support.clean"/>
 
     <target name="test" description="Run all tests" depends="api.test,core.test,protocol.basic.test,protocol.multiplex.test"/>
 
