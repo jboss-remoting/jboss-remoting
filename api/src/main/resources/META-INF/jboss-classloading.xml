@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<classloading name="jboss-remoting-api" version="3.0.0" xmlns="urn:jboss:classloading:1.0">
+<classloading name="jboss-remoting-api" version="3.0.0.GA" xmlns="urn:jboss:classloading:1.0">
     <capabilities>
-        <package name="org.jboss.remoting" version="3.0.0"/>
-        <package name="org.jboss.remoting.spi" version="3.0.0"/>
-        <package name="org.jboss.remoting.stream" version="3.0.0"/>
+        <package name="org.jboss.remoting"/>
+        <package name="org.jboss.remoting.spi"/>
+        <package name="org.jboss.remoting.stream"/>
     </capabilities>
     <requirements>
-        <module name="xnio-api" from-inclusive="true" from="1.2.0" reExport="true"/>
-        <module name="marshalling-api" from-inclusive="true" from="1.0.0" reExport="true"/>
+        <module name="xnio-api" from-inclusive="true" from="1.2.0.GA" reExport="true"/>
+        <module name="marshalling-api" from-inclusive="true" from="1.0.0.GA" reExport="true"/>
     </requirements>
 </classloading>
