@@ -73,6 +73,7 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         if (! isOpen()) {
             throw new IOException("Client is not open");
         }
+        log.trace("Client.invoke() sending request \"%s\"", request);
         final I actualRequest = castRequest(request);
         final QueueExecutor executor = new QueueExecutor();
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor, replyClass);
@@ -82,7 +83,9 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         futureReply.addNotifier(IoUtils.<O>attachmentClosingNotifier(), executor);
         executor.runQueue();
         try {
-            return futureReply.getInterruptibly();
+            final O reply = futureReply.getInterruptibly();
+            log.trace("Client.invoke() received reply \"%s\"", reply);
+            return reply;
         } catch (InterruptedException e) {
             try {
                 futureReply.cancel();
@@ -93,10 +96,11 @@ public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> im
         }
     }
 
-    public IoFuture<O> send(final I request) throws IOException {
+    public IoFuture<? extends O> send(final I request) throws IOException {
         if (! isOpen()) {
             throw new IOException("Client is not open");
         }
+        log.trace("Client.send() sending request \"%s\"", request);
         final I actualRequest = castRequest(request);
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor, replyClass);
         final ReplyHandler replyHandler = futureReply.getReplyHandler();

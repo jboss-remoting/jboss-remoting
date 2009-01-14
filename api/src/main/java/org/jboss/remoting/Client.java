@@ -84,7 +84,7 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
      *
      * @throws IOException if the request could not be sent
      */
-    IoFuture<O> send(I request) throws IOException;
+    IoFuture<? extends O> send(I request) throws IOException;
 
     /**
      * Get the attribute map.  This map holds metadata about the current clinet.
