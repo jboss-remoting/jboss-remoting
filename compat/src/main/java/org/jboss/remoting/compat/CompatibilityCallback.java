@@ -22,39 +22,10 @@
 
 package org.jboss.remoting.compat;
 
-import java.io.Serializable;
-
 /**
  *
  */
-public class CompatibilityHome implements Serializable {
+public class CompatibilityCallback extends CompatabilityInvocationRequest {
 
-    private static final long serialVersionUID = 8267821565540095027L;
-
-    public String host;
-    public int port;
-
-    public CompatibilityHome() {
-    }
-
-    public CompatibilityHome(final String host, final int port) {
-        this.host = host;
-        this.port = port;
-    }
-
-    public String getHost() {
-        return host;
-    }
-
-    public void setHost(final String host) {
-        this.host = host;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public void setPort(final int port) {
-        this.port = port;
-    }
+    private static final long serialVersionUID = -9196653590434634454L;
 }

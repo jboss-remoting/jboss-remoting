@@ -34,7 +34,7 @@ import java.util.Map;
 /**
  *
  */
-public final class CompatibilityInvokerLocator implements Serializable {
+public class CompatibilityInvokerLocator implements Serializable {
 
     private static final long serialVersionUID = -4977622166779282521L;
 

@@ -32,7 +32,7 @@ import java.util.Map;
 /**
  *
  */
-public final class CompatabilityInvocationRequest implements Serializable {
+public class CompatabilityInvocationRequest implements Serializable {
     private static final long serialVersionUID = -6719842238864057289L;
 
     private static final ObjectStreamField[] serialPersistentFields = {

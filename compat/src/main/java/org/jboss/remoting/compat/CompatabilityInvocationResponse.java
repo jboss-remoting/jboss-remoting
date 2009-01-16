@@ -31,7 +31,7 @@ import java.util.Map;
 /**
  *
  */
-public final class CompatabilityInvocationResponse<T> implements Serializable {
+public class CompatabilityInvocationResponse implements Serializable {
     private static final long serialVersionUID = 1324503813652865685L;
 
     private final String sessionId;

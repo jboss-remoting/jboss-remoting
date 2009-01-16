@@ -22,39 +22,28 @@
 
 package org.jboss.remoting.compat;
 
-import java.io.Serializable;
+import java.io.Externalizable;
+import java.io.ObjectOutput;
+import java.io.IOException;
+import java.io.ObjectInput;
 
 /**
  *
  */
-public class CompatibilityHome implements Serializable {
+public final class CompatibilityClient implements Externalizable {
 
-    private static final long serialVersionUID = 8267821565540095027L;
+    private static final long serialVersionUID = 5679279425009837934L;
 
-    public String host;
-    public int port;
-
-    public CompatibilityHome() {
+    public void writeExternal(final ObjectOutput out) throws IOException {
+        out.writeInt(22);
+        out.writeObject(null); // Invoker Locator
+        out.writeObject(null); // subsystem name
+        out.writeObject(null); // configuration
+        out.writeBoolean(false); // isConnected
+        out.flush();
     }
 
-    public CompatibilityHome(final String host, final int port) {
-        this.host = host;
-        this.port = port;
-    }
+    public void readExternal(final ObjectInput in) throws IOException, ClassNotFoundException {
 
-    public String getHost() {
-        return host;
-    }
-
-    public void setHost(final String host) {
-        this.host = host;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public void setPort(final int port) {
-        this.port = port;
     }
 }
