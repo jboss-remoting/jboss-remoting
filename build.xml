@@ -551,7 +551,8 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,core,samples,testing-support"/>
+    <!--<target name="all-core" description="Build all core targets" depends="api,core,samples,testing-support"/>-->
+    <target name="all-core" description="Build all core targets" depends="api,core,testing-support"/>
 
     <!-- JARs: These should be the second-to-last targets in the file -->
 
