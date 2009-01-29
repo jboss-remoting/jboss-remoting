@@ -58,6 +58,16 @@
         <property name="lib.marshalling-api.local" refid="lib.marshalling-api.classpath"/>
     </target>
 
+    <!-- External library: Remoting 3 Multiplex -->
+
+    <target name="lib.remoting3-multiplex" depends="jboss.repository">
+        <mvn:dependencies pathId="lib.river.classpath">
+            <mvn:remoteRepository refid="jboss.repository"/>
+            <mvn:dependency groupId="org.jboss.remoting" artifactId="remoting3-multiplex" version="1.0.0.GA"/>
+        </mvn:dependencies>
+        <property name="lib.remoting3-multiplex.local" refid="lib.remoting3-multiplex.classpath"/>
+    </target>
+
     <!-- External library: River -->
 
     <target name="lib.river" depends="jboss.repository">
@@ -317,126 +327,6 @@
         </path>
     </target>
 
-    <!-- protocol.multiplex module -->
-
-    <target name="protocol.multiplex.compile.depcheck">
-        <mkdir dir="protocol/multiplex/target/main"/>
-        <uptodate property="protocol/multiplex.compile.uptodate" targetfile="protocol/multiplex/target/main/.lastcompile">
-            <srcfiles dir="protocol/multiplex/src/main/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="protocol.multiplex.compile" depends="protocol.multiplex.compile.depcheck" unless="protocol.multiplex.compile.uptodate">
-        <mkdir dir="protocol/multiplex/target/main/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="protocol/multiplex/src/main/java"
-                destdir="protocol/multiplex/target/main/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="core.classpath"/>
-            </classpath>
-        </javac>
-        <touch file="protocol/multiplex/target/main/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="protocol.multiplex.test.compile.depcheck">
-        <mkdir dir="protocol/multiplex/target/test"/>
-        <uptodate property="protocol.multiplex.compile.uptodate" targetfile="protocol/multiplex/target/test/.lastcompile">
-            <srcfiles dir="protocol/multiplex/src/test/java">
-                <include name="**/"/>
-                <include name="**/*.java"/>
-                <exclude name="**/.*"/>
-            </srcfiles>
-        </uptodate>
-    </target>
-
-    <target name="protocol.multiplex.test.compile" depends="lib.junit,protocol.multiplex.compile,protocol.multiplex.test.compile.depcheck" unless="protocol.multiplex.test.compile.uptodate">
-        <mkdir dir="protocol/multiplex/target/test/classes"/>
-        <javac
-                source="${javac.source}"
-                target="${javac.target}"
-                srcdir="protocol/multiplex/src/test/java"
-                destdir="protocol/multiplex/target/test/classes"
-                debug="true">
-            <compilerarg value="-Xlint:unchecked"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="core.classpath"/>
-                <path refid="protocol.multiplex.classpath"/>
-                <path refid="testing-support.classpath"/>
-                <path refid="lib.junit.classpath"/>
-                <path refid="lib.river.classpath"/>
-                <path refid="lib.xnio-nio.classpath"/>
-            </classpath>
-        </javac>
-        <touch file="protocol/multiplex/target/test/.lastcompile" verbose="false"/>
-    </target>
-
-    <target name="protocol.multiplex.test.pseudotarget">
-        <echo message="============================================="/>
-        <echo message="${message}"/>
-        <echo message="============================================="/>
-        <mkdir dir="protocol/multiplex/target/test-results"/>
-        <junit printsummary="true" fork="yes" includeantruntime="true">
-            <sysproperty key="build.home" value="${basedir}"/>
-            <sysproperty key="ant.library.dir" value="${ant.home}/lib"/>
-            <sysproperty key="lib.junit.local" value="${lib.junit.local}"/>
-            <sysproperty key="lib.marshalling-api.local" value="${lib.marshalling-api.local}"/>
-            <sysproperty key="lib.river.local" value="${lib.river.local}"/>
-            <sysproperty key="lib.xnio-api.local" value="${lib.xnio-api.local}"/>
-            <sysproperty key="lib.xnio-nio.local" value="${lib.xnio-nio.local}"/>
-            <jvmarg line="${test.jvmargs}"/>
-            <formatter type="plain" extension="${extension}"/>
-            <classpath>
-                <path refid="api.classpath"/>
-                <path refid="core.classpath"/>
-                <path refid="protocol.multiplex.classpath"/>
-                <path refid="testing-support.classpath"/>
-                <pathelement location="protocol/multiplex/target/test/classes"/>
-                <path refid="lib.junit.classpath"/>
-                <path refid="lib.river.classpath"/>
-                <path refid="lib.xnio-nio.classpath"/>
-            </classpath>
-            <batchtest fork="yes" todir="protocol/multiplex/target/test-results"
-                       haltonfailure="no">
-               <fileset dir="protocol/multiplex/target/test/classes">
-                   <include name="**/*TestCase.class"/>
-               </fileset>
-            </batchtest>
-        </junit>
-    </target>
-
-    <target name="protocol.multiplex.test" depends="lib.xnio-nio,api,core,protocol.multiplex,testing-support,protocol.multiplex.test.compile">
-        <antcall inheritall="true" inheritrefs="true" target="protocol.multiplex.test.pseudotarget">
-            <param name="extension" value=".txt"/>
-            <param name="message" value="Running with no security manager"/>
-            <param name="test.jvmargs" value="-Ddummy=dummy"/>
-        </antcall>
-        <antcall inheritall="true" inheritrefs="true" target="protocol.multiplex.test.pseudotarget">
-            <param name="extension" value="-security.txt"/>
-            <param name="message" value="Running with security manager"/>
-            <param name="test.jvmargs" value="-Djava.security.manager=org.jboss.remoting.test.support.LoggingSecurityManager -Djava.security.policy=${basedir}/testing-support/src/main/resources/testing.policy -Dsecurity.debug=policy"/>
-        </antcall>
-    </target>
-
-    <target name="protocol.multiplex.clean">
-        <delete dir="protocol/multiplex/target"/>
-    </target>
-
-    <target name="protocol.multiplex" description="Build the protocol.multiplex module" depends="lib.xnio-api,api,core,protocol.multiplex.compile">
-        <path id="protocol.multiplex.classpath">
-            <pathelement location="protocol/multiplex/target/main/classes"/>
-        </path>
-    </target>
-
     <!-- samples module -->
 
     <target name="samples.compile.depcheck">
@@ -461,7 +351,7 @@
             <compilerarg value="-Xlint:unchecked"/>
             <classpath>
                 <path refid="api.classpath"/>
-                <path refid="protocol.multiplex.classpath"/>
+                <path refid="lib.remoting3-multiplex.classpath"/>
                 <path refid="lib.river.classpath"/>
             </classpath>
         </javac>
@@ -472,7 +362,7 @@
         <delete dir="samples/target"/>
     </target>
 
-    <target name="samples" description="Build the samples module" depends="lib.marshalling-api,lib.river,api,protocol.multiplex,samples.compile">
+    <target name="samples" description="Build the samples module" depends="lib.marshalling-api,lib.remoting3-multiplex,lib.river,api,samples.compile">
         <path id="samples.classpath">
             <pathelement location="samples/target/main/classes"/>
         </path>
@@ -661,7 +551,7 @@
 
     <!-- core -->
 
-    <target name="all-core" description="Build all core targets" depends="api,core,protocol.multiplex,samples,testing-support"/>
+    <target name="all-core" description="Build all core targets" depends="api,core,samples,testing-support"/>
 
     <!-- JARs: These should be the second-to-last targets in the file -->
 
@@ -671,8 +561,8 @@
 
     <target name="all" description="Build everything" depends="all-core,all-jars,api-javadoc"/>
 
-    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,protocol.multiplex.clean,samples.clean,testing-support.clean"/>
+    <target name="clean" description="Clean out all build files" depends="api.clean,core.clean,samples.clean,testing-support.clean"/>
 
-    <target name="test" description="Run all tests" depends="api.test,core.test,protocol.multiplex.test"/>
+    <target name="test" description="Run all tests" depends="api.test,core.test"/>
 
 </project>
