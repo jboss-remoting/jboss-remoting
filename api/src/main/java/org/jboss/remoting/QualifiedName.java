@@ -146,15 +146,14 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
     }
 
     /**
-     * Parse a qualified name.  A qualified name must consist of either a single forward slash ("{@code /}") or else
+     * Parse an absolute qualified name.  An absolute qualified name must consist of either a single forward slash ("{@code /}") or else
      * a series of path components, each comprised of a single forward slash followed by a URL-encoded series of non-forward-slash
      * characters.
      *
-     * @param path the path
+     * @param path the encoded absolute path
      * @return the qualified name
      */
     public static QualifiedName parse(String path) {
-        List<String> decoded = new ArrayList<String>();
         final int len = path.length();
         if (len < 1) {
             throw new IllegalArgumentException("Empty path");
@@ -165,23 +164,7 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
         if (len == 1) {
             return ROOT_NAME;
         }
-        int segStart = 0;
-        int segEnd;
-        do {
-            segEnd = path.indexOf('/', segStart + 1);
-            String segment = segEnd == -1 ? path.substring(segStart + 1) : path.substring(segStart + 1, segEnd);
-            if (segment.length() == 0) {
-                throw new IllegalArgumentException(segEnd == -1 ? "Invalid trailing slash" : "Empty segment in path");
-            }
-            try {
-                decoded.add(URLDecoder.decode(segment, "utf-8"));
-            } catch (UnsupportedEncodingException e) {
-                // cannot happen
-                throw new IllegalStateException(e);
-            }
-            segStart = segEnd;
-        } while (segEnd != -1);
-        return new QualifiedName(decoded.toArray(new String[decoded.size()]));
+        return ROOT_NAME.parseRelative(path.substring(1));
     }
 
     /**
@@ -209,6 +192,59 @@ public final class QualifiedName implements Comparable<QualifiedName>, Iterable<
                 throw new UnsupportedOperationException("remove()");
             }
         };
+    }
+
+    /**
+     * Parse a qualified name relative to this one.  A relative qualified name must consist of
+     * a series of segments comprised of one or more URL-encoded characters separated by forward slashes ("{@code /}").
+     *
+     * @param path the encoded relative path
+     * @return the qualified name
+     */
+    public QualifiedName parseRelative(String path) {
+        if (path == null) {
+            throw new NullPointerException("path is null");
+        }
+        List<String> decoded = new ArrayList<String>();
+        int segStart = 0;
+        int segEnd;
+        do {
+            segEnd = path.indexOf('/', segStart);
+            String segment = segEnd == -1 ? path.substring(segStart) : path.substring(segStart, segEnd);
+            if (segment.length() == 0) {
+                throw new IllegalArgumentException(segEnd == -1 ? "Invalid trailing slash" : "Empty segment in path");
+            }
+            try {
+                decoded.add(URLDecoder.decode(segment, "utf-8"));
+            } catch (UnsupportedEncodingException e) {
+                // cannot happen
+                throw new IllegalStateException(e);
+            }
+            segStart = segEnd + 1;
+        } while (segEnd != -1);
+        final String[] segments = this.segments;
+        final int length = segments.length;
+        final String[] newSegments = new String[length + decoded.size()];
+        System.arraycopy(segments, 0, newSegments, 0, length);
+        for (int i = 0; i < decoded.size(); i ++) {
+            newSegments[i + length] = decoded.get(i);
+        }
+        return new QualifiedName(newSegments);
+    }
+
+    /**
+     * Get a new {@code org.jboss.remoting.QualifiedName} relative to this one.
+     *
+     * @param relativePath the segment to append
+     * @return the new {@code org.jboss.remoting.QualifiedName} instance
+     */
+    public QualifiedName appendRelative(String relativePath) {
+        final String[] segments = this.segments;
+        final int length = segments.length;
+        final String[] newSegments = new String[length + 1];
+        System.arraycopy(segments, 0, newSegments, 0, length);
+        newSegments[length] = relativePath;
+        return new QualifiedName(newSegments);
     }
 
     /**
