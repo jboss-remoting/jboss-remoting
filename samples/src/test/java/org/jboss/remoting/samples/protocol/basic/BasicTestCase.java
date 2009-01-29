@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.protocol.basic;
+package org.jboss.remoting.samples.protocol.basic;
 
 import junit.framework.TestCase;
 import org.jboss.xnio.Xnio;
@@ -40,7 +40,7 @@ import org.jboss.remoting.test.support.LoggingHelper;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.marshalling.MarshallingConfiguration;
-import org.jboss.river.RiverMarshallerFactory;
+import org.jboss.marshalling.river.RiverMarshallerFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -111,7 +111,7 @@ public final class BasicTestCase extends TestCase {
                             try {
                                 final Client<Object,Object> client = endpoint.createClient(clientHandlerHandle.getResource(), Object.class, Object.class);
                                 try {
-                                    final IoFuture<Object> futureReply = client.send("GORBA!");
+                                    final IoFuture<? extends Object> futureReply = client.send("GORBA!");
                                     assertEquals(IoFuture.Status.DONE, futureReply.await(500L, TimeUnit.MILLISECONDS));
                                     System.out.println("Reply is:" + futureReply.get());
                                 } finally {
