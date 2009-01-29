@@ -156,7 +156,7 @@ public final class EndpointTestCase extends TestCase {
                                 }
                             });
                             handle.close();
-                            final IoFuture<Object> futureReply = client.send(requestObj);
+                            final IoFuture<? extends Object> futureReply = client.send(requestObj);
                             assertEquals(IoFuture.Status.DONE, futureReply.await(1L, TimeUnit.SECONDS));
                             assertEquals(replyObj, futureReply.get());
                             client.close();
@@ -198,7 +198,7 @@ public final class EndpointTestCase extends TestCase {
                     try {
                         final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
                         try {
-                            final IoFuture<Object> futureReply = client.send(requestObj);
+                            final IoFuture<? extends Object> futureReply = client.send(requestObj);
                             assertEquals(IoFuture.Status.FAILED, futureReply.await(500L, TimeUnit.MILLISECONDS));
                             assertTrue(futureReply.getException() instanceof IndeterminateOutcomeException);
                         } finally {
@@ -255,7 +255,7 @@ public final class EndpointTestCase extends TestCase {
                     try {
                         final Client<Object,Object> client = endpoint.createClient(requestHandler, Object.class, Object.class);
                         try {
-                            final IoFuture<Object> futureReply = client.send(requestObj);
+                            final IoFuture<? extends Object> futureReply = client.send(requestObj);
                             assertEquals(IoFuture.Status.FAILED, futureReply.await(500L, TimeUnit.MILLISECONDS));
                             assertTrue(futureReply.getException() instanceof IndeterminateOutcomeException);
                         } finally {
