@@ -22,17 +22,17 @@
 
 package org.jboss.remoting.core;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import org.jboss.remoting.spi.AbstractHandleableCloseable;
-import org.jboss.remoting.core.util.CollectionUtil;
 
 /**
  *
  */
 public abstract class AbstractContextImpl<T> extends AbstractHandleableCloseable<T> {
 
-    private final ConcurrentMap<Object, Object> attributes = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<Object, Object> attributes = new ConcurrentHashMap<Object, Object>();
 
     protected AbstractContextImpl(final Executor executor) {
         super(executor);

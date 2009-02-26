@@ -27,9 +27,9 @@ import org.jboss.remoting.Remoting;
 import org.jboss.remoting.ClientSource;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.QualifiedName;
-import org.jboss.remoting.protocol.multiplex.MultiplexProtocol;
-import org.jboss.remoting.protocol.multiplex.MultiplexConfiguration;
-import org.jboss.remoting.protocol.multiplex.MultiplexConnection;
+import org.jboss.remoting.multiplex.MultiplexProtocol;
+import org.jboss.remoting.multiplex.MultiplexConfiguration;
+import org.jboss.remoting.multiplex.MultiplexConnection;
 import org.jboss.remoting.spi.NamedServiceRegistry;
 import org.jboss.remoting.spi.RequestHandlerSource;
 import org.jboss.remoting.spi.Handle;
@@ -85,7 +85,7 @@ public final class MultiplexClientExample {
                     final CloseableTcpConnector closeableTcpConnector = tcpConnectorFactory.create();
                     try {
                         final ChannelSource<AllocatedMessageChannel> channelSource = Channels.convertStreamToAllocatedMessage(closeableTcpConnector.createChannelSource(new InetSocketAddress("localhost", 10000)), 1024, 1024);
-                        final IoFuture<MultiplexConnection> futureConnection = MultiplexProtocol.connect(endpoint, config, channelSource);
+                        final IoFuture<MultiplexConnection> futureConnection = MultiplexProtocol.connect(config, channelSource);
                         final MultiplexConnection connection = futureConnection.get();
                         try {
                             final Handle<RequestHandlerSource> handle = connection.openRemoteService(QualifiedName.parse("/jboss/example/string-rot-13"));

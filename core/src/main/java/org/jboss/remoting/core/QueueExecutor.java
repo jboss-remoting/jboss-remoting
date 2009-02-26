@@ -1,13 +1,13 @@
-package org.jboss.remoting.core.util;
+package org.jboss.remoting.core;
 
 import java.util.LinkedList;
 import java.util.Queue;
-import org.jboss.xnio.log.Logger;
 import org.jboss.xnio.CloseableExecutor;
+import org.jboss.xnio.log.Logger;
 
 /**
  * An executor designed to run all submitted tasks in the current thread.  The queue is run continuously
- * until the {@code shutdown()} method is invoked.  Jobs may be submitted to the queue from any thread.
+ * until the {@code close()} method is invoked.  Jobs may be submitted to the queue from any thread.
  * Only one thread should invoke the {@code runQueue()} method, which will run until the executor is
  * shut down.
  */

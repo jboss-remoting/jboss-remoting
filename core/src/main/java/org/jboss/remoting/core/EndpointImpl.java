@@ -1,33 +1,35 @@
 package org.jboss.remoting.core;
 
-import java.io.IOException;
 import java.io.Closeable;
+import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import java.lang.ref.WeakReference;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.ClientSource;
+import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.Endpoint;
+import org.jboss.remoting.EndpointPermission;
+import org.jboss.remoting.LocalServiceConfiguration;
+import org.jboss.remoting.RemoteServiceConfiguration;
 import org.jboss.remoting.RequestListener;
 import org.jboss.remoting.ServiceListener;
-import org.jboss.remoting.SimpleCloseable;
-import org.jboss.remoting.LocalServiceConfiguration;
-import org.jboss.remoting.EndpointPermission;
-import org.jboss.remoting.RemoteServiceConfiguration;
 import org.jboss.remoting.ServiceURI;
-import org.jboss.remoting.CloseHandler;
-import org.jboss.remoting.core.util.OrderedExecutorFactory;
-import org.jboss.remoting.core.util.CollectionUtil;
+import org.jboss.remoting.SimpleCloseable;
+import org.jboss.remoting.Version;
+import org.jboss.remoting.spi.AbstractHandleableCloseable;
+import org.jboss.remoting.spi.AbstractSimpleCloseable;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.RequestHandlerSource;
-import org.jboss.remoting.spi.AbstractHandleableCloseable;
-import org.jboss.remoting.spi.AbstractSimpleCloseable;
-import org.jboss.remoting.Version;
 import org.jboss.xnio.FailedIoFuture;
 import org.jboss.xnio.FinishedIoFuture;
 import org.jboss.xnio.IoFuture;
@@ -45,17 +47,23 @@ public final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> im
         Logger.getLogger("org.jboss.remoting").info("JBoss Remoting version %s", Version.VERSION);
     }
 
+    static <K, V> Map<K, V> hashMap() {
+        return new HashMap<K, V>();
+    }
+
+    static <T> Set<T> hashSet() {
+        return new HashSet<T>();
+    }
+
     private static final Logger log = Logger.getLogger("org.jboss.remoting.endpoint");
 
     private final String name;
 
-    private final OrderedExecutorFactory orderedExecutorFactory;
-
-    private final ConcurrentMap<Object, Object> endpointMap = CollectionUtil.concurrentMap();
+    private final ConcurrentMap<Object, Object> endpointMap = new ConcurrentHashMap<Object, Object>();
 
     private final Object serviceLock = new Object();
-    private final Map<Object, ServiceListenerRegistration> serviceListenerMap = CollectionUtil.hashMap();
-    private final Set<ServiceRegistration> serviceRegistrations = CollectionUtil.hashSet();
+    private final Map<Object, ServiceListenerRegistration> serviceListenerMap = hashMap();
+    private final Set<ServiceRegistration> serviceRegistrations = hashSet();
 
     private static final EndpointPermission CREATE_ENDPOINT_PERM = new EndpointPermission("createEndpoint");
     private static final EndpointPermission CREATE_REQUEST_HANDLER_PERM = new EndpointPermission("createRequestHandler");
@@ -73,13 +81,12 @@ public final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> im
         }
         this.executor = executor;
         this.name = name;
-        orderedExecutorFactory = new OrderedExecutorFactory(executor);
     }
 
     private final Executor executor;
 
     protected Executor getOrderedExecutor() {
-        return orderedExecutorFactory.getOrderedExecutor();
+        return new OrderedExecutor(executor);
     }
 
     protected Executor getExecutor() {
@@ -265,7 +272,7 @@ public final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> im
         final String serviceType = ServiceURI.getServiceType(serviceUri);
         synchronized (serviceLock) {
             int bestMetric = Integer.MAX_VALUE;
-            List<ServiceRegistration> candidates = CollectionUtil.arrayList();
+            List<ServiceRegistration> candidates = new ArrayList<ServiceRegistration>();
             for (ServiceRegistration svc : serviceRegistrations) {
                 if (svc.matches(serviceType, groupName, endpointName)) {
                     final int metric = svc.getMetric();

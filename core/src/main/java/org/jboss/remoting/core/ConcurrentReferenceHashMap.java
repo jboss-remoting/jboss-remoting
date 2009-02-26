@@ -4,7 +4,7 @@
  * http://creativecommons.org/licenses/publicdomain
  */
 
-package org.jboss.remoting.core.util;
+package org.jboss.remoting.core;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.ref.Reference;

@@ -25,8 +25,8 @@ package org.jboss.remoting.samples.simple;
 import org.jboss.remoting.Remoting;
 import org.jboss.remoting.Endpoint;
 import org.jboss.remoting.LocalServiceConfiguration;
-import org.jboss.remoting.protocol.multiplex.MultiplexProtocol;
-import org.jboss.remoting.protocol.multiplex.MultiplexConfiguration;
+import org.jboss.remoting.multiplex.MultiplexProtocol;
+import org.jboss.remoting.multiplex.MultiplexConfiguration;
 import org.jboss.remoting.spi.RequestHandlerSource;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.NamedServiceRegistry;
@@ -88,7 +88,7 @@ public final class MultiplexServerExample {
                         final MarshallingConfiguration marshallingConfig = new MarshallingConfiguration();
                         marshallingConfig.setCreator(new SunReflectiveCreator());
                         multiplexConfig.setMarshallingConfiguration(marshallingConfig);
-                        final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = MultiplexProtocol.createServer(endpoint, multiplexConfig);
+                        final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = MultiplexProtocol.createServer(multiplexConfig);
                         final IoHandlerFactory<StreamChannel> streamHandlerFactory = Channels.convertStreamToAllocatedMessage(handlerFactory, 1024, 1024);
                         // finally, bind it
                         final Xnio xnio = Xnio.create();

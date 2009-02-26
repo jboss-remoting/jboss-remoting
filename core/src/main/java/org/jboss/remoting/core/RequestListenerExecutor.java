@@ -22,16 +22,17 @@
 
 package org.jboss.remoting.core;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
-import org.jboss.remoting.core.util.CollectionUtil;
 
 /**
  *
  */
 public final class RequestListenerExecutor implements Executor {
 
-    private final Set<Task> tasks = CollectionUtil.synchronizedHashSet();
+    private final Set<Task> tasks = Collections.synchronizedSet(new HashSet<Task>());
     private final Executor executor;
     private final RequestContextImpl<?> requestContext;
 

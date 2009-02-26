@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.core.util;
+package org.jboss.remoting.core;
 
 import java.util.LinkedList;
 import java.util.concurrent.Executor;
