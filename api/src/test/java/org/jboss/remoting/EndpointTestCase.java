@@ -34,7 +34,6 @@ import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.Client;
 import org.jboss.remoting.IndeterminateOutcomeException;
-import org.jboss.remoting.test.support.LoggingHelper;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.xnio.IoUtils;
@@ -45,9 +44,6 @@ import org.jboss.xnio.log.Logger;
  *
  */
 public final class EndpointTestCase extends TestCase {
-    static {
-        LoggingHelper.init();
-    }
 
     private static final Logger log = Logger.getLogger(EndpointTestCase.class);
 

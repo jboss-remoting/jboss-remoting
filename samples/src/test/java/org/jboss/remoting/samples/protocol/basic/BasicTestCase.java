@@ -36,7 +36,6 @@ import org.jboss.remoting.AbstractRequestListener;
 import org.jboss.remoting.RequestContext;
 import org.jboss.remoting.RemoteExecutionException;
 import org.jboss.remoting.Client;
-import org.jboss.remoting.test.support.LoggingHelper;
 import org.jboss.remoting.spi.RequestHandler;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.marshalling.MarshallingConfiguration;
@@ -51,9 +50,6 @@ import java.io.IOException;
  *
  */
 public final class BasicTestCase extends TestCase {
-    static {
-        LoggingHelper.init();
-    }
 
     public static void testConnect() throws Throwable {
         ExecutorService executor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());

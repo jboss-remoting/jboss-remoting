@@ -28,15 +28,11 @@ import java.util.Iterator;
 import java.util.Arrays;
 import java.util.Vector;
 import java.io.EOFException;
-import org.jboss.remoting.test.support.LoggingHelper;
 
 /**
  *
  */
 public final class StreamsTestCase extends TestCase {
-    static {
-        LoggingHelper.init();
-    }
 
     public void testCollectionObjectSink() throws Throwable {
         final ArrayList<String> strings = new ArrayList<String>();

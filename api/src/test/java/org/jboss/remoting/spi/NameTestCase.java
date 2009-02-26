@@ -23,7 +23,6 @@
 package org.jboss.remoting.spi;
 
 import junit.framework.TestCase;
-import org.jboss.remoting.test.support.LoggingHelper;
 import org.jboss.remoting.QualifiedName;
 import java.util.Iterator;
 
@@ -31,9 +30,6 @@ import java.util.Iterator;
  *
  */
 public final class NameTestCase extends TestCase {
-    static {
-        LoggingHelper.init();
-    }
 
     public void testParseEmpty() {
         boolean ok = false;

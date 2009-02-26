@@ -33,15 +33,11 @@ import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.HandleableCloseable;
-import org.jboss.remoting.test.support.LoggingHelper;
 
 /**
  *
  */
 public final class CloseableTestCase extends TestCase {
-    static {
-        LoggingHelper.init();
-    }
 
     public static final Logger log = Logger.getLogger(CloseableTestCase.class);
 
