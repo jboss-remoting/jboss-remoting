@@ -33,14 +33,14 @@ import org.jboss.xnio.IoFuture;
 /**
  *
  */
-public final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
+final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
 
     private final Executor executor;
     private final Class<O> replyType;
     private final ReplyHandler replyHandler = new Handler();
     private volatile RemoteRequestContext remoteRequestContext;
 
-    public FutureReplyImpl(final Executor executor, final Class<O> replyType) {
+    FutureReplyImpl(final Executor executor, final Class<O> replyType) {
         this.executor = executor;
         this.replyType = replyType;
     }

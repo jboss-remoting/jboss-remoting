@@ -32,7 +32,7 @@ import org.jboss.remoting.spi.RequestHandlerSource;
 /**
  *
  */
-public final class ClientSourceExternalizer implements Externalizer {
+final class ClientSourceExternalizer implements Externalizer {
 
     private static final long serialVersionUID = 814228455390899997L;
 

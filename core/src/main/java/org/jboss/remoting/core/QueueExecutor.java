@@ -11,7 +11,7 @@ import org.jboss.xnio.log.Logger;
  * Only one thread should invoke the {@code runQueue()} method, which will run until the executor is
  * shut down.
  */
-public final class QueueExecutor implements CloseableExecutor {
+final class QueueExecutor implements CloseableExecutor {
     private static final Logger log = org.jboss.xnio.log.Logger.getLogger(QueueExecutor.class);
 
     private final Queue<Runnable> queue = new LinkedList<Runnable>();

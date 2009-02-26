@@ -32,7 +32,7 @@ import org.jboss.xnio.log.Logger;
  * More specifically, any call B to the {@link #execute(Runnable)} method that happens-after another call A to the
  * same method, will result in B's task running after A's.
  */
-public final class OrderedExecutor implements Executor {
+final class OrderedExecutor implements Executor {
     private static final Logger log = Logger.getLogger(OrderedExecutor.class);
 
     // @protectedby tasks
@@ -47,7 +47,7 @@ public final class OrderedExecutor implements Executor {
      *
      * @param parent the parent executor
      */
-    public OrderedExecutor(final Executor parent) {
+    OrderedExecutor(final Executor parent) {
         this.parent = parent;
         runner = new Runnable() {
             public void run() {

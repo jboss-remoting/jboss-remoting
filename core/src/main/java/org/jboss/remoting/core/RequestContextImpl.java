@@ -40,7 +40,7 @@ import org.jboss.remoting.spi.SpiUtils;
 /**
  *
  */
-public final class RequestContextImpl<O> implements RequestContext<O> {
+final class RequestContextImpl<O> implements RequestContext<O> {
 
     private final AtomicBoolean closed = new AtomicBoolean();
     private final Object cancelLock = new Object();

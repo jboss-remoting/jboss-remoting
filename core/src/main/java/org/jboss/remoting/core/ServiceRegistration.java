@@ -28,7 +28,7 @@ import org.jboss.remoting.spi.RequestHandlerSource;
 /**
  *
  */
-public final class ServiceRegistration {
+final class ServiceRegistration {
     private final boolean remote;
     private final String serviceType;
     private final String groupName;

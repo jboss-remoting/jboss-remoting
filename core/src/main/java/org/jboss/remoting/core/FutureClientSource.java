@@ -32,7 +32,7 @@ import org.jboss.xnio.IoUtils;
 /**
  *
  */
-public final class FutureClientSource<I, O> extends AbstractIoFuture<ClientSource<I, O>> {
+final class FutureClientSource<I, O> extends AbstractIoFuture<ClientSource<I, O>> {
 
     private volatile SimpleCloseable listenerHandle;
 

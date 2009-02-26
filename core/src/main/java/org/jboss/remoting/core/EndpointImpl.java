@@ -40,7 +40,7 @@ import org.jboss.xnio.log.Logger;
 /**
  *
  */
-public final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implements Endpoint {
+final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implements Endpoint {
 
     static {
         // Print Remoting "greeting" message

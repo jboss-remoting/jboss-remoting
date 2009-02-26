@@ -38,7 +38,7 @@ import org.jboss.xnio.log.Logger;
 /**
  *
  */
-public final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<RequestHandler> implements RequestHandler {
+final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<RequestHandler> implements RequestHandler {
 
     private final RequestListener<I, O> requestListener;
     private final ClientContextImpl clientContext;

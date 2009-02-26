@@ -30,7 +30,7 @@ import java.util.concurrent.Executor;
 /**
  *
  */
-public final class RequestListenerExecutor implements Executor {
+final class RequestListenerExecutor implements Executor {
 
     private final Set<Task> tasks = Collections.synchronizedSet(new HashSet<Task>());
     private final Executor executor;

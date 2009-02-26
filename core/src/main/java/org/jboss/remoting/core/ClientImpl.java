@@ -28,7 +28,6 @@ import org.jboss.remoting.Client;
 import org.jboss.remoting.CloseHandler;
 import org.jboss.remoting.IndeterminateOutcomeException;
 import org.jboss.remoting.RemoteRequestException;
-import org.jboss.remoting.core.QueueExecutor;
 import org.jboss.remoting.spi.Handle;
 import org.jboss.remoting.spi.RemoteRequestContext;
 import org.jboss.remoting.spi.ReplyHandler;
@@ -40,7 +39,7 @@ import org.jboss.xnio.log.Logger;
 /**
  *
  */
-public final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implements Client<I, O> {
+final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implements Client<I, O> {
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.client");
 

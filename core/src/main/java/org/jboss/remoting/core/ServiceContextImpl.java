@@ -29,7 +29,7 @@ import org.jboss.xnio.log.Logger;
 /**
  *
  */
-public final class ServiceContextImpl extends AbstractContextImpl<ServiceContext> implements ServiceContext {
+final class ServiceContextImpl extends AbstractContextImpl<ServiceContext> implements ServiceContext {
     private static final Logger log = Logger.getLogger("org.jboss.remoting.service-context");
 
     protected ServiceContextImpl(final Executor executor) {

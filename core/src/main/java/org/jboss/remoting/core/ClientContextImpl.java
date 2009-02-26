@@ -30,7 +30,7 @@ import org.jboss.xnio.log.Logger;
 /**
  *
  */
-public final class ClientContextImpl extends AbstractContextImpl<ClientContext> implements ClientContext {
+final class ClientContextImpl extends AbstractContextImpl<ClientContext> implements ClientContext {
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.client-context");
 

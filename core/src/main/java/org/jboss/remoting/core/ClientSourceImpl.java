@@ -37,7 +37,7 @@ import org.jboss.xnio.log.Logger;
 /**
  *
  */
-public final class ClientSourceImpl<I, O> extends AbstractHandleableCloseable<ClientSource<I, O>> implements ClientSource<I, O> {
+final class ClientSourceImpl<I, O> extends AbstractHandleableCloseable<ClientSource<I, O>> implements ClientSource<I, O> {
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.client-source"); 
 

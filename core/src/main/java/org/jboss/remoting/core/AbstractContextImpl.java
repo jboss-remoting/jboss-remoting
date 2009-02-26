@@ -30,11 +30,11 @@ import org.jboss.remoting.spi.AbstractHandleableCloseable;
 /**
  *
  */
-public abstract class AbstractContextImpl<T> extends AbstractHandleableCloseable<T> {
+abstract class AbstractContextImpl<T> extends AbstractHandleableCloseable<T> {
 
     private final ConcurrentMap<Object, Object> attributes = new ConcurrentHashMap<Object, Object>();
 
-    protected AbstractContextImpl(final Executor executor) {
+    AbstractContextImpl(final Executor executor) {
         super(executor);
     }
 
