@@ -1,11 +1,11 @@
 package org.jboss.remoting3;
 
-import java.util.concurrent.ConcurrentMap;
-import java.net.URI;
 import java.io.IOException;
+import java.net.URI;
+import java.util.concurrent.ConcurrentMap;
+import org.jboss.remoting3.spi.Handle;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerSource;
-import org.jboss.remoting3.spi.Handle;
 import org.jboss.xnio.IoFuture;
 
 /**

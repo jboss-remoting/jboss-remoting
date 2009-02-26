@@ -1,17 +1,17 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.Executors;
+import org.jboss.remoting3.spi.Handle;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerSource;
-import org.jboss.remoting3.spi.Handle;
-import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.CloseableExecutor;
+import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 
 /**

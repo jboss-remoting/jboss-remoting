@@ -1,7 +1,7 @@
 package org.jboss.remoting3;
 
-import java.io.IOException;
 import java.io.Closeable;
+import java.io.IOException;
 
 /**
  * A Remoting resource that can be closed.

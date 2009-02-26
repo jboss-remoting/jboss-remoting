@@ -1,8 +1,8 @@
 package org.jboss.remoting3.stream;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.io.Flushable;
+import java.io.IOException;
 
 /**
  * A streaming sink for objects.

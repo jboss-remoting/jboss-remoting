@@ -22,16 +22,16 @@
 
 package org.jboss.remoting3.spi;
 
-import java.io.IOException;
 import java.io.Closeable;
+import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.lang.ref.WeakReference;
-import org.jboss.remoting3.RemotingException;
 import org.jboss.remoting3.CloseHandler;
-import org.jboss.xnio.log.Logger;
+import org.jboss.remoting3.RemotingException;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.WeakCloseable;
+import org.jboss.xnio.log.Logger;
 
 /**
  * A closeable implementation that supports reference counting.  Since the initial reference count is zero, implementors

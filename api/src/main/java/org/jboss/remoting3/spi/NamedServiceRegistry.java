@@ -22,15 +22,15 @@
 
 package org.jboss.remoting3.spi;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentHashMap;
+import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.Collections;
-import java.io.IOException;
-import org.jboss.remoting3.ServiceRegistrationException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.QualifiedName;
+import org.jboss.remoting3.ServiceRegistrationException;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 

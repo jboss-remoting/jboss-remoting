@@ -23,8 +23,6 @@
 package org.jboss.remoting3;
 
 import java.util.concurrent.Executor;
-import org.jboss.remoting3.ClientContext;
-import org.jboss.remoting3.ServiceContext;
 import org.jboss.xnio.log.Logger;
 
 /**

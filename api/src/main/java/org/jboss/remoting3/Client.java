@@ -1,9 +1,9 @@
 package org.jboss.remoting3;
 
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CancellationException;
 import java.io.IOException;
 import java.io.ObjectStreamException;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentMap;
 import org.jboss.xnio.IoFuture;
 
 /**

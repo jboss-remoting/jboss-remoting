@@ -23,8 +23,6 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
-import org.jboss.remoting3.ClientSource;
-import org.jboss.remoting3.SimpleCloseable;
 import org.jboss.xnio.AbstractIoFuture;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;

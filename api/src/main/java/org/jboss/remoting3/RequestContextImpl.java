@@ -28,12 +28,6 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jboss.remoting3.ClientContext;
-import org.jboss.remoting3.IndeterminateOutcomeException;
-import org.jboss.remoting3.RemoteExecutionException;
-import org.jboss.remoting3.RemoteReplyException;
-import org.jboss.remoting3.RequestCancelHandler;
-import org.jboss.remoting3.RequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 

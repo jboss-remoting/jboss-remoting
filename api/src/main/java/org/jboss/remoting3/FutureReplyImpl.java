@@ -24,7 +24,6 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
-import org.jboss.remoting3.ReplyException;
 import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.xnio.AbstractIoFuture;

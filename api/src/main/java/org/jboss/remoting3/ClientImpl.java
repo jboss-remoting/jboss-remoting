@@ -24,10 +24,6 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
-import org.jboss.remoting3.Client;
-import org.jboss.remoting3.CloseHandler;
-import org.jboss.remoting3.IndeterminateOutcomeException;
-import org.jboss.remoting3.RemoteRequestException;
 import org.jboss.remoting3.spi.Handle;
 import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;

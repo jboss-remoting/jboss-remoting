@@ -23,10 +23,6 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
-import org.jboss.remoting3.Client;
-import org.jboss.remoting3.ClientSource;
-import org.jboss.remoting3.CloseHandler;
-import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.Handle;
 import org.jboss.remoting3.spi.RequestHandler;

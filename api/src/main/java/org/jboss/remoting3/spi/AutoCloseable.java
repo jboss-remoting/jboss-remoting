@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3.spi;
 
-import org.jboss.remoting3.HandleableCloseable;
 import java.io.IOException;
+import org.jboss.remoting3.HandleableCloseable;
 
 /**
  * A closeable resource which closes automatically when the number of active handles reaches zero.  Handles are considered

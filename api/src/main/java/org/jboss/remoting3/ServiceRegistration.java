@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3;
 
-import org.jboss.remoting3.SimpleCloseable;
 import org.jboss.remoting3.spi.RequestHandlerSource;
 
 /**

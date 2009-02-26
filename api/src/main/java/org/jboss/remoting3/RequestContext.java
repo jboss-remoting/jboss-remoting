@@ -1,8 +1,8 @@
 package org.jboss.remoting3;
 
+import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
-import java.io.IOException;
 
 /**
  * The context of a single request.  A request listener is obligated to call exactly one of the three {@code send} methods

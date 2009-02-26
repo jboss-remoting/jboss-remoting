@@ -24,8 +24,6 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
-import org.jboss.remoting3.CloseHandler;
-import org.jboss.remoting3.RequestListener;
 import org.jboss.remoting3.spi.AbstractAutoCloseable;
 import org.jboss.remoting3.spi.Handle;
 import org.jboss.remoting3.spi.RequestHandler;
