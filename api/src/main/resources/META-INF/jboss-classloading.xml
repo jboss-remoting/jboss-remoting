@@ -2,9 +2,9 @@
 
 <classloading name="jboss-remoting-api" version="3.0.0.GA" xmlns="urn:jboss:classloading:1.0">
     <capabilities>
-        <package name="org.jboss.remoting"/>
-        <package name="org.jboss.remoting.spi"/>
-        <package name="org.jboss.remoting.stream"/>
+        <package name="org.jboss.remoting3"/>
+        <package name="org.jboss.remoting3.spi"/>
+        <package name="org.jboss.remoting3.stream"/>
     </capabilities>
     <requirements>
         <module name="xnio-api" from-inclusive="true" from="1.2.0.GA" reExport="true"/>
