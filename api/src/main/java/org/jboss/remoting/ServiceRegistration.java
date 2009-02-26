@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.core;
+package org.jboss.remoting;
 
 import org.jboss.remoting.SimpleCloseable;
 import org.jboss.remoting.spi.RequestHandlerSource;

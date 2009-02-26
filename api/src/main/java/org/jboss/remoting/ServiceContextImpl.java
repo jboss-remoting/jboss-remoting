@@ -20,37 +20,23 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.core;
+package org.jboss.remoting;
 
 import java.util.concurrent.Executor;
-import org.jboss.remoting.ClientContext;
 import org.jboss.remoting.ServiceContext;
 import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
-final class ClientContextImpl extends AbstractContextImpl<ClientContext> implements ClientContext {
+final class ServiceContextImpl extends AbstractContextImpl<ServiceContext> implements ServiceContext {
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.service-context");
 
-    private static final Logger log = Logger.getLogger("org.jboss.remoting.client-context");
-
-    private final ServiceContextImpl serviceContext;
-
-    ClientContextImpl(final Executor executor) {
+    protected ServiceContextImpl(final Executor executor) {
         super(executor);
-        serviceContext = null;
-    }
-
-    ClientContextImpl(final ServiceContextImpl serviceContext) {
-        super(serviceContext.getExecutor());
-        this.serviceContext = serviceContext;
-    }
-
-    public ServiceContext getServiceContext() {
-        return serviceContext;
     }
 
     public String toString() {
-        return "client context instance <" + Integer.toHexString(hashCode()) + ">";
+        return "service context instance <" + Integer.toHexString(hashCode()) + ">";
     }
 }

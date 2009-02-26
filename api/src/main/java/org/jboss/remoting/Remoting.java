@@ -87,11 +87,7 @@ public final class Remoting {
      * @return the endpoint
      */
     public static Endpoint createEndpoint(final Executor executor, final String name) throws IOException {
-        try {
-            return (Endpoint) Class.forName("org.jboss.remoting.core.EndpointImpl").getConstructor(Executor.class, String.class).newInstance(executor, name);
-        } catch (Exception e) {
-            throw new EndpointException("Unable to create endpoint", e);
-        }
+        return new EndpointImpl(executor, name);
     }
 
     /**

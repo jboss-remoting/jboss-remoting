@@ -4,32 +4,9 @@
 grant codeBase "file:${build.home}/api/target/test/classes/-"
 {
     permission java.lang.RuntimePermission "modifyThread"; // for executor control
-};
-
-grant codeBase "file:${build.home}/core/target/test/classes/-"
-{
-    permission java.lang.RuntimePermission "modifyThread"; // for executor control
     permission org.jboss.remoting.EndpointPermission "createEndpoint";
     permission org.jboss.remoting.EndpointPermission "createRequestHandler";
     permission org.jboss.remoting.EndpointPermission "createClient";
-};
-
-grant codeBase "file:${build.home}/protocol/basic/target/test/classes/-"
-{
-    permission java.lang.RuntimePermission "modifyThread"; // for executor control
-    permission org.jboss.remoting.EndpointPermission "createEndpoint";
-    permission org.jboss.remoting.EndpointPermission "createRequestHandler";
-    permission org.jboss.remoting.EndpointPermission "createClient";
-};
-
-grant codeBase "file:${build.home}/protocol/multiplex/target/test/classes/-"
-{
-    permission java.lang.RuntimePermission "modifyThread"; // for executor control
-    permission org.jboss.remoting.EndpointPermission "createEndpoint";
-    permission org.jboss.remoting.EndpointPermission "createRequestHandler";
-    permission org.jboss.remoting.EndpointPermission "createClient";
-    permission org.jboss.remoting.EndpointPermission "createClientSource";
-    permission org.jboss.remoting.EndpointPermission "registerService";
 };
 
 // Permissions for Remoting itself
@@ -38,17 +15,6 @@ grant codeBase "file:${build.home}/api/target/main/classes/-"
 {
     permission java.util.PropertyPermission "jboss.remoting.*", "read";
     permission org.jboss.remoting.EndpointPermission "*";
-};
-
-grant codeBase "file:${build.home}/core/target/main/classes/-"
-{
-    permission java.util.PropertyPermission "jboss.remoting.*", "read";
-    permission org.jboss.remoting.EndpointPermission "*";
-};
-
-grant codeBase "file:${build.home}/protocol/basic/target/main/classes/-"
-{
-    permission java.util.PropertyPermission "jboss.remoting.*", "read";
 };
 
 // Support classes

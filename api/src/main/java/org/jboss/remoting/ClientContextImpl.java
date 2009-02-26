@@ -20,37 +20,37 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.core;
+package org.jboss.remoting;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import org.jboss.remoting.spi.AbstractHandleableCloseable;
+import org.jboss.remoting.ClientContext;
+import org.jboss.remoting.ServiceContext;
+import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
-abstract class AbstractContextImpl<T> extends AbstractHandleableCloseable<T> {
+final class ClientContextImpl extends AbstractContextImpl<ClientContext> implements ClientContext {
 
-    private final ConcurrentMap<Object, Object> attributes = new ConcurrentHashMap<Object, Object>();
+    private static final Logger log = Logger.getLogger("org.jboss.remoting.client-context");
 
-    AbstractContextImpl(final Executor executor) {
+    private final ServiceContextImpl serviceContext;
+
+    ClientContextImpl(final Executor executor) {
         super(executor);
+        serviceContext = null;
     }
 
-    public ConcurrentMap<Object, Object> getAttributes() {
-        return attributes;
+    ClientContextImpl(final ServiceContextImpl serviceContext) {
+        super(serviceContext.getExecutor());
+        this.serviceContext = serviceContext;
     }
 
-    protected Executor getExecutor() {
-        return super.getExecutor();
-    }
-
-    protected boolean isOpen() {
-        return super.isOpen();
+    public ServiceContext getServiceContext() {
+        return serviceContext;
     }
 
     public String toString() {
-        return "generic context instance <" + Integer.toHexString(hashCode()) + ">";
+        return "client context instance <" + Integer.toHexString(hashCode()) + ">";
     }
 }

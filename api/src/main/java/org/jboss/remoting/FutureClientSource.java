@@ -20,23 +20,36 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting.core;
+package org.jboss.remoting;
 
-import java.util.concurrent.Executor;
-import org.jboss.remoting.ServiceContext;
-import org.jboss.xnio.log.Logger;
+import java.io.IOException;
+import org.jboss.remoting.ClientSource;
+import org.jboss.remoting.SimpleCloseable;
+import org.jboss.xnio.AbstractIoFuture;
+import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.IoUtils;
 
 /**
  *
  */
-final class ServiceContextImpl extends AbstractContextImpl<ServiceContext> implements ServiceContext {
-    private static final Logger log = Logger.getLogger("org.jboss.remoting.service-context");
+final class FutureClientSource<I, O> extends AbstractIoFuture<ClientSource<I, O>> {
 
-    protected ServiceContextImpl(final Executor executor) {
-        super(executor);
+    private volatile SimpleCloseable listenerHandle;
+
+    protected boolean setException(final IOException exception) {
+        return super.setException(exception);
     }
 
-    public String toString() {
-        return "service context instance <" + Integer.toHexString(hashCode()) + ">";
+    protected boolean setResult(final ClientSource<I, O> result) {
+        return super.setResult(result);
+    }
+
+    public IoFuture<ClientSource<I, O>> cancel() {
+        IoUtils.safeClose(listenerHandle);
+        return this;
+    }
+
+    void setListenerHandle(final SimpleCloseable listenerHandle) {
+        this.listenerHandle = listenerHandle;
     }
 }

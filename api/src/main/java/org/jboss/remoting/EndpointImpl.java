@@ -1,4 +1,4 @@
-package org.jboss.remoting.core;
+package org.jboss.remoting;
 
 import java.io.Closeable;
 import java.io.IOException;

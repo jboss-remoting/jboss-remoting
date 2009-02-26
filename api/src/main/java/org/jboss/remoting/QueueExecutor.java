@@ -1,4 +1,4 @@
-package org.jboss.remoting.core;
+package org.jboss.remoting;
 
 import java.util.LinkedList;
 import java.util.Queue;
