@@ -7,8 +7,8 @@
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting-all</artifactId>
     <packaging>pom</packaging>
-    <version>1.1.0.CR1</version>
+    <version>3.1.0.CR1</version>
     <modules>
-        <module>api</module>
+        <module>jboss-remoting</module>
     </modules>
 </project>
