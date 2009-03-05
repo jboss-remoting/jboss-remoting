@@ -28,6 +28,9 @@ import java.io.IOException;
 /**
  * A stream handler factory.  Produces stream handler instances for the given object, which in turn uses a specified
  * channel type to stream the data.
+ *
+ * @param <T> the streamable object type
+ * @param <C> the channel type that this handler uses
  */
 public interface StreamHandlerFactory<T, C extends Channel> {
 

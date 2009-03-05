@@ -32,6 +32,9 @@ import java.io.Serializable;
  * the local and remote side.  Stream handlers are non-reentrant; in other words, it is an error
  * for a stream handler to have a stream type as one of its serializable fields or for a stream handler's
  * {@code writeObject} method (if any) to write a stream type.
+ *
+ * @param <T> the streamable object type
+ * @param <C> the channel type that this handler uses
  */
 public interface StreamHandler<T, C extends Channel> extends Serializable {
 
