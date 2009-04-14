@@ -155,7 +155,9 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      */
     ResourceType getResourceType(URI uri);
 
-
+    /**
+     * Flags which can be passed in to listener registration methods.
+     */
     enum ListenerFlag {
 
         /**
