@@ -24,6 +24,7 @@ package org.jboss.remoting3;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.regex.Pattern;
 
 /**
  * A parser for JBoss Remoting URI types.
@@ -65,7 +66,7 @@ public final class ServiceURI {
         } else {
             serviceType = ssp.substring(0, firstColon);
         }
-        return serviceType;
+        return serviceType.toLowerCase();
     }
 
     /**
@@ -91,7 +92,7 @@ public final class ServiceURI {
         } else {
             groupName = ssp.substring(firstColon + 1, secondColon);
         }
-        return groupName;
+        return groupName.toLowerCase();
     }
 
     /**
@@ -122,7 +123,7 @@ public final class ServiceURI {
         } else {
             endpointName = ssp.substring(secondColon + 1, thirdColon);
         }
-        return endpointName;
+        return endpointName.toLowerCase();
     }
 
     /**
@@ -150,6 +151,37 @@ public final class ServiceURI {
             return new URI(SCHEME, builder.toString(), null);
         } catch (URISyntaxException e) {
             throw new IllegalStateException("URI syntax exception should not be possible here", e);
+        }
+    }
+
+    private static final Pattern VALID_SERVICE_TYPE = Pattern.compile("^(?:[_a-z][_a-z0-9]*)(?:\\.[_a-z][_a-z0-9]*)*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern VALID_GROUP_NAME = Pattern.compile("^(?:[_a-z0-9]+)(?:\\.[_a-z0-9]+)*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern VALID_ENDPOINT_NAME = VALID_SERVICE_TYPE;
+
+    public static void validateServiceType(final CharSequence serviceType) {
+        if (serviceType == null) {
+            throw new NullPointerException("serviceType is null");
+        }
+        if (! VALID_SERVICE_TYPE.matcher(serviceType).matches()) {
+            throw new IllegalArgumentException("Service type \"" + serviceType + "\" is not valid");
+        }
+    }
+
+    public static void validateGroupName(final CharSequence groupName) {
+        if (groupName == null) {
+            throw new NullPointerException("groupName is null");
+        }
+        if (! VALID_GROUP_NAME.matcher(groupName).matches()) {
+            throw new IllegalArgumentException("Group name \"" + groupName + "\" is not valid");
+        }
+    }
+
+    public static void validateEndpointName(final String endpointName) {
+        if (endpointName == null) {
+            throw new NullPointerException("endpointName is null");
+        }
+        if (! VALID_ENDPOINT_NAME.matcher(endpointName).matches()) {
+            throw new IllegalArgumentException("Endpoint name \"" + endpointName + "\" is not valid");
         }
     }
 }

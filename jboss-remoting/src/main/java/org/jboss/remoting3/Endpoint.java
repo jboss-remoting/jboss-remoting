@@ -1,11 +1,14 @@
 package org.jboss.remoting3;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import org.jboss.remoting3.spi.Handle;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerSource;
+import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.xnio.IoFuture;
 
 /**
@@ -45,7 +48,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @return a handle for the client
      * @throws IOException if an error occurs
      */
-    <I, O> Handle<RequestHandler> createRequestHandler(RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException;
+    <I, O> Handle<RequestHandler> createLocalRequestHandler(RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException;
 
     /**
      * Create a request handler source that can be used to acquire clients associated with a request listener on this endpoint.
@@ -60,6 +63,15 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @throws IOException if an error occurs
      */
     <I, O> Handle<RequestHandlerSource> registerService(LocalServiceConfiguration<I, O> configuration) throws IOException;
+
+    /**
+     * Add a service registration listener which is called whenever a local service is registered.
+     *
+     * @param listener the listener
+     * @param flags the flags to apply to the listener
+     * @return a handle which may be used to remove the listener registration
+     */
+    SimpleCloseable addServiceRegistrationListener(ServiceRegistrationListener listener, Set<ListenerFlag> flags);
 
     /**
      * Create a client that uses the given request handler to handle its requests.
@@ -92,42 +104,63 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
     <I, O> ClientSource<I, O> createClientSource(RequestHandlerSource handlerSource, Class<I> requestClass, Class<O> replyClass) throws IOException;
 
     /**
-     * Attempt to locate a service.  The return value then be queried for the service's {@code ClientSource}.
+     * Attempt to open a client source by URI.
      *
      * @param <I> the request type
      * @param <O> the reply type
-     * @param serviceUri the URI of the service
+     * @param uri the URI of the service
      * @param requestClass the class of requests sent through the client source
      * @param replyClass the class of replies received back through the client source
      * @return the future service
-     * @throws IllegalArgumentException if the given URI is not a valid Remoting service URI
+     * @throws IllegalArgumentException if the URI scheme does not correspond to a client souerce connection provider
      */
-    <I, O> IoFuture<ClientSource<I, O>> locateService(URI serviceUri, Class<I> requestClass, Class<O> replyClass) throws IllegalArgumentException;
+    <I, O> IoFuture<? extends ClientSource<I, O>> openClientSource(URI uri, Class<I> requestClass, Class<O> replyClass) throws IllegalArgumentException;
 
     /**
-     * Register a remotely available service.<p>
-     * The remote endpoint must not have the same name as this endpoint.  The group name and service type must be
-     * non-{@code null} and non-empty.  The metric must be greater than zero.
+     * Attempt to open a client by URI.
      *
-     * You must have the {@link org.jboss.remoting3.EndpointPermission registerRemoteService EndpointPermission} to invoke this method.
-     *
-     * @param configuration the remote service configuration
-     * @return a closeable that may be used to remove the registration
-     * @throws IllegalArgumentException if one of the given arguments was not valid
-     * @throws IOException if an error occurs with the registration
+     * @param <I> the request type
+     * @param <O> the reply type
+     * @param uri the URI of the service
+     * @param requestClass the class of requests sent through the client source
+     * @param replyClass the class of replies received back through the client source
+     * @return the future service
+     * @throws IllegalArgumentException if the URI scheme does not correspond to a client connection provider
      */
-    SimpleCloseable registerRemoteService(RemoteServiceConfiguration configuration) throws IllegalArgumentException, IOException;
+    <I, O> IoFuture<? extends Client<I, O>> openClient(URI uri, Class<I> requestClass, Class<O> replyClass) throws IllegalArgumentException;
 
     /**
-     * Add a listener for observing when local and remote services are added.  The caller may specify whether the listener
-     * should be notified of the complete list of currently registered services (set {@code onlyNew} to {@code false})
-     * or only services registered after the time of calling this method (set {@code onlyNew} to {@code true}).
+     * Connect to a remote endpoint.
      *
-     * You must have the {@link org.jboss.remoting3.EndpointPermission addServiceListener EndpointPermission} to invoke this method.
-     *
-     * @param serviceListener the listener
-     * @param onlyNew {@code true} if only new registrations should be sent to the listener
-     * @return a handle which may be used to unregister the listener
+     * @param endpointUri the URI of the endpoint to connect to
+     * @return the future connection
+     * @throws IllegalArgumentException if the URI scheme does not correspond to an endpoint connection provider
      */
-    SimpleCloseable addServiceListener(ServiceListener serviceListener, boolean onlyNew);
+    IoFuture<? extends Closeable> openEndpointConnection(URI endpointUri) throws IllegalArgumentException;
+
+    /**
+     * Register a connection provider for a URI scheme.
+     *
+     * @param uriScheme the URI scheme
+     * @param provider the provider
+     * @return a handle which may be used to remove the registration
+     */
+    SimpleCloseable addConnectionProvider(String uriScheme, ConnectionProvider<?> provider);
+
+    /**
+     * Get the type of resource specified by the given URI.  If the type cannot be determined, returns {@link org.jboss.remoting3.ResourceType#UNKNOWN UNKNOWN}.
+     *
+     * @param uri the connection URI
+     * @return the resource type
+     */
+    ResourceType getResourceType(URI uri);
+
+
+    enum ListenerFlag {
+
+        /**
+         * Include old registrations.
+         */
+        INCLUDE_OLD,
+    }
 }

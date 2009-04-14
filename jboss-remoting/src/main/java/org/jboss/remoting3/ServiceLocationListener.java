@@ -22,17 +22,43 @@
 
 package org.jboss.remoting3;
 
+import java.net.URI;
+
 /**
- * A source for new Remoting clients.
+ * A listener for watching service location events on an endpoint.
  *
- * @param <I> the request type
- * @param <O> the reply type
+ * @apiviz.landmark
  */
-public interface ClientSource<I, O> extends HandleableCloseable<ClientSource<I, O>> {
-    /**
-     * Create a new client instance.
-     *
-     * @return the client
-     */
-    Client<I, O> createClient();
+public interface ServiceLocationListener {
+    void serviceLocated(SimpleCloseable listenerHandler, ServiceInfo info);
+
+    final class ServiceInfo {
+        private URI serviceUri;
+        private URI locationUri;
+        private int preference;
+
+        public URI getServiceUri() {
+            return serviceUri;
+        }
+
+        public void setServiceUri(final URI serviceUri) {
+            this.serviceUri = serviceUri;
+        }
+
+        public URI getLocationUri() {
+            return locationUri;
+        }
+
+        public void setLocationUri(final URI locationUri) {
+            this.locationUri = locationUri;
+        }
+
+        public int getPreference() {
+            return preference;
+        }
+
+        public void setPreference(final int preference) {
+            this.preference = preference;
+        }
+    }
 }

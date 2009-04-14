@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2009, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -20,34 +20,19 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3;
+package org.jboss.remoting3.spi;
 
-import java.io.IOException;
-import org.jboss.xnio.AbstractIoFuture;
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.IoUtils;
+import java.io.Closeable;
 
 /**
- *
+ * A connection to a foreign endpoint.
  */
-final class FutureClientSource<I, O> extends AbstractIoFuture<ClientSource<I, O>> {
+public interface EndpointConnection extends Closeable {
+    String getEndpointName();
 
-    private volatile SimpleCloseable listenerHandle;
+    int getMetric();
 
-    protected boolean setException(final IOException exception) {
-        return super.setException(exception);
-    }
+    ConnectionProvider<RequestHandler> getRequestHandlerConnectionProvider();
 
-    protected boolean setResult(final ClientSource<I, O> result) {
-        return super.setResult(result);
-    }
-
-    public IoFuture<ClientSource<I, O>> cancel() {
-        IoUtils.safeClose(listenerHandle);
-        return this;
-    }
-
-    void setListenerHandle(final SimpleCloseable listenerHandle) {
-        this.listenerHandle = listenerHandle;
-    }
+    ConnectionProvider<RequestHandlerSource> getRequestHandlerSourceConnectionProvider();
 }

@@ -55,9 +55,16 @@ final class ServiceRegistration {
     }
 
     public boolean matches(final String serviceType, final String groupName, final String endpointName) {
-        return  (serviceType == null || serviceType.length() == 0 || serviceType.equals(this.serviceType)) &&
-                (groupName == null || groupName.length() == 0 || groupName.equals(this.groupName)) &&
-                (endpointName == null || endpointName.length() == 0 || endpointName.equals(this.endpointName));
+        return  (serviceType == null || serviceType.length() == 0 || "*".equals(serviceType) || serviceType.equals(this.serviceType)) &&
+                (groupName == null || groupName.length() == 0 || "*".equals(groupName) || groupName.equals(this.groupName)) &&
+                (endpointName == null || endpointName.length() == 0 || "*".equals(endpointName) || endpointName.equals(this.endpointName));
+    }
+
+    public boolean matches(final ServiceSpecification spec) {
+        final String serviceType = spec.getServiceType();
+        final String groupName = spec.getGroupName();
+        final String endpointName = spec.getEndpointName();
+        return matches(serviceType, groupName, endpointName);
     }
 
     public boolean isRemote() {

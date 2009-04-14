@@ -63,7 +63,7 @@ public final class BasicTestCase extends TestCase {
                 configuration.setMarshallingConfiguration(marshallingConfiguration);
                 final Endpoint endpoint = Remoting.createEndpoint(executor, "test");
                 try {
-                    final Handle<RequestHandler> requestHandlerHandle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
+                    final Handle<RequestHandler> requestHandlerHandle = endpoint.createLocalRequestHandler(new AbstractRequestListener<Object, Object>() {
                         public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                             System.out.println("Got a request! " + request.toString());
                             try {

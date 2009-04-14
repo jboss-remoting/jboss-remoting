@@ -22,9 +22,6 @@
 
 package org.jboss.remoting3.spi;
 
-import java.io.IOException;
-import org.jboss.remoting3.CloseHandler;
-
 /**
  * A request handler, which can be passed to remote endpoints.  Remote systems can then use the handler
  * to make invocations, or they may forward a handler on to other remote systems.
@@ -46,30 +43,4 @@ public interface RequestHandler extends AutoCloseable<RequestHandler> {
      * @return a context which may be used to cancel the request
      */
     RemoteRequestContext receiveRequest(Object request, ReplyHandler replyHandler);
-
-    /**
-     * Get a handle to this request handler.  The request handler will not auto-close as long as there is at least
-     * one open handle.  If a handle is "leaked", it will be closed
-     * automatically if/when the garbage collector invokes its {@link Object#finalize()} method, with a log message
-     * warning of the leak.
-     *
-     * @return the handle
-     * @throws IOException if a handle could not be acquired
-     */
-    Handle<RequestHandler> getHandle() throws IOException;
-
-    /**
-     * Close this request handler.  The outcome of any outstanding requests is not defined, though implementations
-     * should make an effort to cancel any outstanding requests.
-     *
-     * @throws java.io.IOException if the client endpoint could not be closed
-     */
-    void close() throws IOException;
-
-    /**
-     * Add a handler that is called when the request handler is closed.
-     *
-     * @param handler the handler to be called
-     */
-    Key addCloseHandler(final CloseHandler<? super RequestHandler> handler);
 }

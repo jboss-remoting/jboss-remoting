@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2009, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -22,14 +22,25 @@
 
 package org.jboss.remoting3.spi;
 
-/**
- * The context of an outstanding remote request.  This instance should be discarded when a reply (of any sort)
- * is received for the request.
- */
-public interface RemoteRequestContext extends Cancellable {
+import java.io.IOException;
+import java.net.URI;
+import org.jboss.remoting3.ResourceType;
 
-    /**
-     * Signal that the request should be cancelled, if possible.
-     */
-    void cancel();
+/**
+ *
+ */
+public interface ConnectionProvider<T> {
+    Cancellable connect(URI uri, Result<T> result) throws IllegalArgumentException;
+
+    URI getConnectionUri(URI uri);
+
+    ResourceType getResourceType();
+
+    interface Result<T> {
+        void setResult(T result);
+
+        void setException(IOException exception);
+
+        void setCancelled();
+    }
 }

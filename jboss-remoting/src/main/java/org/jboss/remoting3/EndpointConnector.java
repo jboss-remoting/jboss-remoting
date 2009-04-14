@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2009, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -20,16 +20,23 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.spi;
+package org.jboss.remoting3;
+
+import java.net.URI;
+import org.jboss.xnio.IoFuture;
 
 /**
- * The context of an outstanding remote request.  This instance should be discarded when a reply (of any sort)
- * is received for the request.
+ * An endpoint connector.  Used to connect a whole endpoint to another whole endpoint.  Typically, services are then
+ * shared between the endpoints in some fashion, though this need not be the case.
  */
-public interface RemoteRequestContext extends Cancellable {
+public interface EndpointConnector extends HandleableCloseable<EndpointConnector> {
 
     /**
-     * Signal that the request should be cancelled, if possible.
+     * Connect the given endpoint to the remote URI.
+     *
+     * @param endpoint the endpoint to connect
+     * @param connectUri the connection URI
+     * @return the future handle, which may be used to terminate the connection
      */
-    void cancel();
+    IoFuture<? extends HandleableCloseable> connect(Endpoint endpoint, URI connectUri);
 }

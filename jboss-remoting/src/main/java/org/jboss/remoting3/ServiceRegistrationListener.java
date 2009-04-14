@@ -29,7 +29,7 @@ import org.jboss.remoting3.spi.RequestHandlerSource;
  *
  * @apiviz.landmark
  */
-public interface ServiceListener {
+public interface ServiceRegistrationListener {
 
     /**
      * Receive notification that a service was registered.
@@ -45,10 +45,8 @@ public interface ServiceListener {
      * @apiviz.exclude
      */
     final class ServiceInfo {
-        private String endpointName;
         private String serviceType;
         private String groupName;
-        private boolean remote;
         private int metric;
         private RequestHandlerSource requestHandlerSource;
         private SimpleCloseable registrationHandle;
@@ -147,42 +145,6 @@ public interface ServiceListener {
          */
         public void setRegistrationHandle(final SimpleCloseable registrationHandle) {
             this.registrationHandle = registrationHandle;
-        }
-
-        /**
-         * Get the endpoint name.  For local services, this will be the name of the local endpoint.
-         *
-         * @return the endpoint name
-         */
-        public String getEndpointName() {
-            return endpointName;
-        }
-
-        /**
-         * Set the endpoint name.
-         *
-         * @param endpointName the endpoint name
-         */
-        public void setEndpointName(final String endpointName) {
-            this.endpointName = endpointName;
-        }
-
-        /**
-         * Determine whether this service is remote.
-         *
-         * @return {@code true} if this service is remote
-         */
-        public boolean isRemote() {
-            return remote;
-        }
-
-        /**
-         * Specify whether this service is remote.
-         *
-         * @param remote {@code true} if this service is remote
-         */
-        public void setRemote(final boolean remote) {
-            this.remote = remote;
         }
     }
 }

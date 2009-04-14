@@ -126,7 +126,7 @@ public final class Remoting {
      * @throws IOException if an error occurs
      */
     public static <I, O> Client<I, O> createLocalClient(final Endpoint endpoint, final RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
-        final Handle<RequestHandler> handle = endpoint.createRequestHandler(requestListener, requestClass, replyClass);
+        final Handle<RequestHandler> handle = endpoint.createLocalRequestHandler(requestListener, requestClass, replyClass);
         try {
             return endpoint.createClient(handle.getResource(), requestClass, replyClass);
         } finally {

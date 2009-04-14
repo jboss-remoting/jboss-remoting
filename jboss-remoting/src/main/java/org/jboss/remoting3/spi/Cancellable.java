@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2009, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -23,13 +23,21 @@
 package org.jboss.remoting3.spi;
 
 /**
- * The context of an outstanding remote request.  This instance should be discarded when a reply (of any sort)
- * is received for the request.
+ * A handle which can be used to cancel an operation.  Cancellation is not mandatory; calling this method merely indicates
+ * that the operation need not complete.
  */
-public interface RemoteRequestContext extends Cancellable {
+public interface Cancellable {
 
     /**
-     * Signal that the request should be cancelled, if possible.
+     * Cancel the operation.  Calling this method more than one time has no additional effect.
      */
     void cancel();
+
+    /**
+     * A Cancellable instance which does nothing.
+     */
+    Cancellable NULL_CANCELLABLE = new Cancellable() {
+        public void cancel() {
+        }
+    };
 }

@@ -68,7 +68,7 @@ public final class EndpointTestCase extends TestCase {
             final Object requestObj = new Object();
             final Object replyObj = new Object();
             try {
-                final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
+                final Handle<RequestHandler> handle = endpoint.createLocalRequestHandler(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         try {
@@ -126,7 +126,7 @@ public final class EndpointTestCase extends TestCase {
             try {
                 final Object requestObj = new Object();
                 final Object replyObj = new Object();
-                final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
+                final Handle<RequestHandler> handle = endpoint.createLocalRequestHandler(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         try {
@@ -183,7 +183,7 @@ public final class EndpointTestCase extends TestCase {
             final EndpointImpl endpoint = new EndpointImpl(executorService, "test-endpoint");
             try {
                 final Object requestObj = new Object();
-                final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
+                final Handle<RequestHandler> handle = endpoint.createLocalRequestHandler(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         // don't send a reply!!
@@ -220,7 +220,7 @@ public final class EndpointTestCase extends TestCase {
             final EndpointImpl endpoint = new EndpointImpl(executorService, "test-endpoint");
             try {
                 final Object requestObj = new Object();
-                final Handle<RequestHandler> handle = endpoint.createRequestHandler(new AbstractRequestListener<Object, Object>() {
+                final Handle<RequestHandler> handle = endpoint.createLocalRequestHandler(new AbstractRequestListener<Object, Object>() {
                     public void handleRequest(final RequestContext<Object> context, final Object request) throws RemoteExecutionException {
                         assertEquals(request, requestObj);
                         context.execute(new Runnable() {

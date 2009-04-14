@@ -22,17 +22,26 @@
 
 package org.jboss.remoting3;
 
+import java.net.URI;
+import org.jboss.xnio.IoFuture;
+
 /**
- * A source for new Remoting clients.
- *
- * @param <I> the request type
- * @param <O> the reply type
+ * A client connector.  Opens a connection to a URI which provides a single {@code Client} instance.  Instances of this
+ * interface may only be able to support a single URI scheme.  Depending on the implementation, the URI may be a
+ * protocol URI or a service URI.
  */
-public interface ClientSource<I, O> extends HandleableCloseable<ClientSource<I, O>> {
+public interface ClientConnector extends HandleableCloseable<ClientConnector> {
+
     /**
-     * Create a new client instance.
+     * Establish a client connection.
      *
-     * @return the client
+     * @param requestType the request class
+     * @param replyType the reply class
+     * @param connectUri the URI to connect to
+     * @param <I> the request type
+     * @param <O> the reply type
+     * @return the future client
+     * @throws IllegalArgumentException if the provided URI scheme is not supported by this connector
      */
-    Client<I, O> createClient();
+    <I, O> IoFuture<? extends Client<I, O>> openClient(Class<I> requestType, Class<O> replyType, URI connectUri) throws IllegalArgumentException;
 }

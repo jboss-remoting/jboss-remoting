@@ -35,15 +35,16 @@ import java.io.IOException;
 public interface HandleableCloseable<T> extends Closeable {
 
     /**
-     * Close, waiting for any outstanding processing to finish.
+     * Close this resource.  Call any registered close handlers.  Calling this method more than once will not have
+     * any additional effect.
      *
      * @throws IOException if the close failed
      */
     void close() throws IOException;
 
     /**
-     * Add a handler that will be called upon close.  The handler may be called before or after the close acutally
-     * takes place.
+     * Add a handler that will be called upon close.  If the resource is already closed, the handler will be called
+     * immediately.
      *
      * @param handler the close handler
      * @return a key which may be used to later remove this handler
