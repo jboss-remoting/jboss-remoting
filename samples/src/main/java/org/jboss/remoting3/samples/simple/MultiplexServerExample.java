@@ -29,8 +29,6 @@ import org.jboss.remoting3.multiplex.MultiplexProtocol;
 import org.jboss.remoting3.multiplex.MultiplexConfiguration;
 import org.jboss.remoting3.spi.RequestHandlerSource;
 import org.jboss.remoting3.spi.Handle;
-import org.jboss.remoting3.spi.NamedServiceRegistry;
-import org.jboss.remoting3.QualifiedName;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoHandlerFactory;

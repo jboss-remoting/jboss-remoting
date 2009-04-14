@@ -23,11 +23,29 @@
 package org.jboss.remoting3;
 
 /**
+ * The type of resource supported by a specific connection manager.
  *
+ * @apiviz.excluded
  */
 public enum ResourceType {
+
+    /**
+     * An unknown resource.  Such a resource cannot be opened by an endpoint.
+     */
     UNKNOWN,
+    /**
+     * A client resource.  Use {@link Endpoint#openClient(java.net.URI, Class, Class) Endpoint.openClient(*)} to open
+     * a client resource URI.
+     */
     CLIENT,
+    /**
+     * A client source resource.  Use {@link Endpoint#openClientSource(java.net.URI, Class, Class) Endpoint.openClientSource(*)} to open
+     * a client source resource URI.
+     */
     CLIENT_SOURCE,
+    /**
+     * An endpoint resource.  Use {@link Endpoint#openEndpointConnection(java.net.URI) Endpoint.openEndpointConnection(*)} to open
+     * an endpoint resource URI.
+     */
     ENDPOINT,
 }

@@ -34,6 +34,14 @@ public final class ServiceSpecification {
     private final String groupName;
     private final String endpointName;
 
+    /**
+     * Construct a new instance.  Each argument is validated and converted into a canonical form.  The arguments
+     * may be "*" indicating that anything will match.
+     *
+     * @param serviceType the service type
+     * @param groupName the group name
+     * @param endpointName the endpoint name
+     */
     public ServiceSpecification(final String serviceType, final String groupName, final String endpointName) {
         if (serviceType == null) {
             throw new NullPointerException("serviceType is null");
@@ -64,22 +72,49 @@ public final class ServiceSpecification {
         }
     }
 
+    /**
+     * Create an instance from a service URI.
+     *
+     * @param uri the URI
+     * @return the specificaion
+     */
     public static ServiceSpecification fromUri(final URI uri) {
         return new ServiceSpecification(ServiceURI.getServiceType(uri), ServiceURI.getGroupName(uri), ServiceURI.getEndpointName(uri));
     }
 
+    /**
+     * Get the service type of this specification.
+     *
+     * @return the service type
+     */
     public String getServiceType() {
         return serviceType;
     }
 
+    /**
+     * Get the group name of this specification.
+     *
+     * @return the group name
+     */
     public String getGroupName() {
         return groupName;
     }
 
+    /**
+     * Get the endpoint name of this specification.
+     *
+     * @return the endpoint name
+     */
     public String getEndpointName() {
         return endpointName;
     }
 
+    /**
+     * Determine whether the given URI matches this specification.
+     *
+     * @param serviceUri the service URI
+     * @return {@code true} if the URI is a service which matches this specification
+     */
     public boolean matches(final URI serviceUri) {
         if (! ServiceURI.isRemotingServiceUri(serviceUri)) {
             return false;
@@ -102,6 +137,7 @@ public final class ServiceSpecification {
         return true;
     }
 
+    /** {@inheritDoc} */
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (! (o instanceof ServiceSpecification)) return false;
@@ -112,7 +148,7 @@ public final class ServiceSpecification {
         return true;
     }
 
-    @Override
+    /** {@inheritDoc} */
     public int hashCode() {
         int result = serviceType.hashCode();
         result = 31 * result + groupName.hashCode();
