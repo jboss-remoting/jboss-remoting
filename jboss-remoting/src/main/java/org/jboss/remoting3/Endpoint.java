@@ -9,6 +9,7 @@ import org.jboss.remoting3.spi.Handle;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerSource;
 import org.jboss.remoting3.spi.ConnectionProvider;
+import org.jboss.remoting3.spi.EndpointConnectionAcceptor;
 import org.jboss.xnio.IoFuture;
 
 /**
@@ -145,7 +146,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @param provider the provider
      * @return a handle which may be used to remove the registration
      */
-    SimpleCloseable addConnectionProvider(String uriScheme, ConnectionProvider<?> provider);
+    EndpointConnectionAcceptor addConnectionProvider(String uriScheme, ConnectionProvider<?> provider);
 
     /**
      * Get the type of resource specified by the given URI.  If the type cannot be determined, returns {@link org.jboss.remoting3.ResourceType#UNKNOWN UNKNOWN}.

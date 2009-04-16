@@ -48,6 +48,8 @@ import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerSource;
 import org.jboss.remoting3.spi.Cancellable;
 import org.jboss.remoting3.spi.EndpointConnection;
+import org.jboss.remoting3.spi.EndpointConnectionAcceptor;
+import org.jboss.remoting3.spi.AbstractEndpointConnectionAcceptor;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.WeakCloseable;
@@ -382,7 +384,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return futureEndpointConn;
     }
 
-    public SimpleCloseable addConnectionProvider(final String uriScheme, final ConnectionProvider<?> provider) {
+    public EndpointConnectionAcceptor addConnectionProvider(final String uriScheme, final ConnectionProvider<?> provider) {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(ADD_CONNECTION_PROVIDER_PERM);
@@ -391,9 +393,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (connectionProviders.putIfAbsent(key, provider) != null) {
             throw new IllegalArgumentException("Provider already registered for scheme \"" + uriScheme + "\"");
         }
-        return new AbstractSimpleCloseable(executor) {
+        return new AbstractEndpointConnectionAcceptor(executor) {
             protected void closeAction() throws IOException {
                 connectionProviders.remove(key, provider);
+            }
+
+            public void accept(final EndpointConnection connection) {
+                // todo - add the endpoint connection to the endpoint registry; notify listeners; etc.
             }
         };
     }
