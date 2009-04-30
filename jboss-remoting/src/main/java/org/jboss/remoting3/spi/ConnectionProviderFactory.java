@@ -23,8 +23,15 @@
 package org.jboss.remoting3.spi;
 
 /**
- *
+ * A connection provider factory.  Implementations of this interface provide a connection facility for a URI scheme.
  */
 public interface ConnectionProviderFactory {
+
+    /**
+     * Create a provider instance for an endpoint.
+     *
+     * @param context the provider context
+     * @return the provider
+     */
     ConnectionProvider createInstance(ConnectionProviderContext context);
 }
