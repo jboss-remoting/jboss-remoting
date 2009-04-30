@@ -26,6 +26,7 @@ import java.io.IOException;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.RequestCancelHandler;
 import org.jboss.remoting3.RequestContext;
+import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -107,6 +108,20 @@ public final class SpiUtils {
         } catch (Throwable t) {
             heLog.error(t, "Close handler threw an exception");
         }
+    }
+
+    /**
+     * Get a {@code Cancellable} for an {@code IoFuture}.
+     *
+     * @param future the future
+     * @return the cancellable
+     */
+    public static Cancellable cancellable(final IoFuture<?> future) {
+        return new Cancellable() {
+            public void cancel() {
+                future.cancel();
+            }
+        };
     }
 
     /**

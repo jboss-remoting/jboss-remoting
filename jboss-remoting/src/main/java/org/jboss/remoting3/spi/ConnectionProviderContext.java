@@ -25,8 +25,16 @@ package org.jboss.remoting3.spi;
 import org.jboss.remoting3.HandleableCloseable;
 
 /**
+ * A context for a connection provider which provides a means to accept a connection.
  *
+ * @remoting.consume
  */
 public interface ConnectionProviderContext extends HandleableCloseable<ConnectionProviderContext> {
+
+    /**
+     * Accept a connection that was received by the corresponding protocol handler.
+     *
+     * @param connectionHandlerFactory the connection handler factory
+     */
     void accept(ConnectionHandlerFactory connectionHandlerFactory);
 }
