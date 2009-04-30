@@ -44,7 +44,7 @@ public interface StreamHandler<T, C extends Channel> extends Serializable {
      *
      * @return the local XNIO handler
      */
-    IoHandler<C> getLocalHandler();
+    IoHandler<? super C> getLocalHandler();
 
     /**
      * Get the remote XNIO handler for this stream.  The remote handler should not be instantiated until the
@@ -52,7 +52,7 @@ public interface StreamHandler<T, C extends Channel> extends Serializable {
      *
      * @return the remote XNIO handler
      */
-    IoHandler<C> getRemoteHandler();
+    IoHandler<? super C> getRemoteHandler();
 
     /**
      * Get the remote proxy instance for this stream.  The remote proxy should not be instantiated until the

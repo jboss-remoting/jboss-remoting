@@ -22,13 +22,14 @@
 
 package org.jboss.remoting3.stream;
 
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
-import org.jboss.xnio.channels.StreamChannel;
+import java.nio.channels.Channel;
+import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -73,7 +74,7 @@ public final class InputStreamHandlerFactory implements StreamHandlerFactory<Inp
             };
         }
 
-        public IoHandler<StreamChannel> getRemoteHandler() {
+        public IoHandler<Channel> getRemoteHandler() {
             return IoUtils.nullHandler();
         }
 

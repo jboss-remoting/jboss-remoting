@@ -22,15 +22,16 @@
 
 package org.jboss.remoting3.spi;
 
+import org.jboss.remoting3.HandleableCloseable;
+
 /**
- * A request handler, which can be passed to remote endpoints.  Remote systems can then use the handler
- * to make invocations, or they may forward a handler on to other remote systems.
+ * A request handler.
  * <p>
  * This is an internal Remoting interface, intended to be implemented only by Remoting internals and protocol implementations.
- * It should not be implemented by end-users, as members may be added without notice.  Applications should instead use
+ * It should not be used or implemented by end-users.  Members may be added without notice.  Applications should instead use
  * the {@link org.jboss.remoting3.Client Client} and {@link org.jboss.remoting3.RequestListener RequestListener} interfaces.
  */
-public interface RequestHandler extends AutoCloseable<RequestHandler> {
+public interface RequestHandler extends HandleableCloseable<RequestHandler> {
 
     /**
      * Receive a request from a remote system.  This method is intended to be called by protocol handlers.  If the

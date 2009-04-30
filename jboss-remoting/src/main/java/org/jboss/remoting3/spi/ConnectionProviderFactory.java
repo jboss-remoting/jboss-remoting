@@ -22,17 +22,9 @@
 
 package org.jboss.remoting3.spi;
 
-import java.io.Closeable;
-
 /**
- * A connection to a foreign endpoint.
+ *
  */
-public interface EndpointConnection extends Closeable {
-    String getEndpointName();
-
-    int getMetric();
-
-    ConnectionProvider<RequestHandler> getRequestHandlerConnectionProvider();
-
-    ConnectionProvider<RequestHandlerSource> getRequestHandlerSourceConnectionProvider();
+public interface ConnectionProviderFactory {
+    ConnectionProvider createInstance(ConnectionProviderContext context);
 }

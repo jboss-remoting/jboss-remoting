@@ -20,19 +20,13 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3;
+package org.jboss.remoting3.spi;
+
+import org.jboss.remoting3.HandleableCloseable;
 
 /**
- * A source for new Remoting clients.
  *
- * @param <I> the request type
- * @param <O> the reply type
  */
-public interface ClientSource<I, O> extends HandleableCloseable<ClientSource<I, O>> {
-    /**
-     * Create a new client instance.
-     *
-     * @return the client
-     */
-    Client<I, O> createClient();
+public interface ConnectionProviderContext extends HandleableCloseable<ConnectionProviderContext> {
+    void accept(ConnectionHandlerFactory connectionHandlerFactory);
 }

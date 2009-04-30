@@ -32,20 +32,6 @@ package org.jboss.remoting3;
  */
 public interface RequestListener<I, O> {
     /**
-     * Handle the opening of a client.
-     *
-     * @param context the client context
-     */
-    void handleClientOpen(ClientContext context);
-
-    /**
-     * Handle the opening of a service.
-     *
-     * @param context the service context
-     */
-    void handleServiceOpen(ServiceContext context);
-
-    /**
      * Handle a request.  If this method throws {@code RemoteExecutionException}, then that exception is passed
      * back to the caller and the request is marked as complete.  Otherwise, the request
      * listener must send back either a reply (using the {@code sendReply()} method on the {@code RequestContext}) or
@@ -59,16 +45,8 @@ public interface RequestListener<I, O> {
     void handleRequest(RequestContext<O> context, I request) throws RemoteExecutionException;
 
     /**
-     * Handle the close of a service.
-     *
-     * @param context the service context
+     * Handle the client closing.  Free up any resources.  This method is called after the close has occurred,
+     * so exceptions thrown will be ignored.
      */
-    void handleServiceClose(ServiceContext context);
-
-    /**
-     * Handle the close of a client.
-     *
-     * @param context the client context
-     */
-    void handleClientClose(ClientContext context);
+    void handleClose();
 }

@@ -22,25 +22,15 @@
 
 package org.jboss.remoting3.spi;
 
-import java.io.IOException;
 import java.net.URI;
-import org.jboss.remoting3.ResourceType;
 
 /**
+ * A connection provider.  Used to establish connections with remote systems.
  *
+ * @remoting.implement
  */
-public interface ConnectionProvider<T> {
-    Cancellable connect(URI uri, Result<T> result) throws IllegalArgumentException;
+public interface ConnectionProvider {
+    Cancellable connect(URI uri, Result<ConnectionHandlerFactory> result) throws IllegalArgumentException;
 
     URI getConnectionUri(URI uri);
-
-    ResourceType getResourceType();
-
-    interface Result<T> {
-        void setResult(T result);
-
-        void setException(IOException exception);
-
-        void setCancelled();
-    }
 }

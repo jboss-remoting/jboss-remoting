@@ -23,29 +23,30 @@
 package org.jboss.remoting3;
 
 import java.util.concurrent.Executor;
+import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
-final class ClientContextImpl extends AbstractContextImpl<ClientContext> implements ClientContext {
+final class ClientContextImpl extends AbstractHandleableCloseable<ClientContext> implements ClientContext {
 
+    @SuppressWarnings({ "UnusedDeclaration" })
     private static final Logger log = Logger.getLogger("org.jboss.remoting.client-context");
 
-    private final ServiceContextImpl serviceContext;
+    private final Connection connection;
 
-    ClientContextImpl(final Executor executor) {
+    ClientContextImpl(final Executor executor, final Connection connection) {
         super(executor);
-        serviceContext = null;
+        this.connection = connection;
     }
 
-    ClientContextImpl(final ServiceContextImpl serviceContext) {
-        super(serviceContext.getExecutor());
-        this.serviceContext = serviceContext;
+    protected Executor getExecutor() {
+        return super.getExecutor();
     }
 
-    public ServiceContext getServiceContext() {
-        return serviceContext;
+    public Connection getConnection() {
+        return connection;
     }
 
     public String toString() {

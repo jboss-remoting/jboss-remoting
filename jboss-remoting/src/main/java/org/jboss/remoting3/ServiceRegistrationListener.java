@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3;
 
-import org.jboss.remoting3.spi.RequestHandlerSource;
+import org.jboss.remoting3.spi.RequestHandlerConnector;
 
 /**
  * A listener for watching service registrations on an endpoint.
@@ -44,11 +44,11 @@ public interface ServiceRegistrationListener {
      *
      * @apiviz.exclude
      */
-    final class ServiceInfo {
+    final class ServiceInfo implements Cloneable {
         private String serviceType;
         private String groupName;
         private int metric;
-        private RequestHandlerSource requestHandlerSource;
+        private RequestHandlerConnector requestHandlerConnector;
         private SimpleCloseable registrationHandle;
 
         /**
@@ -116,17 +116,17 @@ public interface ServiceRegistrationListener {
          *
          * @return the request handler source
          */
-        public RequestHandlerSource getRequestHandlerSource() {
-            return requestHandlerSource;
+        public RequestHandlerConnector getRequestHandlerConnector() {
+            return requestHandlerConnector;
         }
 
         /**
          * Set the request handler source.
          *
-         * @param requestHandlerSource the request handler source
+         * @param requestHandlerConnector the request handler source
          */
-        public void setRequestHandlerSource(final RequestHandlerSource requestHandlerSource) {
-            this.requestHandlerSource = requestHandlerSource;
+        public void setRequestHandlerConnector(final RequestHandlerConnector requestHandlerConnector) {
+            this.requestHandlerConnector = requestHandlerConnector;
         }
 
         /**
@@ -145,6 +145,19 @@ public interface ServiceRegistrationListener {
          */
         public void setRegistrationHandle(final SimpleCloseable registrationHandle) {
             this.registrationHandle = registrationHandle;
+        }
+
+        /**
+         * Create a shallow clone.
+         *
+         * @return the clone
+         */
+        public ServiceInfo clone() {
+            try {
+                return (ServiceInfo) super.clone();
+            } catch (CloneNotSupportedException e) {
+                throw new IllegalStateException(e);
+            }
         }
     }
 }

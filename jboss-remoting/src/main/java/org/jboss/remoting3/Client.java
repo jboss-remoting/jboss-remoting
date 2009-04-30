@@ -25,11 +25,14 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.io.ObjectStreamException;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.ConcurrentMap;
 import org.jboss.xnio.IoFuture;
 
 /**
  * A communications client.  The client may be associated with state maintained by the local and/or remote side.
+ * <p/>
+ * This interface is part of the Remoting public API.  It is intended to be consumed by Remoting applications; it is
+ * not intended to be implemented by them.  Methods may be added to this interface in future minor releases without
+ * advance notice.
  *
  * @param <I> the request type
  * @param <O> the reply type
@@ -107,11 +110,4 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
      * @throws IOException if the request could not be sent
      */
     IoFuture<? extends O> send(I request) throws IOException;
-
-    /**
-     * Get the attribute map.  This map holds metadata about the current clinet.
-     *
-     * @return the attribute map
-     */
-    ConcurrentMap<Object, Object> getAttributes();
 }

@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3;
 
-import org.jboss.remoting3.spi.RequestHandlerSource;
+import org.jboss.remoting3.spi.RequestHandlerConnector;
 
 /**
  *
@@ -33,25 +33,25 @@ final class ServiceRegistration {
     private final String groupName;
     private final String endpointName;
     private final int metric;
-    private final RequestHandlerSource handlerSource;
+    private final RequestHandlerConnector connector;
     private volatile SimpleCloseable handle;
 
-    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final int metric, final RequestHandlerSource handlerSource) {
+    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final int metric, final RequestHandlerConnector connector) {
         remote = true;
         this.serviceType = serviceType;
         this.groupName = groupName;
         this.endpointName = endpointName;
         this.metric = metric;
-        this.handlerSource = handlerSource;
+        this.connector = connector;
     }
 
-    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final RequestHandlerSource handlerSource) {
+    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final RequestHandlerConnector connector) {
         remote = false;
         metric = 0;
         this.serviceType = serviceType;
         this.groupName = groupName;
         this.endpointName = endpointName;
-        this.handlerSource = handlerSource;
+        this.connector = connector;
     }
 
     public boolean matches(final String serviceType, final String groupName, final String endpointName) {
@@ -87,8 +87,8 @@ final class ServiceRegistration {
         return metric;
     }
 
-    public RequestHandlerSource getHandlerSource() {
-        return handlerSource;
+    public RequestHandlerConnector getConnector() {
+        return connector;
     }
 
     public SimpleCloseable getHandle() {

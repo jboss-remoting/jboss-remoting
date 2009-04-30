@@ -29,9 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import org.jboss.remoting3.spi.Handle;
 import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.RequestHandlerSource;
 import org.jboss.xnio.CloseableExecutor;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
@@ -126,30 +124,11 @@ public final class Remoting {
      * @throws IOException if an error occurs
      */
     public static <I, O> Client<I, O> createLocalClient(final Endpoint endpoint, final RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
-        final Handle<RequestHandler> handle = endpoint.createLocalRequestHandler(requestListener, requestClass, replyClass);
+        final RequestHandler requestHandler = endpoint.createLocalRequestHandler(requestListener, requestClass, replyClass);
         try {
-            return endpoint.createClient(handle.getResource(), requestClass, replyClass);
+            return endpoint.createClient(requestHandler, requestClass, replyClass);
         } finally {
-            IoUtils.safeClose(handle);
-        }
-    }
-
-    /**
-     * Create a local client source from a local service configuration.  The client source will be registered on the endpoint.
-     *
-     * @param endpoint the endpoint to bind the service to
-     * @param config the service configuration
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return a new client source
-     * @throws IOException if an error occurs
-     */
-    public static <I, O> ClientSource<I, O> createLocalClientSource(final Endpoint endpoint, final LocalServiceConfiguration<I, O> config) throws IOException {
-        final Handle<RequestHandlerSource> handle = endpoint.registerService(config);
-        try {
-            return endpoint.createClientSource(handle.getResource(), config.getRequestClass(), config.getReplyClass());
-        } finally {
-            IoUtils.safeClose(handle);
+            IoUtils.safeClose(requestHandler);
         }
     }
 

@@ -22,21 +22,22 @@
 
 package org.jboss.remoting3.stream;
 
-import java.io.OutputStream;
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.io.InputStreamReader;
-import java.nio.ByteBuffer;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import java.io.InterruptedIOException;
+import java.io.OutputStream;
 import static java.lang.Math.min;
 import static java.lang.Thread.currentThread;
-import org.jboss.xnio.channels.StreamChannel;
-import org.jboss.xnio.channels.ChannelInputStream;
-import org.jboss.xnio.IoHandler;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import org.jboss.xnio.IoFuture;
-import static org.jboss.xnio.IoUtils.safeClose;
+import org.jboss.xnio.IoHandler;
 import static org.jboss.xnio.IoUtils.nullHandler;
+import static org.jboss.xnio.IoUtils.safeClose;
+import org.jboss.xnio.channels.ChannelInputStream;
+import org.jboss.xnio.channels.StreamChannel;
 
 /**
  * A handler factory for automatic forwarding of output streams.
@@ -62,7 +63,7 @@ public final class OutputStreamHandlerFactory implements StreamHandlerFactory<Ou
             return new LocalHandler(localInstance);
         }
 
-        public IoHandler<StreamChannel> getRemoteHandler() {
+        public IoHandler<Channel> getRemoteHandler() {
             return nullHandler();
         }
 

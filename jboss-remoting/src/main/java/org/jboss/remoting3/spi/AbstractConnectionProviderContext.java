@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2009, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -22,21 +22,16 @@
 
 package org.jboss.remoting3.spi;
 
-import java.io.IOException;
+import java.util.concurrent.Executor;
 
-/**
- * A request handler source, which can be passed to remote endpoints.  Remote systems can then use the handler source
- * to acquire request handlers, or they may pass it on to other systems.  Acquiring a request handler using this method
- * has the advantage that a round trip to the remote side is not necessary; the local side can spawn a request handler
- * and simply notify the remote side of the change.
- */
-public interface RequestHandlerSource extends AutoCloseable<RequestHandlerSource> {
+public abstract class AbstractConnectionProviderContext extends AbstractHandleableCloseable<ConnectionProviderContext> implements ConnectionProviderContext {
 
     /**
-     * Create a request handler for the service corresponding to this request handler source.
+     * Basic constructor.
      *
-     * @return a request handler
-     * @throws IOException if a client could not be opened
+     * @param executor the executor used to execute the close notification handlers
      */
-    Handle<RequestHandler> createRequestHandler() throws IOException;
+    protected AbstractConnectionProviderContext(final Executor executor) {
+        super(executor);
+    }
 }

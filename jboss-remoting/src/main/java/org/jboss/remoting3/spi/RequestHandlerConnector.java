@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2009, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -20,37 +20,20 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3;
-
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
-import org.jboss.remoting3.spi.AbstractHandleableCloseable;
+package org.jboss.remoting3.spi;
 
 /**
  *
  */
-abstract class AbstractContextImpl<T> extends AbstractHandleableCloseable<T> {
+public interface RequestHandlerConnector {
 
-    private final ConcurrentMap<Object, Object> attributes = new ConcurrentHashMap<Object, Object>();
-
-    AbstractContextImpl(final Executor executor) {
-        super(executor);
-    }
-
-    public ConcurrentMap<Object, Object> getAttributes() {
-        return attributes;
-    }
-
-    protected Executor getExecutor() {
-        return super.getExecutor();
-    }
-
-    protected boolean isOpen() {
-        return super.isOpen();
-    }
-
-    public String toString() {
-        return "generic context instance <" + Integer.toHexString(hashCode()) + ">";
-    }
+    /**
+     * Get the request handler.  If this connector was forwarded, this method may only be called once;
+     * further attempts to call it should result in a {@code SecurityException}.
+     *
+     * @param result the result of the connection
+     * @return the cancellation handle
+     * @throws SecurityException if this is a forwarding connector, thrown if the connector was not forwarded or if this method is called more than one time
+     */
+    Cancellable createRequestHandler(Result<RequestHandler> result) throws SecurityException;
 }

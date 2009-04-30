@@ -20,22 +20,30 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3;
+package org.jboss.remoting3.spi;
 
-import java.util.concurrent.ConcurrentMap;
+import java.io.Closeable;
 
 /**
- * The server-side context of a service.  Used to hold state relating to a service (known as a {@code ContextSource} on
- * the client side).
- *
- * @apiviz.exclude
+ * A connection to a foreign endpoint.  This interface is implemented by the protocol implementation.
  */
-public interface ServiceContext extends HandleableCloseable<ServiceContext> {
+public interface ConnectionHandler extends Closeable {
 
     /**
-     * Get an attribute map which can be used to cache arbitrary state on the server side.
+     * Open a request handler.
      *
-     * @return the attribute map
+     * @param serviceName the service name
+     * @param groupName the group name
+     * @param result the result for the connected request handler
+     * @return a handle which may be used to cancel the pending operation
      */
-    ConcurrentMap<Object, Object> getAttributes();
+    Cancellable open(String serviceName, String groupName, Result<RequestHandler> result);
+
+    /**
+     * Create a connector which may be used to communicate with the given local RequestHandler.  The connector
+     * should only produce a result once it has passed to the remote side of this connection.
+     *
+     * @return the connector
+     */
+    RequestHandlerConnector createConnector(RequestHandler localHandler);
 }

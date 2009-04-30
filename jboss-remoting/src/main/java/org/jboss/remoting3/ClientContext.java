@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3;
 
-import java.util.concurrent.ConcurrentMap;
+import java.io.IOException;
 
 /**
  * The server context for a single remote client instance.
@@ -30,18 +30,18 @@ import java.util.concurrent.ConcurrentMap;
  * @apiviz.exclude
  */
 public interface ClientContext extends HandleableCloseable<ClientContext> {
-    /**
-     * Get the attributes for this end of the channel as a map.
-     *
-     * @return the attribute map
-     */
-    ConcurrentMap<Object, Object> getAttributes();
 
     /**
-     * Get the service that this context is associated with, or {@code null} if there is no
-     * service.
+     * Get the connection associated with this client context.
      *
-     * @return the service, or {@code null} if there is none
+     * @return the connection
      */
-    ServiceContext getServiceContext();
+    Connection getConnection();
+
+    /**
+     * Close the client from the server side.
+     *
+     * @throws IOException if an I/O error occurs
+     */
+    void close() throws IOException;
 }

@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2009, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -20,22 +20,19 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3;
-
-import java.util.concurrent.Executor;
-import org.jboss.xnio.log.Logger;
+package org.jboss.remoting3.spi;
 
 /**
  *
  */
-final class ServiceContextImpl extends AbstractContextImpl<ServiceContext> implements ServiceContext {
-    private static final Logger log = Logger.getLogger("org.jboss.remoting.service-context");
+public interface ConnectionHandlerFactory {
 
-    protected ServiceContextImpl(final Executor executor) {
-        super(executor);
-    }
-
-    public String toString() {
-        return "service context instance <" + Integer.toHexString(hashCode()) + ">";
-    }
+    /**
+     * Create a connection handler instance.  The provided connection handler is the handler for the next hop of
+     * the local connection; typically this will be the endpoint loopback connection but it may not be.
+     *
+     * @param localConnectionHandler the local connection handler for incoming requests
+     * @return the connection handler for outgoing requests
+     */
+    ConnectionHandler createInstance(ConnectionHandler localConnectionHandler);
 }

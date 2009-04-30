@@ -44,12 +44,12 @@ final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<RequestHandl
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.listener");
 
-    LocalRequestHandler(Config<I, O> config) {
-        super(config.getExecutor());
-        requestListener = config.getRequestListener();
-        clientContext = config.getClientContext();
-        requestClass = config.getRequestClass();
-        replyClass = config.getReplyClass();
+    LocalRequestHandler(final Executor executor, final RequestListener<I, O> requestListener, final ClientContextImpl clientContext, final Class<I> requestClass, final Class<O> replyClass) {
+        super(executor);
+        this.requestListener = requestListener;
+        this.clientContext = clientContext;
+        this.requestClass = requestClass;
+        this.replyClass = replyClass;
     }
 
     public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler replyHandler) {
@@ -86,69 +86,13 @@ final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<RequestHandl
 
     protected void closeAction() throws IOException {
         try {
-            requestListener.handleClientClose(clientContext);
+            requestListener.handleClose();
         } catch (Throwable t) {
-            log.error(t, "Unexpected exception in request listener client close handler method");
-        }
-    }
-
-    void open() throws IOException {
-        try {
-            requestListener.handleClientOpen(clientContext);
-        } catch (Throwable t) {
-            final IOException ioe = new IOException("Failed to open client context");
-            ioe.initCause(t);
-            throw ioe;
+            log.error(t, "Unexpected exception in request listener handleClose() method");
         }
     }
 
     public String toString() {
         return "local request handler <" + Integer.toHexString(hashCode()) + "> (request listener = " + String.valueOf(requestListener) + ")";
-    }
-
-    static class Config<I, O> {
-        private final Class<I> requestClass;
-        private final Class<O> replyClass;
-
-        private Executor executor;
-        private RequestListener<I, O> requestListener;
-        private ClientContextImpl clientContext;
-
-        Config(final Class<I> requestClass, final Class<O> replyClass) {
-            this.requestClass = requestClass;
-            this.replyClass = replyClass;
-        }
-
-        public Class<I> getRequestClass() {
-            return requestClass;
-        }
-
-        public Class<O> getReplyClass() {
-            return replyClass;
-        }
-
-        public Executor getExecutor() {
-            return executor;
-        }
-
-        public void setExecutor(final Executor executor) {
-            this.executor = executor;
-        }
-
-        public RequestListener<I, O> getRequestListener() {
-            return requestListener;
-        }
-
-        public void setRequestListener(final RequestListener<I, O> requestListener) {
-            this.requestListener = requestListener;
-        }
-
-        public ClientContextImpl getClientContext() {
-            return clientContext;
-        }
-
-        public void setClientContext(final ClientContextImpl clientContext) {
-            this.clientContext = clientContext;
-        }
     }
 }

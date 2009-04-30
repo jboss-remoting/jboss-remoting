@@ -46,7 +46,7 @@ public final class CloseableTestCase extends TestCase {
         try {
             final AtomicBoolean closed = new AtomicBoolean();
             final CountDownLatch latch = new CountDownLatch(1);
-            final AbstractHandleableCloseable<Object> closeable = new AbstractHandleableCloseable<Object>(executorService) {
+            final AbstractSimpleCloseable closeable = new AbstractSimpleCloseable(executorService) {
                 // empty
             };
             try {
@@ -75,12 +75,12 @@ public final class CloseableTestCase extends TestCase {
         try {
             final AtomicBoolean closed = new AtomicBoolean();
             final CountDownLatch latch = new CountDownLatch(1);
-            final AbstractAutoCloseable<Object> closeable = new AbstractAutoCloseable<Object>(executorService) {
+            final AbstractAutoCloseable closeable = new AbstractAutoCloseable(executorService) {
                 // empty
             };
-            final Handle<Object> rootHandle = closeable.getHandle();
+            final Handle rootHandle = closeable.getHandle();
             try {
-                closeable.addCloseHandler(new CloseHandler<Object>() {
+                closeable.addCloseHandler(new CloseHandler() {
                     public void handleClose(final Object x) {
                         closed.set(true);
                         latch.countDown();
@@ -105,7 +105,7 @@ public final class CloseableTestCase extends TestCase {
         try {
             final AtomicBoolean closed = new AtomicBoolean();
             final CountDownLatch latch = new CountDownLatch(1);
-            final AbstractAutoCloseable<Object> closeable = new AbstractAutoCloseable<Object>(executorService) {
+            final AbstractAutoCloseable closeable = new AbstractAutoCloseable(executorService) {
                 // empty
             };
             final Handle<Object> rootHandle = closeable.getHandle();
@@ -141,7 +141,7 @@ public final class CloseableTestCase extends TestCase {
         try {
             final AtomicBoolean closed = new AtomicBoolean();
             final CountDownLatch latch = new CountDownLatch(1);
-            final AbstractAutoCloseable<Object> closeable = new AbstractAutoCloseable<Object>(executorService) {
+            final AbstractAutoCloseable closeable = new AbstractAutoCloseable(executorService) {
                 // empty
             };
             final Handle<Object> rootHandle = closeable.getHandle();
@@ -183,7 +183,7 @@ public final class CloseableTestCase extends TestCase {
     public void testHandlerRemoval() throws Throwable {
         final AtomicBoolean handlerCalled = new AtomicBoolean();
         final Executor executor = IoUtils.directExecutor();
-        final AbstractAutoCloseable<Object> closeable = new AbstractAutoCloseable<Object>(executor) {
+        final AbstractAutoCloseable closeable = new AbstractAutoCloseable(executor) {
             // empty
         };
         final Handle<Object> rootHandle = closeable.getHandle();

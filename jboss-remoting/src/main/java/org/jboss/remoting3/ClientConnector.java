@@ -22,35 +22,30 @@
 
 package org.jboss.remoting3;
 
+import org.jboss.xnio.IoFuture;
+
 /**
- * A simple request listener implementation that implements all methods with no-operation implementations.
- *
- * @param <I> the request type
- * @param <O> the reply type
+ * A client connector.  Such a connector can usually be sent across a link to a specific peer.  Attempting to access
+ * the client from the wrong peer, or attempting to send the connector to a peer for whom it is not intended, will
+ * result in an exception.
  */
-public abstract class AbstractRequestListener<I, O> implements RequestListener<I, O> {
+public interface ClientConnector<I, O> {
 
     /**
-     * {@inheritDoc}  This implementation performs no operation.
+     * Get the future client associated with this connector.  This method may only be called after this connector
+     * has passed over its associated connection.
+     *
+     * @return the future client
+     * @throws SecurityException if this client is being accessed from the wrong peer
      */
-    public void handleClientOpen(final ClientContext context) {
-    }
+    IoFuture<? extends Client<I, O>> getFutureClient() throws SecurityException;
 
     /**
-     * {@inheritDoc}  This implementation performs no operation.
+     * Get the client context associated with this connector.  This method may only be called from the originating
+     * side of the connection.
+     *
+     * @return the client context
+     * @throws SecurityException if the client context is accessed on the remote side of the connection
      */
-    public void handleServiceOpen(final ServiceContext context) {
-    }
-
-    /**
-     * {@inheritDoc}  This implementation performs no operation.
-     */
-    public void handleServiceClose(final ServiceContext context) {
-    }
-
-    /**
-     * {@inheritDoc}  This implementation performs no operation.
-     */
-    public void handleClientClose(final ClientContext context) {
-    }
+    ClientContext getClientContext() throws SecurityException;
 }

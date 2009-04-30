@@ -29,6 +29,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.RemotingException;
+import org.jboss.remoting3.HandleableCloseable;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.WeakCloseable;
 import org.jboss.xnio.log.Logger;
@@ -37,7 +38,7 @@ import org.jboss.xnio.log.Logger;
  * A closeable implementation that supports reference counting.  Since the initial reference count is zero, implementors
  * must be careful to ensure that the first operation invoked is a call to {@link #getHandle()}.
  */
-public abstract class AbstractAutoCloseable<T> extends AbstractHandleableCloseable<T> implements AutoCloseable<T> {
+public abstract class AbstractAutoCloseable<T extends HandleableCloseable<T>> extends AbstractHandleableCloseable<T> implements AutoCloseable<T> {
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.resource");
 

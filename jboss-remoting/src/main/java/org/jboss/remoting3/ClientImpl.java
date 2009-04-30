@@ -24,10 +24,10 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
-import org.jboss.remoting3.spi.Handle;
 import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
@@ -35,25 +35,25 @@ import org.jboss.xnio.log.Logger;
 /**
  *
  */
-final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implements Client<I, O> {
+final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> implements Client<I, O> {
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.client");
 
-    private final Handle<RequestHandler> handle;
+    private final RequestHandler handler;
     private final Class<I> requestClass;
     private final Class<O> replyClass;
 
-    private ClientImpl(final Handle<RequestHandler> handle, final Executor executor, final Class<I> requestClass, final Class<O> replyClass) {
+    private ClientImpl(final RequestHandler handler, final Executor executor, final Class<I> requestClass, final Class<O> replyClass) {
         super(executor);
-        this.handle = handle;
+        this.handler = handler;
         this.requestClass = requestClass;
         this.replyClass = replyClass;
     }
 
-    static <I, O> ClientImpl<I, O> create(final Handle<RequestHandler> handle, final Executor executor, final Class<I> requestClass, final Class<O> replyClass) {
-        final ClientImpl<I, O> ci = new ClientImpl<I, O>(handle, executor, requestClass, replyClass);
-        handle.addCloseHandler(new CloseHandler<Handle<RequestHandler>>() {
-            public void handleClose(final Handle<RequestHandler> closed) {
+    static <I, O> ClientImpl<I, O> create(final RequestHandler handler, final Executor executor, final Class<I> requestClass, final Class<O> replyClass) {
+        final ClientImpl<I, O> ci = new ClientImpl<I, O>(handler, executor, requestClass, replyClass);
+        handler.addCloseHandler(new CloseHandler<RequestHandler>() {
+            public void handleClose(final RequestHandler closed) {
                 IoUtils.safeClose(ci);
             }
         });
@@ -61,7 +61,7 @@ final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implement
     }
 
     protected void closeAction() throws IOException {
-        handle.close();
+        handler.close();
     }
 
     public O invoke(final I request) throws IOException {
@@ -73,9 +73,9 @@ final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implement
         final QueueExecutor executor = new QueueExecutor();
         final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor, replyClass);
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
-        final RemoteRequestContext requestContext = handle.getResource().receiveRequest(actualRequest, replyHandler);
+        final RemoteRequestContext requestContext = handler.receiveRequest(actualRequest, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
-        futureReply.addNotifier(IoUtils.<O>attachmentClosingNotifier(), executor);
+        futureReply.addNotifier(IoUtils.attachmentClosingNotifier(), executor);
         executor.runQueue();
         try {
             final O reply = futureReply.getInterruptibly();
@@ -97,9 +97,9 @@ final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implement
         }
         log.trace("Client.send() sending request \"%s\"", request);
         final I actualRequest = castRequest(request);
-        final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor, replyClass);
+        final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(getExecutor(), replyClass);
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
-        final RemoteRequestContext requestContext = handle.getResource().receiveRequest(actualRequest, replyHandler);
+        final RemoteRequestContext requestContext = handler.receiveRequest(actualRequest, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         return futureReply;
     }
@@ -122,8 +122,8 @@ final class ClientImpl<I, O> extends AbstractContextImpl<Client<I, O>> implement
         return "client instance <" + Integer.toHexString(hashCode()) + ">";
     }
 
-    Handle<RequestHandler> getRequestHandlerHandle() {
-        return handle;
+    RequestHandler getRequestHandler() {
+        return handler;
     }
 
     Class<I> getRequestClass() {

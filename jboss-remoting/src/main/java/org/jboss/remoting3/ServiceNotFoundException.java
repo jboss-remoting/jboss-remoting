@@ -27,7 +27,7 @@ import java.net.URI;
 /**
  * Service not found.  This exception is thrown when a service is looked up which is not registered anywhere.
  */
-public final class ServiceNotFoundException extends RemotingException {
+public class ServiceNotFoundException extends RemotingException {
 
     private static final long serialVersionUID = -998858276817298658L;
 

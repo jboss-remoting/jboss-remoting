@@ -25,13 +25,13 @@ package org.jboss.remoting3.spi;
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.HandleableCloseable;
+import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.RemotingException;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
@@ -40,17 +40,17 @@ import org.jboss.xnio.log.Logger;
  * A basic implementation of a closeable resource.  Use as a convenient base class for your closeable resources.
  * Ensures that the {@code close()} method is idempotent; implements the registry of close handlers.
  */
-public abstract class AbstractHandleableCloseable<T> implements HandleableCloseable<T> {
+public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<T>> implements HandleableCloseable<T> {
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.resource");
-
-    protected final Executor executor;
-    private final Object closeLock = new Object();
-    private final AtomicBoolean closed = new AtomicBoolean();
-    private Set<CloseHandler<? super T>> closeHandlers;
-
     private static final boolean LEAK_DEBUGGING;
+
+    private final Executor executor;
     private final StackTraceElement[] backtrace;
+
+    private final Object closeLock = new Object();
+    private boolean closed;
+    private Map<Key, CloseHandler<? super T>> closeHandlers = null;
 
     static {
         boolean b = false;
@@ -86,7 +86,9 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
      * @return {@code true} if the resource is still open
      */
     protected boolean isOpen() {
-        return ! closed.get();
+        synchronized (closeLock) {
+            return ! closed;
+        }
     }
 
     /**
@@ -99,24 +101,21 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
     /**
      * {@inheritDoc}
      */
-    @SuppressWarnings({ "unchecked" })
     public final void close() throws IOException {
-        if (! closed.getAndSet(true)) {
+        final Map<Key, CloseHandler<? super T>> closeHandlers;
+        synchronized (closeLock) {
+            if (closed) {
+                return;
+            }
+            closed = true;
+            closeHandlers = this.closeHandlers;
+            this.closeHandlers = null;
+        }
+        if (closeHandlers != null) {
             log.trace("Closed %s", this);
-            synchronized (closeLock) {
-                if (closeHandlers != null) {
-                    for (final CloseHandler<? super T> handler : closeHandlers) {
-                        try {
-                            executor.execute(new Runnable() {
-                                public void run() {
-                                    SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this);
-                                }
-                            });
-                        } catch (RejectedExecutionException ree) {
-                            SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this);
-                        }
-                    }
-                    closeHandlers = null;
+            if (closeHandlers != null) {
+                for (final CloseHandler<? super T> handler : closeHandlers.values()) {
+                    runCloseTask(new CloseHandlerTask<T>(handler));
                 }
             }
             closeAction();
@@ -127,21 +126,56 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
      * {@inheritDoc}
      */
     public Key addCloseHandler(final CloseHandler<? super T> handler) {
+        if (handler == null) {
+            throw new NullPointerException("handler is null");
+        }
         synchronized (closeLock) {
-            if (closeHandlers == null) {
-                closeHandlers = new HashSet<CloseHandler<? super T>>();
-            }
-            closeHandlers.add(handler);
-            return new Key() {
-                public void remove() {
-                    synchronized (closeLock) {
-                        final Set<CloseHandler<? super T>> closeHandlers = AbstractHandleableCloseable.this.closeHandlers;
-                        if (closeHandlers != null) {
-                            closeHandlers.remove(handler);
-                        }
-                    }
+            if (! closed) {
+                final Key key = new KeyImpl<T>(this);
+                final Map<Key, CloseHandler<? super T>> closeHandlers = this.closeHandlers;
+                if (closeHandlers == null) {
+                    final IdentityHashMap<Key, CloseHandler<? super T>> newMap = new IdentityHashMap<Key, CloseHandler<? super T>>();
+                    this.closeHandlers = newMap;
+                    newMap.put(key, handler);
+                } else {
+                    closeHandlers.put(key, handler);
                 }
-            };
+                return key;
+            }
+        }
+        runCloseTask(new CloseHandlerTask<T>(handler));
+        return new NullKey();
+    }
+
+    private void runCloseTask(final CloseHandlerTask<T> task) {
+        try {
+            executor.execute(task);
+        } catch (RejectedExecutionException ree) {
+            task.run();
+        }
+    }
+
+    private static final class NullKey implements Key {
+        public void remove() {
+        }
+    }
+
+    private static final class KeyImpl<T extends HandleableCloseable<T>> implements Key {
+
+        private final AbstractHandleableCloseable<T> instance;
+
+        private KeyImpl(final AbstractHandleableCloseable<T> instance) {
+            this.instance = instance;
+        }
+
+        public void remove() {
+            synchronized (instance.closeLock) {
+                final Map<Key, CloseHandler<? super T>> closeHandlers = instance.closeHandlers;
+
+                if (closeHandlers != null) {
+                    closeHandlers.remove(this);
+                }
+            }
         }
     }
 
@@ -161,7 +195,7 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
         try {
             super.finalize();
         } finally {
-            if (isOpen()) {
+            if (! isOpen()) {
                 if (LEAK_DEBUGGING) {
                     final Throwable t = new LeakThrowable();
                     t.setStackTrace(backtrace);
@@ -174,6 +208,19 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
         }
     }
 
+    /**
+     * Check if open, throwing an exception if it is not.
+     *
+     * @throws org.jboss.remoting3.NotOpenException if not open
+     */
+    protected void checkOpen() throws NotOpenException {
+        synchronized (closeLock) {
+            if (closed) {
+                throw new NotOpenException(toString() + " is not open");
+            }
+        }
+    }
+
     @SuppressWarnings({ "serial" })
     private static final class LeakThrowable extends Throwable {
 
@@ -182,6 +229,20 @@ public abstract class AbstractHandleableCloseable<T> implements HandleableClosea
 
         public String toString() {
             return "a leaked reference";
+        }
+    }
+
+    private final class CloseHandlerTask<T extends HandleableCloseable<T>> implements Runnable {
+
+        private final CloseHandler<? super T> handler;
+
+        private CloseHandlerTask(final CloseHandler<? super T> handler) {
+            this.handler = handler;
+        }
+
+        @SuppressWarnings({ "unchecked" })
+        public void run() {
+            SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this);
         }
     }
 }

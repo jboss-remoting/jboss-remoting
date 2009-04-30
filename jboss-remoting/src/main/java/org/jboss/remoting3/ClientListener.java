@@ -20,18 +20,27 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.spi;
+package org.jboss.remoting3;
 
-import java.util.concurrent.Executor;
-
-public abstract class AbstractEndpointConnectionAcceptor extends AbstractHandleableCloseable<EndpointConnectionAcceptor> implements EndpointConnectionAcceptor {
+/**
+ * A client listener associated with a service.  When a client is opened for this service, a new request listener
+ * is created and returned.
+ *
+ * @param <I> the request type
+ * @param <O> the reply type
+ *
+ * @apiviz.landmark
+ */
+public interface ClientListener<I, O> {
 
     /**
-     * Basic constructor.
+     * Handle a client open by returning a new request listener.  The supplied client context may be used to register
+     * a notifier for when the client is closed.
+     * <p/>
+     * If {@code null} is returned, the client is closed with an error.
      *
-     * @param executor the executor used to execute the close notification handlers
+     * @param clientContext the client context
+     * @return the request listener
      */
-    protected AbstractEndpointConnectionAcceptor(final Executor executor) {
-        super(executor);
-    }
+    RequestListener<I, O> handleClientOpen(ClientContext clientContext);
 }

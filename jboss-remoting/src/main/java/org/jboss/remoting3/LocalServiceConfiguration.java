@@ -28,7 +28,7 @@ package org.jboss.remoting3;
  * @apiviz.exclude
  */
 public final class LocalServiceConfiguration<I, O> {
-    private final RequestListener<I, O> requestListener;
+    private final ClientListener<I, O> clientListener;
     private final Class<I> requestClass;
     private final Class<O> replyClass;
     private String serviceType;
@@ -38,12 +38,12 @@ public final class LocalServiceConfiguration<I, O> {
     /**
      * Construct a new instance.
      *
-     * @param requestListener the request listener
+     * @param clientListener the client listener
      * @param requestClass the request class
      * @param replyClass the reply class
      */
-    public LocalServiceConfiguration(final RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) {
-        this.requestListener = requestListener;
+    public LocalServiceConfiguration(final ClientListener<I, O> clientListener, final Class<I> requestClass, final Class<O> replyClass) {
+        this.clientListener = clientListener;
         this.requestClass = requestClass;
         this.replyClass = replyClass;
     }
@@ -53,8 +53,8 @@ public final class LocalServiceConfiguration<I, O> {
      *
      * @return the request listener
      */
-    public RequestListener<I, O> getRequestListener() {
-        return requestListener;
+    public ClientListener<I, O> getClientListener() {
+        return clientListener;
     }
 
     /**
