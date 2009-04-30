@@ -60,13 +60,6 @@ final class ServiceRegistration {
                 (endpointName == null || endpointName.length() == 0 || "*".equals(endpointName) || endpointName.equals(this.endpointName));
     }
 
-    public boolean matches(final ServiceSpecification spec) {
-        final String serviceType = spec.getServiceType();
-        final String groupName = spec.getGroupName();
-        final String endpointName = spec.getEndpointName();
-        return matches(serviceType, groupName, endpointName);
-    }
-
     public boolean isRemote() {
         return remote;
     }

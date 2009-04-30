@@ -32,33 +32,66 @@ import java.net.URI;
 public interface ServiceLocationListener {
     void serviceLocated(SimpleCloseable listenerHandler, ServiceInfo info);
 
+    /**
+     * Information about a located service.
+     */
     final class ServiceInfo {
         private URI serviceUri;
         private URI locationUri;
-        private int preference;
+        private int metric;
 
+        /**
+         * Get the URI of the located service.
+         *
+         * @return the URI
+         */
         public URI getServiceUri() {
             return serviceUri;
         }
 
+        /**
+         * Set the URI of the located service.
+         *
+         * @param serviceUri the URI
+         */
         public void setServiceUri(final URI serviceUri) {
             this.serviceUri = serviceUri;
         }
 
+        /**
+         * Get the URI of the location of the located service.
+         *
+         * @return the URI
+         */
         public URI getLocationUri() {
             return locationUri;
         }
 
+        /**
+         * Set the URI of the location of the located service.
+         *
+         * @param locationUri the URI
+         */
         public void setLocationUri(final URI locationUri) {
             this.locationUri = locationUri;
         }
 
-        public int getPreference() {
-            return preference;
+        /**
+         * Get the preference metric of this located service.
+         *
+         * @return the preference metric
+         */
+        public int getMetric() {
+            return metric;
         }
 
-        public void setPreference(final int preference) {
-            this.preference = preference;
+        /**
+         * Set the preference metric of this located service.
+         *
+         * @param metric the preference metric
+         */
+        public void setMetric(final int metric) {
+            this.metric = metric;
         }
     }
 }
