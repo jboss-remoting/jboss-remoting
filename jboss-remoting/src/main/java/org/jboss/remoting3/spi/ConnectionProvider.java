@@ -31,6 +31,4 @@ import java.net.URI;
  */
 public interface ConnectionProvider {
     Cancellable connect(URI uri, Result<ConnectionHandlerFactory> result) throws IllegalArgumentException;
-
-    URI getConnectionUri(URI uri);
 }
