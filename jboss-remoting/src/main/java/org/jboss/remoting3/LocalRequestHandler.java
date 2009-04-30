@@ -25,7 +25,7 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
-import org.jboss.remoting3.spi.AbstractAutoCloseable;
+import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.RequestHandler;
@@ -35,7 +35,7 @@ import org.jboss.xnio.log.Logger;
 /**
  *
  */
-final class LocalRequestHandler<I, O> extends AbstractAutoCloseable<RequestHandler> implements RequestHandler {
+final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<RequestHandler> implements RequestHandler {
 
     private final RequestListener<I, O> requestListener;
     private final ClientContextImpl clientContext;

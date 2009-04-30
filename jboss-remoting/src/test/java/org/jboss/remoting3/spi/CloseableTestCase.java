@@ -22,17 +22,15 @@
 
 package org.jboss.remoting3.spi;
 
-import junit.framework.TestCase;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import junit.framework.TestCase;
+import org.jboss.remoting3.CloseHandler;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
-import org.jboss.remoting3.CloseHandler;
-import org.jboss.remoting3.HandleableCloseable;
 
 /**
  *
@@ -67,137 +65,6 @@ public final class CloseableTestCase extends TestCase {
             }
         } finally {
             executorService.shutdownNow();
-        }
-    }
-
-    public void testAutoClose() throws Throwable {
-        final ExecutorService executorService = Executors.newCachedThreadPool();
-        try {
-            final AtomicBoolean closed = new AtomicBoolean();
-            final CountDownLatch latch = new CountDownLatch(1);
-            final AbstractAutoCloseable closeable = new AbstractAutoCloseable(executorService) {
-                // empty
-            };
-            final Handle rootHandle = closeable.getHandle();
-            try {
-                closeable.addCloseHandler(new CloseHandler() {
-                    public void handleClose(final Object x) {
-                        closed.set(true);
-                        latch.countDown();
-                    }
-                });
-                assertTrue(closeable.isOpen());
-                assertFalse(closed.get());
-                rootHandle.close();
-                assertTrue(latch.await(500L, TimeUnit.MILLISECONDS));
-                assertFalse(closeable.isOpen());
-                assertTrue(closed.get());
-            } finally {
-                IoUtils.safeClose(closeable);
-            }
-        } finally {
-            executorService.shutdownNow();
-        }
-    }
-
-    public void testAutoCloseWithOneRef() throws Throwable {
-        final ExecutorService executorService = Executors.newCachedThreadPool();
-        try {
-            final AtomicBoolean closed = new AtomicBoolean();
-            final CountDownLatch latch = new CountDownLatch(1);
-            final AbstractAutoCloseable closeable = new AbstractAutoCloseable(executorService) {
-                // empty
-            };
-            final Handle<Object> rootHandle = closeable.getHandle();
-            try {
-                closeable.addCloseHandler(new CloseHandler<Object>() {
-                    public void handleClose(final Object x) {
-                        closed.set(true);
-                        latch.countDown();
-                    }
-                });
-                assertTrue(closeable.isOpen());
-                assertFalse(closed.get());
-                final Handle<Object> h1 = closeable.getHandle();
-                assertTrue(closeable.isOpen());
-                assertFalse(closed.get());
-                rootHandle.close();
-                assertTrue(closeable.isOpen());
-                assertFalse(closed.get());
-                h1.close();
-                assertTrue(latch.await(500L, TimeUnit.MILLISECONDS));
-                assertFalse(closeable.isOpen());
-                assertTrue(closed.get());
-            } finally {
-                IoUtils.safeClose(closeable);
-            }
-        } finally {
-            executorService.shutdownNow();
-        }
-    }
-
-    public void testAutoCloseWithThreeRefs() throws Throwable {
-        final ExecutorService executorService = Executors.newCachedThreadPool();
-        try {
-            final AtomicBoolean closed = new AtomicBoolean();
-            final CountDownLatch latch = new CountDownLatch(1);
-            final AbstractAutoCloseable closeable = new AbstractAutoCloseable(executorService) {
-                // empty
-            };
-            final Handle<Object> rootHandle = closeable.getHandle();
-            try {
-                closeable.addCloseHandler(new CloseHandler<Object>() {
-                    public void handleClose(final Object x) {
-                        closed.set(true);
-                        latch.countDown();
-                    }
-                });
-                assertTrue(closeable.isOpen());
-                assertFalse(closed.get());
-                final Handle<Object> h1 = closeable.getHandle();
-                final Handle<Object> h2 = closeable.getHandle();
-                final Handle<Object> h3 = closeable.getHandle();
-                assertTrue(closeable.isOpen());
-                assertFalse(closed.get());
-                rootHandle.close();
-                assertTrue(closeable.isOpen());
-                assertFalse(closed.get());
-                h1.close();
-                assertTrue(closeable.isOpen());
-                assertFalse(closed.get());
-                h2.close();
-                assertTrue(closeable.isOpen());
-                assertFalse(closed.get());
-                h3.close();
-                assertTrue(latch.await(500L, TimeUnit.MILLISECONDS));
-                assertFalse(closeable.isOpen());
-                assertTrue(closed.get());
-            } finally {
-                IoUtils.safeClose(closeable);
-            }
-        } finally {
-            executorService.shutdownNow();
-        }
-    }
-
-    public void testHandlerRemoval() throws Throwable {
-        final AtomicBoolean handlerCalled = new AtomicBoolean();
-        final Executor executor = IoUtils.directExecutor();
-        final AbstractAutoCloseable closeable = new AbstractAutoCloseable(executor) {
-            // empty
-        };
-        final Handle<Object> rootHandle = closeable.getHandle();
-        try {
-            final HandleableCloseable.Key key = closeable.addCloseHandler(new CloseHandler<Object>() {
-                public void handleClose(final Object closed) {
-                    handlerCalled.set(true);
-                }
-            });
-            key.remove();
-            rootHandle.close();
-            assertFalse(handlerCalled.get());
-        } finally {
-            IoUtils.safeClose(closeable);
         }
     }
 }
