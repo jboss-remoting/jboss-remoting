@@ -30,5 +30,15 @@ import java.net.URI;
  * @remoting.implement
  */
 public interface ConnectionProvider {
+
+    /**
+     * Open an outbound connection to the given URI.  This method is expected to be non-blocking, with the result
+     * stored in the result variable possibly asynchronously.
+     *
+     * @param uri the URI to connect to
+     * @param result the result which should receive the connection
+     * @return a handle which may be used to cancel the connect attempt
+     * @throws IllegalArgumentException if the URI is not valid
+     */
     Cancellable connect(URI uri, Result<ConnectionHandlerFactory> result) throws IllegalArgumentException;
 }
