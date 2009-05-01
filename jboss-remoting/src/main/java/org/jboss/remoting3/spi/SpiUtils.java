@@ -23,6 +23,11 @@
 package org.jboss.remoting3.spi;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.RequestCancelHandler;
 import org.jboss.remoting3.RequestContext;
@@ -122,6 +127,100 @@ public final class SpiUtils {
                 future.cancel();
             }
         };
+    }
+
+    /**
+     * Create a connection handler factory for a public class which implements {@code ConnectionHandler} and has a
+     * public constructor which accepts a {@code ConnectionHandler} as its sole parameter.
+     *
+     * @param handlerClass the class of the handler
+     * @param <T> the type of the handler
+     * @return the handler factory
+     * @throws IllegalArgumentException if the class does not meet the requirements
+     */
+    public static <T extends ConnectionHandler> ConnectionHandlerFactory connectionHandlerFactory(final Class<T> handlerClass) throws IllegalArgumentException {
+        return AccessController.doPrivileged(new PrivilegedAction<ConnectionHandlerFactory>() {
+            public ConnectionHandlerFactory run() {
+                final Constructor<T> constructor;
+                try {
+                    constructor = handlerClass.getConstructor(ConnectionHandler.class);
+                } catch (NoSuchMethodException e) {
+                    throw new IllegalArgumentException("No valid constructor is present");
+                }
+                if ((handlerClass.getModifiers() & constructor.getModifiers() & Modifier.PUBLIC) == 0) {
+                    throw new IllegalArgumentException("Class or constructor is not public");
+                }
+                for (Class<?> exceptionType : constructor.getExceptionTypes()) {
+                    if (Exception.class.isAssignableFrom(exceptionType) && ! RuntimeException.class.isAssignableFrom(exceptionType)) {
+                        throw new IllegalArgumentException("Constructor may not throw checked exceptions");
+                    }
+                }
+                return new ConnectionHandlerFactory() {
+                    public ConnectionHandler createInstance(final ConnectionHandler localConnectionHandler) {
+                        return AccessController.doPrivileged(new PrivilegedAction<ConnectionHandler>() {
+                            public ConnectionHandler run() {
+                                try {
+                                    return constructor.newInstance(localConnectionHandler);
+                                } catch (InstantiationException e) {
+                                    throw new IllegalStateException("Unexpected exception", e);
+                                } catch (IllegalAccessException e) {
+                                    throw new IllegalStateException("Unexpected exception", e);
+                                } catch (InvocationTargetException e) {
+                                    throw new IllegalStateException("Unexpected exception", e.getCause());
+                                }
+                            }
+                        });
+                    }
+                };
+            }
+        });
+    }
+
+    /**
+     * Create a connection provider factory for a public class which implements {@code ConnectionProvider} and has a
+     * public constructor which accepts a {@code ConnectionProviderContext} as its sole parameter.
+     *
+     * @param providerClass the class of the provider
+     * @param <T> the type of the provider
+     * @return the provider factory
+     * @throws IllegalArgumentException if the class does not meet the requirements
+     */
+    public static <T extends ConnectionProvider> ConnectionProviderFactory connectionProviderFactory(final Class<T> providerClass) throws IllegalArgumentException {
+        return AccessController.doPrivileged(new PrivilegedAction<ConnectionProviderFactory>() {
+            public ConnectionProviderFactory run() {
+                final Constructor<T> constructor;
+                try {
+                    constructor = providerClass.getConstructor(ConnectionProviderContext.class);
+                } catch (NoSuchMethodException e) {
+                    throw new IllegalArgumentException("No valid constructor is present");
+                }
+                if ((providerClass.getModifiers() & constructor.getModifiers() & Modifier.PUBLIC) == 0) {
+                    throw new IllegalArgumentException("Class or constructor is not public");
+                }
+                for (Class<?> exceptionType : constructor.getExceptionTypes()) {
+                    if (Exception.class.isAssignableFrom(exceptionType) && ! RuntimeException.class.isAssignableFrom(exceptionType)) {
+                        throw new IllegalArgumentException("Constructor may not throw checked exceptions");
+                    }
+                }
+                return new ConnectionProviderFactory() {
+                    public ConnectionProvider createInstance(final ConnectionProviderContext context) {
+                        return AccessController.doPrivileged(new PrivilegedAction<ConnectionProvider>() {
+                            public ConnectionProvider run() {
+                                try {
+                                    return constructor.newInstance(context);
+                                } catch (InstantiationException e) {
+                                    throw new IllegalStateException("Unexpected exception", e);
+                                } catch (IllegalAccessException e) {
+                                    throw new IllegalStateException("Unexpected exception", e);
+                                } catch (InvocationTargetException e) {
+                                    throw new IllegalStateException("Unexpected exception", e.getCause());
+                                }
+                            }
+                        });
+                    }
+                };
+            }
+        });
     }
 
     /**
