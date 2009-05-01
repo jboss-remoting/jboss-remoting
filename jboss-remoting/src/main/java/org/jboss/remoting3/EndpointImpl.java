@@ -367,11 +367,17 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 connectionProviders.remove(uriScheme, provider);
             }
         });
-        return new AbstractSimpleCloseable(executor) {
+        final AbstractSimpleCloseable handle = new AbstractSimpleCloseable(executor) {
             protected void closeAction() throws IOException {
                 context.close();
             }
         };
+        context.addCloseHandler(new CloseHandler<ConnectionProviderContext>() {
+            public void handleClose(final ConnectionProviderContext closed) {
+                IoUtils.safeClose(handle);
+            }
+        });
+        return handle;
     }
 
     public String toString() {
