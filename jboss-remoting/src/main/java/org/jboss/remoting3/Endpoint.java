@@ -74,11 +74,12 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
     <I, O> Client<I, O> createClient(RequestHandler handler, Class<I> requestClass,  Class<O> replyClass) throws IOException;
 
     /**
-     * Open a connection with a peer.
+     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * This method does not block; use the return value to wait for a result if you wish to block.
      *
      * @param destination the destination
-     * @return
-     * @throws IOException
+     * @return the future connection
+     * @throws IOException if an error occurs while starting the connect attempt
      */
     IoFuture<? extends Connection> connect(URI destination) throws IOException;
 
@@ -90,7 +91,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @param providerFactory the provider factory
      * @return a handle which may be used to remove the registration
      */
-    void addConnectionProvider(String uriScheme, ConnectionProviderFactory providerFactory);
+    SimpleCloseable addConnectionProvider(String uriScheme, ConnectionProviderFactory providerFactory);
 
     /**
      * Flags which can be passed in to listener registration methods.

@@ -351,7 +351,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return futureResult;
     }
 
-    public void addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory) {
+    public SimpleCloseable addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory) {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(ADD_CONNECTION_PROVIDER_PERM);
@@ -367,6 +367,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 connectionProviders.remove(uriScheme, provider);
             }
         });
+        return new AbstractSimpleCloseable(executor) {
+            protected void closeAction() throws IOException {
+                context.close();
+            }
+        };
     }
 
     public String toString() {
