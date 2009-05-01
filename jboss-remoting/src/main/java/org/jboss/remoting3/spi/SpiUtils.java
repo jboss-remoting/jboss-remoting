@@ -141,20 +141,8 @@ public final class SpiUtils {
     public static <T extends ConnectionHandler> ConnectionHandlerFactory connectionHandlerFactory(final Class<T> handlerClass) throws IllegalArgumentException {
         return AccessController.doPrivileged(new PrivilegedAction<ConnectionHandlerFactory>() {
             public ConnectionHandlerFactory run() {
-                final Constructor<T> constructor;
-                try {
-                    constructor = handlerClass.getConstructor(ConnectionHandler.class);
-                } catch (NoSuchMethodException e) {
-                    throw new IllegalArgumentException("No valid constructor is present");
-                }
-                if ((handlerClass.getModifiers() & constructor.getModifiers() & Modifier.PUBLIC) == 0) {
-                    throw new IllegalArgumentException("Class or constructor is not public");
-                }
-                for (Class<?> exceptionType : constructor.getExceptionTypes()) {
-                    if (Exception.class.isAssignableFrom(exceptionType) && ! RuntimeException.class.isAssignableFrom(exceptionType)) {
-                        throw new IllegalArgumentException("Constructor may not throw checked exceptions");
-                    }
-                }
+                final Constructor<T> constructor = getPutOneArgConstructor(ConnectionHandler.class, handlerClass);
+                checkForCheckedExceptions(constructor);
                 return new ConnectionHandlerFactory() {
                     public ConnectionHandler createInstance(final ConnectionHandler localConnectionHandler) {
                         return AccessController.doPrivileged(new PrivilegedAction<ConnectionHandler>() {
@@ -176,6 +164,19 @@ public final class SpiUtils {
         });
     }
 
+    private static <T> Constructor<T> getPutOneArgConstructor(final Class<?> argType, final Class<T> targetClass) {
+        final Constructor<T> constructor;
+        try {
+            constructor = targetClass.getConstructor(argType);
+        } catch (NoSuchMethodException e) {
+            throw new IllegalArgumentException("No valid constructor is present");
+        }
+        if ((targetClass.getModifiers() & constructor.getModifiers() & Modifier.PUBLIC) == 0) {
+            throw new IllegalArgumentException("Class or constructor is not public");
+        }
+        return constructor;
+    }
+
     /**
      * Create a connection provider factory for a public class which implements {@code ConnectionProvider} and has a
      * public constructor which accepts a {@code ConnectionProviderContext} as its sole parameter.
@@ -188,20 +189,8 @@ public final class SpiUtils {
     public static <T extends ConnectionProvider> ConnectionProviderFactory connectionProviderFactory(final Class<T> providerClass) throws IllegalArgumentException {
         return AccessController.doPrivileged(new PrivilegedAction<ConnectionProviderFactory>() {
             public ConnectionProviderFactory run() {
-                final Constructor<T> constructor;
-                try {
-                    constructor = providerClass.getConstructor(ConnectionProviderContext.class);
-                } catch (NoSuchMethodException e) {
-                    throw new IllegalArgumentException("No valid constructor is present");
-                }
-                if ((providerClass.getModifiers() & constructor.getModifiers() & Modifier.PUBLIC) == 0) {
-                    throw new IllegalArgumentException("Class or constructor is not public");
-                }
-                for (Class<?> exceptionType : constructor.getExceptionTypes()) {
-                    if (Exception.class.isAssignableFrom(exceptionType) && ! RuntimeException.class.isAssignableFrom(exceptionType)) {
-                        throw new IllegalArgumentException("Constructor may not throw checked exceptions");
-                    }
-                }
+                final Constructor<T> constructor = getPutOneArgConstructor(ConnectionProviderContext.class, providerClass);
+                checkForCheckedExceptions(constructor);
                 return new ConnectionProviderFactory() {
                     public ConnectionProvider createInstance(final ConnectionProviderContext context) {
                         return AccessController.doPrivileged(new PrivilegedAction<ConnectionProvider>() {
@@ -221,6 +210,14 @@ public final class SpiUtils {
                 };
             }
         });
+    }
+
+    private static void checkForCheckedExceptions(final Constructor<?> constructor) {
+        for (Class<?> exceptionType : constructor.getExceptionTypes()) {
+            if (! Error.class.isAssignableFrom(exceptionType) && ! RuntimeException.class.isAssignableFrom(exceptionType)) {
+                throw new IllegalArgumentException("Constructor may not throw checked exceptions");
+            }
+        }
     }
 
     /**
