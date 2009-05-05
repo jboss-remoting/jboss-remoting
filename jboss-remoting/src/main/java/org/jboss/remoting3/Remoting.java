@@ -132,5 +132,50 @@ public final class Remoting {
         }
     }
 
+    /**
+     * Convenience method to rethrow the cause of a {@code RemoteExecutionException} as a specific type, in order
+     * to simplify application exception handling.
+     * <p/>
+     * A typical usage might look like this:
+     * <pre>
+     *   try {
+     *     client.invoke(request);
+     *   } catch (RemoteExecutionException ree) {
+     *     Remoting.rethrowAs(IOException.class, ree);
+     *     Remoting.rethrowAs(RuntimeException.class, ree);
+     *     Remoting.rethrowUnexpected(ree);
+     *   }
+     * </pre>
+     * <p/>
+     * Note that if the nested exception is an {@link InterruptedException}, the type that will actually be thrown
+     * will be {@link RemoteInterruptedException}.
+     *
+     * @param type the class of the exception
+     * @param original the remote execution exception
+     * @param <T> the exception type
+     * @throws T the exception, if it matches the given type
+     */
+    public static <T extends Throwable> void rethrowAs(Class<T> type, RemoteExecutionException original) throws T {
+        final Throwable cause = original.getCause();
+        if (cause == null) {
+            return;
+        }
+        if (type.isAssignableFrom(cause.getClass())) {
+            if (cause instanceof InterruptedException) {
+                throw new RemoteInterruptedException(cause.getMessage(), cause.getCause());
+            }
+            throw type.cast(cause);
+        }
+        return;
+    }
+
+    public static void rethrowUnexpected(RemoteExecutionException original) throws IllegalStateException {
+        Throwable cause = original.getCause();
+        if (cause instanceof InterruptedException) {
+            cause = new RemoteInterruptedException(cause.getMessage(), cause.getCause());
+        }
+        throw new IllegalStateException("Unexpected remote exception occurred", cause);
+    }
+
     private Remoting() { /* empty */ }
 }
