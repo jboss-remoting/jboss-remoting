@@ -65,11 +65,22 @@ final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
     private final class Handler implements ReplyHandler {
 
         public void handleReply(final Object reply) {
+            final Class<O> replyType = FutureReplyImpl.this.replyType;
             final O actualReply;
             try {
                 actualReply = replyType.cast(reply);
             } catch (ClassCastException e) {
-                setException(new ReplyException("Reply was of the wrong type (got <" + reply.getClass().getName() + ">; expected <? extends " + replyType.getName() + ">"));
+                // reply can't be null, else we wouldn't be here...
+                final Class<? extends Object> actualReplyType = reply.getClass();
+                final String actualReplyTypeName = actualReplyType.getName();
+                final String replyTypeName = replyType.getName();
+                final ReplyException replyException;
+                if (actualReplyTypeName.equals(replyTypeName)) {
+                    replyException = new ReplyException("Reply appears to be of the right type (" + replyTypeName + "), but from the wrong classloader (the reply is from classloader " + actualReplyType.getClassLoader() + " but the client expected it to be classloader " + replyType.getClassLoader() + ")");
+                } else {
+                    replyException = new ReplyException("Reply was of the wrong type (got a " + actualReplyTypeName + "; expected a " + replyTypeName + ")");
+                }
+                setException(replyException);
                 return;
             }
             setResult(actualReply);
