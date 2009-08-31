@@ -24,8 +24,11 @@ package org.jboss.remoting3.taglet;
 
 import java.util.Map;
 
+import com.sun.tools.doclets.internal.toolkit.taglets.Taglet;
+import com.sun.tools.doclets.internal.toolkit.taglets.TagletOutput;
+import com.sun.tools.doclets.internal.toolkit.taglets.TagletWriter;
 import com.sun.javadoc.Tag;
-import com.sun.tools.doclets.Taglet;
+import com.sun.javadoc.Doc;
 
 public abstract class RemotingTypeTaglet implements Taglet {
 
@@ -56,6 +59,20 @@ public abstract class RemotingTypeTaglet implements Taglet {
     public boolean isInlineTag() {
         return false;
     }
+
+    public TagletOutput getTagletOutput(final Tag tag, final TagletWriter tagletWriter) throws IllegalArgumentException {
+        final TagletOutput output = tagletWriter.getOutputInstance();
+        output.setOutput(toString(tag.firstSentenceTags()));
+        return output;
+    }
+
+    public TagletOutput getTagletOutput(final Doc doc, final TagletWriter tagletWriter) throws IllegalArgumentException {
+        final TagletOutput output = tagletWriter.getOutputInstance();
+        output.setOutput(toString(doc.tags(getName())));
+        return output;
+    }
+
+    public abstract String toString(final Tag tag);
 
     public String toString(final Tag[] tags) {
         return tags.length > 0 ? toString(tags[0]) : "";
