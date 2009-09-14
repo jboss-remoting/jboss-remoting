@@ -23,7 +23,10 @@
 package org.jboss.remoting3.spi;
 
 /**
+ * A factory which creates the connection handler for a connection.  Instances of this interface are used only
+ * one time to create the single handler instance to correspond to the given local handler.
  *
+ * @remoting.implement
  */
 public interface ConnectionHandlerFactory {
 

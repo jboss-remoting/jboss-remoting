@@ -25,7 +25,8 @@ package org.jboss.remoting3.spi;
 import java.net.URI;
 
 /**
- * A connection provider.  Used to establish connections with remote systems.
+ * A connection provider.  Used to establish connections with remote systems.  There is typically one instance
+ * of this interface per connection provider factory per endpoint.
  *
  * @remoting.implement
  */

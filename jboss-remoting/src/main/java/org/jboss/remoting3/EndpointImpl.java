@@ -356,7 +356,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(ADD_CONNECTION_PROVIDER_PERM);
         }
-        final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl(executor, LOOPBACK_CONNECTION_HANDLER);
+        final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl(executor, loopbackConnectionHandler);
         final ConnectionProvider provider = providerFactory.createInstance(context);
         if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
             IoUtils.safeClose(context);
@@ -397,9 +397,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements Connection {
         private final ConnectionHandler connectionHandler;
 
-        private ConnectionImpl(final ConnectionHandlerFactory connectionHandler) {
+        private ConnectionImpl(final ConnectionHandlerFactory connectionHandlerFactory) {
             super(EndpointImpl.this.executor);
-            this.connectionHandler = connectionHandler.createInstance(LOOPBACK_CONNECTION_HANDLER);
+            connectionHandler = connectionHandlerFactory.createInstance(loopbackConnectionHandler);
         }
 
         public <I, O> IoFuture<? extends Client<I, O>> openClient(final String serviceType, final String groupName, final Class<I> requestClass, final Class<O> replyClass) {
@@ -460,7 +460,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
-    private final ConnectionHandler LOOPBACK_CONNECTION_HANDLER = new ConnectionHandler() {
+    private final ConnectionHandler loopbackConnectionHandler = new ConnectionHandler() {
         public Cancellable open(final String serviceName, final String groupName, final Result<RequestHandler> result) {
             // the loopback connection opens a local service
             // local services are registered as RequestHandlerConnectors
