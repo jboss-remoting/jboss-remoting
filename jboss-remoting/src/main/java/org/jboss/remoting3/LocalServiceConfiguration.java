@@ -26,6 +26,9 @@ package org.jboss.remoting3;
  * A configuration for a service to be deployed into the endpoint.
  *
  * @apiviz.exclude
+ *
+ * @param <I> the request type
+ * @param <O> the reply type
  */
 public final class LocalServiceConfiguration<I, O> {
     private final ClientListener<I, O> clientListener;
@@ -46,6 +49,20 @@ public final class LocalServiceConfiguration<I, O> {
         this.clientListener = clientListener;
         this.requestClass = requestClass;
         this.replyClass = replyClass;
+    }
+
+    /**
+     * Create a new instance.
+     *
+     * @param clientListener the client listener
+     * @param requestClass the request class
+     * @param replyClass the reply class
+     * @param <I> the request type
+     * @param <O> the reply type
+     * @return a new configuration instance
+     */
+    public static <I, O> LocalServiceConfiguration<I, O> create(final ClientListener<I, O> clientListener, final Class<I> requestClass, final Class<O> replyClass) {
+        return new LocalServiceConfiguration<I,O>(clientListener, requestClass, replyClass);
     }
 
     /**
