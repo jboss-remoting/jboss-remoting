@@ -380,7 +380,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
 
             public T getProviderInterface() {
-                return provider.getUserData();
+                return provider.getProviderInterface();
             } 
         };
         context.addCloseHandler(new CloseHandler<ConnectionProviderContext>() {

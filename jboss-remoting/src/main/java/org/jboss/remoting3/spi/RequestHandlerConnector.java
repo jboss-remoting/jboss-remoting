@@ -23,7 +23,7 @@
 package org.jboss.remoting3.spi;
 
 /**
- *
+ * A holder for a request handler that is to be sent to a remote peer.
  */
 public interface RequestHandlerConnector {
 

@@ -50,5 +50,5 @@ public interface ConnectionProvider<T> {
      *
      * @return the user data
      */
-    T getUserData();
+    T getProviderInterface();
 }
