@@ -28,9 +28,7 @@ import java.io.IOException;
 /**
  * A connection to a remote peer.
  * <p/>
- * This interface is part of the Remoting public API.  It is intended to be consumed by Remoting applications; it is
- * not intended to be implemented by them.  Methods may be added to this interface in future minor releases without
- * advance notice.
+ * @remoting.consume
  */
 public interface Connection extends HandleableCloseable<Connection> {
 

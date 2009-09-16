@@ -33,7 +33,7 @@ public final class LocalServiceConfiguration<I, O> {
     private final Class<O> replyClass;
     private String serviceType;
     private String groupName;
-    private int metric;
+    private OptionMap optionMap = OptionMap.EMPTY;
 
     /**
      * Construct a new instance.
@@ -112,20 +112,23 @@ public final class LocalServiceConfiguration<I, O> {
     }
 
     /**
-     * Get the metric.
+     * Get the option map for the service.
      *
-     * @return the metric
+     * @return the option map
      */
-    public int getMetric() {
-        return metric;
+    public OptionMap getOptionMap() {
+        return optionMap;
     }
 
     /**
-     * Set the metric.
+     * Set the option map for the service.
      *
-     * @param metric the metric
+     * @param optionMap the option map
      */
-    public void setMetric(final int metric) {
-        this.metric = metric;
+    public void setOptionMap(final OptionMap optionMap) {
+        if (optionMap == null) {
+            throw new NullPointerException("optionMap is null");
+        }
+        this.optionMap = optionMap;
     }
 }

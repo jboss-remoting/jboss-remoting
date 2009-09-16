@@ -28,7 +28,6 @@ import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.Handle;
 
 /**
  *

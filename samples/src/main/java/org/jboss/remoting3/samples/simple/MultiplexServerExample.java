@@ -27,8 +27,6 @@ import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.LocalServiceConfiguration;
 import org.jboss.remoting3.multiplex.MultiplexProtocol;
 import org.jboss.remoting3.multiplex.MultiplexConfiguration;
-import org.jboss.remoting3.spi.RequestHandlerSource;
-import org.jboss.remoting3.spi.Handle;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoHandlerFactory;

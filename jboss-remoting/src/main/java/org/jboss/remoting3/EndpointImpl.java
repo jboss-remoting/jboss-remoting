@@ -172,8 +172,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
         final String serviceType = configuration.getServiceType();
         final String groupName = configuration.getGroupName();
-        final int metric = configuration.getMetric();
-        if (metric < 0) {
+        final OptionMap optionMap = configuration.getOptionMap();
+        final Integer metric = optionMap.get(Options.METRIC);
+        if (metric != null && metric.intValue() < 0) {
             throw new IllegalArgumentException("metric must be greater than or equal to zero");
         }
         ServiceURI.validateServiceType(serviceType);
@@ -247,7 +248,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final ServiceRegistrationListener.ServiceInfo serviceInfo = new ServiceRegistrationListener.ServiceInfo();
         serviceInfo.setGroupName(groupName);
         serviceInfo.setServiceType(serviceType);
-        serviceInfo.setMetric(metric);
+        serviceInfo.setOptionMap(optionMap);
         serviceInfo.setRegistrationHandle(newHandle);
         serviceInfo.setRequestHandlerConnector(requestHandlerConnector);
         executor.execute(new Runnable() {
@@ -324,7 +325,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         for (ServiceRegistration service : services) {
             final ServiceRegistrationListener.ServiceInfo serviceInfo = new ServiceRegistrationListener.ServiceInfo();
             serviceInfo.setGroupName(service.getGroupName());
-            serviceInfo.setMetric(service.getMetric());
+            serviceInfo.setOptionMap(service.getOptionMap());
             serviceInfo.setRegistrationHandle(service.getHandle());
             serviceInfo.setRequestHandlerConnector(service.getConnector());
             serviceInfo.setServiceType(service.getServiceType());

@@ -24,17 +24,13 @@ package org.jboss.remoting3.samples.simple;
 
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
-import org.jboss.remoting3.ClientSource;
 import org.jboss.remoting3.Client;
 import org.jboss.remoting3.multiplex.MultiplexProtocol;
 import org.jboss.remoting3.multiplex.MultiplexConfiguration;
 import org.jboss.remoting3.multiplex.MultiplexConnection;
-import org.jboss.remoting3.spi.RequestHandlerSource;
-import org.jboss.remoting3.spi.Handle;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.Xnio;
-import org.jboss.xnio.CloseableTcpConnector;
 import org.jboss.xnio.ConfigurableFactory;
 import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.IoFuture;

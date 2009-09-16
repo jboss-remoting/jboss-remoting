@@ -28,6 +28,7 @@ package org.jboss.remoting3;
  * @param <T> the type of resource
  *
  * @apiviz.exclude
+ * @remoting.implement
  */
 public interface CloseHandler<T> {
 

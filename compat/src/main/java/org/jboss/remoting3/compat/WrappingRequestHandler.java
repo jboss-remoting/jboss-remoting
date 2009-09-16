@@ -25,7 +25,6 @@ package org.jboss.remoting3.compat;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
-import org.jboss.remoting3.spi.AbstractAutoCloseable;
 import java.util.concurrent.Executor;
 
 /**

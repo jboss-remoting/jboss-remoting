@@ -32,22 +32,22 @@ final class ServiceRegistration {
     private final String serviceType;
     private final String groupName;
     private final String endpointName;
-    private final int metric;
+    private final OptionMap optionMap;
     private final RequestHandlerConnector connector;
     private volatile SimpleCloseable handle;
 
-    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final int metric, final RequestHandlerConnector connector) {
+    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final OptionMap optionMap, final RequestHandlerConnector connector) {
         remote = true;
         this.serviceType = serviceType;
         this.groupName = groupName;
         this.endpointName = endpointName;
-        this.metric = metric;
+        this.optionMap = optionMap;
         this.connector = connector;
     }
 
     ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final RequestHandlerConnector connector) {
         remote = false;
-        metric = 0;
+        optionMap = OptionMap.EMPTY;
         this.serviceType = serviceType;
         this.groupName = groupName;
         this.endpointName = endpointName;
@@ -76,8 +76,8 @@ final class ServiceRegistration {
         return endpointName;
     }
 
-    public int getMetric() {
-        return metric;
+    public OptionMap getOptionMap() {
+        return optionMap;
     }
 
     public RequestHandlerConnector getConnector() {

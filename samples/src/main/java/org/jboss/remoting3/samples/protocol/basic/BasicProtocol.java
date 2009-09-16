@@ -24,7 +24,6 @@ package org.jboss.remoting3.samples.protocol.basic;
 
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.ReplyHandler;
-import org.jboss.remoting3.spi.Handle;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.channels.ChannelOutputStream;
 import org.jboss.xnio.channels.ChannelInputStream;

@@ -2,7 +2,6 @@ package org.jboss.remoting3.samples.simple;
 
 import java.io.IOException;
 import java.io.Reader;
-import org.jboss.remoting3.AbstractRequestListener;
 import org.jboss.remoting3.RemoteExecutionException;
 import org.jboss.remoting3.RequestContext;
 

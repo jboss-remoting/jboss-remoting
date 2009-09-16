@@ -26,7 +26,6 @@ import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.SpiUtils;
-import org.jboss.remoting3.spi.AbstractAutoCloseable;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.IoUtils;

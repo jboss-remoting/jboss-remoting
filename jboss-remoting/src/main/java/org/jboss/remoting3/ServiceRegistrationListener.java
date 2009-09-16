@@ -28,6 +28,7 @@ import org.jboss.remoting3.spi.RequestHandlerConnector;
  * A listener for watching service registrations on an endpoint.
  *
  * @apiviz.landmark
+ * @remoting.implement
  */
 public interface ServiceRegistrationListener {
 
@@ -47,9 +48,9 @@ public interface ServiceRegistrationListener {
     final class ServiceInfo implements Cloneable {
         private String serviceType;
         private String groupName;
-        private int metric;
         private RequestHandlerConnector requestHandlerConnector;
         private SimpleCloseable registrationHandle;
+        private OptionMap optionMap;
 
         /**
          * Construct a new instance.
@@ -94,21 +95,21 @@ public interface ServiceRegistrationListener {
         }
 
         /**
-         * Get the metric.
+         * Get the option map.
          *
-         * @return the metric
+         * @return the option map
          */
-        public int getMetric() {
-            return metric;
+        public OptionMap getOptionMap() {
+            return optionMap;
         }
 
         /**
-         * Set the metric.
+         * Set the option map.
          *
-         * @param metric the metric
+         * @param optionMap the option map
          */
-        public void setMetric(final int metric) {
-            this.metric = metric;
+        public void setOptionMap(final OptionMap optionMap) {
+            this.optionMap = optionMap;
         }
 
         /**
