@@ -22,33 +22,17 @@
 
 package org.jboss.remoting3.spi;
 
-import java.net.URI;
-import org.jboss.remoting3.OptionMap;
+import org.jboss.remoting3.HandleableCloseable;
 
 /**
- * A connection provider.  Used to establish connections with remote systems.  There is typically one instance
- * of this interface per connection provider factory per endpoint.
  *
- * @remoting.implement
  */
-public interface ConnectionProvider<T> {
+public interface ConnectionProviderRegistration<T> extends HandleableCloseable<ConnectionProviderRegistration<T>> {
 
     /**
-     * Open an outbound connection to the given URI.  This method is expected to be non-blocking, with the result
-     * stored in the result variable possibly asynchronously.
+     * Get the created provider interface associated with this registration.
      *
-     * @param uri the URI to connect to
-     * @param connectOptions the options to use for this connection
-     * @param result the result which should receive the connection
-     * @return a handle which may be used to cancel the connect attempt
-     * @throws IllegalArgumentException if the URI is not valid
+     * @return the connection provider interface
      */
-    Cancellable connect(URI uri, OptionMap connectOptions, Result<ConnectionHandlerFactory> result) throws IllegalArgumentException;
-
-    /**
-     * Get the user data associated with this connection provider.
-     *
-     * @return the user data
-     */
-    T getUserData();
+    T getProviderInterface();
 }

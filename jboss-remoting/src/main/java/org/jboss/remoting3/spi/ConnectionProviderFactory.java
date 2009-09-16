@@ -27,7 +27,7 @@ package org.jboss.remoting3.spi;
  * endpoint will call the {@code createInstance()} method with its provider context when instances of this interface
  * are registered on that endpoint.
  */
-public interface ConnectionProviderFactory {
+public interface ConnectionProviderFactory<T> {
 
     /**
      * Create a provider instance for an endpoint.
@@ -35,5 +35,5 @@ public interface ConnectionProviderFactory {
      * @param context the provider context
      * @return the provider
      */
-    ConnectionProvider createInstance(ConnectionProviderContext context);
+    ConnectionProvider<T> createInstance(ConnectionProviderContext context);
 }
