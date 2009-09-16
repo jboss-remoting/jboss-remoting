@@ -3,12 +3,13 @@ package org.jboss.remoting3.samples.simple;
 import java.io.IOException;
 import org.jboss.remoting3.RemoteExecutionException;
 import org.jboss.remoting3.RequestContext;
+import org.jboss.remoting3.RequestListener;
 import org.jboss.xnio.log.Logger;
 
 /**
  *
  */
-public final class StringRot13RequestListener extends AbstractRequestListener<String, String> {
+public final class StringRot13RequestListener implements RequestListener<String, String> {
 
     private static final Logger log = Logger.getLogger("jboss.example.string-rot-13");
 
@@ -25,6 +26,9 @@ public final class StringRot13RequestListener extends AbstractRequestListener<St
         } catch (IOException e) {
             throw new RemoteExecutionException("Failed to send reply", e);
         }
+    }
+
+    public void handleClose() {
     }
 
     private char rot13(final char i) {

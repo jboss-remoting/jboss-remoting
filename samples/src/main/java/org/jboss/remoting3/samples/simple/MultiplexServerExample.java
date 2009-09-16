@@ -25,23 +25,16 @@ package org.jboss.remoting3.samples.simple;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.LocalServiceConfiguration;
-import org.jboss.remoting3.multiplex.MultiplexProtocol;
-import org.jboss.remoting3.multiplex.MultiplexConfiguration;
+import org.jboss.remoting3.SimpleCloseable;
+import org.jboss.remoting3.spi.ConnectionProviderRegistration;
+import org.jboss.remoting3.multiplex.MultiplexConnectionProviderFactory;
+import org.jboss.remoting3.multiplex.MultiplexServerFactory;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.Buffers;
-import org.jboss.xnio.IoHandlerFactory;
-import org.jboss.xnio.Xnio;
-import org.jboss.xnio.ConfigurableFactory;
 import org.jboss.xnio.CloseableExecutor;
-import org.jboss.xnio.channels.AllocatedMessageChannel;
+import org.jboss.xnio.Xnio;
+import org.jboss.xnio.TcpServer;
 import org.jboss.xnio.channels.Channels;
-import org.jboss.xnio.channels.StreamChannel;
-import org.jboss.river.RiverMarshallerFactory;
-import org.jboss.marshalling.MarshallingConfiguration;
-import org.jboss.marshalling.reflect.SunReflectiveCreator;
 import java.io.IOException;
-import java.io.Closeable;
-import java.net.InetSocketAddress;
 
 import java.util.logging.Logger;
 import java.util.logging.Level;
@@ -60,57 +53,41 @@ public final class MultiplexServerExample {
     private MultiplexServerExample() {
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException, IOException {
         final CloseableExecutor executor = Remoting.createExecutor(10);
         try {
-            final Endpoint endpoint = Remoting.createEndpoint(executor, "example-endpoint");
+            Xnio xnio = Xnio.create();
             try {
-                final StringRot13RequestListener listener = new StringRot13RequestListener();
-                final LocalServiceConfiguration<String, String> config = new LocalServiceConfiguration<String, String>(listener, String.class, String.class);
-                config.setGroupName("main");
-                config.setServiceType("jboss.example.streaming-rot-13");
-                final Handle<RequestHandlerSource> handle = endpoint.registerService(config);
+                final Endpoint endpoint = Remoting.createEndpoint(executor, "example-endpoint");
                 try {
-                    // now create the server...
-                    final NamedServiceRegistry serviceRegistry = new NamedServiceRegistry();
-                    final Handle<RequestHandlerSource> connHandle = serviceRegistry.registerService(QualifiedName.parse("/jboss/example/string-rot-13"), handle.getResource());
+                    final LocalServiceConfiguration<String, String> config = LocalServiceConfiguration.create(new StringRot13ClientListener(), String.class, String.class);
+                    config.setGroupName("main");
+                    config.setServiceType("simple.rot13");
+                    final SimpleCloseable handle = endpoint.registerService(config);
                     try {
-                        final MultiplexConfiguration multiplexConfig = new MultiplexConfiguration();
-                        multiplexConfig.setNamedServiceRegistry(serviceRegistry);
-                        multiplexConfig.setAllocator(Buffers.createHeapByteBufferAllocator(1024));
-                        multiplexConfig.setLinkMetric(100);
-                        multiplexConfig.setMarshallerFactory(new RiverMarshallerFactory());
-                        multiplexConfig.setExecutor(executor);
-                        final MarshallingConfiguration marshallingConfig = new MarshallingConfiguration();
-                        marshallingConfig.setCreator(new SunReflectiveCreator());
-                        multiplexConfig.setMarshallingConfiguration(marshallingConfig);
-                        final IoHandlerFactory<AllocatedMessageChannel> handlerFactory = MultiplexProtocol.createServer(multiplexConfig);
-                        final IoHandlerFactory<StreamChannel> streamHandlerFactory = Channels.convertStreamToAllocatedMessage(handlerFactory, 1024, 1024);
-                        // finally, bind it
-                        final Xnio xnio = Xnio.create();
+                        // now create the server...
+                        final MultiplexConnectionProviderFactory multiplexConnectionProviderFactory = new MultiplexConnectionProviderFactory(xnio.createTcpConnector().create());
+                        final ConnectionProviderRegistration<MultiplexServerFactory> cpHandle = endpoint.addConnectionProvider("multiplex", multiplexConnectionProviderFactory);
                         try {
-                            final ConfigurableFactory<? extends Closeable> tcpServerFactory = xnio.createTcpServer(streamHandlerFactory, new InetSocketAddress(10000));
-                            final Closeable server = tcpServerFactory.create();
+                            final TcpServer tcpServer = xnio.createTcpServer(Channels.convertStreamToAllocatedMessage(cpHandle.getProviderInterface().getHandlerFactory(), 0x1000, 0x1000)).create();
                             try {
-                                System.out.println("Press enter to terminate.");
-                                while (System.in.read() != '\n');
+                                // now just wait for 15 seconds, and then shut it all down
+                                Thread.sleep(15000L);
                             } finally {
-                                IoUtils.safeClose(server);
+                                IoUtils.safeClose(tcpServer);
                             }
                         } finally {
-                            IoUtils.safeClose(xnio);
+                            IoUtils.safeClose(cpHandle);
                         }
                     } finally {
-                        IoUtils.safeClose(connHandle);
+                        IoUtils.safeClose(handle);
                     }
                 } finally {
-                    IoUtils.safeClose(handle);
+                    IoUtils.safeClose(endpoint);
                 }
             } finally {
-                IoUtils.safeClose(endpoint);
+                IoUtils.safeClose(xnio);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         } finally {
             IoUtils.safeClose(executor);
         }

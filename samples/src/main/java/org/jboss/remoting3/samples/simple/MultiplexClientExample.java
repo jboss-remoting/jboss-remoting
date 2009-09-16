@@ -24,24 +24,12 @@ package org.jboss.remoting3.samples.simple;
 
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
+import org.jboss.remoting3.OptionMap;
+import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Client;
-import org.jboss.remoting3.multiplex.MultiplexProtocol;
-import org.jboss.remoting3.multiplex.MultiplexConfiguration;
-import org.jboss.remoting3.multiplex.MultiplexConnection;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.Buffers;
-import org.jboss.xnio.Xnio;
-import org.jboss.xnio.ConfigurableFactory;
-import org.jboss.xnio.ChannelSource;
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.channels.Channels;
-import org.jboss.xnio.channels.AllocatedMessageChannel;
-import org.jboss.river.RiverMarshallerFactory;
-import org.jboss.marshalling.MarshallingConfiguration;
 import java.io.IOException;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.InetSocketAddress;
+import java.net.URI;
 
 import java.util.logging.Logger;
 import java.util.logging.Level;
@@ -64,54 +52,18 @@ public final class MultiplexClientExample {
         try {
             final Endpoint endpoint = Remoting.createEndpoint("example-client-endpoint");
             try {
-                // now create the client
-                final NamedServiceRegistry serviceRegistry = new NamedServiceRegistry();
-                final MultiplexConfiguration config = new MultiplexConfiguration();
-                config.setNamedServiceRegistry(serviceRegistry);
-                config.setAllocator(Buffers.createHeapByteBufferAllocator(1024));
-                config.setMarshallerFactory(new RiverMarshallerFactory());
-                config.setExecutor(IoUtils.directExecutor());
-                config.setLinkMetric(100);
-                config.setMarshallingConfiguration(new MarshallingConfiguration());
-                final Xnio xnio = Xnio.create();
+                final Connection connection = endpoint.connect(URI.create(args[0]), OptionMap.EMPTY).get();
                 try {
-                    final ConfigurableFactory<CloseableTcpConnector> tcpConnectorFactory = xnio.createTcpConnector();
-                    final CloseableTcpConnector closeableTcpConnector = tcpConnectorFactory.create();
+                    final Client<String,String> client = connection.openClient("samples.rot13", "*", String.class, String.class).get();
                     try {
-                        final ChannelSource<AllocatedMessageChannel> channelSource = Channels.convertStreamToAllocatedMessage(closeableTcpConnector.createChannelSource(new InetSocketAddress("localhost", 10000)), 1024, 1024);
-                        final IoFuture<MultiplexConnection> futureConnection = MultiplexProtocol.connect(config, channelSource);
-                        final MultiplexConnection connection = futureConnection.get();
-                        try {
-                            final Handle<RequestHandlerSource> handle = connection.openRemoteService(QualifiedName.parse("/jboss/example/string-rot-13"));
-                            try {
-                                final ClientSource<String, String> clientSource = endpoint.createClientSource(handle.getResource(), String.class, String.class);
-                                try {
-                                    final Client<String, String> client = clientSource.createClient();
-                                    try {
-                                        System.out.println("Enter text, send EOF to terminate");
-                                        final BufferedReader inputReader = new BufferedReader(new InputStreamReader(System.in));
-                                        String line;
-                                        while ((line = inputReader.readLine()) != null) {
-                                            System.out.println("Response: " + client.invoke(line));
-                                        }
-                                        System.out.println("Done!");
-                                    } finally {
-                                        IoUtils.safeClose(client);
-                                    }
-                                } finally {
-                                    IoUtils.safeClose(clientSource);
-                                }
-                            } finally {
-                                IoUtils.safeClose(handle);
-                            }
-                        } finally {
-                            IoUtils.safeClose(connection);
-                        }
+                        final String original = "The Secret Message\n";
+                        final String result = client.invoke(original);
+                        System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), result.trim());
                     } finally {
-                        IoUtils.safeClose(closeableTcpConnector);
+                        IoUtils.safeClose(client);
                     }
                 } finally {
-                    IoUtils.safeClose(xnio);
+                    IoUtils.safeClose(connection);
                 }
             } finally {
                 IoUtils.safeClose(endpoint);
