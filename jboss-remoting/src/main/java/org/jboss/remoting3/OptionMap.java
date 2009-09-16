@@ -28,11 +28,14 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.io.Serializable;
 
 /**
  * An immutable map of options to option values.  No {@code null} keys or values are permitted.
  */
-public final class OptionMap implements Iterable<Option<?>> {
+public final class OptionMap implements Iterable<Option<?>>, Serializable {
+
+    private static final long serialVersionUID = 3632842565346928132L;
 
     private final Map<Option<?>, Object> value;
 
