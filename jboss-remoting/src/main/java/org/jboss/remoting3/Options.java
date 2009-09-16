@@ -32,7 +32,7 @@ public final class Options {
 
     /**
      * Request that the marshalling layer require the use of one of the listed marshalling protocols, in order of decreasing preference.  If
-     * not specified, use a default value.
+     * not specified, use a default value.  The marshaller {@code "default"} can be specified explicitly for this default value.
      */
     public static final Option<Sequence<String>> MARSHALLING_PROTOCOLS = Option.sequence("jboss.remoting3.marshalling.protocols", String.class);
 

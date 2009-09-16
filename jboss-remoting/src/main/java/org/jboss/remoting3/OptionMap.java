@@ -117,6 +117,42 @@ public final class OptionMap implements Iterable<Option<?>> {
         }
 
         /**
+         * Add an int value to an Integer key.
+         *
+         * @param key the option
+         * @param value the value
+         * @return this builder
+         */
+        public Builder add(Option<Integer> key, int value) {
+            list.add(new OVPair<Integer>(key, Integer.valueOf(value)));
+            return this;
+        }
+
+        /**
+         * Add a long value to a Long key.
+         *
+         * @param key the option
+         * @param value the value
+         * @return this builder
+         */
+        public Builder add(Option<Long> key, long value) {
+            list.add(new OVPair<Long>(key, Long.valueOf(value)));
+            return this;
+        }
+
+        /**
+         * Add a boolean value to a Boolean key.
+         *
+         * @param key the option
+         * @param value the value
+         * @return this builder
+         */
+        public Builder add(Option<Boolean> key, boolean value) {
+            list.add(new OVPair<Boolean>(key, Boolean.valueOf(value)));
+            return this;
+        }
+
+        /**
          * Add a key-value pair, where the value is a sequence type.
          *
          * @param key the key
