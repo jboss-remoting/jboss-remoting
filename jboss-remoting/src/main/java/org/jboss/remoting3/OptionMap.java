@@ -41,13 +41,23 @@ public final class OptionMap implements Iterable<Option<?>> {
     }
 
     /**
+     * Determine whether this option map contains the given option.
+     *
+     * @param option the option to check
+     * @return {@code true} if the option is present in the option map
+     */
+    public boolean contains(Option<?> option) {
+        return value.containsKey(option);
+    }
+
+    /**
      * Get the value of an option from this option map.
      *
      * @param option the option to get
      * @param <T> the type of the option
      * @return the option value, or {@code null} if it is not present
      */
-    <T> T get(Option<T> option) {
+    public <T> T get(Option<T> option) {
         return option.cast(value.get(option));
     }
 
@@ -129,6 +139,22 @@ public final class OptionMap implements Iterable<Option<?>> {
         }
 
         /**
+         * Add int values to an Integer sequence key.
+         *
+         * @param key the key
+         * @param values the values
+         * @return this builder
+         */
+        public Builder addSequence(Option<Sequence<Integer>> key, int... values) {
+            Integer[] a = new Integer[values.length];
+            for (int i = 0; i < values.length; i++) {
+                a[i] = Integer.valueOf(values[i]);
+            }
+            list.add(new OVPair<Sequence<Integer>>(key, Sequence.of(a)));
+            return this;
+        }
+
+        /**
          * Add a long value to a Long key.
          *
          * @param key the option
@@ -141,6 +167,22 @@ public final class OptionMap implements Iterable<Option<?>> {
         }
 
         /**
+         * Add long values to an Long sequence key.
+         *
+         * @param key the key
+         * @param values the values
+         * @return this builder
+         */
+        public Builder addSequence(Option<Sequence<Long>> key, long... values) {
+            Long[] a = new Long[values.length];
+            for (int i = 0; i < values.length; i++) {
+                a[i] = Long.valueOf(values[i]);
+            }
+            list.add(new OVPair<Sequence<Long>>(key, Sequence.of(a)));
+            return this;
+        }
+
+        /**
          * Add a boolean value to a Boolean key.
          *
          * @param key the option
@@ -149,6 +191,23 @@ public final class OptionMap implements Iterable<Option<?>> {
          */
         public Builder add(Option<Boolean> key, boolean value) {
             list.add(new OVPair<Boolean>(key, Boolean.valueOf(value)));
+            return this;
+        }
+
+
+        /**
+         * Add boolean values to an Boolean sequence key.
+         *
+         * @param key the key
+         * @param values the values
+         * @return this builder
+         */
+        public Builder addSequence(Option<Sequence<Boolean>> key, boolean... values) {
+            Boolean[] a = new Boolean[values.length];
+            for (int i = 0; i < values.length; i++) {
+                a[i] = Boolean.valueOf(values[i]);
+            }
+            list.add(new OVPair<Sequence<Boolean>>(key, Sequence.of(a)));
             return this;
         }
 

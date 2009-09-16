@@ -79,6 +79,9 @@ public final class Sequence<T> extends AbstractList<T> implements List<T>, Rando
      * @return a sequence
      */
     public static <T> Sequence<T> of(Collection<T> members) {
+        if (members instanceof Sequence) {
+            return (Sequence<T>) members;
+        }
         final Object[] objects = members.toArray();
         if (objects.length == 0) {
             return empty();

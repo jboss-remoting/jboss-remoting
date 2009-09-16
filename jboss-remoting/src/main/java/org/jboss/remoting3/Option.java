@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3;
 
+import java.util.Collection;
+
 /**
  * A strongly-typed option to configure an aspect of a service.  Options are immutable and use identity comparisons
  * and hash codes, and they are not serializable.
@@ -120,7 +122,15 @@ final class SequenceOption<T> extends Option<Sequence<T>> {
     }
 
     public Sequence<T> cast(final Object o) {
-        return ((Sequence<?>)o).cast(elementType);
+        if (o instanceof Sequence) {
+            return ((Sequence<?>)o).cast(elementType);
+        } else if (o instanceof Object[]){
+            return Sequence.of((Object[])o).cast(elementType);
+        } else if (o instanceof Collection) {
+            return Sequence.of((Collection<?>)o).cast(elementType);
+        } else {
+            throw new ClassCastException("Not a sequence");
+        }
     }
 }
 

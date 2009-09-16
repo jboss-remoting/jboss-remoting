@@ -337,18 +337,22 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return registration;
     }
 
-    public IoFuture<? extends Connection> connect(final URI destination) throws IOException {
+    public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CONNECT_PERM);
         }
-        final ConnectionProvider connectionProvider = connectionProviders.get(destination.getScheme());
+        final String scheme = destination.getScheme();
+        final ConnectionProvider connectionProvider = connectionProviders.get(scheme);
+        if (connectionProvider == null) {
+            throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
+        }
         final FutureResult<Connection, ConnectionHandlerFactory> futureResult = new FutureResult<Connection, ConnectionHandlerFactory>() {
             protected Connection translate(final ConnectionHandlerFactory result) {
                 return new ConnectionImpl(result);
             }
         };
-        connectionProvider.connect(destination, futureResult.getResult());
+        connectionProvider.connect(destination, connectOptions, futureResult.getResult());
         return futureResult;
     }
 

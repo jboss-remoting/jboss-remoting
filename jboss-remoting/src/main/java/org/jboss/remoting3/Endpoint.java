@@ -78,10 +78,11 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * This method does not block; use the return value to wait for a result if you wish to block.
      *
      * @param destination the destination
+     * @param connectOptions options to configure this connection
      * @return the future connection
      * @throws IOException if an error occurs while starting the connect attempt
      */
-    IoFuture<? extends Connection> connect(URI destination) throws IOException;
+    IoFuture<? extends Connection> connect(URI destination, OptionMap connectOptions) throws IOException;
 
     /**
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can

@@ -23,6 +23,7 @@
 package org.jboss.remoting3.spi;
 
 import java.net.URI;
+import org.jboss.remoting3.OptionMap;
 
 /**
  * A connection provider.  Used to establish connections with remote systems.  There is typically one instance
@@ -37,9 +38,10 @@ public interface ConnectionProvider {
      * stored in the result variable possibly asynchronously.
      *
      * @param uri the URI to connect to
+     * @param connectOptions the options to use for this connection
      * @param result the result which should receive the connection
      * @return a handle which may be used to cancel the connect attempt
      * @throws IllegalArgumentException if the URI is not valid
      */
-    Cancellable connect(URI uri, Result<ConnectionHandlerFactory> result) throws IllegalArgumentException;
+    Cancellable connect(URI uri, OptionMap connectOptions, Result<ConnectionHandlerFactory> result) throws IllegalArgumentException;
 }
