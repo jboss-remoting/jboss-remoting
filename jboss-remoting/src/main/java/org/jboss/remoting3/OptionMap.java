@@ -97,9 +97,12 @@ public final class OptionMap implements Iterable<Option<?>>, Serializable {
     }
 
     /**
-     * A builder for immutable option maps.
+     * A builder for immutable option maps.  Create an instance with the {@link OptionMap#builder()} method.
      */
     public static final class Builder {
+
+        private Builder() {
+        }
 
         private static class OVPair<T> {
             Option<T> option;
