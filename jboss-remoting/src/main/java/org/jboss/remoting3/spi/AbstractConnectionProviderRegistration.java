@@ -22,19 +22,21 @@
 
 package org.jboss.remoting3.spi;
 
-import org.jboss.remoting3.HandleableCloseable;
+import java.util.concurrent.Executor;
 
 /**
- * A handle representing the registration of a connection provider.
+ * An abstract implementation of {@code ConnectionProviderRegistration}.
  *
  * @param <T> the provider interface type
  */
-public interface ConnectionProviderRegistration<T> extends HandleableCloseable<ConnectionProviderRegistration<T>> {
+public abstract class AbstractConnectionProviderRegistration<T> extends AbstractHandleableCloseable<ConnectionProviderRegistration<T>> implements ConnectionProviderRegistration<T> {
 
     /**
-     * Get the created provider interface associated with this registration.
+     * Basic constructor.
      *
-     * @return the connection provider interface
+     * @param executor the executor used to execute the close notification handlers
      */
-    T getProviderInterface();
+    protected AbstractConnectionProviderRegistration(final Executor executor) {
+        super(executor);
+    }
 }

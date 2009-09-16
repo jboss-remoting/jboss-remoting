@@ -50,6 +50,8 @@ import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.remoting3.spi.Result;
+import org.jboss.remoting3.spi.ConnectionProviderRegistration;
+import org.jboss.remoting3.spi.AbstractConnectionProviderRegistration;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.WeakCloseable;
@@ -98,7 +100,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final Set<Registration<ServiceRegistrationListener>> serviceListenerRegistrations = hashSet();
     private final Map<String, ServiceRegistration> registeredLocalServices = hashMap();
 
-    private final ConcurrentMap<String, ConnectionProvider> connectionProviders = concurrentHashMap();
+    private final ConcurrentMap<String, ConnectionProvider<?>> connectionProviders = concurrentHashMap();
 
     private static final EndpointPermission CREATE_ENDPOINT_PERM = new EndpointPermission("createEndpoint");
     private static final EndpointPermission CREATE_REQUEST_HANDLER_PERM = new EndpointPermission("createRequestHandler");
@@ -343,7 +345,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             sm.checkPermission(CONNECT_PERM);
         }
         final String scheme = destination.getScheme();
-        final ConnectionProvider connectionProvider = connectionProviders.get(scheme);
+        final ConnectionProvider<?> connectionProvider = connectionProviders.get(scheme);
         if (connectionProvider == null) {
             throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
         }
@@ -356,13 +358,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return futureResult;
     }
 
-    public SimpleCloseable addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory) {
+    public <T> ConnectionProviderRegistration<T> addConnectionProvider(final String uriScheme, final ConnectionProviderFactory<T> providerFactory) {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(ADD_CONNECTION_PROVIDER_PERM);
         }
         final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl(executor, loopbackConnectionHandler);
-        final ConnectionProvider provider = providerFactory.createInstance(context);
+        final ConnectionProvider<T> provider = providerFactory.createInstance(context);
         if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
             IoUtils.safeClose(context);
             throw new IllegalArgumentException("URI scheme '" + uriScheme + "' is already registered to a provider");
@@ -372,10 +374,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 connectionProviders.remove(uriScheme, provider);
             }
         });
-        final AbstractSimpleCloseable handle = new AbstractSimpleCloseable(executor) {
+        final AbstractConnectionProviderRegistration<T> handle = new AbstractConnectionProviderRegistration<T>(executor) {
             protected void closeAction() throws IOException {
                 context.close();
             }
+
+            public T getProviderInterface() {
+                return provider.getUserData();
+            } 
         };
         context.addCloseHandler(new CloseHandler<ConnectionProviderContext>() {
             public void handleClose(final ConnectionProviderContext closed) {

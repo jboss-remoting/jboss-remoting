@@ -5,6 +5,7 @@ import java.net.URI;
 import java.util.Set;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.ConnectionProviderRegistration;
 import org.jboss.xnio.IoFuture;
 
 /**
@@ -92,7 +93,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @param providerFactory the provider factory
      * @return a handle which may be used to remove the registration
      */
-    SimpleCloseable addConnectionProvider(String uriScheme, ConnectionProviderFactory providerFactory);
+    <T> ConnectionProviderRegistration<T> addConnectionProvider(String uriScheme, ConnectionProviderFactory<T> providerFactory);
 
     /**
      * Flags which can be passed in to listener registration methods.
