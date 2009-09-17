@@ -23,7 +23,7 @@
 package org.jboss.remoting3.spi;
 
 import java.net.URI;
-import org.jboss.remoting3.OptionMap;
+import org.jboss.xnio.OptionMap;
 
 /**
  * A connection provider.  Used to establish connections with remote systems.  There is typically one instance

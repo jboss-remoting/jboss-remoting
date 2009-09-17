@@ -7,6 +7,7 @@ import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.ConnectionProviderRegistration;
 import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.OptionMap;
 
 /**
  * A potential participant in a JBoss Remoting communications relationship.

@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3;
 
+import org.jboss.xnio.OptionMap;
+
 /**
  * A configuration for a service to be deployed into the endpoint.
  *

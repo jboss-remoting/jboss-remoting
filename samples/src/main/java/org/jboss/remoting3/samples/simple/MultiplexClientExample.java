@@ -24,7 +24,7 @@ package org.jboss.remoting3.samples.simple;
 
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
-import org.jboss.remoting3.OptionMap;
+import org.jboss.xnio.OptionMap;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Client;
 import org.jboss.xnio.IoUtils;

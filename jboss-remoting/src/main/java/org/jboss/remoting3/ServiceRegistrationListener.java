@@ -23,6 +23,7 @@
 package org.jboss.remoting3;
 
 import org.jboss.remoting3.spi.RequestHandlerConnector;
+import org.jboss.xnio.OptionMap;
 
 /**
  * A listener for watching service registrations on an endpoint.

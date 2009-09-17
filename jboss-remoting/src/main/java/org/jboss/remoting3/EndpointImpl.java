@@ -55,6 +55,7 @@ import org.jboss.remoting3.spi.AbstractConnectionProviderRegistration;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.WeakCloseable;
+import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.log.Logger;
 
 /**

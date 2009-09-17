@@ -22,6 +22,9 @@
 
 package org.jboss.remoting3;
 
+import org.jboss.xnio.Option;
+import org.jboss.xnio.Sequence;
+
 /**
  * Common options for service registration.
  */
