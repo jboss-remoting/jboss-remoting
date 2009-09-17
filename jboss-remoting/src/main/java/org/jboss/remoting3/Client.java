@@ -89,7 +89,7 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
      * @throws ReplyException if the operation succeeded but the reply cannot be read for some reason
      * @throws IndeterminateOutcomeException if the result of the operation cannot be ascertained
      * @throws ObjectStreamException if marshalling or unmarshalling some part of the request failed
-     * @throws IOException if some I/O error occurred while sending the request
+     * @throws IOException if some other I/O error occurred while sending the request
      */
     O invoke(I request) throws IOException, CancellationException;
 
@@ -98,16 +98,18 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
      * may use a local policy to assign one or more thread(s) to handle the local end of that stream, or it may
      * fail with an exception (e.g. if this method is called on a client with no threads to handle streaming).
      * <p/>
-     * Returns immediately.  The returned {@code IoFuture} object can be queried at a later time to determine the result
-     * of the operation.  If the operation fails, one of the conditions described on the {@link #invoke(Object) invoke(I)}
-     * method will result.  This condition can be determined by reading the status of the {@code IoFuture} object or
-     * by attempting to read the result.
+     * This method <b>may</b> block until the request is sent; however once the request is sent, the rest of the request
+     * delivery and processing is fully asynchronous.  The returned {@code IoFuture} object can be queried at a later time
+     * to determine the result of the operation.  If the operation fails, one of the conditions described on the
+     * {@link #invoke(Object) invoke(I)} method will result.  This condition can be determined by reading the status of
+     * the {@code IoFuture} object or by attempting to read the result.
      *
      * @param request the request to send
      *
      * @return a future representing the result of the request
      *
-     * @throws IOException if the request could not be sent
+     * @throws ObjectStreamException if marshalling or unmarshalling some part of the request failed
+     * @throws IOException if some other I/O error occurred while sending the request
      */
     IoFuture<? extends O> send(I request) throws IOException;
 }
