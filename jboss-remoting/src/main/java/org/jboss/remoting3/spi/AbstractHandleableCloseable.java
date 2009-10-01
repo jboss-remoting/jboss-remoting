@@ -115,7 +115,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             log.trace("Closed %s", this);
             if (closeHandlers != null) {
                 for (final CloseHandler<? super T> handler : closeHandlers.values()) {
-                    runCloseTask(new CloseHandlerTask<T>(handler));
+                    runCloseTask(executor, new CloseHandlerTask<T>(handler));
                 }
             }
             closeAction();
@@ -143,11 +143,11 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                 return key;
             }
         }
-        runCloseTask(new CloseHandlerTask<T>(handler));
+        runCloseTask(executor, new CloseHandlerTask<T>(handler));
         return new NullKey();
     }
 
-    private void runCloseTask(final CloseHandlerTask<T> task) {
+    private static <T extends HandleableCloseable<T>> void runCloseTask(final Executor executor, final CloseHandlerTask<T> task) {
         try {
             executor.execute(task);
         } catch (RejectedExecutionException ree) {
