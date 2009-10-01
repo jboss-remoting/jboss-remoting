@@ -75,7 +75,7 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
         final RemoteRequestContext requestContext = handler.receiveRequest(actualRequest, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
-        futureReply.addNotifier(IoUtils.<O>attachmentClosingNotifier(), executor);
+        futureReply.addNotifier(IoUtils.attachmentClosingNotifier(), executor);
         executor.runQueue();
         try {
             final O reply = futureReply.getInterruptibly();

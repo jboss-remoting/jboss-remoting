@@ -108,7 +108,7 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
      *
      * @return a future representing the result of the request
      *
-     * @throws ObjectStreamException if marshalling or unmarshalling some part of the request failed
+     * @throws ObjectStreamException if marshalling some part of the request failed
      * @throws IOException if some other I/O error occurred while sending the request
      */
     IoFuture<? extends O> send(I request) throws IOException;

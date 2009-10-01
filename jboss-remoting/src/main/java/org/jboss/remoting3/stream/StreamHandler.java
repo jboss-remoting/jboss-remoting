@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3.stream;
 
-import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.ChannelListener;
 import java.nio.channels.Channel;
 import java.io.Serializable;
 
@@ -39,20 +39,20 @@ import java.io.Serializable;
 public interface StreamHandler<T, C extends Channel> extends Serializable {
 
     /**
-     * Get the local XNIO handler for this stream.  If this handler is cached on the object, it should be
+     * Get the local XNIO open handler for this stream.  If this handler is cached on the object, it should be
      * done in a {@code transient} fashion to prevent the local handler from being sent to the remote side.
      *
      * @return the local XNIO handler
      */
-    IoHandler<? super C> getLocalHandler();
+    ChannelListener<? super C> getLocalHandler();
 
     /**
-     * Get the remote XNIO handler for this stream.  The remote handler should not be instantiated until the
+     * Get the remote XNIO open handler for this stream.  The remote handler should not be instantiated until the
      * {@code StreamHandler} instance is on the remote side to avoid copying the handler across the wire.
      *
      * @return the remote XNIO handler
      */
-    IoHandler<? super C> getRemoteHandler();
+    ChannelListener<? super C> getRemoteHandler();
 
     /**
      * Get the remote proxy instance for this stream.  The remote proxy should not be instantiated until the
@@ -62,5 +62,5 @@ public interface StreamHandler<T, C extends Channel> extends Serializable {
      * @param futureChannel the future channel
      * @return the remote proxy instance
      */
-    T getRemoteProxy(final IoFuture<? extends C> futureChannel);
+    T getRemoteProxy(IoFuture<? extends C> futureChannel);
 }

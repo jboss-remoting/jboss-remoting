@@ -33,8 +33,8 @@ import java.nio.channels.Channel;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.IoHandler;
-import static org.jboss.xnio.IoUtils.nullHandler;
+import org.jboss.xnio.ChannelListener;
+import org.jboss.xnio.IoUtils;
 import static org.jboss.xnio.IoUtils.safeClose;
 import org.jboss.xnio.channels.ChannelInputStream;
 import org.jboss.xnio.channels.StreamChannel;
@@ -59,12 +59,12 @@ public final class OutputStreamHandlerFactory implements StreamHandlerFactory<Ou
             localInstance = instance;
         }
 
-        public IoHandler<StreamChannel> getLocalHandler() {
+        public ChannelListener<StreamChannel> getLocalHandler() {
             return new LocalHandler(localInstance);
         }
 
-        public IoHandler<Channel> getRemoteHandler() {
-            return nullHandler();
+        public ChannelListener<Channel> getRemoteHandler() {
+            return IoUtils.nullChannelListener();
         }
 
         public OutputStream getRemoteProxy(final IoFuture<? extends StreamChannel> futureChannel) {
@@ -72,7 +72,7 @@ public final class OutputStreamHandlerFactory implements StreamHandlerFactory<Ou
         }
     }
 
-    private static final class LocalHandler implements IoHandler<StreamChannel> {
+    private static final class LocalHandler implements ChannelListener<StreamChannel> {
         private final OutputStream localInstance;
         private final byte[] bytes = new byte[1024];
 
@@ -80,32 +80,32 @@ public final class OutputStreamHandlerFactory implements StreamHandlerFactory<Ou
             localInstance = instance;
         }
 
-        public void handleOpened(final StreamChannel channel) {
-        }
-
-        public void handleClosed(final StreamChannel channel) {
-            safeClose(localInstance);
-        }
-
-        public void handleReadable(final StreamChannel channel) {
-            final byte[] bytes = this.bytes;
-            final ByteBuffer buffer = ByteBuffer.wrap(bytes);
-            try {
-                for (;;) {
-                    final int res = channel.read(buffer);
-                    if (res == 0) {
-                        channel.resumeReads();
-                        return;
-                    }
-                    localInstance.write(bytes, 0, buffer.position());
-                    buffer.clear();
+        public void handleEvent(final StreamChannel channel) {
+            channel.getCloseSetter().set(new ChannelListener<StreamChannel>() {
+                public void handleEvent(final StreamChannel channel) {
+                    safeClose(localInstance);
                 }
-            } catch (IOException e) {
-                safeClose(channel);
-            }
-        }
-
-        public void handleWritable(final StreamChannel channel) {
+            });
+            channel.getReadSetter().set(new ChannelListener<StreamChannel>() {
+                public void handleEvent(final StreamChannel channel) {
+                    final byte[] bytes = LocalHandler.this.bytes;
+                    final ByteBuffer buffer = ByteBuffer.wrap(bytes);
+                    try {
+                        for (;;) {
+                            final int res = channel.read(buffer);
+                            if (res == 0) {
+                                channel.resumeReads();
+                                return;
+                            }
+                            localInstance.write(bytes, 0, buffer.position());
+                            buffer.clear();
+                        }
+                    } catch (IOException e) {
+                        safeClose(channel);
+                    }
+                }
+            });
+            channel.resumeReads();
         }
     }
 

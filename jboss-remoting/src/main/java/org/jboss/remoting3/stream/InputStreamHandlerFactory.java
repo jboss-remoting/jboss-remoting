@@ -27,8 +27,8 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.ChannelListener;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.log.Logger;
 
@@ -56,26 +56,21 @@ public final class InputStreamHandlerFactory implements StreamHandlerFactory<Inp
             streamContext = context;
         }
 
-        public IoHandler<StreamChannel> getLocalHandler() {
-            return new IoHandler<StreamChannel>() {
-                public void handleOpened(final StreamChannel channel) {
+        public ChannelListener<StreamChannel> getLocalHandler() {
+            return new ChannelListener<StreamChannel>() {
+                public void handleEvent(final StreamChannel channel) {
+                    channel.getCloseSetter().set(new ChannelListener<StreamChannel>() {
+                        public void handleEvent(final StreamChannel channel) {
+                            IoUtils.safeClose(localInstance);
+                        }
+                    });
                     streamContext.execute(new LocalRunnable(channel, localInstance));
-                }
-
-                public void handleClosed(final StreamChannel channel) {
-                    IoUtils.safeClose(localInstance);
-                }
-
-                public void handleReadable(final StreamChannel channel) {
-                }
-
-                public void handleWritable(final StreamChannel channel) {
                 }
             };
         }
 
-        public IoHandler<Channel> getRemoteHandler() {
-            return IoUtils.nullHandler();
+        public ChannelListener<Channel> getRemoteHandler() {
+            return IoUtils.nullChannelListener();
         }
 
         public InputStream getRemoteProxy(final IoFuture<? extends StreamChannel> futureChannel) {
