@@ -41,31 +41,31 @@ public final class Options {
 
     /**
      * Request that the marshalling layer require the presense of one of the listed user-defined class tables, in order of decreasing preference.  If
-     * not specified, no user class table should be used.
+     * not specified, no user class table should be used.  The string {@code "none"} indicates no class table.
      */
     public static final Option<Sequence<String>> MARSHALLING_CLASS_TABLES = Option.sequence(Options.class, "MARSHALLING_CLASS_TABLES", String.class);
 
     /**
      * Request that the marshalling layer require the presense of one of the listed user-defined object tables, in order of decreasing preference.  If
-     * not specified, no user object table should be used.
+     * not specified, no user object table should be used.  The string {@code "none"} indicates no object table.
      */
     public static final Option<Sequence<String>> MARSHALLING_OBJECT_TABLES = Option.sequence(Options.class, "MARSHALLING_OBJECT_TABLES", String.class);
 
     /**
      * Request that the marshalling layer require the presense of one of the listed class resolvers, in order of decreasing preference.  If
-     * not specified, classes are resolved on the remote side using a default strategy.
+     * not specified, classes are resolved on the remote side using a default strategy.  The string {@code "default"} indicates the default class resolver.
      */
     public static final Option<Sequence<String>> MARSHALLING_CLASS_RESOLVERS = Option.sequence(Options.class, "MARSHALLING_CLASS_RESOLVERS", String.class);
 
     /**
      * Request that the marshalling layer require the presense of one of the listed object resolvers, in order of decreasing preference.  If
-     * not specified, no object substitution will take place.
+     * not specified, no object substitution will take place.  The string {@code "none"} indicates no object resolver.
      */
     public static final Option<Sequence<String>> MARSHALLING_OBJECT_RESOLVERS = Option.sequence(Options.class, "MARSHALLING_OBJECT_RESOLVERS", String.class);
 
     /**
      * Request that the marshalling layer require the presense of one of the listed user-defined externalizer factories, in order of decreasing preference.  If
-     * not specified, no user externalizer factory should be used.
+     * not specified, no user externalizer factory should be used.  The string {@code "none"} indicates no externalizer factory.
      */
     public static final Option<Sequence<String>> MARSHALLING_EXTERNALIZER_FACTORIES = Option.sequence(Options.class, "MARSHALLING_EXTERNALIZER_FACTORIES", String.class);
 
