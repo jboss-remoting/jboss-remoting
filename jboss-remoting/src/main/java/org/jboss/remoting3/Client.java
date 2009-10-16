@@ -108,7 +108,7 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
 
     /**
      * Send a typed request and block until a reply is received.  If, for some reason, the given typed request object
-     * is not a subtype of {@link #<I>}, a {@code ClassCastException} is thrown.  Otherwise this method functions
+     * is not a subtype of {@code <I>}, a {@code ClassCastException} is thrown.  Otherwise this method functions
      * identically to {@link #invoke(Object) invoke(I)}.
      *
      * @param request the request
@@ -155,7 +155,7 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
 
     /**
      * Send a typed request asynchronously.  If, for some reason, the given typed request object
-     * is not a subtype of {@link #<I>}, a {@code ClassCastException} is thrown.  Otherwise
+     * is not a subtype of {@code <I>}, a {@code ClassCastException} is thrown.  Otherwise
      * this method functions identically to {@link #send(Object) send(I)}.
      *
      * @param request the request to send
