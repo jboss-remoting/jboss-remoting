@@ -94,6 +94,32 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
     O invoke(I request) throws IOException, CancellationException;
 
     /**
+     * Send a reqest and block until a reply is received, requiring the reply to be of a specific type.
+     * Otherwise this method functions identically to {@link #invoke(Object) invoke(I)}.
+     *
+     * @param request the reqest to send
+     * @param expectedResultType the expected result type
+     * @return the result of the request
+     * @throws IOException if an I/O error occurred while sending the request
+     * @throws CancellationException if the operation was cancelled asynchronously
+     * @see #invoke(Object) invoke(I)
+     */
+    <T extends O> T invoke(I request, Class<T> expectedResultType) throws IOException, CancellationException;
+
+    /**
+     * Send a typed request and block until a reply is received.  If, for some reason, the given typed request object
+     * is not a subtype of {@link #<I>}, a {@code ClassCastException} is thrown.  Otherwise this method functions
+     * identically to {@link #invoke(Object) invoke(I)}.
+     *
+     * @param request the request
+     * @param <T> the specific reply subtype
+     * @return the result of the request
+     * @throws IOException if an I/O error occurred while sending the request
+     * @throws CancellationException if the operation was cancelled asynchronously
+     */
+    <T extends O> T invoke(TypedRequest<? extends I, T> request) throws IOException, CancellationException, ClassCastException;
+
+    /**
      * Send a request asynchronously.  If the remote side manipulates a stream, it
      * may use a local policy to assign one or more thread(s) to handle the local end of that stream, or it may
      * fail with an exception (e.g. if this method is called on a client with no threads to handle streaming).
@@ -112,4 +138,32 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
      * @throws IOException if some other I/O error occurred while sending the request
      */
     IoFuture<? extends O> send(I request) throws IOException;
+
+    /**
+     * Send a request asynchronously, requiring the reply to be of a specific result type.
+     * Otherwise this method functions identically to {@link #send(Object) send(I)}.
+     *
+     * @param request the request to send
+     * @param expectedResultType the expected result type class
+     * @param <T> the expected result type
+     * @return a future representing the result of the request
+     * @throws ObjectStreamException if marshalling some part of the request failed
+     * @throws IOException if some other I/O error occurred while sending the request
+     * @see #send(Object) send(I)
+     */
+    <T extends O> IoFuture<? extends T> send(I request, Class<T> expectedResultType) throws IOException;
+
+    /**
+     * Send a typed request asynchronously.  If, for some reason, the given typed request object
+     * is not a subtype of {@link #<I>}, a {@code ClassCastException} is thrown.  Otherwise
+     * this method functions identically to {@link #send(Object) send(I)}.
+     *
+     * @param request the request to send
+     * @param <T> the expected result type
+     * @return a future representing the result of the request
+     * @throws ObjectStreamException if marshalling some part of the request failed
+     * @throws IOException if some other I/O error occurred while sending the request
+     * @see #send(Object) send(I)
+     */
+    <T extends O> IoFuture<? extends T> send(TypedRequest<? extends I, T> request) throws IOException;
 }

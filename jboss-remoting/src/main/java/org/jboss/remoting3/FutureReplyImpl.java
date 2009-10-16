@@ -35,11 +35,11 @@ import org.jboss.xnio.IoFuture;
 final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
 
     private final Executor executor;
-    private final Class<O> replyType;
+    private final Class<? extends O> replyType;
     private final ReplyHandler replyHandler = new Handler();
     private volatile RemoteRequestContext remoteRequestContext;
 
-    FutureReplyImpl(final Executor executor, final Class<O> replyType) {
+    FutureReplyImpl(final Executor executor, final Class<? extends O> replyType) {
         this.executor = executor;
         this.replyType = replyType;
     }
@@ -65,7 +65,7 @@ final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
     private final class Handler implements ReplyHandler {
 
         public void handleReply(final Object reply) {
-            final Class<O> replyType = FutureReplyImpl.this.replyType;
+            final Class<? extends O> replyType = FutureReplyImpl.this.replyType;
             final O actualReply;
             try {
                 actualReply = replyType.cast(reply);

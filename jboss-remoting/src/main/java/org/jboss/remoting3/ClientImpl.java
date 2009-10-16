@@ -24,6 +24,7 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.CancellationException;
 import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.RequestHandler;
@@ -65,43 +66,59 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
     }
 
     public O invoke(final I request) throws IOException {
-        if (! isOpen()) {
-            throw new IOException("Client is not open");
-        }
-        log.trace("Client.invoke() sending request \"%s\"", request);
-        final I actualRequest = castRequest(request);
-        final QueueExecutor executor = new QueueExecutor();
-        final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(executor, replyClass);
-        final ReplyHandler replyHandler = futureReply.getReplyHandler();
-        final RemoteRequestContext requestContext = handler.receiveRequest(actualRequest, replyHandler);
-        futureReply.setRemoteRequestContext(requestContext);
-        futureReply.addNotifier(IoUtils.attachmentClosingNotifier(), executor);
-        executor.runQueue();
-        try {
-            final O reply = futureReply.getInterruptibly();
-            log.trace("Client.invoke() received reply \"%s\"", reply);
-            return reply;
-        } catch (InterruptedException e) {
-            try {
-                futureReply.cancel();
-                throw new IndeterminateOutcomeException("The current thread was interrupted before the result could be read");
-            } finally {
-                Thread.currentThread().interrupt();
-            }
-        }
+        return invoke(request, replyClass);
+    }
+
+    public <T extends O> T invoke(final I request, final Class<T> replyClass) throws IOException, CancellationException {
+       if (! isOpen()) {
+           throw new IOException("Client is not open");
+       }
+       log.trace("Client.invoke() sending request \"%s\"", request);
+       final I actualRequest = castRequest(request);
+       final QueueExecutor executor = new QueueExecutor();
+       final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(executor, replyClass);
+       final ReplyHandler replyHandler = futureReply.getReplyHandler();
+       final RemoteRequestContext requestContext = handler.receiveRequest(actualRequest, replyHandler);
+       futureReply.setRemoteRequestContext(requestContext);
+       futureReply.addNotifier(IoUtils.attachmentClosingNotifier(), executor);
+       executor.runQueue();
+       try {
+           final T reply = futureReply.getInterruptibly();
+           log.trace("Client.invoke() received reply \"%s\"", reply);
+           return reply;
+       } catch (InterruptedException e) {
+           try {
+               futureReply.cancel();
+               throw new IndeterminateOutcomeException("The current thread was interrupted before the result could be read");
+           } finally {
+               Thread.currentThread().interrupt();
+           }
+       }
+    }
+
+    public <T extends O> T invoke(final TypedRequest<? extends I, T> typedRequest) throws IOException, CancellationException {
+        return invoke(requestClass.cast(typedRequest), typedRequest.getReplyType());
     }
 
     public IoFuture<? extends O> send(final I request) throws IOException {
+        return send(request, replyClass);
+    }
+
+    public <T extends O> IoFuture<? extends T> send(final I request, final Class<T> replyClass) throws IOException {
         if (! isOpen()) {
             throw new IOException("Client is not open");
         }
         log.trace("Client.send() sending request \"%s\"", request);
         final I actualRequest = castRequest(request);
-        final FutureReplyImpl<O> futureReply = new FutureReplyImpl<O>(getExecutor(), replyClass);
+        final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(getExecutor(), replyClass);
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
         final RemoteRequestContext requestContext = handler.receiveRequest(actualRequest, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         return futureReply;
+    }
+
+    public <T extends O> IoFuture<? extends T> send(final TypedRequest<? extends I, T> typedRequest) throws IOException {
+        return send(requestClass.cast(typedRequest), typedRequest.getReplyType());
     }
 
     /**
