@@ -33,9 +33,9 @@ package org.jboss.remoting3;
 public interface TypedRequest<I extends TypedRequest<I, O>, O> {
 
     /**
-     * Get the reply type for this request type.
+     * Get the reply type class for this request type.
      *
      * @return the reply type's class
      */
-    Class<O> getReplyType();
+    Class<O> getReplyClass();
 }

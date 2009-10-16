@@ -97,7 +97,7 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
     }
 
     public <T extends O> T invoke(final TypedRequest<? extends I, T> typedRequest) throws IOException, CancellationException {
-        return invoke(requestClass.cast(typedRequest), typedRequest.getReplyType());
+        return invoke(requestClass.cast(typedRequest), typedRequest.getReplyClass());
     }
 
     public IoFuture<? extends O> send(final I request) throws IOException {
@@ -118,7 +118,7 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
     }
 
     public <T extends O> IoFuture<? extends T> send(final TypedRequest<? extends I, T> typedRequest) throws IOException {
-        return send(requestClass.cast(typedRequest), typedRequest.getReplyType());
+        return send(requestClass.cast(typedRequest), typedRequest.getReplyClass());
     }
 
     /**
