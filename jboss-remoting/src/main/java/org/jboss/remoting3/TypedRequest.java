@@ -30,7 +30,7 @@ package org.jboss.remoting3;
  * @param <I> the request type
  * @param <O> the reply type for this request type
  */
-public interface TypedRequest<I extends TypedRequest<I, O>, O> {
+public interface TypedRequest<I, O> {
 
     /**
      * Get the reply type class for this request type.
