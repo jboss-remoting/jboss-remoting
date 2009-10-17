@@ -117,7 +117,7 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
      * @throws IOException if an I/O error occurred while sending the request
      * @throws CancellationException if the operation was cancelled asynchronously
      */
-    <T extends O> T invoke(TypedRequest<? extends I, T> request) throws IOException, CancellationException, ClassCastException;
+    <T extends O> T invokeTyped(TypedRequest<? extends I, T> request) throws IOException, CancellationException, ClassCastException;
 
     /**
      * Send a request asynchronously.  If the remote side manipulates a stream, it
@@ -165,5 +165,5 @@ public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
      * @throws IOException if some other I/O error occurred while sending the request
      * @see #send(Object) send(I)
      */
-    <T extends O> IoFuture<? extends T> send(TypedRequest<? extends I, T> request) throws IOException;
+    <T extends O> IoFuture<? extends T> sendTyped(TypedRequest<? extends I, T> request) throws IOException;
 }
