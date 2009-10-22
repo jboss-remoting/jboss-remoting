@@ -25,7 +25,6 @@ package org.jboss.remoting3.samples.protocol.basic;
 import junit.framework.TestCase;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.IoHandler;
 import org.jboss.xnio.ChannelSource;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.nio.NioXnio;

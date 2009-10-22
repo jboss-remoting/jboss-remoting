@@ -33,6 +33,7 @@ import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.CloseableExecutor;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.TcpServer;
+import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.channels.Channels;
 import java.io.IOException;
 
@@ -66,10 +67,10 @@ public final class MultiplexServerExample {
                     final SimpleCloseable handle = endpoint.registerService(config);
                     try {
                         // now create the server...
-                        final MultiplexConnectionProviderFactory multiplexConnectionProviderFactory = new MultiplexConnectionProviderFactory(xnio.createTcpConnector().create());
+                        final MultiplexConnectionProviderFactory multiplexConnectionProviderFactory = new MultiplexConnectionProviderFactory(xnio.createTcpConnector(OptionMap.EMPTY));
                         final ConnectionProviderRegistration<MultiplexServerFactory> cpHandle = endpoint.addConnectionProvider("multiplex", multiplexConnectionProviderFactory);
                         try {
-                            final TcpServer tcpServer = xnio.createTcpServer(Channels.convertStreamToAllocatedMessage(cpHandle.getProviderInterface().getHandlerFactory(), 0x1000, 0x1000)).create();
+                            final TcpServer tcpServer = xnio.createTcpServer(Channels.createAllocatedMessageChannel(cpHandle.getProviderInterface().getServerListener(), OptionMap.EMPTY)).create();
                             try {
                                 // now just wait for 15 seconds, and then shut it all down
                                 Thread.sleep(15000L);
