@@ -25,6 +25,11 @@ package org.jboss.remoting3.spi;
 /**
  * A descriptor for automatically-discovered connection provider types.  Since instances of this interface are
  * constructed automatically, implementing classes should have a no-arg constructor.
+ * <p>
+ * To add an automatically-discovered provider, create a file called {@code "META-INF/services/org.jboss.remoting3.spi.ConnectionProviderDescriptor"}
+ * and populate it with the names of classes that implement this interface.
+ *
+ * @see java.util.ServiceLoader
  */
 public interface ConnectionProviderDescriptor {
 
