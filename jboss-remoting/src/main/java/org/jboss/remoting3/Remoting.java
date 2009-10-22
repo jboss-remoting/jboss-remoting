@@ -29,9 +29,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.ServiceLoader;
 import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.ConnectionProviderDescriptor;
 import org.jboss.xnio.CloseableExecutor;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -46,6 +49,8 @@ public final class Remoting {
 
     /**
      * Create an endpoint.  The endpoint will create its own thread pool with a maximum of 10 threads.
+     * <p>
+     * You must have the {@link org.jboss.remoting3.EndpointPermission createEndpoint EndpointPermission} to invoke this method.
      *
      * @param name the name of the endpoint
      * @return the endpoint
@@ -56,7 +61,7 @@ public final class Remoting {
 
     /**
      * Create an endpoint.  The endpoint will create its own thread pool with a maximum of {@code maxThreads} threads.
-     *
+     * <p>
      * You must have the {@link org.jboss.remoting3.EndpointPermission createEndpoint EndpointPermission} to invoke this method.
      *
      * @param name the name of the endpoint
@@ -64,13 +69,41 @@ public final class Remoting {
      * @return the endpoint
      */
     public static Endpoint createEndpoint(final String name, final int maxThreads) throws IOException {
-        final CloseableExecutor executor = createExecutor(maxThreads);
+        return createEndpoint(name, OptionMap.builder().set(Options.MAX_THREADS, maxThreads).getMap());
+    }
+
+    /**
+     * Create an endpoint configured with the given option map.  The following options are supported:
+     * <ul>
+     * <li>{@link Options#MAX_THREADS} - specify the maximum number of threads for the created thread pool (default 10)</li>
+     * <li>{@link Options#LOAD_PROVIDERS} - specify whether providers should be auto-loaded (default {@code true})</li>
+     * </ul>
+     *
+     * @param name the endpoint name
+     * @param optionMap the endpoint options
+     * @return the endpoint
+     * @throws IOException if an error occurs
+     */
+    public static Endpoint createEndpoint(final String name, final OptionMap optionMap) throws IOException {
+        if (name == null) {
+            throw new NullPointerException("name is null");
+        }
+        if (optionMap == null) {
+            throw new NullPointerException("optionMap is null");
+        }
+        final CloseableExecutor executor = createExecutor(optionMap.get(Options.MAX_THREADS, 10));
         final Endpoint endpoint = createEndpoint(executor, name);
         endpoint.addCloseHandler(new CloseHandler<Endpoint>() {
             public void handleClose(final Endpoint closed) {
                 IoUtils.safeClose(executor);
             }
         });
+        if (optionMap.get(Options.LOAD_PROVIDERS, true)) {
+            for (ConnectionProviderDescriptor descriptor : ServiceLoader.load(ConnectionProviderDescriptor.class)) {
+                endpoint.addConnectionProvider(descriptor.getUriScheme(), descriptor.getConnectionProviderFactory());
+            }
+            // todo - marshallers and components thereof
+        }
         return endpoint;
     }
 
@@ -124,57 +157,17 @@ public final class Remoting {
      * @throws IOException if an error occurs
      */
     public static <I, O> Client<I, O> createLocalClient(final Endpoint endpoint, final RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
+        boolean ok = false;
         final RequestHandler requestHandler = endpoint.createLocalRequestHandler(requestListener, requestClass, replyClass);
         try {
-            return endpoint.createClient(requestHandler, requestClass, replyClass);
+            final Client<I, O> client = endpoint.createClient(requestHandler, requestClass, replyClass);
+            ok = true;
+            return client;
         } finally {
-            IoUtils.safeClose(requestHandler);
-        }
-    }
-
-    /**
-     * Convenience method to rethrow the cause of a {@code RemoteExecutionException} as a specific type, in order
-     * to simplify application exception handling.
-     * <p/>
-     * A typical usage might look like this:
-     * <pre>
-     *   try {
-     *     client.invoke(request);
-     *   } catch (RemoteExecutionException ree) {
-     *     Remoting.rethrowAs(IOException.class, ree);
-     *     Remoting.rethrowAs(RuntimeException.class, ree);
-     *     Remoting.rethrowUnexpected(ree);
-     *   }
-     * </pre>
-     * <p/>
-     * Note that if the nested exception is an {@link InterruptedException}, the type that will actually be thrown
-     * will be {@link RemoteInterruptedException}.
-     *
-     * @param type the class of the exception
-     * @param original the remote execution exception
-     * @param <T> the exception type
-     * @throws T the exception, if it matches the given type
-     */
-    public static <T extends Throwable> void rethrowAs(Class<T> type, RemoteExecutionException original) throws T {
-        final Throwable cause = original.getCause();
-        if (cause == null) {
-            return;
-        }
-        if (type.isAssignableFrom(cause.getClass())) {
-            if (cause instanceof InterruptedException) {
-                throw new RemoteInterruptedException(cause.getMessage(), cause.getCause());
+            if (! ok) {
+                IoUtils.safeClose(requestHandler);
             }
-            throw type.cast(cause);
         }
-        return;
-    }
-
-    public static void rethrowUnexpected(RemoteExecutionException original) throws IllegalStateException {
-        Throwable cause = original.getCause();
-        if (cause instanceof InterruptedException) {
-            cause = new RemoteInterruptedException(cause.getMessage(), cause.getCause());
-        }
-        throw new IllegalStateException("Unexpected remote exception occurred", cause);
     }
 
     private Remoting() { /* empty */ }

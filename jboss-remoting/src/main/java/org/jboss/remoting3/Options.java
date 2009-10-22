@@ -34,6 +34,16 @@ public final class Options {
     }
 
     /**
+     * Configure the maximum number of threads for a simple endpoint.
+     */
+    public static final Option<Integer> MAX_THREADS = Option.simple(Options.class, "MAX_THREADS", Integer.class);
+
+    /**
+     * Specify whether connection providers should automatically be detected and loaded.
+     */
+    public static final Option<Boolean> LOAD_PROVIDERS = Option.simple(Options.class, "LOAD_PROVIDERS", Boolean.class);
+
+    /**
      * Request that the marshalling layer require the use of one of the listed marshalling protocols, in order of decreasing preference.  If
      * not specified, use a default value.  The marshaller {@code "default"} can be specified explicitly for this default value.
      */

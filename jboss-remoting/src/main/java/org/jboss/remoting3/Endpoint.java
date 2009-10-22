@@ -36,7 +36,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @param requestListener the request listener
      * @param requestClass the class of requests sent to this request listener
      * @param replyClass the class of replies received back from this request listener
-     * @return a handle for the client
+     * @return the request handler
      * @throws IOException if an error occurs
      */
     <I, O> RequestHandler createLocalRequestHandler(RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException;

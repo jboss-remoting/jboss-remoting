@@ -76,15 +76,51 @@ public class RemoteExecutionException extends RemotingException {
     }
 
     /**
-     * Rethrow the cause, if it is a runtime exception.  This is a convenience method to extract a runtime exception
-     * from a remote execution exception.
+     * Convenience method to rethrow the cause of a {@code RemoteExecutionException} as a specific type, in order
+     * to simplify application exception handling.
+     * <p/>
+     * A typical usage might look like this:
+     * <pre>
+     *   try {
+     *     client.invoke(request);
+     *   } catch (RemoteExecutionException ree) {
+     *     ree.rethrow(IOException.class);
+     *     ree.rethrow(RuntimeException.class);
+     *     throw ree.unexpected();
+     *   }
+     * </pre>
+     * <p/>
+     * Note that if the nested exception is an {@link InterruptedException}, the type that will actually be thrown
+     * will be {@link RemoteInterruptedException}.
      *
-     * @throws RuntimeException the cause
+     * @param type the class of the exception
+     * @param <T> the exception type
+     * @throws T the exception, if it matches the given type
      */
-    public final void throwRuntime() throws RuntimeException {
+    public <T extends Throwable> void rethrow(Class<T> type) throws T {
         final Throwable cause = getCause();
-        if (cause instanceof RuntimeException) {
-            throw ((RuntimeException)cause);
+        if (cause == null) {
+            return;
         }
+        if (type.isAssignableFrom(cause.getClass()) || type == RemoteInterruptedException.class) {
+            if (cause instanceof InterruptedException) {
+                final RemoteInterruptedException rie = new RemoteInterruptedException(cause.getMessage(), cause.getCause());
+                rie.setStackTrace(cause.getStackTrace());
+                throw rie;
+            }
+            throw type.cast(cause);
+        }
+        return;
+    }
+
+    /**
+     * Convenience method to get an unexpected exception type wrapped within a runtime exception.
+     */
+    public IllegalStateException unexpected() {
+        Throwable cause = getCause();
+        if (cause instanceof InterruptedException) {
+            cause = new RemoteInterruptedException(cause.getMessage(), cause.getCause());
+        }
+        throw new IllegalStateException("Unexpected remote exception occurred", cause);
     }
 }
