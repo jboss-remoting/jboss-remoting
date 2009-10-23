@@ -83,6 +83,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return new CopyOnWriteHashMap<K, V>(lock);
     }
 
+    static <K, V> ConcurrentMap<K, V> concurrentIdentityMap(Object lock) {
+        return new CopyOnWriteHashMap<K, V>(true, lock);
+    }
+
     static <T> Set<T> concurrentSet(Object lock) {
         return Collections.<T>newSetFromMap(EndpointImpl.<T, Boolean>concurrentMap(lock));
     }
@@ -113,7 +117,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
      */
     private final Object serviceRegistrationLock = new Object();
 
-    private final Set<ListenerRegistration<ServiceRegistrationListener>> serviceListenerRegistrations = Collections.newSetFromMap(EndpointImpl.<ListenerRegistration<ServiceRegistrationListener>, Boolean>concurrentMap(serviceRegistrationLock));
+    private final ConcurrentMap<Registration, ServiceRegistrationListener> serviceListenerRegistrations = concurrentIdentityMap(serviceRegistrationLock);
     private final ConcurrentMap<String, ConcurrentMap<String, ServiceRegistration>> registeredLocalServices = concurrentMap(serviceRegistrationLock);
 
     private final ConcurrentMap<String, ConnectionProvider<?>> connectionProviders = concurrentMap();
@@ -244,7 +248,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
         };
         registration.setHandle(handle);
-        final Iterator<ListenerRegistration<ServiceRegistrationListener>> serviceListenerRegistrations;
+        final Iterator<Map.Entry<Registration,ServiceRegistrationListener>> serviceListenerRegistrations;
         final Object lock = serviceRegistrationLock;
         synchronized (lock) {
             // actually register the service, and while we have the lock, snag a copy of the registration listener list
@@ -260,7 +264,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
             submap.put(canonGroupName, registration);
             // snapshot
-            serviceListenerRegistrations = this.serviceListenerRegistrations.iterator();
+            serviceListenerRegistrations = this.serviceListenerRegistrations.entrySet().iterator();
         }
         // notify all service listener registrations that were registered at the time the service was created
         final ServiceRegistrationListener.ServiceInfo serviceInfo = new ServiceRegistrationListener.ServiceInfo();
@@ -271,12 +275,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         serviceInfo.setRequestHandlerConnector(requestHandlerConnector);
         executor.execute(new Runnable() {
             public void run() {
-                final Iterator<ListenerRegistration<ServiceRegistrationListener>> iter = serviceListenerRegistrations;
+                final Iterator<Map.Entry<Registration,ServiceRegistrationListener>> iter = serviceListenerRegistrations;
                 while (iter.hasNext()) {
-                    final ListenerRegistration<ServiceRegistrationListener> slr = iter.next();
-                    final ServiceRegistrationListener registrationListener = slr.getResource();
+                    final Map.Entry<Registration,ServiceRegistrationListener> slr = iter.next();
                     try {
-                        registrationListener.serviceRegistered(slr, serviceInfo.clone());
+                        slr.getValue().serviceRegistered(slr.getKey(), serviceInfo.clone());
                     } catch (Throwable t) {
                         logListenerError(t);
                     }
@@ -329,9 +332,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             sm.checkPermission(ADD_SERVICE_LISTENER_PERM);
         }
         final List<ServiceRegistration> services;
-        final ListenerRegistration<ServiceRegistrationListener> registration = new ListenerRegistration<ServiceRegistrationListener>(listener);
+        final Registration registration = new Registration() {
+            public void close() {
+                serviceListenerRegistrations.remove(this);
+            }
+        };
         synchronized (serviceRegistrationLock) {
-            serviceListenerRegistrations.add(registration);
+            serviceListenerRegistrations.put(registration, listener);
             if (flags == null || ! flags.contains(ListenerFlag.INCLUDE_OLD)) {
                 // need to make a copy of the whole list
                 services = new ArrayList<ServiceRegistration>();
@@ -575,24 +582,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
-    private final class ListenerRegistration<T> implements Registration {
-        private final T resource;
-
-        private ListenerRegistration(final T resource) {
-            this.resource = resource;
-        }
-
-        public void close() {
-            synchronized (serviceRegistrationLock) {
-                serviceListenerRegistrations.remove(this);
-            }
-        }
-
-        T getResource() {
-            return resource;
-        }
-    }
-
     private final ConnectionContext localConnectionContext = new LocalConnectionContext();
     private final ConnectionHandler loopbackConnectionHandler = new LoopbackConnectionHandler();
     private final Connection loopbackConnection = new LoopbackConnection();
@@ -604,7 +593,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
-    final class LocalConnectionProvider implements ConnectionProvider<Void> {
+    private final class LocalConnectionProvider implements ConnectionProvider<Void> {
 
         public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result) throws IllegalArgumentException {
             result.setResult(new ConnectionHandlerFactory() {

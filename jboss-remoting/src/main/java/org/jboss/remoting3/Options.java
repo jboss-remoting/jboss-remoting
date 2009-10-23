@@ -88,4 +88,19 @@ public final class Options {
      * Specify that the registered service should or should not be visible remotely.  If not specified, defaults to {@code true}.
      */
     public static final Option<Boolean> REMOTELY_VISIBLE = Option.simple(Options.class, "REMOTELY_VISIBLE", Boolean.class);
+
+    /**
+     * Specify the buffer size for any configured marshaller or unmarshaller.
+     */
+    public static final Option<Integer> BUFFER_SIZE = Option.simple(Options.class, "BUFFER_SIZE", Integer.class);
+
+    /**
+     * Specify the expected class count for any configured marshaller or unmarshaller.
+     */
+    public static final Option<Integer> CLASS_COUNT = Option.simple(Options.class, "CLASS_COUNT", Integer.class);
+
+    /**
+     * Specify the expected instance count for any configured marshaller or unmarshaller.
+     */
+    public static final Option<Integer> INSTANCE_COUNT = Option.simple(Options.class, "INSTANCE_COUNT", Integer.class);
 }

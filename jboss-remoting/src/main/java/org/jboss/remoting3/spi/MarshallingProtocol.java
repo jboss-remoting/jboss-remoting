@@ -30,6 +30,7 @@ import org.jboss.marshalling.ClassExternalizerFactory;
 import org.jboss.marshalling.ClassResolver;
 import org.jboss.marshalling.ObjectResolver;
 import org.jboss.xnio.Pool;
+import org.jboss.xnio.OptionMap;
 
 /**
  * A registered marshalling protocol.
@@ -95,5 +96,12 @@ public interface MarshallingProtocol {
          * @return the user object resolver
          */
         ObjectResolver getUserObjectResolver();
+
+        /**
+         * Get the options to use for this marshaller configuration.
+         *
+         * @return the options
+         */
+        OptionMap getOptionMap();
     }
 }

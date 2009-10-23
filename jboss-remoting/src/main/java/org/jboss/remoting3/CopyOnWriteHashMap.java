@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
 import static java.util.Collections.unmodifiableMap;
@@ -34,6 +35,7 @@ import static java.util.Collections.unmodifiableSet;
 import java.util.concurrent.ConcurrentMap;
 
 final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
+    private final boolean identity;
     private final Object writeLock;
     private volatile Map<K, V> map = emptyMap();
 
@@ -42,6 +44,11 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
     }
 
     CopyOnWriteHashMap(final Object writeLock) {
+        this(false, writeLock);
+    }
+
+    CopyOnWriteHashMap(final boolean identity, final Object writeLock) {
+        this.identity = identity;
         this.writeLock = writeLock;
     }
 
@@ -59,7 +66,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
             if (map.size() == 0) {
                 this.map = singletonMap(key, value);
             } else {
-                final HashMap<K, V> copy = new HashMap<K, V>(map);
+                final Map<K, V> copy = copy(map);
                 map.put(key, value);
                 this.map = copy;
             }
@@ -78,7 +85,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
             if (map.size() == 1) {
                 this.map = emptyMap();
             } else {
-                final HashMap<K, V> copy = new HashMap<K, V>(map);
+                final Map<K, V> copy = copy(map);
                 map.remove(key);
                 this.map = copy;
             }
@@ -100,7 +107,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
             if (map.size() == 1) {
                 this.map = singletonMap(key, newValue);
             } else {
-                final HashMap<K, V> copy = new HashMap<K, V>(map);
+                final Map<K, V> copy = copy(map);
                 map.put(key, newValue);
                 this.map = copy;
             }
@@ -122,7 +129,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
                 if (map.size() == 1) {
                     this.map = singletonMap(key, value);
                 } else {
-                    final HashMap<K, V> copy = new HashMap<K, V>(map);
+                    final Map<K, V> copy = copy(map);
                     map.put(key, value);
                     this.map = copy;
                 }
@@ -164,7 +171,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
             if (map.size() == 0) {
                 this.map = singletonMap(key, value);
             } else {
-                final HashMap<K, V> copy = new HashMap<K, V>(map);
+                final Map<K, V> copy = copy(map);
                 map.put(key, value);
                 this.map = copy;
             }
@@ -181,13 +188,17 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
                 if (map.size() == 1) {
                     this.map = emptyMap();
                 } else {
-                    final HashMap<K, V> copy = new HashMap<K, V>(map);
+                    final Map<K, V> copy = copy(map);
                     map.remove(key);
                     this.map = copy;
                 }
             }
             return old;
         }
+    }
+
+    private Map<K, V> copy(final Map<K, V> map) {
+        return identity ? new IdentityHashMap<K,V>(map) : new HashMap<K, V>(map);
     }
 
     public void putAll(final Map<? extends K, ? extends V> m) {
