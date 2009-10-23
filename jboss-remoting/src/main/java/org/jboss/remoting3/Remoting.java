@@ -31,13 +31,18 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.ServiceLoader;
 import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.ConnectionProviderDescriptor;
-import org.jboss.remoting3.spi.MarshallingProtocolDescriptor;
+import org.jboss.remoting3.spi.RemotingServiceDescriptor;
+import org.jboss.remoting3.spi.MarshallingProtocol;
+import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.xnio.CloseableExecutor;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Option;
 import org.jboss.xnio.log.Logger;
+import org.jboss.marshalling.ClassTable;
+import org.jboss.marshalling.ObjectTable;
+import org.jboss.marshalling.ClassResolver;
+import org.jboss.marshalling.ObjectResolver;
+import org.jboss.marshalling.ClassExternalizerFactory;
 
 /**
  * The standalone interface into Remoting.  This class contains static methods that are useful to standalone programs
@@ -81,37 +86,50 @@ public final class Remoting {
      * <li>{@link Options#LOAD_PROVIDERS} - specify whether providers should be auto-loaded (default {@code true})</li>
      * </ul>
      *
-     * @param name the endpoint name
+     * @param endpointName the endpoint name
      * @param optionMap the endpoint options
      * @return the endpoint
      * @throws IOException if an error occurs
      */
-    public static Endpoint createEndpoint(final String name, final OptionMap optionMap) throws IOException {
-        if (name == null) {
-            throw new NullPointerException("name is null");
+    public static Endpoint createEndpoint(final String endpointName, final OptionMap optionMap) throws IOException {
+        if (endpointName == null) {
+            throw new NullPointerException("endpointName is null");
         }
         if (optionMap == null) {
             throw new NullPointerException("optionMap is null");
         }
         final CloseableExecutor executor = createExecutor(optionMap.get(Options.MAX_THREADS, 10));
-        final Endpoint endpoint = createEndpoint(executor, name);
+        final Endpoint endpoint = createEndpoint(executor, endpointName);
         endpoint.addCloseHandler(new CloseHandler<Endpoint>() {
             public void handleClose(final Endpoint closed) {
                 IoUtils.safeClose(executor);
             }
         });
         if (optionMap.get(Options.LOAD_PROVIDERS, true)) {
-            for (ConnectionProviderDescriptor descriptor : ServiceLoader.load(ConnectionProviderDescriptor.class)) try {
-                endpoint.addConnectionProvider(descriptor.getUriScheme(), descriptor.getConnectionProviderFactory());
-            } catch (DuplicateRegistrationException e) {
-                log.debug("Duplicate registration for URI scheme '" + descriptor.getUriScheme() + "'");
+            for (RemotingServiceDescriptor descriptor : ServiceLoader.load(RemotingServiceDescriptor.class)) {
+                final String name = descriptor.getName();
+                final Class serviceType = descriptor.getType();
+                final Object service = descriptor.getService();
+                try {
+                    if (serviceType == ConnectionProviderFactory.class) {
+                        endpoint.addConnectionProvider(name, (ConnectionProviderFactory<?>) service);
+                    } else if (serviceType == MarshallingProtocol.class) {
+                        endpoint.addMarshallingProtocol(name, (MarshallingProtocol) service);
+                    } else if (serviceType == ClassTable.class) {
+                        endpoint.addUserClassTable(name, (ClassTable) service);
+                    } else if (serviceType == ObjectTable.class) {
+                        endpoint.addUserObjectTable(name, (ObjectTable) service);
+                    } else if (serviceType == ClassResolver.class) {
+                        endpoint.addUserClassResolver(name, (ClassResolver) service);
+                    } else if (serviceType == ObjectResolver.class) {
+                        endpoint.addUserObjectResolver(name, (ObjectResolver) service);
+                    } else if (serviceType == ClassExternalizerFactory.class) {
+                        endpoint.addUserExternalizerFactory(name, (ClassExternalizerFactory) service);
+                    }
+                } catch (DuplicateRegistrationException e) {
+                    log.debug("Duplicate registration for '" + name + "' of type " + serviceType);
+                }
             }
-            for (MarshallingProtocolDescriptor descriptor : ServiceLoader.load(MarshallingProtocolDescriptor.class)) try {
-                endpoint.addMarshallingProtocol(descriptor.getName(), descriptor.getMarshallingProtocol());
-            } catch (DuplicateRegistrationException e) {
-                log.debug("Duplicate registration for marshalling protocol '" + descriptor.getName() + "'");
-            }
-            // todo - marshallers and components thereof
         }
         return endpoint;
     }
