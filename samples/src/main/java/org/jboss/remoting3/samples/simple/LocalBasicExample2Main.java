@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2009, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -22,41 +22,37 @@
 
 package org.jboss.remoting3.samples.simple;
 
+import java.net.URI;
+import org.jboss.remoting3.Client;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
-import org.jboss.xnio.OptionMap;
 import org.jboss.remoting3.Connection;
-import org.jboss.remoting3.Client;
+import org.jboss.remoting3.LocalServiceConfiguration;
+import org.jboss.remoting3.Registration;
 import org.jboss.xnio.IoUtils;
-import java.io.IOException;
-import java.net.URI;
-
-import java.util.logging.Logger;
-import java.util.logging.Level;
+import org.jboss.xnio.OptionMap;
 
 /**
  *
  */
-public final class MultiplexClientExample {
+public final class LocalBasicExample2Main {
 
-    static {
-        final Logger l = Logger.getLogger("");
-        l.getHandlers()[0].setLevel(Level.ALL);
-        l.setLevel(Level.INFO);
+    private LocalBasicExample2Main() {
     }
 
-    private MultiplexClientExample() {
-    }
-
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
+        final Endpoint endpoint = Remoting.createEndpoint("simple");
         try {
-            final Endpoint endpoint = Remoting.createEndpoint("example-client-endpoint");
+            final LocalServiceConfiguration<String, String> config = LocalServiceConfiguration.create(new StringRot13ClientListener(), String.class, String.class);
+            config.setGroupName("main");
+            config.setServiceType("simple.rot13");
+            final Registration handle = endpoint.registerService(config);
             try {
-                final Connection connection = endpoint.connect(URI.create(args[0]), OptionMap.EMPTY).get();
+                final Connection connection = endpoint.connect(new URI("local:///"), OptionMap.EMPTY).get();
                 try {
-                    final Client<String,String> client = connection.openClient("samples.rot13", "*", String.class, String.class).get();
+                    final Client<String, String> client = connection.openClient("simple.rot13", "*", String.class, String.class).get();
                     try {
-                        final String original = "The Secret Message\n";
+                        final String original = "The Secret Message";
                         final String result = client.invoke(original);
                         System.out.printf("The secret message \"%s\" became \"%s\"!\n", original.trim(), result.trim());
                     } finally {
@@ -66,10 +62,10 @@ public final class MultiplexClientExample {
                     IoUtils.safeClose(connection);
                 }
             } finally {
-                IoUtils.safeClose(endpoint);
+                IoUtils.safeClose(handle);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } finally {
+            IoUtils.safeClose(endpoint);
         }
     }
 }

@@ -23,7 +23,6 @@
 package org.jboss.remoting3;
 
 import org.jboss.remoting3.spi.RequestHandlerConnector;
-import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.xnio.OptionMap;
 
 /**
@@ -40,7 +39,7 @@ public interface ServiceRegistrationListener {
      * @param listenerHandle the handle to this listener
      * @param info the servce information
      */
-    void serviceRegistered(SimpleCloseable listenerHandle, ServiceInfo info);
+    void serviceRegistered(Registration listenerHandle, ServiceInfo info);
 
     /**
      * Information about a registered service.
@@ -51,7 +50,7 @@ public interface ServiceRegistrationListener {
         private String serviceType;
         private String groupName;
         private RequestHandlerConnector requestHandlerConnector;
-        private SimpleCloseable registrationHandle;
+        private Registration registrationHandle;
         private OptionMap optionMap;
 
         /**
@@ -137,7 +136,7 @@ public interface ServiceRegistrationListener {
          *
          * @return the registration handle
          */
-        public SimpleCloseable getRegistrationHandle() {
+        public Registration getRegistrationHandle() {
             return registrationHandle;
         }
 
@@ -146,7 +145,7 @@ public interface ServiceRegistrationListener {
          *
          * @param registrationHandle the registration handle
          */
-        public void setRegistrationHandle(final SimpleCloseable registrationHandle) {
+        public void setRegistrationHandle(final Registration registrationHandle) {
             this.registrationHandle = registrationHandle;
         }
 

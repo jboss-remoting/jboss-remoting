@@ -34,8 +34,16 @@ import static java.util.Collections.unmodifiableSet;
 import java.util.concurrent.ConcurrentMap;
 
 final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
-    private final Object writeLock = new Object();
+    private final Object writeLock;
     private volatile Map<K, V> map = emptyMap();
+
+    CopyOnWriteHashMap() {
+        this(new Object());
+    }
+
+    CopyOnWriteHashMap(final Object writeLock) {
+        this.writeLock = writeLock;
+    }
 
     public V putIfAbsent(final K key, final V value) {
         if (key == null) {

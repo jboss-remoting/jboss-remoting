@@ -36,7 +36,7 @@ final class ServiceRegistration {
     private final String endpointName;
     private final OptionMap optionMap;
     private final RequestHandlerConnector requestHandlerConnector;
-    private volatile SimpleCloseable handle;
+    private volatile Registration handle;
 
     ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final OptionMap optionMap, final RequestHandlerConnector requestHandlerConnector) {
         this.requestHandlerConnector = requestHandlerConnector;
@@ -86,11 +86,11 @@ final class ServiceRegistration {
         return requestHandlerConnector;
     }
 
-    public SimpleCloseable getHandle() {
+    public Registration getHandle() {
         return handle;
     }
 
-    void setHandle(final SimpleCloseable handle) {
+    void setHandle(final Registration handle) {
         this.handle = handle;
     }
 }

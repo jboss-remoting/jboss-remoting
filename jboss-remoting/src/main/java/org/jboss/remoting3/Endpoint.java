@@ -55,7 +55,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @param configuration the configuration to use
      * @throws IOException if an error occurs
      */
-    <I, O> SimpleCloseable registerService(LocalServiceConfiguration<I, O> configuration) throws IOException;
+    <I, O> Registration registerService(LocalServiceConfiguration<I, O> configuration) throws IOException;
 
     /**
      * Add a service registration listener which is called whenever a local service is registered.
@@ -66,7 +66,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @param flags the flags to apply to the listener
      * @return a handle which may be used to remove the listener registration
      */
-    SimpleCloseable addServiceRegistrationListener(ServiceRegistrationListener listener, Set<ListenerFlag> flags);
+    Registration addServiceRegistrationListener(ServiceRegistrationListener listener, Set<ListenerFlag> flags);
 
     /**
      * Create a client that uses the given request handler to handle its requests.
