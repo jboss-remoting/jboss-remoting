@@ -156,7 +156,16 @@ public final class Remoting {
      * @return a closeable executor
      */
     public static CloseableExecutor createExecutor(final int maxThreads) {
-        return IoUtils.closeableExecutor(new ThreadPoolExecutor(1, maxThreads, 30L, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(50), OUR_THREAD_FACTORY, new ThreadPoolExecutor.CallerRunsPolicy()), 30L, TimeUnit.SECONDS);
+        final ThreadPoolExecutor executor = new ThreadPoolExecutor(1, maxThreads, 30L, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(50), OUR_THREAD_FACTORY, new ThreadPoolExecutor.CallerRunsPolicy());
+        return new CloseableExecutor() {
+            public void close() throws IOException {
+                executor.shutdown();
+            }
+
+            public void execute(final Runnable command) {
+                executor.execute(command);
+            }
+        };
     }
 
     /**
