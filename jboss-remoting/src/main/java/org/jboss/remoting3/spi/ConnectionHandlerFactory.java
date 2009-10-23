@@ -31,11 +31,10 @@ package org.jboss.remoting3.spi;
 public interface ConnectionHandlerFactory {
 
     /**
-     * Create a connection handler instance.  The provided connection handler is the handler for the next hop of
-     * the local connection; typically this will be the endpoint loopback connection but it may not be.
+     * Create a connection handler instance.  The provided connection context is used to open local services.
      *
-     * @param localConnectionHandler the local connection handler for incoming requests
+     * @param connectionContext the local connection handler for incoming requests
      * @return the connection handler for outgoing requests
      */
-    ConnectionHandler createInstance(ConnectionHandler localConnectionHandler);
+    ConnectionHandler createInstance(ConnectionContext connectionContext);
 }

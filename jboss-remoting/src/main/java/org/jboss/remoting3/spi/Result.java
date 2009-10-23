@@ -24,10 +24,30 @@ package org.jboss.remoting3.spi;
 
 import java.io.IOException;
 
+/**
+ * A handler for accepting the result of an operation.  Used by protocol implementations to tell Remoting
+ * the result of an operation.
+ *
+ * @param <T> the type of the result
+ */
 public interface Result<T> {
+
+    /**
+     * Indicate a successful result, and hand in the result value.
+     *
+     * @param result the result value
+     */
     void setResult(T result);
 
+    /**
+     * Indicate a failure, and hand in the exception.
+     *
+     * @param exception the exception
+     */
     void setException(IOException exception);
 
+    /**
+     * Indicate a cancellation of the operation.
+     */
     void setCancelled();
 }

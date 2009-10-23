@@ -22,20 +22,28 @@
 
 package org.jboss.remoting3.spi;
 
-import org.jboss.xnio.Cancellable;
-
 /**
- * A holder for a request handler that is to be sent to a remote peer.
+ * A descriptor for automatically-discovered marshaller types.  Since instances of this interface are
+ * constructed automatically, implementing classes should have a no-arg constructor.
+ * <p>
+ * To add an automatically-discovered marshaller, create a file called {@code "META-INF/services/org.jboss.remoting3.spi.MarshallingProtocolDescriptor"}
+ * and populate it with the names of classes that implement this interface.
+ *
+ * @see java.util.ServiceLoader
  */
-public interface RequestHandlerConnector {
+public interface MarshallingProtocolDescriptor {
 
     /**
-     * Get the request handler.  If this connector was forwarded, this method may only be called once;
-     * further attempts to call it should result in a {@code SecurityException}.
+     * Get the name of this marshalling protocol.
      *
-     * @param result the result of the connection
-     * @return the cancellation handle
-     * @throws SecurityException if this is a forwarding connector, thrown if the connector was not forwarded or if this method is called more than one time
+     * @return the name
      */
-    Cancellable createRequestHandler(Result<RequestHandler> result) throws SecurityException;
+    String getName();
+
+    /**
+     * Get the marshalling protocol to associate with the given name.
+     *
+     * @return the marshalling protocol
+     */
+    MarshallingProtocol getMarshallingProtocol();
 }

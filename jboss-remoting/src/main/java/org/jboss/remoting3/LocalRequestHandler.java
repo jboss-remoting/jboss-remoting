@@ -78,8 +78,9 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
             return SpiUtils.getBlankRemoteRequestContext();
         }
         return new RemoteRequestContext() {
-            public void cancel() {
+            public RemoteRequestContext cancel() {
                 context.cancel();
+                return this;
             }
         };
     }

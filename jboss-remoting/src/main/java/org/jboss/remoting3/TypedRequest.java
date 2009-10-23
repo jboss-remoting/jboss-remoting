@@ -30,6 +30,7 @@ package org.jboss.remoting3;
  * @param <I> the request type
  * @param <O> the reply type for this request type
  */
+@SuppressWarnings({ "UnusedDeclaration" })
 public interface TypedRequest<I, O> {
 
     /**

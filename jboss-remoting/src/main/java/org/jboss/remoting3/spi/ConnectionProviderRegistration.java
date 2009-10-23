@@ -22,14 +22,14 @@
 
 package org.jboss.remoting3.spi;
 
-import org.jboss.remoting3.HandleableCloseable;
+import org.jboss.remoting3.Registration;
 
 /**
  * A handle representing the registration of a connection provider.
  *
  * @param <T> the provider interface type
  */
-public interface ConnectionProviderRegistration<T> extends HandleableCloseable<ConnectionProviderRegistration<T>> {
+public interface ConnectionProviderRegistration<T> extends Registration {
 
     /**
      * Get the created provider interface associated with this registration.

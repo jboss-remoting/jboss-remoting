@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3.spi;
 
+import org.jboss.xnio.Cancellable;
+
 /**
  * The context of an outstanding remote request.  This instance should be discarded when a reply (of any sort)
  * is received for the request.
@@ -31,5 +33,5 @@ public interface RemoteRequestContext extends Cancellable {
     /**
      * Signal that the request should be cancelled, if possible.
      */
-    void cancel();
+    RemoteRequestContext cancel();
 }

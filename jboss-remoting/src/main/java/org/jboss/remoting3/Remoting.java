@@ -32,9 +32,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.ServiceLoader;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.ConnectionProviderDescriptor;
+import org.jboss.remoting3.spi.MarshallingProtocolDescriptor;
 import org.jboss.xnio.CloseableExecutor;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
+import org.jboss.xnio.Option;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -99,8 +101,15 @@ public final class Remoting {
             }
         });
         if (optionMap.get(Options.LOAD_PROVIDERS, true)) {
-            for (ConnectionProviderDescriptor descriptor : ServiceLoader.load(ConnectionProviderDescriptor.class)) {
+            for (ConnectionProviderDescriptor descriptor : ServiceLoader.load(ConnectionProviderDescriptor.class)) try {
                 endpoint.addConnectionProvider(descriptor.getUriScheme(), descriptor.getConnectionProviderFactory());
+            } catch (DuplicateRegistrationException e) {
+                log.debug("Duplicate registration for URI scheme '" + descriptor.getUriScheme() + "'");
+            }
+            for (MarshallingProtocolDescriptor descriptor : ServiceLoader.load(MarshallingProtocolDescriptor.class)) try {
+                endpoint.addMarshallingProtocol(descriptor.getName(), descriptor.getMarshallingProtocol());
+            } catch (DuplicateRegistrationException e) {
+                log.debug("Duplicate registration for marshalling protocol '" + descriptor.getName() + "'");
             }
             // todo - marshallers and components thereof
         }

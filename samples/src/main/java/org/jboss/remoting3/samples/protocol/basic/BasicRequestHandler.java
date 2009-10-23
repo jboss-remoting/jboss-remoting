@@ -67,7 +67,7 @@ final class BasicRequestHandler extends AbstractAutoCloseable<RequestHandler> im
             final int id = requestSequence.getAndIncrement();
             replyQueue.add(replyHandler);
             return new RemoteRequestContext() {
-                public void cancel() {
+                public RemoteRequestContext cancel() {
                     reqLock.lock();
                     try {
                         marshaller.write(3);
@@ -79,6 +79,7 @@ final class BasicRequestHandler extends AbstractAutoCloseable<RequestHandler> im
                     } finally {
                         reqLock.unlock();
                     }
+                    return this;
                 }
             };
         } catch (IOException e) {

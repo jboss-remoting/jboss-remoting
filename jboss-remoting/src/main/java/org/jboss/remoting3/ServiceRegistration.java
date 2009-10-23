@@ -23,6 +23,7 @@
 package org.jboss.remoting3;
 
 import org.jboss.remoting3.spi.RequestHandlerConnector;
+import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.xnio.OptionMap;
 
 /**
@@ -34,25 +35,25 @@ final class ServiceRegistration {
     private final String groupName;
     private final String endpointName;
     private final OptionMap optionMap;
-    private final RequestHandlerConnector connector;
+    private final RequestHandlerConnector requestHandlerConnector;
     private volatile SimpleCloseable handle;
 
-    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final OptionMap optionMap, final RequestHandlerConnector connector) {
+    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final OptionMap optionMap, final RequestHandlerConnector requestHandlerConnector) {
+        this.requestHandlerConnector = requestHandlerConnector;
         remote = true;
         this.serviceType = serviceType;
         this.groupName = groupName;
         this.endpointName = endpointName;
         this.optionMap = optionMap;
-        this.connector = connector;
     }
 
-    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final RequestHandlerConnector connector) {
+    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final RequestHandlerConnector requestHandlerConnector) {
+        this.requestHandlerConnector = requestHandlerConnector;
         remote = false;
         optionMap = OptionMap.EMPTY;
         this.serviceType = serviceType;
         this.groupName = groupName;
         this.endpointName = endpointName;
-        this.connector = connector;
     }
 
     public boolean matches(final String serviceType, final String groupName, final String endpointName) {
@@ -81,8 +82,8 @@ final class ServiceRegistration {
         return optionMap;
     }
 
-    public RequestHandlerConnector getConnector() {
-        return connector;
+    public RequestHandlerConnector getRequestHandlerConnector() {
+        return requestHandlerConnector;
     }
 
     public SimpleCloseable getHandle() {

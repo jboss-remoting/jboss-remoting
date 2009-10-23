@@ -23,6 +23,7 @@
 package org.jboss.remoting3;
 
 import org.jboss.remoting3.spi.RequestHandlerConnector;
+import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.xnio.OptionMap;
 
 /**

@@ -20,24 +20,17 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.spi;
+package org.jboss.remoting3;
+
+import java.io.Closeable;
 
 /**
- * A handle which can be used to cancel an operation.  Cancellation is not mandatory; calling this method merely indicates
- * that the operation need not complete.
+ * A simple registration handle.  Registration handles are closeable but the close will not throw an exception.
  */
-public interface Cancellable {
+public interface Registration extends Closeable {
 
     /**
-     * Cancel the operation.  Calling this method more than one time has no additional effect.
+     * Close the registration.
      */
-    void cancel();
-
-    /**
-     * A Cancellable instance which does nothing.
-     */
-    Cancellable NULL_CANCELLABLE = new Cancellable() {
-        public void cancel() {
-        }
-    };
+    void close();
 }

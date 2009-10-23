@@ -22,21 +22,39 @@
 
 package org.jboss.remoting3.spi;
 
-import java.util.concurrent.Executor;
+import org.jboss.xnio.OptionMap;
 
 /**
- * An abstract implementation of {@code ConnectionProviderRegistration}.
- *
- * @param <T> the provider interface type
+ * The context for connections to service incoming requests to open a client service.
  */
-public abstract class AbstractConnectionProviderRegistration<T> extends AbstractHandleableCloseable<ConnectionProviderRegistration<T>> implements ConnectionProviderRegistration<T> {
+public interface ConnectionContext {
 
     /**
-     * Basic constructor.
+     * Open a service.
      *
-     * @param executor the executor used to execute the close notification handlers
+     * @param serviceType the service type
+     * @param groupName the service group name
+     * @param optionMap the open options
+     * @param serviceResult the result of the service open
      */
-    protected AbstractConnectionProviderRegistration(final Executor executor) {
-        super(executor);
+    void openService(String serviceType, String groupName, OptionMap optionMap, ServiceResult serviceResult);
+
+    /**
+     * The result acceptor for a service open request.
+     */
+    interface ServiceResult {
+
+        /**
+         * Called if the service was opened.
+         *
+         * @param requestHandler the opened request handler
+         * @param optionMap the service's option map
+         */
+        void opened(RequestHandler requestHandler, OptionMap optionMap);
+
+        /**
+         * Called if no matching service was found.
+         */
+        void notFound();
     }
 }
