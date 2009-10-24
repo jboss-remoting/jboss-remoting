@@ -554,6 +554,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             connectionHandler = connectionHandlerFactory.createInstance(localConnectionContext);
         }
 
+        protected void closeAction() throws IOException {
+            connectionHandler.close();
+        }
+
         public <I, O> IoFuture<? extends Client<I, O>> openClient(final String serviceType, final String groupName, final Class<I> requestClass, final Class<O> replyClass) {
             return doOpenClient(connectionHandler, serviceType, groupName, requestClass, replyClass);
         }
