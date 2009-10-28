@@ -24,6 +24,7 @@ package org.jboss.remoting3.spi;
 
 import java.io.Closeable;
 import org.jboss.xnio.Cancellable;
+import org.jboss.xnio.Result;
 
 /**
  * A connection to a foreign endpoint.  This interface is implemented by the protocol implementation.

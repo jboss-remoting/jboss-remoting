@@ -27,7 +27,6 @@ import org.jboss.remoting3.Client;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.Connection;
-import org.jboss.remoting3.LocalServiceConfiguration;
 import org.jboss.remoting3.Registration;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
@@ -43,10 +42,9 @@ public final class LocalBasicExample2Main {
     public static void main(String[] args) throws Exception {
         final Endpoint endpoint = Remoting.createEndpoint("simple");
         try {
-            final LocalServiceConfiguration<String, String> config = LocalServiceConfiguration.create(new StringRot13ClientListener(), String.class, String.class);
-            config.setGroupName("main");
-            config.setServiceType("simple.rot13");
-            final Registration handle = endpoint.registerService(config);
+            final Registration handle = endpoint.serviceBuilder().setServiceType("simple.rot13").setGroupName("main")
+                    .setRequestType(String.class).setReplyType(String.class).setClientListener(new StringRot13ClientListener())
+                    .register();
             try {
                 final Connection connection = endpoint.connect(new URI("local:///"), OptionMap.EMPTY).get();
                 try {

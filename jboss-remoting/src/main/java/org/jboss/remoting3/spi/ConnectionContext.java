@@ -26,11 +26,15 @@ import org.jboss.xnio.OptionMap;
 
 /**
  * The context for connections to service incoming requests to open a client service.
+ *
+ * @remoting.consume
  */
 public interface ConnectionContext {
 
     /**
      * Open a service.
+     *
+     * @remoting.nonblocking
      *
      * @param serviceType the service type
      * @param groupName the service group name
@@ -38,6 +42,13 @@ public interface ConnectionContext {
      * @param serviceResult the result of the service open
      */
     void openService(String serviceType, String groupName, OptionMap optionMap, ServiceResult serviceResult);
+
+    /**
+     * Indicate that the remote side has terminated the connection, so the local side should be closed as well.
+     *
+     * @remoting.nonblocking
+     */
+    void remoteClosed();
 
     /**
      * The result acceptor for a service open request.

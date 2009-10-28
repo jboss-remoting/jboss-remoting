@@ -37,5 +37,5 @@ public interface RequestHandlerConnector {
      * @return the cancellation handle
      * @throws SecurityException if this is a forwarding connector, thrown if the connector was not forwarded or if this method is called more than one time
      */
-    Cancellable createRequestHandler(Result<RequestHandler> result) throws SecurityException;
+    Cancellable createRequestHandler(org.jboss.xnio.Result<RequestHandler> result) throws SecurityException;
 }

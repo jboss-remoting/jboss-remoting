@@ -20,34 +20,21 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.spi;
+package org.jboss.remoting3.taglet;
 
-import java.io.IOException;
+import com.sun.javadoc.Tag;
 
-/**
- * A handler for accepting the result of an operation.  Used by protocol implementations to tell Remoting
- * the result of an operation.
- *
- * @param <T> the type of the result
- */
-public interface Result<T> {
+public final class RemotingNonBlockingTaglet extends RemotingTypeTaglet {
 
-    /**
-     * Indicate a successful result, and hand in the result value.
-     *
-     * @param result the result value
-     */
-    void setResult(T result);
+    public String getName() {
+        return "remoting.nonblocking";
+    }
 
-    /**
-     * Indicate a failure, and hand in the exception.
-     *
-     * @param exception the exception
-     */
-    void setException(IOException exception);
-
-    /**
-     * Indicate a cancellation of the operation.
-     */
-    void setCancelled();
+    public String toString(final Tag tag) {
+        return "<p><b>Non-blocking method</b> - this method is expected to operate on a non-blocking basis.  That is, " +
+                "the method is expected to return in a relatively short amount of time, and the result of the method is " +
+                "not expected to be available at the time this method returns.  Instead, the " +
+                "method implementation should take whatever steps are necessary to initiate the operation asynchronously " +
+                "and then return.  If a result is available immediately, it is allowed to report the result immediately.\n";
+    }
 }

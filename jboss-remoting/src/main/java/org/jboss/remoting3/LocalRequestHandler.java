@@ -44,9 +44,10 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.listener");
 
-    LocalRequestHandler(final Executor executor, final RequestListener<I, O> requestListener, final ClientContextImpl clientContext, final Class<I> requestClass, final Class<O> replyClass) {
+    @SuppressWarnings({ "unchecked" })
+    LocalRequestHandler(final Executor executor, final RequestListener<? super I, ? extends O> requestListener, final ClientContextImpl clientContext, final Class<I> requestClass, final Class<O> replyClass) {
         super(executor);
-        this.requestListener = requestListener;
+        this.requestListener = (RequestListener<I, O>) requestListener;
         this.clientContext = clientContext;
         this.requestClass = requestClass;
         this.replyClass = replyClass;

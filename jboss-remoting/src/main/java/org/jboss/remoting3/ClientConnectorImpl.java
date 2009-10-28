@@ -22,10 +22,11 @@
 
 package org.jboss.remoting3;
 
-import org.jboss.xnio.IoFuture;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.xnio.Cancellable;
+import org.jboss.xnio.FutureResult;
+import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.TranslatingResult;
 import java.io.Serializable;
 import java.io.IOException;
 
@@ -52,18 +53,13 @@ final class ClientConnectorImpl<I, O> implements ClientConnector<I, O>, Serializ
         if (clientContext != null) {
             throw new SecurityException("Connector has not been sent");
         }
-        return new FutureResult<Client<I, O>, RequestHandler>() {
-            private final Cancellable cancellable = requestHandlerConnector.createRequestHandler(getResult());
-
-            protected Client<I, O> translate(final RequestHandler result) throws IOException {
-                return endpoint.createClient(result, requestClass, replyClass);
+        final FutureResult<Client<I, O>> futureResult = new FutureResult<Client<I, O>>();
+        requestHandlerConnector.createRequestHandler(new TranslatingResult<RequestHandler, Client<I, O>>(futureResult) {
+            protected Client<I, O> translate(final RequestHandler input) throws IOException {
+                return endpoint.createClient(input, requestClass, replyClass);
             }
-
-            public IoFuture<Client<I, O>> cancel() {
-                cancellable.cancel();
-                return super.cancel();
-            }
-        };
+        });
+        return futureResult.getIoFuture();
     }
 
     public ClientContext getClientContext() {

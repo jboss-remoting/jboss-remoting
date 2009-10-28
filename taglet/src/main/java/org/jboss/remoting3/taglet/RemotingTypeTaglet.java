@@ -86,5 +86,6 @@ public abstract class RemotingTypeTaglet implements Taglet {
         add(tagletMap, new RemotingConsumeTaglet());
         add(tagletMap, new RemotingImplementTaglet());
         add(tagletMap, new RemotingInternalTaglet());
+        add(tagletMap, new RemotingNonBlockingTaglet());
     }
 }

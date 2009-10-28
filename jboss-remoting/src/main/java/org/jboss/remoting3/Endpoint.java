@@ -6,7 +6,6 @@ import java.util.Set;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.ConnectionProviderRegistration;
-import org.jboss.remoting3.spi.MarshallingProtocol;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.OptionMap;
 import org.jboss.marshalling.ClassTable;
@@ -14,6 +13,7 @@ import org.jboss.marshalling.ObjectTable;
 import org.jboss.marshalling.ClassExternalizerFactory;
 import org.jboss.marshalling.ClassResolver;
 import org.jboss.marshalling.ObjectResolver;
+import org.jboss.marshalling.MarshallerFactory;
 
 /**
  * A potential participant in a JBoss Remoting communications relationship.
@@ -45,17 +45,103 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @return the request handler
      * @throws IOException if an error occurs
      */
-    <I, O> RequestHandler createLocalRequestHandler(RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException;
+    <I, O> RequestHandler createLocalRequestHandler(RequestListener<? super I, ? extends O> requestListener, Class<I> requestClass, Class<O> replyClass) throws IOException;
 
     /**
-     * Create a request handler source that can be used to acquire clients associated with a request listener on this endpoint.
-     * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission registerService EndpointPermission} to invoke this method.
+     * Get a new service builder which can be used to register a service.
      *
-     * @param configuration the configuration to use
-     * @throws IOException if an error occurs
+     * @return a new service builder
      */
-    <I, O> Registration registerService(LocalServiceConfiguration<I, O> configuration) throws IOException;
+    ServiceBuilder<?, ?> serviceBuilder();
+
+    /**
+     * A service builder for new service registration.
+     *
+     * @param <I> the request type
+     * @param <O> the reply type
+     */
+    interface ServiceBuilder<I, O> {
+
+        /**
+         * Set the group name.
+         * @param groupName the group name
+         * @return this builder
+         */
+        ServiceBuilder<I, O> setGroupName(String groupName);
+
+        /**
+         * Set the service type string, which should follow the convention for package names (reversed domain names).
+         *
+         * @param serviceType the service type
+         * @return this builder
+         */
+        ServiceBuilder<I, O> setServiceType(String serviceType);
+
+        /**
+         * Clear the configured client listener and set a new request type.
+         *
+         * @param newRequestType the new request type's class
+         * @param <N> the new request type
+         * @return this builder, cast to include the new request type
+         */
+        <N> ServiceBuilder<N, O> setRequestType(Class<N> newRequestType);
+
+        /**
+         * Clear the configured client listener and set a new reply type.
+         *
+         * @param newReplyType the new reply type's class
+         * @param <N> the new reply type
+         * @return this builder, cast to include the new reply type
+         */
+        <N> ServiceBuilder<I, N> setReplyType(Class<N> newReplyType);
+
+        /**
+         * Set the request listener.  The given listener may be configured to accept a superclass of the given
+         * request type, or a subclass of the given reply type, since they are compatible.
+         *
+         * @param clientListener the request listener
+         * @return this builder
+         */
+        ServiceBuilder<I, O> setClientListener(ClientListener<? super I, ? extends O> clientListener);
+
+        /**
+         * Set the option map for the service.  The options may include, but are not limited to:
+         * <ul>
+         * <li>{@link Options#BUFFER_SIZE} - the recommended buffer size for marshallers to use for this service</li>
+         * <li>{@link Options#CLASS_COUNT} - the recommended class count for marshallers to use for this service</li>
+         * <li>{@link Options#INSTANCE_COUNT} - the recommended instance count for marshallers to use for this service</li>
+         * <li>{@link Options#METRIC} - the relative desirability or "distance" of this service</li>
+         * <li>{@link Options#MARSHALLING_PROTOCOLS} - the marshalling protocols which are allowed for this service,
+         *          in order of decreasing preference; if none is given, all registered protocols will
+         *          be made available</li>
+         * <li>{@link Options#MARSHALLING_CLASS_RESOLVERS} - the class resolvers which are allowed for this service,
+         *          in order of decreasing preference; if none is given, the default class resolver is used</li>
+         * <li>{@link Options#MARSHALLING_CLASS_TABLES} - the class tables which are allowed for this service, in order
+         *          of decreasing preference</li>
+         * <li>{@link Options#MARSHALLING_EXTERNALIZER_FACTORIES} - the class externalizer factories which are allowed
+         *          for this service, in order of decreasing preference</li>
+         * <li>{@link Options#REMOTELY_VISIBLE} - {@code true} if this service should be remotely accessible,
+         *          {@code false} otherwise (defaults to {@code true})</li>
+         * <li>{@link Options#REQUIRE_SECURE} - {@code true} if this service may only be accessed over a secure/encrypted
+         *          channel; defaults to {@code false}, however this should be set to {@code true} if sensitive data (e.g.
+         *          passwords) may be transmitted as part of a payload</li>
+         * </ul>
+         *
+         * @param optionMap the option map
+         * @return this builder
+         */
+        ServiceBuilder<I, O> setOptionMap(OptionMap optionMap);
+
+        /**
+         * Register the service.
+         * <p/>
+         * You must have the {@link org.jboss.remoting3.EndpointPermission registerService EndpointPermission} to invoke this method.
+         *
+         * @return a registration handle
+         * @throws IOException if a problem occurs with registration
+         */
+        Registration register() throws IOException;
+    }
 
     /**
      * Add a service registration listener which is called whenever a local service is registered.
@@ -81,7 +167,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @return the client
      * @throws IOException if an error occurs
      */
-    <I, O> Client<I, O> createClient(RequestHandler handler, Class<I> requestClass,  Class<O> replyClass) throws IOException;
+    <I, O> Client<I, O> createClient(RequestHandler handler, Class<I> requestClass, Class<O> replyClass) throws IOException;
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
@@ -115,11 +201,11 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * You must have the {@link org.jboss.remoting3.EndpointPermission addMarshallingProtocol EndpointPermission} to invoke this method.
      *
      * @param name the protocol name
-     * @param marshallingProtocol the implementation
+     * @param marshallerFactory the implementation
      * @return a handle which may be used to remove the registration
      * @throws DuplicateRegistrationException if there is already a protocol registered to that name
      */
-    Registration addMarshallingProtocol(String name, MarshallingProtocol marshallingProtocol) throws DuplicateRegistrationException;
+    Registration addMarshallingProtocol(String name, MarshallerFactory marshallerFactory) throws DuplicateRegistrationException;
 
     /**
      * Register a named class table for marshalling.

@@ -91,7 +91,7 @@ final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
         }
 
         public void handleCancellation() {
-            finishCancel();
+            setCancelled();
         }
     }
 }

@@ -44,38 +44,32 @@ public final class Options {
     public static final Option<Boolean> LOAD_PROVIDERS = Option.simple(Options.class, "LOAD_PROVIDERS", Boolean.class);
 
     /**
-     * Request that the marshalling layer require the use of one of the listed marshalling protocols, in order of decreasing preference.  If
-     * not specified, use a default value.  The marshaller {@code "default"} can be specified explicitly for this default value.
+     * Request that the marshalling layer require the use of one of the listed marshalling protocols, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_PROTOCOLS = Option.sequence(Options.class, "MARSHALLING_PROTOCOLS", String.class);
 
     /**
-     * Request that the marshalling layer require the presense of one of the listed user-defined class tables, in order of decreasing preference.  If
-     * not specified, no user class table should be used.  The string {@code "none"} indicates no class table.
+     * Request that the marshalling layer require the presense of one of the listed user-defined class tables, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_CLASS_TABLES = Option.sequence(Options.class, "MARSHALLING_CLASS_TABLES", String.class);
 
     /**
-     * Request that the marshalling layer require the presense of one of the listed user-defined object tables, in order of decreasing preference.  If
-     * not specified, no user object table should be used.  The string {@code "none"} indicates no object table.
+     * Request that the marshalling layer require the presense of one of the listed user-defined object tables, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_OBJECT_TABLES = Option.sequence(Options.class, "MARSHALLING_OBJECT_TABLES", String.class);
 
     /**
-     * Request that the marshalling layer require the presense of one of the listed class resolvers, in order of decreasing preference.  If
-     * not specified, classes are resolved on the remote side using a default strategy.  The string {@code "default"} indicates the default class resolver.
+     * Request that the marshalling layer require the presense of one of the listed class resolvers, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_CLASS_RESOLVERS = Option.sequence(Options.class, "MARSHALLING_CLASS_RESOLVERS", String.class);
 
     /**
-     * Request that the marshalling layer require the presense of one of the listed object resolvers, in order of decreasing preference.  If
-     * not specified, no object substitution will take place.  The string {@code "none"} indicates no object resolver.
+     * Request that the marshalling layer require the presense of one of the listed object resolvers, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_OBJECT_RESOLVERS = Option.sequence(Options.class, "MARSHALLING_OBJECT_RESOLVERS", String.class);
 
     /**
-     * Request that the marshalling layer require the presense of one of the listed user-defined externalizer factories, in order of decreasing preference.  If
-     * not specified, no user externalizer factory should be used.  The string {@code "none"} indicates no externalizer factory.
+     * Request that the marshalling layer require the presense of one of the listed user-defined externalizer factories, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_EXTERNALIZER_FACTORIES = Option.sequence(Options.class, "MARSHALLING_EXTERNALIZER_FACTORIES", String.class);
 
@@ -85,7 +79,7 @@ public final class Options {
     public static final Option<Integer> METRIC = Option.simple(Options.class, "METRIC", Integer.class);
 
     /**
-     * Specify that the registered service should or should not be visible remotely.  If not specified, defaults to {@code true}.
+     * Specify that the registered service should or should not be visible remotely.
      */
     public static final Option<Boolean> REMOTELY_VISIBLE = Option.simple(Options.class, "REMOTELY_VISIBLE", Boolean.class);
 
@@ -103,4 +97,10 @@ public final class Options {
      * Specify the expected instance count for any configured marshaller or unmarshaller.
      */
     public static final Option<Integer> INSTANCE_COUNT = Option.simple(Options.class, "INSTANCE_COUNT", Integer.class);
+
+    /**
+     * Specify whether the service may be accessed from connections which are unencrypted, or whether encryption is
+     * required.
+     */
+    public static final Option<Boolean> REQUIRE_SECURE = Option.simple(Options.class, "REQUIRE_SECURE", Boolean.class);
 }

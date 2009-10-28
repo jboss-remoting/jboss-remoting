@@ -36,7 +36,6 @@ public interface RemotingServiceDescriptor<T> {
     /**
      * Get the type of service provided by this descriptor.  Only the following types are supported:
      * <ul>
-     * <li><code>{@link MarshallingProtocol}.class</code> - named marshalling protocol</li>
      * <li><code>{@link ConnectionProviderFactory}.class</code> - named connection provider URI scheme</li>
      * <li><code>{@link org.jboss.marshalling.ClassTable ClassTable}.class</code> - named marshalling class table</li>
      * <li><code>{@link org.jboss.marshalling.ObjectTable ObjectTable}.class</code> - named marshalling object table</li>

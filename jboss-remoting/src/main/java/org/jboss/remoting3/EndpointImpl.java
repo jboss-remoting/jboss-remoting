@@ -45,30 +45,30 @@ import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
-import org.jboss.remoting3.spi.Result;
 import org.jboss.remoting3.spi.ConnectionProviderRegistration;
-import org.jboss.remoting3.spi.MarshallingProtocol;
 import org.jboss.remoting3.spi.ConnectionContext;
+import org.jboss.xnio.log.Logger;
 import org.jboss.xnio.Cancellable;
+import org.jboss.xnio.FailedIoFuture;
+import org.jboss.xnio.FinishedIoFuture;
+import org.jboss.xnio.FutureResult;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.WeakCloseable;
 import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.FinishedIoFuture;
-import org.jboss.xnio.FailedIoFuture;
-import org.jboss.xnio.log.Logger;
+import org.jboss.xnio.Result;
+import org.jboss.xnio.TranslatingResult;
+import org.jboss.xnio.WeakCloseable;
 import org.jboss.marshalling.ClassTable;
 import org.jboss.marshalling.ObjectTable;
 import org.jboss.marshalling.ClassExternalizerFactory;
 import org.jboss.marshalling.ClassResolver;
 import org.jboss.marshalling.ObjectResolver;
+import org.jboss.marshalling.MarshallerFactory;
 
 /**
  *
  */
 final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implements Endpoint {
-
-    private static final NullCancellable NULL_CANCELLABLE = new NullCancellable();
 
     static {
         // Print Remoting "greeting" message
@@ -121,7 +121,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final ConcurrentMap<String, ConcurrentMap<String, ServiceRegistration>> registeredLocalServices = concurrentMap(serviceRegistrationLock);
 
     private final ConcurrentMap<String, ConnectionProvider<?>> connectionProviders = concurrentMap();
-    private final ConcurrentMap<String, MarshallingProtocol> marshallingProtocols = concurrentMap();
+    private final ConcurrentMap<String, MarshallerFactory> marshallerFactories = concurrentMap();
     private final ConcurrentMap<String, ClassTable> classTables = concurrentMap();
     private final ConcurrentMap<String, ObjectTable> objectTables = concurrentMap();
     private final ConcurrentMap<String, ClassExternalizerFactory> classExternalizerFactories = concurrentMap();
@@ -164,15 +164,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return name;
     }
 
-    public <I, O> RequestHandler createLocalRequestHandler(final RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
+    public <I, O> RequestHandler createLocalRequestHandler(final RequestListener<? super I, ? extends O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CREATE_REQUEST_HANDLER_PERM);
         }
         checkOpen();
         final ClientContextImpl clientContext = new ClientContextImpl(executor, loopbackConnection);
-        final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(executor,
-                requestListener, clientContext, requestClass, replyClass);
+        final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(executor, requestListener, clientContext, requestClass, replyClass);
         final WeakCloseable lrhCloseable = new WeakCloseable(localRequestHandler);
         clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
             public void handleClose(final ClientContext closed) {
@@ -192,37 +191,161 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return localRequestHandler;
     }
 
-    public <I, O> Registration registerService(final LocalServiceConfiguration<I, O> configuration) throws IOException {
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            sm.checkPermission(REGISTER_SERVICE_PERM);
+    public ServiceBuilder<?, ?> serviceBuilder() {
+        return new ServiceBuilderImpl<Void, Void>();
+    }
+
+    private final class ServiceBuilderImpl<I, O> implements ServiceBuilder<I, O> {
+        private String groupName;
+        private String serviceType;
+        private Class<I> requestType;
+        private Class<O> replyType;
+        private ClientListener<? super I, ? extends O> clientListener;
+        private OptionMap optionMap = OptionMap.EMPTY;
+
+        public ServiceBuilder<I, O> setGroupName(final String groupName) {
+            this.groupName = groupName;
+            return this;
         }
-        if (configuration == null) {
-            throw new NullPointerException("configuration is null");
+
+        public ServiceBuilder<I, O> setServiceType(final String serviceType) {
+            this.serviceType = serviceType;
+            return this;
         }
-        final String serviceType = configuration.getServiceType();
-        final String groupName = configuration.getGroupName();
-        final OptionMap optionMap = configuration.getOptionMap();
-        final Integer metric = optionMap.get(Options.METRIC);
-        if (metric != null && metric.intValue() < 0) {
-            throw new IllegalArgumentException("metric must be greater than or equal to zero");
+
+        @SuppressWarnings({ "unchecked" })
+        public <N> ServiceBuilder<N, O> setRequestType(final Class<N> newRequestType) {
+            if (newRequestType == null) {
+                throw new NullPointerException("newRequestType is null");
+            }
+            clientListener = null;
+            ServiceBuilderImpl<N, O> castBuilder = (ServiceBuilderImpl<N, O>) this;
+            castBuilder.requestType = newRequestType;
+            return castBuilder;
         }
-        ServiceURI.validateServiceType(serviceType);
-        ServiceURI.validateGroupName(groupName);
-        checkOpen();
-        final String canonServiceType = serviceType.toLowerCase();
-        final String canonGroupName = groupName.toLowerCase();
-        final Class<I> requestClass = configuration.getRequestClass();
-        final Class<O> replyClass = configuration.getReplyClass();
-        final ClientListener<I, O> clientListener = configuration.getClientListener();
-        final Executor executor = this.executor;
-        final ConcurrentMap<String, ConcurrentMap<String, ServiceRegistration>> registeredLocalServices = this.registeredLocalServices;
-        final RequestHandlerConnector requestHandlerConnector = new RequestHandlerConnector() {
+
+        @SuppressWarnings({ "unchecked" })
+        public <N> ServiceBuilder<I, N> setReplyType(final Class<N> newReplyType) {
+            if (newReplyType == null) {
+                throw new NullPointerException("newReplyType is null");
+            }
+            clientListener = null;
+            ServiceBuilderImpl<I, N> castBuilder = (ServiceBuilderImpl<I, N>) this;
+            castBuilder.replyType = newReplyType;
+            return castBuilder;
+        }
+
+        public ServiceBuilder<I, O> setClientListener(final ClientListener<? super I, ? extends O> clientListener) {
+            if (requestType == null || replyType == null) {
+                throw new IllegalArgumentException("Must configure both request and reply type before setting the client listener");
+            }
+            this.clientListener = clientListener;
+            return this;
+        }
+
+        public ServiceBuilder<I, O> setOptionMap(final OptionMap optionMap) {
+            if (optionMap == null) {
+                throw new NullPointerException("optionMap is null");
+            }
+            this.optionMap = optionMap;
+            return this;
+        }
+
+        public Registration register() throws IOException {
+            SecurityManager sm = System.getSecurityManager();
+            if (sm != null) {
+                sm.checkPermission(REGISTER_SERVICE_PERM);
+            }
+            if (groupName == null) {
+                throw new NullPointerException("groupName is null");
+            }
+            if (serviceType == null) {
+                throw new NullPointerException("serviceType is null");
+            }
+            if (requestType == null) {
+                throw new NullPointerException("requestType is null");
+            }
+            if (replyType == null) {
+                throw new NullPointerException("replyType is null");
+            }
+            if (clientListener == null) {
+                throw new NullPointerException("clientListener is null");
+            }
+            final Integer metric = optionMap.get(Options.METRIC);
+            if (metric != null && metric.intValue() < 0) {
+                throw new IllegalArgumentException("metric must be greater than or equal to zero");
+            }
+            ServiceURI.validateServiceType(serviceType);
+            ServiceURI.validateGroupName(groupName);
+            checkOpen();
+            final String canonServiceType = serviceType.toLowerCase();
+            final String canonGroupName = groupName.toLowerCase();
+            final Executor executor = EndpointImpl.this.executor;
+            final ConcurrentMap<String, ConcurrentMap<String, ServiceRegistration>> registeredLocalServices = EndpointImpl.this.registeredLocalServices;
+            final RequestHandlerConnector requestHandlerConnector = new Connector();
+            final ServiceRegistration registration = new ServiceRegistration(serviceType, groupName, name, optionMap, requestHandlerConnector);
+            // this handle is used to remove the service registration
+            final Registration handle = new Registration() {
+                public void close() {
+                    synchronized (serviceRegistrationLock) {
+                        final ConcurrentMap<String, ServiceRegistration> submap = registeredLocalServices.get(serviceType);
+                        if (submap != null) {
+                            submap.remove(groupName, registration);
+                        }
+                    }
+                }
+            };
+            registration.setHandle(handle);
+            final Iterator<Map.Entry<Registration,ServiceRegistrationListener>> serviceListenerRegistrations;
+            final Object lock = serviceRegistrationLock;
+            synchronized (lock) {
+                // actually register the service, and while we have the lock, snag a copy of the registration listener list
+                final ConcurrentMap<String, ServiceRegistration> submap;
+                if (registeredLocalServices.containsKey(canonServiceType)) {
+                    submap = registeredLocalServices.get(canonServiceType);
+                    if (submap.containsKey(canonGroupName)) {
+                        throw new ServiceRegistrationException("ListenerRegistration of service of type \"" + serviceType + "\" in group \"" + groupName + "\" duplicates an already-registered service's specification");
+                    }
+                } else {
+                    submap = concurrentMap(lock);
+                    registeredLocalServices.put(canonServiceType, submap);
+                }
+                submap.put(canonGroupName, registration);
+                // snapshot
+                serviceListenerRegistrations = EndpointImpl.this.serviceListenerRegistrations.entrySet().iterator();
+            }
+            // notify all service listener registrations that were registered at the time the service was created
+            final ServiceRegistrationListener.ServiceInfo serviceInfo = new ServiceRegistrationListener.ServiceInfo();
+            serviceInfo.setGroupName(groupName);
+            serviceInfo.setServiceType(serviceType);
+            serviceInfo.setOptionMap(optionMap);
+            serviceInfo.setRegistrationHandle(handle);
+            serviceInfo.setRequestHandlerConnector(requestHandlerConnector);
+            executor.execute(new Runnable() {
+                public void run() {
+                    final Iterator<Map.Entry<Registration,ServiceRegistrationListener>> iter = serviceListenerRegistrations;
+                    while (iter.hasNext()) {
+                        final Map.Entry<Registration,ServiceRegistrationListener> slr = iter.next();
+                        try {
+                            slr.getValue().serviceRegistered(slr.getKey(), serviceInfo.clone());
+                        } catch (Throwable t) {
+                            logListenerError(t);
+                        }
+                    }
+                }
+            });
+            return handle;
+        }
+
+        private class Connector implements RequestHandlerConnector {
+
+            Connector() {
+            }
+
             public Cancellable createRequestHandler(final Result<RequestHandler> result) throws SecurityException {
                 try {
                     final ClientContextImpl clientContext = new ClientContextImpl(executor, loopbackConnection);
-                    final RequestListener<I, O> requestListener = clientListener.handleClientOpen(clientContext);
-                    final RequestHandler localRequestHandler = createLocalRequestHandler(requestListener, requestClass, replyClass);
+                    final RequestHandler localRequestHandler = createLocalRequestHandler(clientListener.handleClientOpen(clientContext), requestType, replyType);
                     clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
                         public void handleClose(final ClientContext closed) {
                             IoUtils.safeClose(localRequestHandler);
@@ -232,61 +355,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 } catch (IOException e) {
                     result.setException(e);
                 }
-                return NULL_CANCELLABLE;
+                return IoUtils.nullCancellable();
             }
-        };
-        final ServiceRegistration registration = new ServiceRegistration(serviceType, groupName, name, optionMap, requestHandlerConnector);
-        // this handle is used to remove the service registration
-        final Registration handle = new Registration() {
-            public void close() {
-                synchronized (serviceRegistrationLock) {
-                    final ConcurrentMap<String, ServiceRegistration> submap = registeredLocalServices.get(serviceType);
-                    if (submap != null) {
-                        submap.remove(groupName, registration);
-                    }
-                }
-            }
-        };
-        registration.setHandle(handle);
-        final Iterator<Map.Entry<Registration,ServiceRegistrationListener>> serviceListenerRegistrations;
-        final Object lock = serviceRegistrationLock;
-        synchronized (lock) {
-            // actually register the service, and while we have the lock, snag a copy of the registration listener list
-            final ConcurrentMap<String, ServiceRegistration> submap;
-            if (registeredLocalServices.containsKey(canonServiceType)) {
-                submap = registeredLocalServices.get(canonServiceType);
-                if (submap.containsKey(canonGroupName)) {
-                    throw new ServiceRegistrationException("ListenerRegistration of service of type \"" + serviceType + "\" in group \"" + groupName + "\" duplicates an already-registered service's specification");
-                }
-            } else {
-                submap = concurrentMap(lock);
-                registeredLocalServices.put(canonServiceType, submap);
-            }
-            submap.put(canonGroupName, registration);
-            // snapshot
-            serviceListenerRegistrations = this.serviceListenerRegistrations.entrySet().iterator();
         }
-        // notify all service listener registrations that were registered at the time the service was created
-        final ServiceRegistrationListener.ServiceInfo serviceInfo = new ServiceRegistrationListener.ServiceInfo();
-        serviceInfo.setGroupName(groupName);
-        serviceInfo.setServiceType(serviceType);
-        serviceInfo.setOptionMap(optionMap);
-        serviceInfo.setRegistrationHandle(handle);
-        serviceInfo.setRequestHandlerConnector(requestHandlerConnector);
-        executor.execute(new Runnable() {
-            public void run() {
-                final Iterator<Map.Entry<Registration,ServiceRegistrationListener>> iter = serviceListenerRegistrations;
-                while (iter.hasNext()) {
-                    final Map.Entry<Registration,ServiceRegistrationListener> slr = iter.next();
-                    try {
-                        slr.getValue().serviceRegistered(slr.getKey(), serviceInfo.clone());
-                    } catch (Throwable t) {
-                        logListenerError(t);
-                    }
-                }
-            }
-        });
-        return handle;
     }
 
     private static void logListenerError(final Throwable t) {
@@ -383,13 +454,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (connectionProvider == null) {
             throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
         }
-        final FutureResult<Connection, ConnectionHandlerFactory> futureResult = new FutureResult<Connection, ConnectionHandlerFactory>() {
-            protected Connection translate(final ConnectionHandlerFactory result) {
-                return new ConnectionImpl(result);
+        final FutureResult<Connection> futureResult = new FutureResult<Connection>(executor);
+        futureResult.addCancelHandler(connectionProvider.connect(destination, connectOptions, new TranslatingResult<ConnectionHandlerFactory, Connection>(futureResult) {
+            protected Connection translate(final ConnectionHandlerFactory input) {
+                return new ConnectionImpl(input);
             }
-        };
-        connectionProvider.connect(destination, connectOptions, futureResult.getResult());
-        return futureResult;
+        }));
+        return futureResult.getIoFuture();
     }
 
     public <T> ConnectionProviderRegistration<T> addConnectionProvider(final String uriScheme, final ConnectionProviderFactory<T> providerFactory) {
@@ -439,8 +510,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return new MapRegistration<T>(map, name, target);
     }
 
-    public Registration addMarshallingProtocol(final String name, final MarshallingProtocol marshallingProtocol) throws DuplicateRegistrationException {
-        return addMarshallingRegistration(name, marshallingProtocol, marshallingProtocols, "Marshalling protocol");
+    public Registration addMarshallingProtocol(final String name, final MarshallerFactory marshallerFactory) throws DuplicateRegistrationException {
+        return addMarshallingRegistration(name, marshallerFactory, marshallerFactories, "Marshalling protocol factory");
     }
 
     public Registration addUserClassTable(final String name, final ClassTable classTable) throws DuplicateRegistrationException {
@@ -465,16 +536,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     public String toString() {
         return "endpoint \"" + name + "\" <" + Integer.toHexString(hashCode()) + ">";
-    }
-
-    private <I, O> IoFuture<? extends Client<I, O>> doOpenClient(final ConnectionHandler connectionHandler, final String serviceType, final String groupName, final Class<I> requestClass, final Class<O> replyClass) {
-        final FutureResult<Client<I, O>, RequestHandler> futureResult = new FutureResult<Client<I, O>, RequestHandler>() {
-            protected Client<I, O> translate(final RequestHandler result) throws IOException {
-                return createClient(result, requestClass, replyClass);
-            }
-        };
-        connectionHandler.open(serviceType, groupName, futureResult.getResult());
-        return futureResult;
     }
 
     private static class MapRegistration<T> implements Registration {
@@ -504,6 +565,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     private final class LocalConnectionContext implements ConnectionContext {
+        private final Connection connection;
+
+        LocalConnectionContext(final Connection connection) {
+            this.connection = connection;
+        }
 
         public void openService(final String serviceType, final String groupName, final OptionMap optionMap, final ServiceResult serviceResult) {
             final String canonServiceType = serviceType.toLowerCase();
@@ -529,20 +595,27 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 }
             }
             registration.getRequestHandlerConnector().createRequestHandler(new Result<RequestHandler>() {
-                public void setResult(final RequestHandler result) {
+                public boolean setResult(final RequestHandler result) {
                     serviceResult.opened(result, registration.getOptionMap());
+                    return true;
                 }
 
-                public void setException(final IOException exception) {
+                public boolean setException(final IOException exception) {
                     log.warn(exception, "Unexpected exception on service lookup");
                     serviceResult.notFound();
+                    return true;
                 }
 
-                public void setCancelled() {
+                public boolean setCancelled() {
                     log.warn("Unexpected cancellation on service lookup");
                     serviceResult.notFound();
+                    return true;
                 }
             });
+        }
+
+        public void remoteClosed() {
+            IoUtils.safeClose(connection);
         }
     }
 
@@ -551,7 +624,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         private ConnectionImpl(final ConnectionHandlerFactory connectionHandlerFactory) {
             super(EndpointImpl.this.executor);
-            connectionHandler = connectionHandlerFactory.createInstance(localConnectionContext);
+            connectionHandler = connectionHandlerFactory.createInstance(new LocalConnectionContext(this));
         }
 
         protected void closeAction() throws IOException {
@@ -559,7 +632,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public <I, O> IoFuture<? extends Client<I, O>> openClient(final String serviceType, final String groupName, final Class<I> requestClass, final Class<O> replyClass) {
-            return doOpenClient(connectionHandler, serviceType, groupName, requestClass, replyClass);
+            final FutureResult<Client<I, O>> futureResult = new FutureResult<Client<I, O>>();
+            futureResult.addCancelHandler(connectionHandler.open(serviceType, groupName, new TranslatingResult<RequestHandler, Client<I, O>>(futureResult) {
+                protected Client<I, O> translate(final RequestHandler input) throws IOException {
+                    return createClient(input, requestClass, replyClass);
+                }
+            }));
+            return futureResult.getIoFuture();
         }
 
         public <I, O> ClientConnector<I, O> createClientConnector(final RequestListener<I, O> listener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
@@ -586,16 +665,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
-    private final ConnectionContext localConnectionContext = new LocalConnectionContext();
     private final ConnectionHandler loopbackConnectionHandler = new LoopbackConnectionHandler();
     private final Connection loopbackConnection = new LoopbackConnection();
-
-    // todo - move this into XNIO IoUtils
-    private static class NullCancellable implements Cancellable {
-        public Cancellable cancel() {
-            return this;
-        }
-    }
+    private final ConnectionContext localConnectionContext = new LocalConnectionContext(loopbackConnection);
 
     private final class LocalConnectionProvider implements ConnectionProvider<Void> {
 
@@ -604,9 +676,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 public ConnectionHandler createInstance(final ConnectionContext context) {
                     return loopbackConnectionHandler;
                 }
-
             });
-            return NULL_CANCELLABLE;
+            return IoUtils.nullCancellable();
         }
 
         public Void getProviderInterface() {
@@ -617,21 +688,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private class LoopbackConnection implements Connection {
 
         public <I, O> IoFuture<? extends Client<I, O>> openClient(final String serviceType, final String groupName, final Class<I> requestClass, final Class<O> replyClass) {
-            final IoFuture.Manager<Client<I, O>> mgr = new IoFuture.Manager<Client<I, O>>();
-            mgr.addCancelHandler(loopbackConnectionHandler.open(serviceType, groupName, new Result<RequestHandler>() {
-                public void setResult(final RequestHandler result) {
-                    mgr.setResult(ClientImpl.create(result, executor, requestClass, replyClass));
-                }
-
-                public void setException(final IOException exception) {
-                    mgr.setException(exception);
-                }
-
-                public void setCancelled() {
-                    mgr.finishCancel();
+            final FutureResult<Client<I,O>> futureResult = new FutureResult<Client<I, O>>(executor);
+            futureResult.addCancelHandler(loopbackConnectionHandler.open(serviceType, groupName, new TranslatingResult<RequestHandler, Client<I, O>>(futureResult) {
+                protected Client<I, O> translate(final RequestHandler input) throws IOException {
+                    return ClientImpl.create(input, executor, requestClass, replyClass);
                 }
             }));
-            return mgr.getIoFuture();
+            return futureResult.getIoFuture();
         }
 
         public <I, O> ClientConnector<I, O> createClientConnector(final RequestListener<I, O> listener, final Class<I> requestClass, final Class<O> replyClass) {
@@ -684,7 +747,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private class LoopbackConnectionHandler implements ConnectionHandler {
 
-        public Cancellable open(final String serviceType, final String groupName, final Result<RequestHandler> result) {
+        public Cancellable open(final String serviceType, final String groupName, final org.jboss.xnio.Result<RequestHandler> result) {
             localConnectionContext.openService(serviceType, groupName, OptionMap.EMPTY, new ConnectionContext.ServiceResult() {
                 public void opened(final RequestHandler requestHandler, final OptionMap optionMap) {
                     result.setResult(requestHandler);
@@ -694,15 +757,15 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     result.setException(new ServiceNotFoundException(ServiceURI.create(serviceType, groupName, name), "No such service located"));
                 }
             });
-            return NULL_CANCELLABLE;
+            return IoUtils.nullCancellable();
         }
 
         public RequestHandlerConnector createConnector(final RequestHandler localHandler) {
             // the loopback connection just returns the local handler directly as no forwarding is involved
             return new RequestHandlerConnector() {
-                public Cancellable createRequestHandler(final Result<RequestHandler> result) throws SecurityException {
+                public Cancellable createRequestHandler(final org.jboss.xnio.Result<RequestHandler> result) throws SecurityException {
                     result.setResult(localHandler);
-                    return NULL_CANCELLABLE;
+                    return IoUtils.nullCancellable();
                 }
             };
         }

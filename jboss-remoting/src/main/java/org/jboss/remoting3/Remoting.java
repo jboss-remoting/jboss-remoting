@@ -30,9 +30,10 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.ServiceLoader;
+import java.util.Map;
+import java.util.HashMap;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RemotingServiceDescriptor;
-import org.jboss.remoting3.spi.MarshallingProtocol;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.xnio.CloseableExecutor;
 import org.jboss.xnio.IoUtils;
@@ -43,6 +44,8 @@ import org.jboss.marshalling.ObjectTable;
 import org.jboss.marshalling.ClassResolver;
 import org.jboss.marshalling.ObjectResolver;
 import org.jboss.marshalling.ClassExternalizerFactory;
+import org.jboss.marshalling.ProviderDescriptor;
+import org.jboss.marshalling.MarshallerFactory;
 
 /**
  * The standalone interface into Remoting.  This class contains static methods that are useful to standalone programs
@@ -106,15 +109,13 @@ public final class Remoting {
             }
         });
         if (optionMap.get(Options.LOAD_PROVIDERS, true)) {
-            for (RemotingServiceDescriptor descriptor : ServiceLoader.load(RemotingServiceDescriptor.class)) {
+            for (RemotingServiceDescriptor<?> descriptor : ServiceLoader.load(RemotingServiceDescriptor.class)) {
                 final String name = descriptor.getName();
-                final Class serviceType = descriptor.getType();
+                final Class<?> serviceType = descriptor.getType();
                 final Object service = descriptor.getService();
                 try {
                     if (serviceType == ConnectionProviderFactory.class) {
                         endpoint.addConnectionProvider(name, (ConnectionProviderFactory<?>) service);
-                    } else if (serviceType == MarshallingProtocol.class) {
-                        endpoint.addMarshallingProtocol(name, (MarshallingProtocol) service);
                     } else if (serviceType == ClassTable.class) {
                         endpoint.addUserClassTable(name, (ClassTable) service);
                     } else if (serviceType == ObjectTable.class) {
@@ -127,7 +128,23 @@ public final class Remoting {
                         endpoint.addUserExternalizerFactory(name, (ClassExternalizerFactory) service);
                     }
                 } catch (DuplicateRegistrationException e) {
-                    log.debug("Duplicate registration for '" + name + "' of type " + serviceType);
+                    log.debug("Duplicate registration for '" + name + "' of " + serviceType);
+                }
+            }
+            final Map<String, ProviderDescriptor> found = new HashMap<String, ProviderDescriptor>();
+            for (ProviderDescriptor descriptor : ServiceLoader.load(ProviderDescriptor.class)) {
+                final String name = descriptor.getName();
+                // find the best one
+                if (! found.containsKey(name) || found.get(name).getSupportedVersions()[0] < descriptor.getSupportedVersions()[0]) {
+                    found.put(name, descriptor);
+                }
+            }
+            for (String name : found.keySet()) {
+                final MarshallerFactory marshallerFactory = found.get(name).getMarshallerFactory();
+                try {
+                    endpoint.addMarshallingProtocol(name, marshallerFactory);
+                } catch (DuplicateRegistrationException e) {
+                    log.debug("Duplicate registration for '" + name + "' of " + MarshallerFactory.class);
                 }
             }
         }
