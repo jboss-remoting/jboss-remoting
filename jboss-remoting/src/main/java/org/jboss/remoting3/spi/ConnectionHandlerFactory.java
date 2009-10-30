@@ -36,5 +36,5 @@ public interface ConnectionHandlerFactory {
      * @param connectionContext the local connection handler for incoming requests
      * @return the connection handler for outgoing requests
      */
-    ConnectionHandler createInstance(ConnectionContext connectionContext);
+    ConnectionHandler createInstance(ConnectionHandlerContext connectionContext);
 }

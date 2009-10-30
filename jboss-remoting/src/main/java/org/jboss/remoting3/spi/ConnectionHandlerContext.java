@@ -29,7 +29,7 @@ import org.jboss.xnio.OptionMap;
  *
  * @remoting.consume
  */
-public interface ConnectionContext {
+public interface ConnectionHandlerContext {
 
     /**
      * Open a service.

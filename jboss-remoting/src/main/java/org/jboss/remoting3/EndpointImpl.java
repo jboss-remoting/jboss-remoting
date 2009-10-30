@@ -46,7 +46,7 @@ import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.remoting3.spi.ConnectionProviderRegistration;
-import org.jboss.remoting3.spi.ConnectionContext;
+import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.xnio.log.Logger;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.FailedIoFuture;
@@ -564,7 +564,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
-    private final class LocalConnectionContext implements ConnectionContext {
+    private final class LocalConnectionContext implements ConnectionHandlerContext {
         private final Connection connection;
 
         LocalConnectionContext(final Connection connection) {
@@ -667,13 +667,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private final ConnectionHandler loopbackConnectionHandler = new LoopbackConnectionHandler();
     private final Connection loopbackConnection = new LoopbackConnection();
-    private final ConnectionContext localConnectionContext = new LocalConnectionContext(loopbackConnection);
+    private final ConnectionHandlerContext localConnectionContext = new LocalConnectionContext(loopbackConnection);
 
     private final class LocalConnectionProvider implements ConnectionProvider<Void> {
 
         public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result) throws IllegalArgumentException {
             result.setResult(new ConnectionHandlerFactory() {
-                public ConnectionHandler createInstance(final ConnectionContext context) {
+                public ConnectionHandler createInstance(final ConnectionHandlerContext context) {
                     return loopbackConnectionHandler;
                 }
             });
@@ -748,7 +748,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private class LoopbackConnectionHandler implements ConnectionHandler {
 
         public Cancellable open(final String serviceType, final String groupName, final org.jboss.xnio.Result<RequestHandler> result) {
-            localConnectionContext.openService(serviceType, groupName, OptionMap.EMPTY, new ConnectionContext.ServiceResult() {
+            localConnectionContext.openService(serviceType, groupName, OptionMap.EMPTY, new ConnectionHandlerContext.ServiceResult() {
                 public void opened(final RequestHandler requestHandler, final OptionMap optionMap) {
                     result.setResult(requestHandler);
                 }
