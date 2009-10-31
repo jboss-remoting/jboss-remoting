@@ -59,12 +59,6 @@ import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Result;
 import org.jboss.xnio.TranslatingResult;
 import org.jboss.xnio.WeakCloseable;
-import org.jboss.marshalling.ClassTable;
-import org.jboss.marshalling.ObjectTable;
-import org.jboss.marshalling.ClassExternalizerFactory;
-import org.jboss.marshalling.ClassResolver;
-import org.jboss.marshalling.ObjectResolver;
-import org.jboss.marshalling.MarshallerFactory;
 
 /**
  *
@@ -124,13 +118,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final ConcurrentMap<String, ConnectionProvider<?>> connectionProviders = concurrentMap();
 
     private final ConcurrentMap[] providerMaps = new ConcurrentMap[ProtocolServiceType.getServiceTypes().length];
-
-    private final ConcurrentMap<String, MarshallerFactory> marshallerFactories = concurrentMap();
-    private final ConcurrentMap<String, ClassTable> classTables = concurrentMap();
-    private final ConcurrentMap<String, ObjectTable> objectTables = concurrentMap();
-    private final ConcurrentMap<String, ClassExternalizerFactory> classExternalizerFactories = concurrentMap();
-    private final ConcurrentMap<String, ClassResolver> classResolvers = concurrentMap();
-    private final ConcurrentMap<String, ObjectResolver> objectResolvers = concurrentMap();
 
     private static final EndpointPermission CREATE_ENDPOINT_PERM = new EndpointPermission("createEndpoint");
     private static final EndpointPermission CREATE_REQUEST_HANDLER_PERM = new EndpointPermission("createRequestHandler");
