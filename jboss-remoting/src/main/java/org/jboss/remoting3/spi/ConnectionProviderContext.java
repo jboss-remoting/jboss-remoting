@@ -23,6 +23,7 @@
 package org.jboss.remoting3.spi;
 
 import org.jboss.remoting3.HandleableCloseable;
+import java.util.Map;
 
 /**
  * A context for a connection provider which provides a means to accept a connection.
@@ -37,4 +38,13 @@ public interface ConnectionProviderContext extends HandleableCloseable<Connectio
      * @param connectionHandlerFactory the connection handler factory
      */
     void accept(ConnectionHandlerFactory connectionHandlerFactory);
+
+    /**
+     * Get the currently-registered protocol service providers of the given type.
+     *
+     * @param serviceType the service type
+     * @param <T> the type of the provider interface
+     * @return the currently-registered providers
+     */
+    <T> Iterable<Map.Entry<String, T>> getProtocolServiceProviders(ProtocolServiceType<T> serviceType);
 }

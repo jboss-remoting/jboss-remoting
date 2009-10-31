@@ -35,6 +35,7 @@ import java.util.HashMap;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RemotingServiceDescriptor;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
+import org.jboss.remoting3.spi.ProtocolServiceType;
 import org.jboss.xnio.CloseableExecutor;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
@@ -117,15 +118,15 @@ public final class Remoting {
                     if (serviceType == ConnectionProviderFactory.class) {
                         endpoint.addConnectionProvider(name, (ConnectionProviderFactory<?>) service);
                     } else if (serviceType == ClassTable.class) {
-                        endpoint.addUserClassTable(name, (ClassTable) service);
+                        endpoint.addProtocolService(ProtocolServiceType.CLASS_TABLE, name, (ClassTable) service);
                     } else if (serviceType == ObjectTable.class) {
-                        endpoint.addUserObjectTable(name, (ObjectTable) service);
+                        endpoint.addProtocolService(ProtocolServiceType.OBJECT_TABLE, name, (ObjectTable) service);
                     } else if (serviceType == ClassResolver.class) {
-                        endpoint.addUserClassResolver(name, (ClassResolver) service);
+                        endpoint.addProtocolService(ProtocolServiceType.CLASS_RESOLVER, name, (ClassResolver) service);
                     } else if (serviceType == ObjectResolver.class) {
-                        endpoint.addUserObjectResolver(name, (ObjectResolver) service);
+                        endpoint.addProtocolService(ProtocolServiceType.OBJECT_RESOLVER, name, (ObjectResolver) service);
                     } else if (serviceType == ClassExternalizerFactory.class) {
-                        endpoint.addUserExternalizerFactory(name, (ClassExternalizerFactory) service);
+                        endpoint.addProtocolService(ProtocolServiceType.CLASS_EXTERNALIZER_FACTORY, name, (ClassExternalizerFactory) service);
                     }
                 } catch (DuplicateRegistrationException e) {
                     log.debug("Duplicate registration for '" + name + "' of " + serviceType);
@@ -142,7 +143,7 @@ public final class Remoting {
             for (String name : found.keySet()) {
                 final MarshallerFactory marshallerFactory = found.get(name).getMarshallerFactory();
                 try {
-                    endpoint.addMarshallingProtocol(name, marshallerFactory);
+                    endpoint.addProtocolService(ProtocolServiceType.MARSHALLER_FACTORY, name, marshallerFactory);
                 } catch (DuplicateRegistrationException e) {
                     log.debug("Duplicate registration for '" + name + "' of " + MarshallerFactory.class);
                 }

@@ -47,6 +47,7 @@ import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.remoting3.spi.ConnectionProviderRegistration;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
+import org.jboss.remoting3.spi.ProtocolServiceType;
 import org.jboss.xnio.log.Logger;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.FailedIoFuture;
@@ -121,6 +122,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final ConcurrentMap<String, ConcurrentMap<String, ServiceRegistration>> registeredLocalServices = concurrentMap(serviceRegistrationLock);
 
     private final ConcurrentMap<String, ConnectionProvider<?>> connectionProviders = concurrentMap();
+
+    private final ConcurrentMap[] providerMaps = new ConcurrentMap[ProtocolServiceType.getServiceTypes().length];
+
     private final ConcurrentMap<String, MarshallerFactory> marshallerFactories = concurrentMap();
     private final ConcurrentMap<String, ClassTable> classTables = concurrentMap();
     private final ConcurrentMap<String, ObjectTable> objectTables = concurrentMap();
@@ -137,8 +141,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private static final EndpointPermission ADD_CONNECTION_PROVIDER_PERM = new EndpointPermission("addConnectionProvider");
     private static final EndpointPermission ADD_MARSHALLING_PROTOCOL_PERM = new EndpointPermission("addMarshallingProtocol");
 
-    public EndpointImpl(final Executor executor, final String name) {
+    EndpointImpl(final Executor executor, final String name) {
         super(executor);
+        for (int i = 0; i < providerMaps.length; i++) {
+            providerMaps[i] = concurrentMap();
+        }
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CREATE_ENDPOINT_PERM);
@@ -158,7 +165,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return executor;
     }
 
-    // Endpoint implementation
+    @SuppressWarnings({ "unchecked" })
+    private <T> ConcurrentMap<String, T> getMapFor(ProtocolServiceType<T> type) {
+        return (ConcurrentMap<String, T>)providerMaps[type.getIndex()];
+    }
 
     public String getName() {
         return name;
@@ -510,28 +520,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return new MapRegistration<T>(map, name, target);
     }
 
-    public Registration addMarshallingProtocol(final String name, final MarshallerFactory marshallerFactory) throws DuplicateRegistrationException {
-        return addMarshallingRegistration(name, marshallerFactory, marshallerFactories, "Marshalling protocol factory");
-    }
-
-    public Registration addUserClassTable(final String name, final ClassTable classTable) throws DuplicateRegistrationException {
-        return addMarshallingRegistration(name, classTable, classTables, "Class table");
-    }
-
-    public Registration addUserObjectTable(final String name, final ObjectTable objectTable) throws DuplicateRegistrationException {
-        return addMarshallingRegistration(name, objectTable, objectTables, "Object table");
-    }
-
-    public Registration addUserExternalizerFactory(final String name, final ClassExternalizerFactory classExternalizerFactory) throws DuplicateRegistrationException {
-        return addMarshallingRegistration(name, classExternalizerFactory, classExternalizerFactories, "Class externalizer factory");
-    }
-
-    public Registration addUserClassResolver(final String name, final ClassResolver classResolver) throws DuplicateRegistrationException {
-        return addMarshallingRegistration(name, classResolver, classResolvers, "Class resolver");
-    }
-
-    public Registration addUserObjectResolver(final String name, final ObjectResolver objectResolver) throws DuplicateRegistrationException {
-        return addMarshallingRegistration(name, objectResolver, objectResolvers, "Object resolver");
+    public <T> Registration addProtocolService(final ProtocolServiceType<T> type, final String name, final T provider) throws DuplicateRegistrationException {
+        return addMarshallingRegistration(name, provider, getMapFor(type), type.getDescription());
     }
 
     public String toString() {
@@ -662,6 +652,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory) {
             connectionHandlerFactory.createInstance(localConnectionContext);
+        }
+
+        public <T> Iterable<Map.Entry<String, T>> getProtocolServiceProviders(final ProtocolServiceType<T> serviceType) {
+            return getMapFor(serviceType).entrySet();
         }
     }
 

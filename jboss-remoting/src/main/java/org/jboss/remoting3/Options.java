@@ -103,4 +103,16 @@ public final class Options {
      * required.
      */
     public static final Option<Boolean> REQUIRE_SECURE = Option.simple(Options.class, "REQUIRE_SECURE", Boolean.class);
+
+    public static final Option<Integer> MAX_TRANSMIT_SIZE = Option.simple(Options.class, "MAX_TRANSMIT_SIZE", Integer.class);
+
+    public static final Option<Integer> MAX_RECEIVE_SIZE = Option.simple(Options.class, "MAX_RECEIVE_SIZE", Integer.class);
+
+    public static final Option<Integer> TRANSMIT_WINDOW_SIZE = Option.simple(Options.class, "TRANSMIT_WINDOW_SIZE", Integer.class);
+
+    public static final Option<Integer> RECEIVE_WINDOW_SIZE = Option.simple(Options.class, "RECEIVE_WINDOW_SIZE", Integer.class);
+
+    public static final Option<Integer> MAX_OUTBOUND_CHANNELS = Option.simple(Options.class, "MAX_OUTBOUND_CHANNELS", Integer.class);
+
+    public static final Option<Integer> MAX_INBOUND_CHANNELS = Option.simple(Options.class, "MAX_INBOUND_CHANNELS", Integer.class);
 }

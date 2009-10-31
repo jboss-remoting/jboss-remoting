@@ -6,14 +6,9 @@ import java.util.Set;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.ConnectionProviderRegistration;
+import org.jboss.remoting3.spi.ProtocolServiceType;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.OptionMap;
-import org.jboss.marshalling.ClassTable;
-import org.jboss.marshalling.ObjectTable;
-import org.jboss.marshalling.ClassExternalizerFactory;
-import org.jboss.marshalling.ClassResolver;
-import org.jboss.marshalling.ObjectResolver;
-import org.jboss.marshalling.MarshallerFactory;
 
 /**
  * A potential participant in a JBoss Remoting communications relationship.
@@ -196,76 +191,16 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
     <T> ConnectionProviderRegistration<T> addConnectionProvider(String uriScheme, ConnectionProviderFactory<T> providerFactory) throws DuplicateRegistrationException;
 
     /**
-     * Register a named marshalling protocol.
-     * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission addMarshallingProtocol EndpointPermission} to invoke this method.
+     * Register a protocol service.
      *
-     * @param name the protocol name
-     * @param marshallerFactory the implementation
+     * @param type the type of service being registered
+     * @param name the name of the protocol provider
+     * @param provider the provider instance
+     * @param <T> the provider type
      * @return a handle which may be used to remove the registration
      * @throws DuplicateRegistrationException if there is already a protocol registered to that name
      */
-    Registration addMarshallingProtocol(String name, MarshallerFactory marshallerFactory) throws DuplicateRegistrationException;
-
-    /**
-     * Register a named class table for marshalling.
-     * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission addMarshallingProtocol EndpointPermission} to invoke this method.
-     *
-     * @param name the protocol name
-     * @param classTable the class table
-     * @return a handle which may be used to remove the registration
-     * @throws DuplicateRegistrationException if there is already a class table registered to that name
-     */
-    Registration addUserClassTable(String name, ClassTable classTable) throws DuplicateRegistrationException;
-
-    /**
-     * Register a named object table for marshalling.
-     * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission addMarshallingProtocol EndpointPermission} to invoke this method.
-     *
-     * @param name the protocol name
-     * @param objectTable the object table
-     * @return a handle which may be used to remove the registration
-     * @throws DuplicateRegistrationException if there is already an object table registered to that name
-     */
-    Registration addUserObjectTable(String name, ObjectTable objectTable) throws DuplicateRegistrationException;
-
-    /**
-     * Register a named class externalizer factory for marshalling.
-     * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission addMarshallingProtocol EndpointPermission} to invoke this method.
-     *
-     * @param name the protocol name
-     * @param classExternalizerFactory the class externalizer factory
-     * @return a handle which may be used to remove the registration
-     * @throws DuplicateRegistrationException if there is already a class externalizer factory registered to that name
-     */
-    Registration addUserExternalizerFactory(String name, ClassExternalizerFactory classExternalizerFactory) throws DuplicateRegistrationException;
-
-    /**
-     * Register a named class resolver for marshalling.
-     * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission addMarshallingProtocol EndpointPermission} to invoke this method.
-     *
-     * @param name the protocol name
-     * @param classResolver the class resolver
-     * @return a handle which may be used to remove the registration
-     * @throws DuplicateRegistrationException if there is already a class resolver registered to that name
-     */
-    Registration addUserClassResolver(String name, ClassResolver classResolver) throws DuplicateRegistrationException;
-
-    /**
-     * Register a named object resolver for marshalling.
-     * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission addMarshallingProtocol EndpointPermission} to invoke this method.
-     *
-     * @param name the protocol name
-     * @param objectResolver the class resolver
-     * @return a handle which may be used to remove the registration
-     * @throws DuplicateRegistrationException if there is already an object resolver registered to that name
-     */
-    Registration addUserObjectResolver(String name, ObjectResolver objectResolver) throws DuplicateRegistrationException;
+    <T> Registration addProtocolService(ProtocolServiceType<T> type, String name, T provider) throws DuplicateRegistrationException;
 
     /**
      * Flags which can be passed in to listener registration methods.
