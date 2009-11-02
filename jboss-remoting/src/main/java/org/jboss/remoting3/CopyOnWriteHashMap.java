@@ -67,7 +67,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
                 this.map = singletonMap(key, value);
             } else {
                 final Map<K, V> copy = copy(map);
-                map.put(key, value);
+                copy.put(key, value);
                 this.map = copy;
             }
             return null;
@@ -86,7 +86,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
                 this.map = emptyMap();
             } else {
                 final Map<K, V> copy = copy(map);
-                map.remove(key);
+                copy.remove(key);
                 this.map = copy;
             }
             return true;
@@ -108,7 +108,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
                 this.map = singletonMap(key, newValue);
             } else {
                 final Map<K, V> copy = copy(map);
-                map.put(key, newValue);
+                copy.put(key, newValue);
                 this.map = copy;
             }
             return true;
@@ -130,7 +130,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
                     this.map = singletonMap(key, value);
                 } else {
                     final Map<K, V> copy = copy(map);
-                    map.put(key, value);
+                    copy.put(key, value);
                     this.map = copy;
                 }
             }
@@ -172,7 +172,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
                 this.map = singletonMap(key, value);
             } else {
                 final Map<K, V> copy = copy(map);
-                map.put(key, value);
+                copy.put(key, value);
                 this.map = copy;
             }
             return old;
@@ -189,7 +189,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
                     this.map = emptyMap();
                 } else {
                     final Map<K, V> copy = copy(map);
-                    map.remove(key);
+                    copy.remove(key);
                     this.map = copy;
                 }
             }
