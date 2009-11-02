@@ -68,7 +68,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
             } else {
                 final Map<K, V> copy = copy(map);
                 copy.put(key, value);
-                this.map = copy;
+                writeCopy(copy);
             }
             return null;
         }
@@ -87,7 +87,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
             } else {
                 final Map<K, V> copy = copy(map);
                 copy.remove(key);
-                this.map = copy;
+                writeCopy(copy);
             }
             return true;
         }
@@ -109,7 +109,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
             } else {
                 final Map<K, V> copy = copy(map);
                 copy.put(key, newValue);
-                this.map = copy;
+                writeCopy(copy);
             }
             return true;
         }
@@ -131,7 +131,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
                 } else {
                     final Map<K, V> copy = copy(map);
                     copy.put(key, value);
-                    this.map = copy;
+                    writeCopy(copy);
                 }
             }
             return old;
@@ -173,7 +173,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
             } else {
                 final Map<K, V> copy = copy(map);
                 copy.put(key, value);
-                this.map = copy;
+                writeCopy(copy);
             }
             return old;
         }
@@ -190,7 +190,7 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
                 } else {
                     final Map<K, V> copy = copy(map);
                     copy.remove(key);
-                    this.map = copy;
+                    writeCopy(copy);
                 }
             }
             return old;
@@ -213,14 +213,18 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
             for (Entry<? extends K, ? extends V> entry : orig.entrySet()) {
                 copy.put(entry.getKey(), entry.getValue());
             }
-            if (copy.isEmpty()) {
-                map = emptyMap();
-            } else if (copy.size() == 1) {
-                final Entry<K, V> entry = copy.entrySet().iterator().next();
-                map = singletonMap(entry.getKey(), entry.getValue());
-            } else {
-                map = copy;
-            }
+            writeCopy(copy);
+        }
+    }
+
+    private void writeCopy(final Map<K, V> copy) {
+        if (copy.isEmpty()) {
+            map = emptyMap();
+        } else if (copy.size() == 1) {
+            final Entry<K, V> entry = copy.entrySet().iterator().next();
+            map = singletonMap(entry.getKey(), entry.getValue());
+        } else {
+            map = copy;
         }
     }
 
