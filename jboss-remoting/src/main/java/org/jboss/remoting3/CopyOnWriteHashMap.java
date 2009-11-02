@@ -201,7 +201,27 @@ final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
         return identity ? new IdentityHashMap<K,V>(map) : new HashMap<K, V>(map);
     }
 
-    public void putAll(final Map<? extends K, ? extends V> m) {
+    public void putAll(final Map<? extends K, ? extends V> orig) {
+        if (orig == null) {
+            throw new NullPointerException("map is null");
+        }
+        if (orig.isEmpty()) {
+            return;
+        }
+        synchronized (writeLock) {
+            final Map<K, V> copy = copy(map);
+            for (Entry<? extends K, ? extends V> entry : orig.entrySet()) {
+                copy.put(entry.getKey(), entry.getValue());
+            }
+            if (copy.isEmpty()) {
+                map = emptyMap();
+            } else if (copy.size() == 1) {
+                final Entry<K, V> entry = copy.entrySet().iterator().next();
+                map = singletonMap(entry.getKey(), entry.getValue());
+            } else {
+                map = copy;
+            }
+        }
     }
 
     public void clear() {
