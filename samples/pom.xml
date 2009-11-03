@@ -26,21 +26,32 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <name>JBoss Remoting Parent</name>
-    <description>JBoss Remoting Parent POM</description>
+    <name>JBoss Remoting Samples</name>
+    <description>JBoss Remoting Samples</description>
 
     <groupId>org.jboss.remoting</groupId>
-    <artifactId>jboss-remoting-all</artifactId>
-    <packaging>pom</packaging>
+    <artifactId>jboss-remoting-samples</artifactId>
+    <packaging>jar</packaging>
     <version>3.1.0.CR1</version>
-    <modules>
-        <module>jboss-remoting</module>
-        <module>taglet</module>
-        <module>samples</module>
-    </modules>
-
+    <dependencies>
+        <dependency>
+            <groupId>org.jboss.remoting</groupId>
+            <artifactId>jboss-remoting</artifactId>
+            <version>3.1.0.CR1</version>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.0.2</version>
+                <configuration>
+                    <source>1.5</source>
+                    <target>1.5</target>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
@@ -50,4 +61,11 @@
             </plugin>
         </plugins>
     </build>
+    <distributionManagement>
+        <repository>
+            <id>repository.jboss.org</id>
+            <name>JBoss Maven2 Repository</name>
+            <url>${repository.url}</url>
+        </repository>
+    </distributionManagement>
 </project>
