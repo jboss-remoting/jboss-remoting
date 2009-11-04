@@ -340,11 +340,12 @@ public final class Streams {
         }
 
         public boolean hasNext() throws IOException {
-            return false;
+            return source.hasNext();
         }
 
         public Pair<K, V> next() throws NoSuchElementException, IOException {
-            return null;
+            final Map.Entry<K, V> entry = source.next();
+            return Pair.create(entry.getKey(), entry.getValue());
         }
 
         public void close() throws IOException {
