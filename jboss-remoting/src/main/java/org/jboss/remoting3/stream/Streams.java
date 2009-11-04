@@ -6,6 +6,12 @@ import java.util.Collection;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Map;
+import java.util.concurrent.Executor;
+import org.jboss.xnio.IoFuture;
+import org.jboss.xnio.FutureResult;
+import org.jboss.xnio.Cancellable;
+import org.jboss.xnio.IoUtils;
 
 /**
  * Handy utility methods for stream types.
@@ -37,6 +43,193 @@ public final class Streams {
     }
 
     /**
+     * Get an object source which reads from a collection.
+     *
+     * @param collection the collection to read from
+     * @param <T> the collection member type
+     * @return an object source
+     */
+    public static <T> ObjectSource<T> getCollectionObjectSource(Collection<T> collection) {
+        return getIteratorObjectSource(collection.iterator());
+    }
+
+    /**
+     * Get an object sink that appends to a map.
+     *
+     * @param target the target map
+     * @param <K> the key type
+     * @param <V> the value type
+     * @return an object sink
+     */
+    public static <K, V> ObjectSink<Pair<K, V>> getMapObjectSink(Map<K, V> target) {
+        return new MapObjectSink<K, V>(target);
+    }
+
+    /**
+     * Get an object source that reads from an iterator over map entries.
+     *
+     * @param iterator the iterator object type
+     * @param <K> the key type
+     * @param <V> the value type
+     * @return an object source
+     */
+    public static <K, V> ObjectSource<Pair<K, V>> getMapEntryIteratorObjectSource(Iterator<Map.Entry<K, V>> iterator) {
+        return new MapEntryIteratorObjectSource<K, V>(iterator);
+    }
+
+    /**
+     * Get an object source that reads from a map.
+     *
+     * @param map the map
+     * @param <K> the key type
+     * @param <V> the value type
+     * @return an object source
+     */
+    public static <K, V> ObjectSource<Pair<K, V>> getMapObjectSource(Map<K, V> map) {
+        return getMapEntryIteratorObjectSource(map.entrySet().iterator());
+    }
+
+    /**
+     * Populate a new collection from an object source.  Since the collection may be only partially populated on error,
+     * it is recommended that the instance be discarded if an exception is thrown.
+     * <p>
+     * An example usage which meets this requirement would be: <code><pre>
+     * final List&lt;Foo&gt; fooList = getCollection(new ArrayList&lt;Foo&gt;(), fooSource);
+     * </pre></code>
+     *
+     * @param newCollection the new collection to populate
+     * @param objectSource the object source to fill the collection from
+     * @param <C> the collection type
+     * @param <T> the collection value type
+     * @return the new collection, populated
+     * @throws IOException if an error occurs
+     */
+    public static <C extends Collection<T>, T> C getCollection(C newCollection, ObjectSource<T> objectSource) throws IOException {
+        while (objectSource.hasNext()) {
+            newCollection.add(objectSource.next());
+        }
+        return newCollection;
+    }
+
+    /**
+     * Populate a new map from an object source.  Since the map may be only partially populated on error,
+     * it is recommended that the instance be discarded if an exception is thrown.
+     * <p>
+     * An example usage which meets this requirement would be: <code><pre>
+     * final Map&lt;Foo, Bar&gt; fooBarMap = getMap(new HashMap&lt;Foo, Bar&gt;(), fooBarSource);
+     * </pre></code>
+     *
+     * @param newMap the new map to populate
+     * @param objectSource the object source to fill the map from
+     * @param <M> the map type
+     * @param <K> the map key type
+     * @param <V> the map value type
+     * @return the new map, populated
+     * @throws IOException if an error occurs
+     */
+    public static <M extends Map<K, V>, K, V> M getMap(M newMap, ObjectSource<Pair<K, V>> objectSource) throws IOException {
+        while (objectSource.hasNext()) {
+            final Pair<K, V> pair = objectSource.next();
+            newMap.put(pair.getA(), pair.getB());
+        }
+        return newMap;
+    }
+
+    /**
+     * Populate a new collection from an object source asynchronously.  Since the collection may be only partially populated on error,
+     * it is recommended that the instance be discarded if an exception is thrown.
+     * <p>
+     * An example usage which meets this requirement would be: <code><pre>
+     * final IoFuture&lt;List&lt;Foo&gt;&gt; futureFooList = getFutureCollection(executor, new ArrayList&lt;Foo&gt;(), fooSource);
+     * </pre></code>
+     *
+     * @param executor the executor in which to run asynchronous tasks
+     * @param newCollection the new collection to populate
+     * @param objectSource the object source to fill the collection from
+     * @param <C> the collection type
+     * @param <T> the collection value type
+     * @return the new future collection, populated
+     * @throws IOException if an error occurs
+     */
+    public static <C extends Collection<T>, T> IoFuture<C> getFutureCollection(Executor executor, final C newCollection, final ObjectSource<T> objectSource) {
+        final FutureResult<C> futureResult = new FutureResult<C>(executor);
+        futureResult.addCancelHandler(new Cancellable() {
+            public Cancellable cancel() {
+                if (futureResult.setCancelled()) {
+                    IoUtils.safeClose(objectSource);
+                }
+                return this;
+            }
+        });
+        try {
+            executor.execute(new Runnable() {
+                public void run() {
+                    try {
+                        while (objectSource.hasNext()) {
+                            newCollection.add(objectSource.next());
+                        }
+                        futureResult.setResult(newCollection);
+                    } catch (IOException e) {
+                        futureResult.setException(e);
+                    }
+                }
+            });
+        } catch (RuntimeException e) {
+            final IOException ioe = new IOException("Failed to initiate asynchronous population of a collection");
+            ioe.initCause(e);
+            futureResult.setException(ioe);
+        }
+        return futureResult.getIoFuture();
+    }
+
+    /**
+     * Populate a new map from an object source asynchronously.  Since the map may be only partially populated on error,
+     * it is recommended that the instance be discarded if an exception is thrown.
+     * <p>
+     * An example usage which meets this requirement would be: <code><pre>
+     * final IoFuture&lt;Map&lt;Foo, Bar&gt;&gt; futureFooBarMap = getFutureMap(executor, new HashMap&lt;Foo, Bar&gt;(), fooBarSource);
+     * </pre></code>
+     *
+     * @param newMap the new map to populate
+     * @param objectSource the object source to fill the map from
+     * @param <M> the map type
+     * @param <K> the map key type
+     * @param <V> the map value type
+     * @return the new map, populated
+     */
+    public static <M extends Map<K, V>, K, V> IoFuture<M> getFutureMap(Executor executor, final M newMap, final ObjectSource<Pair<K, V>> objectSource) {
+        final FutureResult<M> futureResult = new FutureResult<M>(executor);
+        futureResult.addCancelHandler(new Cancellable() {
+            public Cancellable cancel() {
+                if (futureResult.setCancelled()) {
+                    IoUtils.safeClose(objectSource);
+                }
+                return this;
+            }
+        });
+        try {
+            executor.execute(new Runnable() {
+                public void run() {
+                    try {
+                        while (objectSource.hasNext()) {
+                            final Pair<K, V> pair = objectSource.next();
+                            newMap.put(pair.getA(), pair.getB());
+                        }
+                        futureResult.setResult(newMap);
+                    } catch (IOException e) {
+                        futureResult.setException(e);
+                    }
+                }
+            });
+        } catch (RuntimeException e) {
+            final IOException ioe = new IOException("Failed to initiate asynchronous population of a collection");
+            ioe.initCause(e);
+            futureResult.setException(ioe);
+        }
+        return futureResult.getIoFuture();
+    }
+
+    /**
      * Get an object source that reads from an enumeration.
      *
      * @param <T> the enumeration object type
@@ -50,7 +243,7 @@ public final class Streams {
     private static final class CollectionObjectSink<T> implements ObjectSink<T> {
         private final Collection<T> target;
 
-        public CollectionObjectSink(final Collection<T> target) {
+        private CollectionObjectSink(final Collection<T> target) {
             this.target = target;
         }
 
@@ -68,7 +261,7 @@ public final class Streams {
     private static final class IteratorObjectSource<T> implements ObjectSource<T> {
         private final Iterator<T> src;
 
-        public IteratorObjectSource(final Iterator<T> src) {
+        private IteratorObjectSource(final Iterator<T> src) {
             this.src = src;
         }
 
@@ -94,7 +287,7 @@ public final class Streams {
     private static final class EnumerationObjectSource<T> implements ObjectSource<T> {
         private final Enumeration<T> src;
 
-        public EnumerationObjectSource(final Enumeration<T> src) {
+        private EnumerationObjectSource(final Enumeration<T> src) {
             this.src = src;
         }
 
@@ -114,6 +307,46 @@ public final class Streams {
 
         public void close() throws IOException {
             // empty
+        }
+    }
+
+    private static final class MapObjectSink<K, V> implements ObjectSink<Pair<K, V>> {
+
+        private final Map<K, V> target;
+
+        private MapObjectSink(final Map<K, V> target) {
+            this.target = target;
+        }
+
+        public void accept(final Pair<K, V> instance) throws IOException {
+            target.put(instance.getA(), instance.getB());
+        }
+
+        public void flush() throws IOException {
+            // empty
+        }
+
+        public void close() throws IOException {
+            // empty
+        }
+    }
+
+    private static final class MapEntryIteratorObjectSource<K, V> implements ObjectSource<Pair<K, V>> {
+        private final Iterator<Map.Entry<K, V>> source;
+
+        private MapEntryIteratorObjectSource(final Iterator<Map.Entry<K, V>> source) {
+            this.source = source;
+        }
+
+        public boolean hasNext() throws IOException {
+            return false;
+        }
+
+        public Pair<K, V> next() throws NoSuchElementException, IOException {
+            return null;
+        }
+
+        public void close() throws IOException {
         }
     }
 }
