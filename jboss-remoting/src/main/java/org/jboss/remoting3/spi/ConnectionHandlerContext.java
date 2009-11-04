@@ -25,11 +25,18 @@ package org.jboss.remoting3.spi;
 import org.jboss.xnio.OptionMap;
 
 /**
- * The context for connections to service incoming requests to open a client service.
+ * The context for connection handlers.  Used to inform the endpoint of incoming events on an established connection.
  *
  * @remoting.consume
  */
 public interface ConnectionHandlerContext {
+
+    /**
+     * Get the connection provider context associated with this connection handler context.
+     *
+     * @return the connection provider context
+     */
+    ConnectionProviderContext getConnectionProviderContext();
 
     /**
      * Open a service.

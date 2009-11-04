@@ -28,6 +28,8 @@
 
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting-taglet</artifactId>
+    <name>JBoss Remoting Taglet</name>
+    <description>JBoss Remoting Documentation Taglet</description>
     <packaging>jar</packaging>
     <version>3.1.0.CR1</version>
 

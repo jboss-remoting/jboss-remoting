@@ -114,10 +114,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private final ConcurrentMap<Registration, ServiceRegistrationListener> serviceListenerRegistrations = concurrentIdentityMap(serviceRegistrationLock);
     private final ConcurrentMap<String, ConcurrentMap<String, ServiceRegistration>> registeredLocalServices = concurrentMap(serviceRegistrationLock);
-
     private final ConcurrentMap<String, ConnectionProvider<?>> connectionProviders = concurrentMap();
-
     private final ConcurrentMap[] providerMaps = new ConcurrentMap[ProtocolServiceType.getServiceTypes().length];
+
+    private final ConnectionProviderContext connectionProviderContext;
+    private final ConnectionHandler loopbackConnectionHandler;
+    private final Connection loopbackConnection;
+    private final ConnectionHandlerContext localConnectionContext;
 
     private static final EndpointPermission CREATE_ENDPOINT_PERM = new EndpointPermission("createEndpoint");
     private static final EndpointPermission CREATE_REQUEST_HANDLER_PERM = new EndpointPermission("createRequestHandler");
@@ -140,6 +143,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         this.executor = executor;
         this.name = name;
         connectionProviders.put("local", new LocalConnectionProvider());
+        connectionProviderContext = new ConnectionProviderContextImpl();
+        loopbackConnectionHandler = new LoopbackConnectionHandler();
+        loopbackConnection = new LoopbackConnection();
+        localConnectionContext = new LocalConnectionContext(null, loopbackConnection);
     }
 
     private final Executor executor;
@@ -454,7 +461,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final FutureResult<Connection> futureResult = new FutureResult<Connection>(executor);
         futureResult.addCancelHandler(connectionProvider.connect(destination, connectOptions, new TranslatingResult<ConnectionHandlerFactory, Connection>(futureResult) {
             protected Connection translate(final ConnectionHandlerFactory input) {
-                return new ConnectionImpl(input);
+                return new ConnectionImpl(input, connectionProviderContext);
             }
         }));
         return futureResult.getIoFuture();
@@ -542,10 +549,16 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     private final class LocalConnectionContext implements ConnectionHandlerContext {
+        private final ConnectionProviderContext connectionProviderContext;
         private final Connection connection;
 
-        LocalConnectionContext(final Connection connection) {
+        LocalConnectionContext(final ConnectionProviderContext connectionProviderContext, final Connection connection) {
+            this.connectionProviderContext = connectionProviderContext;
             this.connection = connection;
+        }
+
+        public ConnectionProviderContext getConnectionProviderContext() {
+            return connectionProviderContext;
         }
 
         public void openService(final String serviceType, final String groupName, final OptionMap optionMap, final ServiceResult serviceResult) {
@@ -599,9 +612,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements Connection {
         private final ConnectionHandler connectionHandler;
 
-        private ConnectionImpl(final ConnectionHandlerFactory connectionHandlerFactory) {
+        private ConnectionImpl(final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext) {
             super(EndpointImpl.this.executor);
-            connectionHandler = connectionHandlerFactory.createInstance(new LocalConnectionContext(this));
+            connectionHandler = connectionHandlerFactory.createInstance(new LocalConnectionContext(connectionProviderContext, this));
         }
 
         protected void closeAction() throws IOException {
@@ -645,10 +658,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             return getMapFor(serviceType).entrySet();
         }
     }
-
-    private final ConnectionHandler loopbackConnectionHandler = new LoopbackConnectionHandler();
-    private final Connection loopbackConnection = new LoopbackConnection();
-    private final ConnectionHandlerContext localConnectionContext = new LocalConnectionContext(loopbackConnection);
 
     private final class LocalConnectionProvider implements ConnectionProvider<Void> {
 

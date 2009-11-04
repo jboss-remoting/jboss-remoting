@@ -26,7 +26,8 @@ import org.jboss.remoting3.HandleableCloseable;
 import java.util.Map;
 
 /**
- * A context for a connection provider which provides a means to accept a connection.
+ * A context for a connection provider.  This provides additional endpoint methods to connection providers which are not
+ * accessible otherwise.
  *
  * @remoting.consume
  */
