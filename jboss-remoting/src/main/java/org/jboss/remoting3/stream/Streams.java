@@ -140,7 +140,7 @@ public final class Streams {
      * it is recommended that the instance be discarded if an exception is thrown.
      * <p>
      * An example usage which meets this requirement would be: <code><pre>
-     * final IoFuture&lt;List&lt;Foo&gt;&gt; futureFooList = getFutureCollection(executor, new ArrayList&lt;Foo&gt;(), fooSource);
+     * final IoFuture&lt;? extends List&lt;Foo&gt;&gt; futureFooList = getFutureCollection(executor, new ArrayList&lt;Foo&gt;(), fooSource);
      * </pre></code>
      *
      * @param executor the executor in which to run asynchronous tasks
@@ -151,7 +151,7 @@ public final class Streams {
      * @return the new future collection, populated
      * @throws IOException if an error occurs
      */
-    public static <C extends Collection<T>, T> IoFuture<C> getFutureCollection(Executor executor, final C newCollection, final ObjectSource<T> objectSource) {
+    public static <C extends Collection<T>, T> IoFuture<? extends C> getFutureCollection(Executor executor, final C newCollection, final ObjectSource<T> objectSource) {
         final FutureResult<C> futureResult = new FutureResult<C>(executor);
         futureResult.addCancelHandler(new Cancellable() {
             public Cancellable cancel() {
@@ -187,7 +187,7 @@ public final class Streams {
      * it is recommended that the instance be discarded if an exception is thrown.
      * <p>
      * An example usage which meets this requirement would be: <code><pre>
-     * final IoFuture&lt;Map&lt;Foo, Bar&gt;&gt; futureFooBarMap = getFutureMap(executor, new HashMap&lt;Foo, Bar&gt;(), fooBarSource);
+     * final IoFuture&lt;? extends Map&lt;Foo, Bar&gt;&gt; futureFooBarMap = getFutureMap(executor, new HashMap&lt;Foo, Bar&gt;(), fooBarSource);
      * </pre></code>
      *
      * @param newMap the new map to populate
@@ -197,7 +197,7 @@ public final class Streams {
      * @param <V> the map value type
      * @return the new map, populated
      */
-    public static <M extends Map<K, V>, K, V> IoFuture<M> getFutureMap(Executor executor, final M newMap, final ObjectSource<Pair<K, V>> objectSource) {
+    public static <M extends Map<K, V>, K, V> IoFuture<? extends M> getFutureMap(Executor executor, final M newMap, final ObjectSource<Pair<K, V>> objectSource) {
         final FutureResult<M> futureResult = new FutureResult<M>(executor);
         futureResult.addCancelHandler(new Cancellable() {
             public Cancellable cancel() {
