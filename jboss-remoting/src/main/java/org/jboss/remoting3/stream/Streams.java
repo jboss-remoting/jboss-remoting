@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import org.jboss.marshalling.Pair;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.FutureResult;
 import org.jboss.xnio.Cancellable;
