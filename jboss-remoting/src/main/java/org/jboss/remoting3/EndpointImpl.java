@@ -104,6 +104,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.endpoint");
 
+    /**
+     * The name of this endpoint.
+     */
     private final String name;
 
     /**
@@ -112,14 +115,39 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
      */
     private final Object serviceRegistrationLock = new Object();
 
+    /**
+     * The currently registered service listeners.  Protected by {@link #serviceRegistrationLock}.
+     */
     private final ConcurrentMap<Registration, ServiceRegistrationListener> serviceListenerRegistrations = concurrentIdentityMap(serviceRegistrationLock);
+    /**
+     * The currently registered services.  Protected by {@link #serviceRegistrationLock}.
+     */
     private final ConcurrentMap<String, ConcurrentMap<String, ServiceRegistration>> registeredLocalServices = concurrentMap(serviceRegistrationLock);
+    /**
+     * The currently registered connection providers.
+     */
     private final ConcurrentMap<String, ConnectionProvider<?>> connectionProviders = concurrentMap();
+    /**
+     * The provider maps for the different protocol service types.
+     */
     private final ConcurrentMap[] providerMaps = new ConcurrentMap[ProtocolServiceType.getServiceTypes().length];
 
+    /**
+     * The single per-endpoint connection provider context instance.
+     */
     private final ConnectionProviderContext connectionProviderContext;
+    /**
+     * The special connection handler instance corresponding to {@link #loopbackConnection}.
+     */
     private final ConnectionHandler loopbackConnectionHandler;
+    /**
+     * The special loopback connection instance for local request handlers which are created via {@link #createLocalRequestHandler(RequestListener, Class, Class)} and
+     * not tied to a service.  This connection cannot be closed.
+     */
     private final Connection loopbackConnection;
+    /**
+     * The special connection handler context corresponding to {@link #loopbackConnectionHandler}.
+     */
     private final ConnectionHandlerContext localConnectionContext;
 
     private static final EndpointPermission CREATE_ENDPOINT_PERM = new EndpointPermission("createEndpoint");
