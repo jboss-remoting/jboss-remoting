@@ -25,9 +25,11 @@ package org.jboss.remoting3;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.io.IOException;
+import java.net.URI;
 import junit.framework.TestCase;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -39,7 +41,7 @@ public final class EndpointTestCase extends TestCase {
 
     public void testCreate() throws Throwable {
         final ExecutorService executorService = Executors.newCachedThreadPool();
-        final EndpointImpl endpoint = new EndpointImpl(executorService, "foo");
+        final Endpoint endpoint = Remoting.createEndpoint(executorService, "foo");
         try {
             endpoint.close();
             executorService.shutdown();
@@ -50,60 +52,154 @@ public final class EndpointTestCase extends TestCase {
     }
 
     public void testLocalClientInvoke() throws Throwable {
-        final AtomicBoolean clientEndpointClosed = new AtomicBoolean(false);
-        final AtomicBoolean clientClosed = new AtomicBoolean(false);
-        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final Endpoint endpoint = Remoting.createEndpoint("test-endpoint");
         try {
-            final EndpointImpl endpoint = new EndpointImpl(executorService, "test-endpoint");
             final Object requestObj = new Object();
             final Object replyObj = new Object();
+            final Client<Object, Object> localClient = Remoting.createLocalClient(endpoint, new RequestListener<Object, Object>() {
+                public void handleRequest(final RequestContext<Object> objectRequestContext, final Object request) throws RemoteExecutionException {
+                    try {
+                        objectRequestContext.sendReply(replyObj);
+                    } catch (IOException e) {
+                        throw new RemoteExecutionException(e);
+                    }
+                }
+
+                public void handleClose() {
+                    log.info("Listener closed");
+                }
+            }, Object.class, Object.class);
             try {
+                assertEquals(replyObj, localClient.invoke(requestObj));
             } finally {
-                IoUtils.safeClose(endpoint);
+                IoUtils.safeClose(localClient);
             }
         } finally {
-            executorService.shutdownNow();
+            IoUtils.safeClose(endpoint);
         }
     }
 
     public void testLocalClientSend() throws Throwable {
-        final AtomicBoolean clientEndpointClosed = new AtomicBoolean(false);
-        final AtomicBoolean clientClosed = new AtomicBoolean(false);
-        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final Endpoint endpoint = Remoting.createEndpoint("test-endpoint");
         try {
-            final EndpointImpl endpoint = new EndpointImpl(executorService, "test-endpoint");
+            final Object requestObj = new Object();
+            final Object replyObj = new Object();
+            final Client<Object, Object> localClient = Remoting.createLocalClient(endpoint, new RequestListener<Object, Object>() {
+                public void handleRequest(final RequestContext<Object> objectRequestContext, final Object request) throws RemoteExecutionException {
+                    try {
+                        objectRequestContext.sendReply(replyObj);
+                    } catch (IOException e) {
+                        throw new RemoteExecutionException(e);
+                    }
+                }
+
+                public void handleClose() {
+                    log.info("Listener closed");
+                }
+            }, Object.class, Object.class);
             try {
+                assertEquals(replyObj, localClient.send(requestObj).get());
             } finally {
-                IoUtils.safeClose(endpoint);
+                IoUtils.safeClose(localClient);
             }
         } finally {
-            executorService.shutdownNow();
+            IoUtils.safeClose(endpoint);
         }
     }
 
-    public void testUnsentReply() throws Throwable {
-        final ExecutorService executorService = Executors.newCachedThreadPool();
+    public void testLocalClientConnectInvoke() throws Throwable {
+        final Endpoint endpoint = Remoting.createEndpoint("test-endpoint");
         try {
-            final EndpointImpl endpoint = new EndpointImpl(executorService, "test-endpoint");
+            final Object requestObj = new Object();
+            final Object replyObj = new Object();
+            final Registration registration = endpoint.serviceBuilder().setGroupName("foo").setServiceType("test").setRequestType(Object.class).
+                    setReplyType(Object.class).setClientListener(new ClientListener<Object, Object>() {
+                public RequestListener<Object, Object> handleClientOpen(final ClientContext clientContext) {
+                    return new RequestListener<Object, Object>() {
+                        public void handleRequest(final RequestContext<Object> objectRequestContext, final Object request) throws RemoteExecutionException {
+                            try {
+                                objectRequestContext.sendReply(replyObj);
+                            } catch (IOException e) {
+                                throw new RemoteExecutionException(e);
+                            }
+                        }
+
+                        public void handleClose() {
+                            log.info("Listener closed");
+                        }
+                    };
+                }
+            }).register();
             try {
+                final Connection connection = endpoint.connect(new URI("local:///"), OptionMap.EMPTY).get();
+                try {
+                    final Client<Object, Object> localClient = connection.openClient("test", "*", Object.class, Object.class).get();
+                    try {
+                        assertEquals(replyObj, localClient.invoke(requestObj));
+                    } finally {
+                        IoUtils.safeClose(localClient);
+                    }
+                } finally {
+                    IoUtils.safeClose(connection);
+                }
             } finally {
-                IoUtils.safeClose(endpoint);
+                IoUtils.safeClose(registration);
             }
         } finally {
-            executorService.shutdownNow();
+            IoUtils.safeClose(endpoint);
         }
     }
 
-    public void testUnsentReply2() throws Throwable {
-        final ExecutorService executorService = Executors.newCachedThreadPool();
+    public void testLocalClientConnectSend() throws Throwable {
+        final Endpoint endpoint = Remoting.createEndpoint("test-endpoint");
         try {
-            final EndpointImpl endpoint = new EndpointImpl(executorService, "test-endpoint");
+            final Object requestObj = new Object();
+            final Object replyObj = new Object();
+            final Registration registration = endpoint.serviceBuilder().setGroupName("foo").setServiceType("test").setRequestType(Object.class).
+                    setReplyType(Object.class).setClientListener(new ClientListener<Object, Object>() {
+                public RequestListener<Object, Object> handleClientOpen(final ClientContext clientContext) {
+                    return new RequestListener<Object, Object>() {
+                        public void handleRequest(final RequestContext<Object> objectRequestContext, final Object request) throws RemoteExecutionException {
+                            try {
+                                objectRequestContext.sendReply(replyObj);
+                            } catch (IOException e) {
+                                throw new RemoteExecutionException(e);
+                            }
+                        }
+
+                        public void handleClose() {
+                            log.info("Listener closed");
+                        }
+                    };
+                }
+            }).register();
             try {
+                final Connection connection = endpoint.connect(new URI("local:///"), OptionMap.EMPTY).get();
+                try {
+                    final Client<Object, Object> localClient = connection.openClient("test", "*", Object.class, Object.class).get();
+                    try {
+                        assertEquals(replyObj, localClient.send(requestObj).get());
+                    } finally {
+                        IoUtils.safeClose(localClient);
+                    }
+                } finally {
+                    IoUtils.safeClose(connection);
+                }
             } finally {
-                IoUtils.safeClose(endpoint);
+                IoUtils.safeClose(registration);
             }
         } finally {
-            executorService.shutdownNow();
+            IoUtils.safeClose(endpoint);
         }
+    }
+
+    public void testNotFoundService() throws Throwable {
+        final Endpoint endpoint = Remoting.createEndpoint("test-endpoint");
+        try {
+            endpoint.connect(new URI("local:///"), OptionMap.EMPTY).get().openClient("blah", "bzzt", Object.class, Object.class).get();
+        } catch (ServiceNotFoundException e) {
+            return;
+        }
+        fail("Expected exception");
     }
 }
