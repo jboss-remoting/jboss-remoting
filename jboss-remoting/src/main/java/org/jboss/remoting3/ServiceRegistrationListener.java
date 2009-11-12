@@ -49,6 +49,9 @@ public interface ServiceRegistrationListener {
     final class ServiceInfo implements Cloneable {
         private String serviceType;
         private String groupName;
+        private ClassLoader serviceClassLoader;
+        private Class<?> requestClass;
+        private Class<?> replyClass;
         private RequestHandlerConnector requestHandlerConnector;
         private Registration registrationHandle;
         private OptionMap optionMap;
@@ -93,6 +96,60 @@ public interface ServiceRegistrationListener {
          */
         public void setGroupName(final String groupName) {
             this.groupName = groupName;
+        }
+
+        /**
+         * Get the service's default classloader.
+         *
+         * @return the classloader
+         */
+        public ClassLoader getServiceClassLoader() {
+            return serviceClassLoader;
+        }
+
+        /**
+         * Set the service's default classloader.
+         *
+         * @param serviceClassLoader the classloader
+         */
+        public void setServiceClassLoader(final ClassLoader serviceClassLoader) {
+            this.serviceClassLoader = serviceClassLoader;
+        }
+
+        /**
+         * Get the request class.
+         *
+         * @return the request class
+         */
+        public Class<?> getRequestClass() {
+            return requestClass;
+        }
+
+        /**
+         * Set the request class.
+         *
+         * @param requestClass the request class
+         */
+        public void setRequestClass(final Class<?> requestClass) {
+            this.requestClass = requestClass;
+        }
+
+        /**
+         * Get the reply class.
+         *
+         * @return the reply class
+         */
+        public Class<?> getReplyClass() {
+            return replyClass;
+        }
+
+        /**
+         * Set the reply class.
+         *
+         * @param replyClass the reply class
+         */
+        public void setReplyClass(final Class<?> replyClass) {
+            this.replyClass = replyClass;
         }
 
         /**

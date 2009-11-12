@@ -233,6 +233,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         private Class<I> requestType;
         private Class<O> replyType;
         private ClientListener<? super I, ? extends O> clientListener;
+        private ClassLoader classLoader;
         private OptionMap optionMap = OptionMap.EMPTY;
 
         public ServiceBuilder<I, O> setGroupName(final String groupName) {
@@ -272,6 +273,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 throw new IllegalArgumentException("Must configure both request and reply type before setting the client listener");
             }
             this.clientListener = clientListener;
+            return this;
+        }
+
+        public ServiceBuilder<I, O> setClassLoader(final ClassLoader classLoader) {
+            this.classLoader = classLoader;
             return this;
         }
 
@@ -353,6 +359,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             serviceInfo.setOptionMap(optionMap);
             serviceInfo.setRegistrationHandle(handle);
             serviceInfo.setRequestHandlerConnector(requestHandlerConnector);
+            serviceInfo.setRequestClass(requestType);
+            serviceInfo.setReplyClass(replyType);
+            final ClassLoader classLoader = this.classLoader;
+            serviceInfo.setServiceClassLoader(classLoader == null ? clientListener.getClass().getClassLoader() : classLoader);
             executor.execute(new Runnable() {
                 public void run() {
                     final Iterator<Map.Entry<Registration,ServiceRegistrationListener>> iter = serviceListenerRegistrations;
