@@ -685,6 +685,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         public <T> Iterable<Map.Entry<String, T>> getProtocolServiceProviders(final ProtocolServiceType<T> serviceType) {
             return getMapFor(serviceType).entrySet();
         }
+
+        public <T> T getProtocolServiceProvider(final ProtocolServiceType<T> serviceType, final String name) {
+            return getMapFor(serviceType).get(name);
+        }
     }
 
     private final class LocalConnectionProvider implements ConnectionProvider<Void> {
