@@ -56,7 +56,7 @@ public class SocketObjectTable<I, O> implements org.jboss.marshalling.ObjectTabl
 	
 	@Override
 	public Writer getObjectWriter(Object object) throws IOException {
-		if (object instanceof Endpoint || object instanceof Executor || object instanceof RequestListener<?, ?>) {
+		if (object instanceof Endpoint || object instanceof Executor) {
 		   return socketObjectTableWriter;
 		}
 		return null;
@@ -72,9 +72,6 @@ public class SocketObjectTable<I, O> implements org.jboss.marshalling.ObjectTabl
 		if (o instanceof ExecutorToken) {
 		   return executor;
 		}
-		if (o instanceof SocketServiceConfiguration<?, ?>) {
-		   return new SocketRequestListenerProxy<I, O>(endpoint, (SocketServiceConfiguration<I, O>) o);
-		}
 		return o;
 	}
 	
@@ -89,16 +86,8 @@ public class SocketObjectTable<I, O> implements org.jboss.marshalling.ObjectTabl
             log.info(this + " got Executor: " + object);
             marshaller.writeObject(EXECUTOR_TOKEN);            
          }
-         else if (object instanceof RequestListener<?, ?>) {
-            log.info(this + " got RequestListener: " + object);
-            SocketServiceConfiguration<?, ?> config = SocketClientListener.getRequestListenerInfo((RequestListener<?, ?>) object);
-            if (config == null) {
-               throw new RuntimeException(object + " is not registered with SocketClientListener");
-            }
-            marshaller.writeObject(config);
-         }
          else {
-            throw new RuntimeException("expecting Endpoint or RequestListener");
+            throw new RuntimeException("expecting Endpoint or Executor");
          }
       }
    }
