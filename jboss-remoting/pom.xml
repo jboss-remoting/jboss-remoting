@@ -76,14 +76,19 @@
                     </execution>
                 </executions>
             </plugin>
-        </plugins>
-    </build>
-    <reporting>
-        <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>2.5</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
                     <taglet>org.jboss.remoting3.taglet.RemotingTypeTaglet</taglet>
                     <tagletArtifact>
@@ -107,7 +112,7 @@
                 </configuration>
             </plugin>
         </plugins>
-    </reporting>
+    </build>
     <distributionManagement>
         <repository>
             <id>repository.jboss.org</id>
