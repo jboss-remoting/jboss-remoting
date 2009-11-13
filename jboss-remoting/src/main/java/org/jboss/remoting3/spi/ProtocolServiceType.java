@@ -22,12 +22,12 @@
 
 package org.jboss.remoting3.spi;
 
-import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.ClassTable;
 import org.jboss.marshalling.ObjectTable;
 import org.jboss.marshalling.ClassResolver;
 import org.jboss.marshalling.ObjectResolver;
 import org.jboss.marshalling.ClassExternalizerFactory;
+import org.jboss.marshalling.ProviderDescriptor;
 import java.io.Serializable;
 
 public final class ProtocolServiceType<T> implements Serializable {
@@ -65,7 +65,7 @@ public final class ProtocolServiceType<T> implements Serializable {
         }
     }
 
-    public static final ProtocolServiceType<MarshallerFactory> MARSHALLER_FACTORY;
+    public static final ProtocolServiceType<ProviderDescriptor> MARSHALLER_PROVIDER_DESCRIPTOR;
 
     public static final ProtocolServiceType<ClassTable> CLASS_TABLE;
 
@@ -90,7 +90,7 @@ public final class ProtocolServiceType<T> implements Serializable {
     static {
         int index = 0;
         SERVICE_TYPES = new ProtocolServiceType<?>[] {
-                MARSHALLER_FACTORY = new ProtocolServiceType<MarshallerFactory>(MarshallerFactory.class, "MARSHALLER_FACTORY", "Marshaller factory", index++),
+                MARSHALLER_PROVIDER_DESCRIPTOR = new ProtocolServiceType<ProviderDescriptor>(ProviderDescriptor.class, "MARSHALLER_FACTORY", "Marshaller factory", index++),
                 CLASS_TABLE = new ProtocolServiceType<ClassTable>(ClassTable.class, "CLASS_TABLE", "Class table", index++),
                 OBJECT_TABLE = new ProtocolServiceType<ObjectTable>(ObjectTable.class, "OBJECT_TABLE", "Object table", index++),
                 CLASS_RESOLVER = new ProtocolServiceType<ClassResolver>(ClassResolver.class, "CLASS_RESOLVER", "Class resolver", index++),

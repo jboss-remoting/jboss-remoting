@@ -143,7 +143,7 @@ public final class Remoting {
             for (String name : found.keySet()) {
                 final MarshallerFactory marshallerFactory = found.get(name).getMarshallerFactory();
                 try {
-                    endpoint.addProtocolService(ProtocolServiceType.MARSHALLER_FACTORY, name, marshallerFactory);
+                    endpoint.addProtocolService(ProtocolServiceType.MARSHALLER_PROVIDER_DESCRIPTOR, name, marshallerFactory);
                 } catch (DuplicateRegistrationException e) {
                     log.debug("Duplicate registration for '" + name + "' of " + MarshallerFactory.class);
                 }
