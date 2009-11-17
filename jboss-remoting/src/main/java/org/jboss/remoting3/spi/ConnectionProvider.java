@@ -27,6 +27,8 @@ import org.jboss.xnio.Result;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.OptionMap;
 
+import javax.security.auth.callback.CallbackHandler;
+
 /**
  * A connection provider.  Used to establish connections with remote systems.  There is typically one instance
  * of this interface per connection provider factory per endpoint.
@@ -42,10 +44,11 @@ public interface ConnectionProvider<T> {
      * @param uri the URI to connect to
      * @param connectOptions the options to use for this connection
      * @param result the result which should receive the connection
+     * @param callbackHandler the callback handler to use for authentication
      * @return a handle which may be used to cancel the connect attempt
      * @throws IllegalArgumentException if the URI is not valid
      */
-    Cancellable connect(URI uri, OptionMap connectOptions, Result<ConnectionHandlerFactory> result) throws IllegalArgumentException;
+    Cancellable connect(URI uri, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, CallbackHandler callbackHandler) throws IllegalArgumentException;
 
     /**
      * Get the user data associated with this connection provider.

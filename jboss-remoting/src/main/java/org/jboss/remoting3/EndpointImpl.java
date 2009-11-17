@@ -61,6 +61,10 @@ import org.jboss.xnio.TranslatingResult;
 import org.jboss.xnio.WeakCloseable;
 
 import javax.security.auth.callback.CallbackHandler;
+import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.UnsupportedCallbackException;
+import javax.security.auth.callback.NameCallback;
+import javax.security.sasl.RealmCallback;
 
 /**
  *
@@ -489,7 +493,23 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
-        return connect(destination, connectOptions, null);
+        final String userName = connectOptions.get(RemotingOptions.AUTH_USER_NAME);
+        final String realm = connectOptions.get(RemotingOptions.AUTH_REALM);
+        return connect(destination, connectOptions, new CallbackHandler() {
+            public void handle(final Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+                for (Callback callback : callbacks) {
+                    if (callback instanceof NameCallback && userName != null) {
+                        final NameCallback nameCallback = (NameCallback) callback;
+                        nameCallback.setName(userName);
+                    } else if (callback instanceof RealmCallback && realm != null) {
+                        final RealmCallback realmCallback = (RealmCallback) callback;
+                        realmCallback.setText(realm);
+                    } else {
+                        throw new UnsupportedCallbackException(callback);
+                    }
+                }
+            }
+        });
     }
 
     public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
@@ -507,7 +527,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             protected Connection translate(final ConnectionHandlerFactory input) {
                 return new ConnectionImpl(input, connectionProviderContext);
             }
-        }));
+        }, callbackHandler));
         return futureResult.getIoFuture();
     }
 
@@ -709,7 +729,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private final class LocalConnectionProvider implements ConnectionProvider<Void> {
 
-        public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result) throws IllegalArgumentException {
+        public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
             result.setResult(new ConnectionHandlerFactory() {
                 public ConnectionHandler createInstance(final ConnectionHandlerContext context) {
                     return loopbackConnectionHandler;

@@ -40,6 +40,8 @@ import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Result;
 
+import javax.security.auth.callback.CallbackHandler;
+
 /**
  * @author <a href="ron.sigal@jboss.com">Ron Sigal</a>
  * @version 
@@ -61,7 +63,7 @@ public class SocketConnectionProvider<T, I, O> extends AbstractHandleableCloseab
       SocketProtocol.initializeMarshalling(endpoint, executor);
    }
 
-   public Cancellable connect(final URI uri, final OptionMap connectOptions, Result<ConnectionHandlerFactory> result) throws IllegalArgumentException {
+   public Cancellable connect(final URI uri, final OptionMap connectOptions, Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
       result.setResult(new ConnectionHandlerFactory() {
          public ConnectionHandler createInstance(ConnectionHandlerContext connectionContext) {
             final ConnectionHandler connectionHandler = new SocketClientConnectionHandler(uri, connectOptions, getExecutor(), host, port);
