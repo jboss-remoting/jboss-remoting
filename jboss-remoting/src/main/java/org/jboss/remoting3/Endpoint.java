@@ -10,6 +10,8 @@ import org.jboss.remoting3.spi.ProtocolServiceType;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.OptionMap;
 
+import javax.security.auth.callback.CallbackHandler;
+
 /**
  * A potential participant in a JBoss Remoting communications relationship.
  * <p/>
@@ -102,22 +104,22 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
         /**
          * Set the option map for the service.  The options may include, but are not limited to:
          * <ul>
-         * <li>{@link Options#BUFFER_SIZE} - the recommended buffer size for marshallers to use for this service</li>
-         * <li>{@link Options#CLASS_COUNT} - the recommended class count for marshallers to use for this service</li>
-         * <li>{@link Options#INSTANCE_COUNT} - the recommended instance count for marshallers to use for this service</li>
-         * <li>{@link Options#METRIC} - the relative desirability or "distance" of this service</li>
-         * <li>{@link Options#MARSHALLING_PROTOCOLS} - the marshalling protocols which are allowed for this service,
+         * <li>{@link RemotingOptions#BUFFER_SIZE} - the recommended buffer size for marshallers to use for this service</li>
+         * <li>{@link RemotingOptions#CLASS_COUNT} - the recommended class count for marshallers to use for this service</li>
+         * <li>{@link RemotingOptions#INSTANCE_COUNT} - the recommended instance count for marshallers to use for this service</li>
+         * <li>{@link RemotingOptions#METRIC} - the relative desirability or "distance" of this service</li>
+         * <li>{@link RemotingOptions#MARSHALLING_PROTOCOLS} - the marshalling protocols which are allowed for this service,
          *          in order of decreasing preference; if none is given, all registered protocols will
          *          be made available</li>
-         * <li>{@link Options#MARSHALLING_CLASS_RESOLVERS} - the class resolvers which are allowed for this service,
+         * <li>{@link RemotingOptions#MARSHALLING_CLASS_RESOLVERS} - the class resolvers which are allowed for this service,
          *          in order of decreasing preference; if none is given, the default class resolver is used</li>
-         * <li>{@link Options#MARSHALLING_CLASS_TABLES} - the class tables which are allowed for this service, in order
+         * <li>{@link RemotingOptions#MARSHALLING_CLASS_TABLES} - the class tables which are allowed for this service, in order
          *          of decreasing preference</li>
-         * <li>{@link Options#MARSHALLING_EXTERNALIZER_FACTORIES} - the class externalizer factories which are allowed
+         * <li>{@link RemotingOptions#MARSHALLING_EXTERNALIZER_FACTORIES} - the class externalizer factories which are allowed
          *          for this service, in order of decreasing preference</li>
-         * <li>{@link Options#REMOTELY_VISIBLE} - {@code true} if this service should be remotely accessible,
+         * <li>{@link RemotingOptions#REMOTELY_VISIBLE} - {@code true} if this service should be remotely accessible,
          *          {@code false} otherwise (defaults to {@code true})</li>
-         * <li>{@link Options#REQUIRE_SECURE} - {@code true} if this service may only be accessed over a secure/encrypted
+         * <li>{@link RemotingOptions#REQUIRE_SECURE} - {@code true} if this service may only be accessed over a secure/encrypted
          *          channel; defaults to {@code false}, however this should be set to {@code true} if sensitive data (e.g.
          *          passwords) may be transmitted as part of a payload</li>
          * </ul>
@@ -176,6 +178,21 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @throws IOException if an error occurs while starting the connect attempt
      */
     IoFuture<? extends Connection> connect(URI destination, OptionMap connectOptions) throws IOException;
+
+    /**
+     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
+     * This method does not block; use the return value to wait for a result if you wish to block.
+     * <p/>
+     * You must have the {@link org.jboss.remoting3.EndpointPermission connect EndpointPermission} to invoke this method.
+     *
+     * @param destination the destination
+     * @param connectOptions options to configure this connection
+     * @param callbackHandler the local callback handler to use for authentication
+     * @return the future connection
+     * @throws IOException if an error occurs while starting the connect attempt
+     */
+    IoFuture<? extends Connection> connect(URI destination, OptionMap connectOptions, CallbackHandler callbackHandler) throws IOException;
 
     /**
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can

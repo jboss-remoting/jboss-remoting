@@ -80,14 +80,14 @@ public final class Remoting {
      * @return the endpoint
      */
     public static Endpoint createEndpoint(final String name, final int maxThreads) throws IOException {
-        return createEndpoint(name, OptionMap.builder().set(Options.MAX_THREADS, maxThreads).getMap());
+        return createEndpoint(name, OptionMap.builder().set(RemotingOptions.MAX_THREADS, maxThreads).getMap());
     }
 
     /**
      * Create an endpoint configured with the given option map.  The following options are supported:
      * <ul>
-     * <li>{@link Options#MAX_THREADS} - specify the maximum number of threads for the created thread pool (default 10)</li>
-     * <li>{@link Options#LOAD_PROVIDERS} - specify whether providers should be auto-loaded (default {@code true})</li>
+     * <li>{@link RemotingOptions#MAX_THREADS} - specify the maximum number of threads for the created thread pool (default 10)</li>
+     * <li>{@link RemotingOptions#LOAD_PROVIDERS} - specify whether providers should be auto-loaded (default {@code true})</li>
      * </ul>
      *
      * @param endpointName the endpoint name
@@ -102,14 +102,14 @@ public final class Remoting {
         if (optionMap == null) {
             throw new NullPointerException("optionMap is null");
         }
-        final CloseableExecutor executor = createExecutor(optionMap.get(Options.MAX_THREADS, 10));
+        final CloseableExecutor executor = createExecutor(optionMap.get(RemotingOptions.MAX_THREADS, 10));
         final Endpoint endpoint = createEndpoint(executor, endpointName);
         endpoint.addCloseHandler(new CloseHandler<Endpoint>() {
             public void handleClose(final Endpoint closed) {
                 IoUtils.safeClose(executor);
             }
         });
-        if (optionMap.get(Options.LOAD_PROVIDERS, true)) {
+        if (optionMap.get(RemotingOptions.LOAD_PROVIDERS, true)) {
             for (RemotingServiceDescriptor<?> descriptor : ServiceLoader.load(RemotingServiceDescriptor.class)) {
                 final String name = descriptor.getName();
                 final Class<?> serviceType = descriptor.getType();

@@ -60,6 +60,8 @@ import org.jboss.xnio.Result;
 import org.jboss.xnio.TranslatingResult;
 import org.jboss.xnio.WeakCloseable;
 
+import javax.security.auth.callback.CallbackHandler;
+
 /**
  *
  */
@@ -309,7 +311,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             if (clientListener == null) {
                 throw new NullPointerException("clientListener is null");
             }
-            final Integer metric = optionMap.get(Options.METRIC);
+            final Integer metric = optionMap.get(RemotingOptions.METRIC);
             if (metric != null && metric.intValue() < 0) {
                 throw new IllegalArgumentException("metric must be greater than or equal to zero");
             }
@@ -487,6 +489,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
+        return connect(destination, connectOptions, null);
+    }
+
+    public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CONNECT_PERM);
