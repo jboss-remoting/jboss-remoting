@@ -104,19 +104,43 @@ public final class RemotingOptions {
      */
     public static final Option<Boolean> REQUIRE_SECURE = Option.simple(RemotingOptions.class, "REQUIRE_SECURE", Boolean.class);
 
+    /**
+     * The size of the largest buffer that this endpoint will transmit over a connection.
+     */
     public static final Option<Integer> MAX_TRANSMIT_SIZE = Option.simple(RemotingOptions.class, "MAX_TRANSMIT_SIZE", Integer.class);
 
+    /**
+     * The size of the largest buffer that this endpoint will accept over a connection.
+     */
     public static final Option<Integer> MAX_RECEIVE_SIZE = Option.simple(RemotingOptions.class, "MAX_RECEIVE_SIZE", Integer.class);
 
+    /**
+     * The window size of the transmit direction for connection subchannels, in buffers.
+     */
     public static final Option<Integer> TRANSMIT_WINDOW_SIZE = Option.simple(RemotingOptions.class, "TRANSMIT_WINDOW_SIZE", Integer.class);
 
+    /**
+     * The window size of the receive direction for connection subchannels, in buffers.
+     */
     public static final Option<Integer> RECEIVE_WINDOW_SIZE = Option.simple(RemotingOptions.class, "RECEIVE_WINDOW_SIZE", Integer.class);
 
+    /**
+     * The maximum number of outbound subchannels to support for a connection.
+     */
     public static final Option<Integer> MAX_OUTBOUND_CHANNELS = Option.simple(RemotingOptions.class, "MAX_OUTBOUND_CHANNELS", Integer.class);
 
+    /**
+     * The maximum number of inbound subchannels to support for a connection.
+     */
     public static final Option<Integer> MAX_INBOUND_CHANNELS = Option.simple(RemotingOptions.class, "MAX_INBOUND_CHANNELS", Integer.class);
 
+    /**
+     * The authentication user name to use if no authentication {@code CallbackHandler} is specified.
+     */
     public static final Option<String> AUTH_USER_NAME = Option.simple(RemotingOptions.class, "AUTH_USER_NAME", String.class);
 
+    /**
+     * The authentication realm to use if no authentication {@code CallbackHandler} is specified.
+     */
     public static final Option<String> AUTH_REALM = Option.simple(RemotingOptions.class, "AUTH_REALM", String.class);
 }
