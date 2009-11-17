@@ -64,7 +64,9 @@ import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.UnsupportedCallbackException;
 import javax.security.auth.callback.NameCallback;
+import javax.security.auth.callback.TextOutputCallback;
 import javax.security.sasl.RealmCallback;
+import javax.security.sasl.RealmChoiceCallback;
 
 /**
  *
@@ -497,13 +499,33 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final String realm = connectOptions.get(RemotingOptions.AUTH_REALM);
         return connect(destination, connectOptions, new CallbackHandler() {
             public void handle(final Callback[] callbacks) throws IOException, UnsupportedCallbackException {
-                for (Callback callback : callbacks) {
+                MAIN: for (Callback callback : callbacks) {
                     if (callback instanceof NameCallback && userName != null) {
                         final NameCallback nameCallback = (NameCallback) callback;
                         nameCallback.setName(userName);
                     } else if (callback instanceof RealmCallback && realm != null) {
                         final RealmCallback realmCallback = (RealmCallback) callback;
                         realmCallback.setText(realm);
+                    } else if (callback instanceof RealmChoiceCallback && realm != null) {
+                        final RealmChoiceCallback realmChoiceCallback = (RealmChoiceCallback) callback;
+                        final String[] choices = realmChoiceCallback.getChoices();
+                        for (int i = 0; i < choices.length; i++) {
+                            if (choices[i].equals(realm)) {
+                                realmChoiceCallback.setSelectedIndex(i);
+                                continue MAIN;
+                            }
+                        }
+                        throw new UnsupportedCallbackException(callback, "No realm choices match realm '" + realm + "'");
+                    } else if (callback instanceof TextOutputCallback) {
+                        final TextOutputCallback textOutputCallback = (TextOutputCallback) callback;
+                        final String kind;
+                        switch (textOutputCallback.getMessageType()) {
+                            case TextOutputCallback.ERROR: kind = "ERROR"; break;
+                            case TextOutputCallback.INFORMATION: kind = "INFORMATION"; break;
+                            case TextOutputCallback.WARNING: kind = "WARNING"; break;
+                            default: kind = "UNKNOWN"; break;
+                        }
+                        log.debug("Authentication layer produced a %s message: %s", kind, textOutputCallback.getMessage());
                     } else {
                         throw new UnsupportedCallbackException(callback);
                     }
