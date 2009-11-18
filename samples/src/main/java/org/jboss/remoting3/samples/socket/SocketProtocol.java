@@ -26,8 +26,8 @@ import java.util.concurrent.Executor;
 
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.MarshallingConfiguration;
+import org.jboss.marshalling.Marshalling;
 import org.jboss.marshalling.reflect.SunReflectiveCreator;
-import org.jboss.marshalling.river.RiverMarshallerFactory;
 import org.jboss.remoting3.ClientListener;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.RequestListener;
@@ -110,7 +110,7 @@ public class SocketProtocol
    
    
    static public <I, O> void initializeMarshalling(Endpoint endpoint, Executor executor) {
-      marshallerFactory = new RiverMarshallerFactory();
+      marshallerFactory = Marshalling.getMarshallerFactory("river");
       marshallingConfiguration = new MarshallingConfiguration();
       marshallingConfiguration.setCreator(new SunReflectiveCreator());
       marshallingConfiguration.setObjectTable(new SocketObjectTable<I, O>(endpoint, executor));
