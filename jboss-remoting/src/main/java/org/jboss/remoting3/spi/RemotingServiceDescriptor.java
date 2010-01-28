@@ -22,6 +22,9 @@
 
 package org.jboss.remoting3.spi;
 
+import java.util.Properties;
+import java.io.IOException;
+
 /**
  * A descriptor for automatically-discovered remoting service types.  Since instances of this interface are
  * constructed automatically, implementing classes should have a no-arg constructor.
@@ -58,9 +61,12 @@ public interface RemotingServiceDescriptor<T> {
     String getName();
 
     /**
-     * Get the service to associate with the given name.
+     * Get the service to associate with the given name.  The given properties were used to configure the endpoint,
+     * and may be used to configure additional properties of this provider.
      *
+     * @param properties the properties used to configure the endpoint
      * @return the service
+     * @throws IOException if the instance could not be produced
      */
-    T getService();
+    T getService(Properties properties) throws IOException;
 }

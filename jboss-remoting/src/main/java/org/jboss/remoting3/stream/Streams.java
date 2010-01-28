@@ -89,6 +89,17 @@ public final class Streams {
     }
 
     /**
+     * Get an object sink that checks the type of each accepted instance.
+     *
+     * @param delegate the object sink to delegate to
+     * @param clazz the class to check for
+     * @return a checking object sink
+     */
+    public static <T> ObjectSink<T> getCheckedObjectSink(final ObjectSink<T> delegate, final Class<? extends T> clazz) {
+        return new CheckedObjectSink<T>(delegate, clazz);
+    }
+
+    /**
      * Get an object source that reads from an iterator over map entries.
      *
      * @param iterator the iterator object type
@@ -371,6 +382,29 @@ public final class Streams {
         }
 
         public void close() throws IOException {
+        }
+    }
+
+    private static class CheckedObjectSink<T> implements ObjectSink<T> {
+
+        private final ObjectSink<T> delegate;
+        private final Class<? extends T> clazz;
+
+        private CheckedObjectSink(final ObjectSink<T> delegate, final Class<? extends T> clazz) {
+            this.delegate = delegate;
+            this.clazz = clazz;
+        }
+
+        public void accept(final T instance) throws IOException {
+            delegate.accept(clazz.cast(instance));
+        }
+
+        public void flush() throws IOException {
+            delegate.flush();
+        }
+
+        public void close() throws IOException {
+            delegate.close();
         }
     }
 }

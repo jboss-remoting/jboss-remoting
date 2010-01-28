@@ -62,6 +62,7 @@ import org.jboss.xnio.WeakCloseable;
 
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.Callback;
+import javax.security.auth.callback.PasswordCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
 import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.TextOutputCallback;
@@ -158,7 +159,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
      */
     private final ConnectionHandlerContext localConnectionContext;
 
-    private static final EndpointPermission CREATE_ENDPOINT_PERM = new EndpointPermission("createEndpoint");
     private static final EndpointPermission CREATE_REQUEST_HANDLER_PERM = new EndpointPermission("createRequestHandler");
     private static final EndpointPermission REGISTER_SERVICE_PERM = new EndpointPermission("registerService");
     private static final EndpointPermission CREATE_CLIENT_PERM = new EndpointPermission("createClient");
@@ -166,15 +166,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private static final EndpointPermission CONNECT_PERM = new EndpointPermission("connect");
     private static final EndpointPermission ADD_CONNECTION_PROVIDER_PERM = new EndpointPermission("addConnectionProvider");
     private static final EndpointPermission ADD_MARSHALLING_PROTOCOL_PERM = new EndpointPermission("addMarshallingProtocol");
+    private static final EndpointPermission GET_CONNECTION_PROVIDER_INTERFACE_PERM = new EndpointPermission("getConnectionProviderInterface");
 
     EndpointImpl(final Executor executor, final String name) {
         super(executor);
         for (int i = 0; i < providerMaps.length; i++) {
             providerMaps[i] = concurrentMap();
-        }
-        final SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            sm.checkPermission(CREATE_ENDPOINT_PERM);
         }
         this.executor = executor;
         this.name = name;
@@ -495,43 +492,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
-        final String userName = connectOptions.get(RemotingOptions.AUTH_USER_NAME);
-        final String realm = connectOptions.get(RemotingOptions.AUTH_REALM);
-        return connect(destination, connectOptions, new CallbackHandler() {
-            public void handle(final Callback[] callbacks) throws IOException, UnsupportedCallbackException {
-                MAIN: for (Callback callback : callbacks) {
-                    if (callback instanceof NameCallback && userName != null) {
-                        final NameCallback nameCallback = (NameCallback) callback;
-                        nameCallback.setName(userName);
-                    } else if (callback instanceof RealmCallback && realm != null) {
-                        final RealmCallback realmCallback = (RealmCallback) callback;
-                        realmCallback.setText(realm);
-                    } else if (callback instanceof RealmChoiceCallback && realm != null) {
-                        final RealmChoiceCallback realmChoiceCallback = (RealmChoiceCallback) callback;
-                        final String[] choices = realmChoiceCallback.getChoices();
-                        for (int i = 0; i < choices.length; i++) {
-                            if (choices[i].equals(realm)) {
-                                realmChoiceCallback.setSelectedIndex(i);
-                                continue MAIN;
-                            }
-                        }
-                        throw new UnsupportedCallbackException(callback, "No realm choices match realm '" + realm + "'");
-                    } else if (callback instanceof TextOutputCallback) {
-                        final TextOutputCallback textOutputCallback = (TextOutputCallback) callback;
-                        final String kind;
-                        switch (textOutputCallback.getMessageType()) {
-                            case TextOutputCallback.ERROR: kind = "ERROR"; break;
-                            case TextOutputCallback.INFORMATION: kind = "INFORMATION"; break;
-                            case TextOutputCallback.WARNING: kind = "WARNING"; break;
-                            default: kind = "UNKNOWN"; break;
-                        }
-                        log.debug("Authentication layer produced a %s message: %s", kind, textOutputCallback.getMessage());
-                    } else {
-                        throw new UnsupportedCallbackException(callback);
-                    }
-                }
-            }
-        });
+        return connect(destination, connectOptions, new DefaultCallbackHandler(connectOptions.get(RemotingOptions.AUTH_USER_NAME), connectOptions.get(RemotingOptions.AUTH_REALM), null));
     }
 
     public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
@@ -551,6 +512,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
         }, callbackHandler));
         return futureResult.getIoFuture();
+    }
+
+    public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final String userName, final String realmName, final char[] password) throws IOException {
+        final String actualUserName = userName != null ? userName : connectOptions.get(RemotingOptions.AUTH_USER_NAME);
+        final String actualUserRealm = realmName != null ? realmName : connectOptions.get(RemotingOptions.AUTH_REALM);
+        return connect(destination, connectOptions, new DefaultCallbackHandler(actualUserName, actualUserRealm, password));
     }
 
     public <T> ConnectionProviderRegistration<T> addConnectionProvider(final String uriScheme, final ConnectionProviderFactory<T> providerFactory) {
@@ -584,6 +551,18 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
         });
         return handle;
+    }
+
+    public <T> T getConnectionProviderInterface(final String uriScheme, final Class<T> expectedType) throws UnknownURISchemeException, ClassCastException {
+        final SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(GET_CONNECTION_PROVIDER_INTERFACE_PERM);
+        }
+        final ConnectionProvider<?> provider = connectionProviders.get(uriScheme);
+        if (provider == null) {
+            throw new UnknownURISchemeException("No connection provider for URI scheme \"" + uriScheme + "\" is installed");
+        }
+        return expectedType.cast(provider.getProviderInterface());
     }
 
     private <T> Registration addMarshallingRegistration(final String name, final T target, final ConcurrentMap<String, T> map, final String descr) throws DuplicateRegistrationException {
@@ -736,6 +715,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             super(executor);
         }
 
+        public Executor getExecutor() {
+            return super.getExecutor();
+        }
+
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory) {
             connectionHandlerFactory.createInstance(localConnectionContext);
         }
@@ -852,6 +835,56 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public void close() {
             // not closeable
+        }
+    }
+
+    private static class DefaultCallbackHandler implements CallbackHandler {
+
+        private final String actualUserName;
+        private final String actualUserRealm;
+        private final char[] password;
+
+        private DefaultCallbackHandler(final String actualUserName, final String actualUserRealm, final char[] password) {
+            this.actualUserName = actualUserName;
+            this.actualUserRealm = actualUserRealm;
+            this.password = password;
+        }
+
+        public void handle(final Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+            MAIN: for (Callback callback : callbacks) {
+                if (callback instanceof NameCallback && actualUserName != null) {
+                    final NameCallback nameCallback = (NameCallback) callback;
+                    nameCallback.setName(actualUserName);
+                } else if (callback instanceof RealmCallback && actualUserRealm != null) {
+                    final RealmCallback realmCallback = (RealmCallback) callback;
+                    realmCallback.setText(actualUserRealm);
+                } else if (callback instanceof RealmChoiceCallback && actualUserRealm != null) {
+                    final RealmChoiceCallback realmChoiceCallback = (RealmChoiceCallback) callback;
+                    final String[] choices = realmChoiceCallback.getChoices();
+                    for (int i = 0; i < choices.length; i++) {
+                        if (choices[i].equals(actualUserRealm)) {
+                            realmChoiceCallback.setSelectedIndex(i);
+                            continue MAIN;
+                        }
+                    }
+                    throw new UnsupportedCallbackException(callback, "No realm choices match realm '" + actualUserRealm + "'");
+                } else if (callback instanceof TextOutputCallback) {
+                    final TextOutputCallback textOutputCallback = (TextOutputCallback) callback;
+                    final String kind;
+                    switch (textOutputCallback.getMessageType()) {
+                        case TextOutputCallback.ERROR: kind = "ERROR"; break;
+                        case TextOutputCallback.INFORMATION: kind = "INFORMATION"; break;
+                        case TextOutputCallback.WARNING: kind = "WARNING"; break;
+                        default: kind = "UNKNOWN"; break;
+                    }
+                    log.debug("Authentication layer produced a %s message: %s", kind, textOutputCallback.getMessage());
+                } else if (callback instanceof PasswordCallback && password != null) {
+                    final PasswordCallback passwordCallback = (PasswordCallback) callback;
+                    passwordCallback.setPassword(password);
+                } else {
+                    throw new UnsupportedCallbackException(callback);
+                }
+            }
         }
     }
 }

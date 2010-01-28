@@ -24,6 +24,7 @@ package org.jboss.remoting3.spi;
 
 import org.jboss.remoting3.HandleableCloseable;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 /**
  * A context for a connection provider.  This provides additional endpoint methods to connection providers which are not
@@ -32,6 +33,13 @@ import java.util.Map;
  * @remoting.consume
  */
 public interface ConnectionProviderContext extends HandleableCloseable<ConnectionProviderContext> {
+
+    /**
+     * Get the endpoint's executor.
+     *
+     * @return the endpoint executor
+     */
+    Executor getExecutor();
 
     /**
      * Accept a connection that was received by the corresponding protocol handler.

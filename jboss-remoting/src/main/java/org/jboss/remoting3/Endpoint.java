@@ -34,7 +34,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * Create a request handler that can be used to receive incoming requests on this endpoint.  The client may be passed to a
      * remote endpoint as part of a request or a reply, or it may be used locally.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission createRequestHandler EndpointPermission} to invoke this method.
+     * You must have the {@link EndpointPermission createRequestHandler EndpointPermission} to invoke this method.
      *
      * @param requestListener the request listener
      * @param requestClass the class of requests sent to this request listener
@@ -132,7 +132,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
         /**
          * Register the service.
          * <p/>
-         * You must have the {@link org.jboss.remoting3.EndpointPermission registerService EndpointPermission} to invoke this method.
+         * You must have the {@link EndpointPermission registerService EndpointPermission} to invoke this method.
          *
          * @return a registration handle
          * @throws IOException if a problem occurs with registration
@@ -143,7 +143,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
     /**
      * Add a service registration listener which is called whenever a local service is registered.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission addServiceListener EndpointPermission} to invoke this method.
+     * You must have the {@link EndpointPermission addServiceListener EndpointPermission} to invoke this method.
      *
      * @param listener the listener
      * @param flags the flags to apply to the listener
@@ -154,7 +154,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
     /**
      * Create a client that uses the given request handler to handle its requests.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission createClient EndpointPermission} to invoke this method.
+     * You must have the {@link EndpointPermission createClient EndpointPermission} to invoke this method.
      *
      * @param <I> the request type
      * @param <O> the reply type
@@ -170,7 +170,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link EndpointPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -184,7 +184,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link EndpointPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -195,10 +195,26 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
     IoFuture<? extends Connection> connect(URI destination, OptionMap connectOptions, CallbackHandler callbackHandler) throws IOException;
 
     /**
+     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * The given user name and password is used as retrieve local authentication information, if the protocol demands it.
+     * This method does not block; use the return value to wait for a result if you wish to block.
+     * <p/>
+     * You must have the {@link EndpointPermission connect EndpointPermission} to invoke this method.
+     *
+     * @param destination the destination
+     * @param connectOptions options to configure this connection
+     * @param userName the user name to authenticate as, or {@code null} if it is unspecified
+     * @param realmName the user realm to authenticate with, or {@code null} if it is unspecified
+     * @param password the password to send  @return the future connection, or {@code null} if it is unspecified
+     * @throws IOException if an error occurs while starting the connect attempt
+     */
+    IoFuture<? extends Connection> connect(URI destination, OptionMap connectOptions, String userName, String realmName, char[] password) throws IOException;
+
+    /**
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can
      * be used to accept new connections or terminate the registration.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.EndpointPermission addConnectionProvider EndpointPermission} to invoke this method.
+     * You must have the {@link EndpointPermission addConnectionProvider EndpointPermission} to invoke this method.
      *
      * @param uriScheme the URI scheme
      * @param providerFactory the provider factory
@@ -206,6 +222,20 @@ public interface Endpoint extends HandleableCloseable<Endpoint> {
      * @throws DuplicateRegistrationException if there is already a provider registered to that URI scheme
      */
     <T> ConnectionProviderRegistration<T> addConnectionProvider(String uriScheme, ConnectionProviderFactory<T> providerFactory) throws DuplicateRegistrationException;
+
+    /**
+     * Get the interface for a connection provider.
+     * <p/>
+     * You must have the {@link EndpointPermission getConnectionProviderInterface EndpointPermission} to invoke this method.
+     *
+     * @param uriScheme the URI scheme of the registered connection provider
+     * @param expectedType the expected type of the interface
+     * @param <T> the expected type of the interface
+     * @return the provider interface
+     * @throws UnknownURISchemeException if the given URI scheme is not registered
+     * @throws ClassCastException if the interface type does not match the expected type
+     */
+    <T> T getConnectionProviderInterface(String uriScheme, Class<T> expectedType) throws UnknownURISchemeException, ClassCastException;
 
     /**
      * Register a protocol service.

@@ -75,7 +75,7 @@ public class SocketUsageExamples extends TestCase {
       // Start server service.
       log.info("entering " + getName());
       ExecutorService serverExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint serverEndpoint = Remoting.createEndpoint(serverExecutor, "server");
+      Endpoint serverEndpoint = Remoting.createEndpoint("server", serverExecutor, OptionMap.EMPTY);
       int serverPort = PORT + portCounter++;
       Cancellable socketServer = SocketProtocol.registerServerTransport(serverEndpoint, serverExecutor, HOST, serverPort);
       SocketServiceConfiguration<String, String> socketServiceConfiguration = new SocketServiceConfiguration<String, String>(SERVICE_TYPE, GROUP_NAME, String.class, String.class, HOST, serverPort);
@@ -83,7 +83,7 @@ public class SocketUsageExamples extends TestCase {
 
       // Create client and connect to server.
       ExecutorService clientExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint clientEndpoint = Remoting.createEndpoint(serverExecutor, "client");
+      Endpoint clientEndpoint = Remoting.createEndpoint("client", serverExecutor, OptionMap.EMPTY);
       SocketProtocol.registerClientTransport(clientEndpoint, clientExecutor, HOST);
       Connection connection = getFutureResult(clientEndpoint.connect(new URI("socket://" + HOST + ":" + serverPort), OptionMap.EMPTY), "couldn't create Connection");
       Client<String, String> client = getFutureResult(connection.openClient(SERVICE_TYPE, GROUP_NAME, String.class, String.class), "couldn't create Client");
@@ -111,7 +111,7 @@ public class SocketUsageExamples extends TestCase {
       // Start server service.
       log.info("entering " + getName());
       ExecutorService serverExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint serverEndpoint = Remoting.createEndpoint(serverExecutor, "server");
+      Endpoint serverEndpoint = Remoting.createEndpoint("server", serverExecutor, OptionMap.EMPTY);
       int serverPort = PORT + portCounter++;
       Cancellable socketServer = SocketProtocol.registerServerTransport(serverEndpoint, serverExecutor, HOST, serverPort);
       SocketServiceConfiguration<String, String> socketServiceConfiguration = new SocketServiceConfiguration<String, String>(SERVICE_TYPE, GROUP_NAME, String.class, String.class, HOST, serverPort);
@@ -119,7 +119,7 @@ public class SocketUsageExamples extends TestCase {
 
       // Create client and connect to server.
       ExecutorService clientExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint clientEndpoint = Remoting.createEndpoint(serverExecutor, "client");
+      Endpoint clientEndpoint = Remoting.createEndpoint("client", serverExecutor, OptionMap.EMPTY);
       SocketProtocol.registerClientTransport(clientEndpoint, clientExecutor, HOST);
       Connection connection = getFutureResult(clientEndpoint.connect(new URI("socket://" + HOST + ":" + serverPort), OptionMap.EMPTY), "couldn't create Connection");
       Client<String, String> client = getFutureResult(connection.openClient(SERVICE_TYPE, GROUP_NAME, String.class, String.class), "couldn't create Client");
@@ -147,7 +147,7 @@ public class SocketUsageExamples extends TestCase {
       // Start west coast service.
       log.info("entering " + getName());
       ExecutorService westernExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint westernEndpoint = Remoting.createEndpoint(westernExecutor, "west coast server");
+      Endpoint westernEndpoint = Remoting.createEndpoint("west coast server", westernExecutor, OptionMap.EMPTY);
       int westernPort = PORT + portCounter++;
       Cancellable westernServer = SocketProtocol.registerServerTransport(westernEndpoint, westernExecutor, HOST, westernPort);
       SocketServiceConfiguration<String, String> westernServiceConfiguration = new SocketServiceConfiguration<String, String>(SERVICE_TYPE, GROUP_NAME, String.class, String.class, HOST, westernPort);
@@ -155,7 +155,7 @@ public class SocketUsageExamples extends TestCase {
 
       // Start east coast service.
       ExecutorService easternExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint easternEndpoint = Remoting.createEndpoint(easternExecutor, "west coast server");
+      Endpoint easternEndpoint = Remoting.createEndpoint("west coast server", easternExecutor, OptionMap.EMPTY);
       int easternPort = PORT + portCounter++;
       Cancellable easternServer = SocketProtocol.registerServerTransport(easternEndpoint, easternExecutor, HOST, easternPort);
       SocketServiceConfiguration<String, String> easternServiceConfiguration = new SocketServiceConfiguration<String, String>(SERVICE_TYPE, GROUP_NAME, String.class, String.class, HOST, easternPort);
@@ -203,7 +203,7 @@ public class SocketUsageExamples extends TestCase {
       // Create server.
       log.info("entering " + getName());
       ExecutorService serverExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint serverEndpoint = Remoting.createEndpoint(serverExecutor, "server");
+      Endpoint serverEndpoint = Remoting.createEndpoint("server", serverExecutor, OptionMap.EMPTY);
       int serverPort = PORT + portCounter++;
       Cancellable socketServer = SocketProtocol.registerServerTransport(serverEndpoint, serverExecutor, HOST, serverPort);
 
@@ -217,7 +217,7 @@ public class SocketUsageExamples extends TestCase {
 
       // Create client endpoint and get connection.
       ExecutorService clientExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint clientEndpoint = Remoting.createEndpoint(serverExecutor, "client");
+      Endpoint clientEndpoint = Remoting.createEndpoint("client", serverExecutor, OptionMap.EMPTY);
       SocketProtocol.registerClientTransport(clientEndpoint, clientExecutor, HOST);
       Connection connection = getFutureResult(clientEndpoint.connect(new URI("socket://" + HOST + ":" + serverPort), OptionMap.EMPTY), "couldn't create Connection");
 
@@ -252,7 +252,7 @@ public class SocketUsageExamples extends TestCase {
       // Start remote service.
       log.info("entering " + getName());
       ExecutorService remoteExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint remoteEndpoint = Remoting.createEndpoint(remoteExecutor, "remote endpoint");
+      Endpoint remoteEndpoint = Remoting.createEndpoint("remote endpoint", remoteExecutor, OptionMap.EMPTY);
       int remotePort = PORT + portCounter++;
       Cancellable remoteServer = SocketProtocol.registerServerTransport(remoteEndpoint, remoteExecutor, HOST, remotePort);
       SocketServiceConfiguration<RequestWrapper, Object> remoteServiceConfiguration = new SocketServiceConfiguration<RequestWrapper, Object>(SERVICE_TYPE + "remote", GROUP_NAME, RequestWrapper.class, Object.class, HOST, remotePort);
@@ -260,7 +260,7 @@ public class SocketUsageExamples extends TestCase {
 
       // Start local service.
       ExecutorService localExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint localEndpoint = Remoting.createEndpoint(localExecutor, "local server");
+      Endpoint localEndpoint = Remoting.createEndpoint("local server", localExecutor, OptionMap.EMPTY);
       int localPort = PORT + portCounter++;
       Cancellable localServer = SocketProtocol.registerServerTransport(localEndpoint, localExecutor, HOST, localPort);
       SocketServiceConfiguration<Object, Object> localServiceConfiguration = new SocketServiceConfiguration<Object, Object>(SERVICE_TYPE + "local", GROUP_NAME, Object.class, Object.class, HOST, localPort);
@@ -303,7 +303,7 @@ public class SocketUsageExamples extends TestCase {
       // Start remote service.
       log.info("entering " + getName());
       ExecutorService remoteExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint remoteEndpoint = Remoting.createEndpoint(remoteExecutor, "remote endpoint");
+      Endpoint remoteEndpoint = Remoting.createEndpoint("remote endpoint", remoteExecutor, OptionMap.EMPTY);
       int remotePort = PORT + portCounter++;
       Cancellable remoteServer = SocketProtocol.registerServerTransport(remoteEndpoint, remoteExecutor, HOST, remotePort);
       SocketServiceConfiguration<Object, Object> remoteServiceConfiguration = new SocketServiceConfiguration<Object, Object>(SERVICE_TYPE + "remote", GROUP_NAME, Object.class, Object.class, HOST, remotePort);
@@ -311,7 +311,7 @@ public class SocketUsageExamples extends TestCase {
 
       // Create local endpoint.
       ExecutorService localExecutor = new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-      Endpoint localEndpoint = Remoting.createEndpoint(localExecutor, "local server");
+      Endpoint localEndpoint = Remoting.createEndpoint("local server", localExecutor, OptionMap.EMPTY);
       SocketProtocol.registerClientTransport(localEndpoint, localExecutor, HOST);
 
       // Send ClientConnector to remote server and get callbacks.

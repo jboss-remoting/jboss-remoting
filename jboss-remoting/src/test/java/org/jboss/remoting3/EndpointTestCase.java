@@ -41,7 +41,7 @@ public final class EndpointTestCase extends TestCase {
 
     public void testCreate() throws Throwable {
         final ExecutorService executorService = Executors.newCachedThreadPool();
-        final Endpoint endpoint = Remoting.createEndpoint(executorService, "foo");
+        final Endpoint endpoint = Remoting.createEndpoint("foo", executorService, OptionMap.EMPTY);
         try {
             endpoint.close();
             executorService.shutdown();
@@ -52,7 +52,7 @@ public final class EndpointTestCase extends TestCase {
     }
 
     public void testLocalClientInvoke() throws Throwable {
-        final Endpoint endpoint = Remoting.createEndpoint("test-endpoint");
+        final Endpoint endpoint = Remoting.getConfiguredEndpoint();
         try {
             final Object requestObj = new Object();
             final Object replyObj = new Object();
@@ -80,7 +80,7 @@ public final class EndpointTestCase extends TestCase {
     }
 
     public void testLocalClientSend() throws Throwable {
-        final Endpoint endpoint = Remoting.createEndpoint("test-endpoint");
+        final Endpoint endpoint = Remoting.getConfiguredEndpoint();
         try {
             final Object requestObj = new Object();
             final Object replyObj = new Object();
@@ -108,7 +108,7 @@ public final class EndpointTestCase extends TestCase {
     }
 
     public void testLocalClientConnectInvoke() throws Throwable {
-        final Endpoint endpoint = Remoting.createEndpoint("test-endpoint");
+        final Endpoint endpoint = Remoting.getConfiguredEndpoint();
         try {
             final Object requestObj = new Object();
             final Object replyObj = new Object();
@@ -151,7 +151,7 @@ public final class EndpointTestCase extends TestCase {
     }
 
     public void testLocalClientConnectSend() throws Throwable {
-        final Endpoint endpoint = Remoting.createEndpoint("test-endpoint");
+        final Endpoint endpoint = Remoting.getConfiguredEndpoint();
         try {
             final Object requestObj = new Object();
             final Object replyObj = new Object();
@@ -194,7 +194,7 @@ public final class EndpointTestCase extends TestCase {
     }
 
     public void testNotFoundService() throws Throwable {
-        final Endpoint endpoint = Remoting.createEndpoint("test-endpoint");
+        final Endpoint endpoint = Remoting.getConfiguredEndpoint();
         try {
             endpoint.connect(new URI("local:///"), OptionMap.EMPTY).get().openClient("blah", "bzzt", Object.class, Object.class).get();
         } catch (ServiceNotFoundException e) {

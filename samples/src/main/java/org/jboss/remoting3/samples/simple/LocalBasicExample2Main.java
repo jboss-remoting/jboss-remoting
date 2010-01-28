@@ -40,7 +40,7 @@ public final class LocalBasicExample2Main {
     }
 
     public static void main(String[] args) throws Exception {
-        final Endpoint endpoint = Remoting.createEndpoint("simple");
+        final Endpoint endpoint = Remoting.getConfiguredEndpoint();
         try {
             final Registration handle = endpoint.serviceBuilder().setServiceType("simple.rot13").setGroupName("main")
                     .setRequestType(String.class).setReplyType(String.class).setClientListener(new StringRot13ClientListener())

@@ -37,7 +37,7 @@
         <dependency>
             <groupId>org.jboss.xnio</groupId>
             <artifactId>xnio-api</artifactId>
-            <version>2.0.0.CR4</version>
+            <version>2.1.0.CR2-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -79,7 +79,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.5</version>
+                <version>2.6.1</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -105,9 +105,9 @@
                     <doctitle><![CDATA[JBoss Remoting ]]>${version}</doctitle>
                     <header><![CDATA[JBoss Remoting ]]>${version}</header>
                     <footer><![CDATA[JBoss Remoting ]]>${version}</footer>
-                    <bottom><![CDATA[<i>Copyright &#169; 2009 JBoss, a division of Red Hat, Inc.</i>]]></bottom>
+                    <bottom><![CDATA[<i>Copyright &#169; 2010 JBoss, a division of Red Hat, Inc.</i>]]></bottom>
                     <links>
-                        <link>http://java.sun.com/javase/6/docs/</link>
+                        <link>http://java.sun.com/javase/6/docs/api/</link>
                     </links>
                 </configuration>
             </plugin>
@@ -117,7 +117,7 @@
         <repository>
             <id>repository.jboss.org</id>
             <name>JBoss Maven2 Repository</name>
-            <url>${repository.url}</url>
+            <url>http://repository.jboss.org/repos/maven2</url>
         </repository>
     </distributionManagement>
 </project>

@@ -16,7 +16,7 @@ public final class LocalBasicExampleMain {
 
     public static void main(String[] args) throws IOException {
         final StringRot13RequestListener listener = new StringRot13RequestListener();
-        final Endpoint endpoint = Remoting.createEndpoint("simple");
+        final Endpoint endpoint = Remoting.getConfiguredEndpoint();
         try {
             final Client<String,String> client = Remoting.createLocalClient(endpoint, listener, null, null);
             try {

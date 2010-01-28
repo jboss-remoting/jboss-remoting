@@ -34,42 +34,32 @@ public final class RemotingOptions {
     }
 
     /**
-     * Configure the maximum number of threads for a simple endpoint.
-     */
-    public static final Option<Integer> MAX_THREADS = Option.simple(RemotingOptions.class, "MAX_THREADS", Integer.class);
-
-    /**
-     * Specify whether connection providers should automatically be detected and loaded.
-     */
-    public static final Option<Boolean> LOAD_PROVIDERS = Option.simple(RemotingOptions.class, "LOAD_PROVIDERS", Boolean.class);
-
-    /**
      * Request that the marshalling layer require the use of one of the listed marshalling protocols, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_PROTOCOLS = Option.sequence(RemotingOptions.class, "MARSHALLING_PROTOCOLS", String.class);
 
     /**
-     * Request that the marshalling layer require the presense of one of the listed user-defined class tables, in order of decreasing preference.
+     * Request that the marshalling layer require the presence of one of the listed user-defined class tables, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_CLASS_TABLES = Option.sequence(RemotingOptions.class, "MARSHALLING_CLASS_TABLES", String.class);
 
     /**
-     * Request that the marshalling layer require the presense of one of the listed user-defined object tables, in order of decreasing preference.
+     * Request that the marshalling layer require the presence of one of the listed user-defined object tables, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_OBJECT_TABLES = Option.sequence(RemotingOptions.class, "MARSHALLING_OBJECT_TABLES", String.class);
 
     /**
-     * Request that the marshalling layer require the presense of one of the listed class resolvers, in order of decreasing preference.
+     * Request that the marshalling layer require the presence of one of the listed class resolvers, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_CLASS_RESOLVERS = Option.sequence(RemotingOptions.class, "MARSHALLING_CLASS_RESOLVERS", String.class);
 
     /**
-     * Request that the marshalling layer require the presense of one of the listed object resolvers, in order of decreasing preference.
+     * Request that the marshalling layer require the presence of one of the listed object resolvers, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_OBJECT_RESOLVERS = Option.sequence(RemotingOptions.class, "MARSHALLING_OBJECT_RESOLVERS", String.class);
 
     /**
-     * Request that the marshalling layer require the presense of one of the listed user-defined externalizer factories, in order of decreasing preference.
+     * Request that the marshalling layer require the presence of one of the listed user-defined externalizer factories, in order of decreasing preference.
      */
     public static final Option<Sequence<String>> MARSHALLING_EXTERNALIZER_FACTORIES = Option.sequence(RemotingOptions.class, "MARSHALLING_EXTERNALIZER_FACTORIES", String.class);
 
