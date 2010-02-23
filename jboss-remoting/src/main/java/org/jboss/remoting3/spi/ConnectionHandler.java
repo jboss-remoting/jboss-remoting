@@ -34,12 +34,11 @@ public interface ConnectionHandler extends Closeable {
     /**
      * Open a request handler.
      *
-     * @param serviceType the service type
-     * @param groupName the group name
+     * @param slot the target slot
      * @param result the result for the connected request handler
      * @return a handle which may be used to cancel the pending operation
      */
-    Cancellable open(String serviceType, String groupName, Result<RequestHandler> result);
+    Cancellable open(int slot, Result<RequestHandler> result);
 
     /**
      * Create a connector which may be used to communicate with the given local RequestHandler.  The connector

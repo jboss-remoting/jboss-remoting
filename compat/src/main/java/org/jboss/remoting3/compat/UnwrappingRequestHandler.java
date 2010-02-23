@@ -23,10 +23,10 @@
 package org.jboss.remoting3.compat;
 
 import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
-import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.remoting3.RemoteRequestException;
+import org.jboss.xnio.Cancellable;
+import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 import java.util.concurrent.Executor;
 import java.util.Map;
@@ -53,7 +53,7 @@ public final class UnwrappingRequestHandler extends AbstractAutoCloseable<Reques
         this.next = next;
     }
 
-    public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler replyHandler) {
+    public Cancellable receiveRequest(final Object request, final ReplyHandler replyHandler) {
         if (request instanceof CompatabilityInvocationRequest) {
             final CompatabilityInvocationRequest invocationRequest = (CompatabilityInvocationRequest) request;
             final Map<Object,Object> map = invocationRequest.getRequestPayload();
@@ -69,7 +69,7 @@ public final class UnwrappingRequestHandler extends AbstractAutoCloseable<Reques
                 log.error(e, "Failed to forward an exception to the requesting party");
                 log.error(nex, "The original exception follows");
             }
-            return SpiUtils.getBlankRemoteRequestContext();
+            return IoUtils.nullCancellable();
         }
     }
 }

@@ -110,7 +110,7 @@ public class SocketServerConnectionHandler<I, O> extends AbstractHandleableClose
    }
 
    @Override
-   public Cancellable open(String serviceName, String groupName, Result<RequestHandler> result) {
+   public Cancellable open(int slot, Result<RequestHandler> result) {
       return null;
    }
 

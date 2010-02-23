@@ -34,11 +34,16 @@ final class ClientContextImpl extends AbstractHandleableCloseable<ClientContext>
     @SuppressWarnings({ "UnusedDeclaration" })
     private static final Logger log = Logger.getLogger("org.jboss.remoting.client-context");
 
+    private final Attachments attachments = new AttachmentsImpl();
     private final Connection connection;
 
     ClientContextImpl(final Executor executor, final Connection connection) {
         super(executor);
         this.connection = connection;
+    }
+
+    public Attachments getAttachments() {
+        return attachments;
     }
 
     protected Executor getExecutor() {

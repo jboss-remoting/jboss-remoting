@@ -101,7 +101,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     /**
      * {@inheritDoc}
      */
-    public final void close() throws IOException {
+    public void close() throws IOException {
         final Map<Key, CloseHandler<? super T>> closeHandlers;
         synchronized (closeLock) {
             if (closed) {
@@ -118,8 +118,8 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                     runCloseTask(executor, new CloseHandlerTask(handler));
                 }
             }
-            closeAction();
         }
+        closeAction();
     }
 
     /**

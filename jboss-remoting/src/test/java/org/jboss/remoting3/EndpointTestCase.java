@@ -161,8 +161,10 @@ public final class EndpointTestCase extends TestCase {
                     return new RequestListener<Object, Object>() {
                         public void handleRequest(final RequestContext<Object> objectRequestContext, final Object request) throws RemoteExecutionException {
                             try {
+                                log.info("Got request %s, sending reply %s", request, replyObj);
                                 objectRequestContext.sendReply(replyObj);
                             } catch (IOException e) {
+                                log.error(e, "reply");
                                 throw new RemoteExecutionException(e);
                             }
                         }

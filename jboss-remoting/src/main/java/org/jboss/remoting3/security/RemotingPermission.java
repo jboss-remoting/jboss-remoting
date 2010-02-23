@@ -20,14 +20,14 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3;
+package org.jboss.remoting3.security;
 
 import java.security.BasicPermission;
 
 /**
  * This class is for permissions relating to Remoting endpoints.
  */
-public class EndpointPermission extends BasicPermission {
+public class RemotingPermission extends BasicPermission {
 
     private static final long serialVersionUID = 4984517897378387571L;
 
@@ -40,7 +40,7 @@ public class EndpointPermission extends BasicPermission {
      * @throws NullPointerException if {@code name} is {@code null}
      * @throws IllegalArgumentException if {@code name} is empty
      */
-    public EndpointPermission(String name) throws NullPointerException, IllegalArgumentException {
+    public RemotingPermission(String name) throws NullPointerException, IllegalArgumentException {
         super(name);
     }
 
@@ -55,7 +55,7 @@ public class EndpointPermission extends BasicPermission {
      * @throws NullPointerException if {@code name} is {@code null}
      * @throws IllegalArgumentException if {@code name} is empty
      */
-    public EndpointPermission(String name, String actions) throws NullPointerException, IllegalArgumentException {
+    public RemotingPermission(String name, String actions) throws NullPointerException, IllegalArgumentException {
         super(name, actions);
     }
 }

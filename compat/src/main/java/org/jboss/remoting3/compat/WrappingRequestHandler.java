@@ -23,9 +23,9 @@
 package org.jboss.remoting3.compat;
 
 import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import java.util.concurrent.Executor;
+import org.jboss.xnio.Cancellable;
 
 /**
  * A request handler which wraps a Remoting 3-style plain request (or an instance of {@link org.jboss.remoting3.compat.Request Request}
@@ -40,7 +40,7 @@ public final class WrappingRequestHandler extends AbstractAutoCloseable<RequestH
         this.next = next;
     }
 
-    public RemoteRequestContext receiveRequest(final Object obj, final ReplyHandler replyHandler) {
+    public Cancellable receiveRequest(final Object obj, final ReplyHandler replyHandler) {
         final CompatabilityInvocationRequest cir = new CompatabilityInvocationRequest();
         if (obj instanceof Request) {
             final Request request = (Request) obj;

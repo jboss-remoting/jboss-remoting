@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2009, JBoss Inc., and individual contributors as indicated
+ * Copyright 2010, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -22,26 +22,40 @@
 
 package org.jboss.remoting3;
 
-import java.io.IOException;
-
 /**
- * The server context for a single remote client instance.
  *
- * @apiviz.exclude
  */
-public interface ClientContext extends HandleableCloseable<ClientContext>, Attachable {
+public interface Attachments {
 
     /**
-     * Get the connection associated with this client context.  If the client is local, {@code null} is returned.
+     * Attach a value to this object.
      *
-     * @return the connection, or {@code null} if there is none
+     * @param key the attachment key
+     * @param value the attachment value
+     * @param <T> the type of the attachment
+     * @returns the old value, if any
      */
-    Connection getConnection();
+    <T> T attach(Key<T> key, T value);
 
-    /**
-     * Close the client from the server side.
-     *
-     * @throws IOException if an I/O error occurs
-     */
-    void close() throws IOException;
+    <T> T attachIfAbsent(Key<T> key, T value);
+
+    <T> boolean replaceAttachment(Key<T> key, T expect, T replacement);
+
+    <T> T removeAttachment(Key<T> key);
+
+    <T> boolean removeAttachment(Key<T> key, T value);
+
+    <T> T getAttachment(Key<T> key);
+
+    final class Key<T> {
+        private final Class<T> type;
+
+        public Key(final Class<T> type) {
+            this.type = type;
+        }
+
+        public Class<T> getType() {
+            return type;
+        }
+    }
 }

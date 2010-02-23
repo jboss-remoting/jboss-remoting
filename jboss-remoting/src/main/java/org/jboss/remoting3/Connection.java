@@ -24,16 +24,42 @@ package org.jboss.remoting3;
 
 import org.jboss.xnio.IoFuture;
 import java.io.IOException;
+import org.jboss.xnio.OptionMap;
 
 /**
  * A connection to a remote peer.
  * <p/>
  * @remoting.consume
  */
-public interface Connection extends HandleableCloseable<Connection> {
+public interface Connection extends HandleableCloseable<Connection>, Attachable {
 
     /**
-     * Open a client on the remote side of this connection.
+     * Open a client to a well-known service on the remote endpoint via this connection.
+     *
+     * @param serviceSlot the service slot to connect to
+     * @param requestClass the request class
+     * @param replyClass the reply class
+     * @param <I> the request type
+     * @param <O> the reply type
+     * @return the future client
+     */
+    <I, O> IoFuture<? extends Client<I, O>> openClient(int serviceSlot, Class<I> requestClass, Class<O> replyClass);
+
+    /**
+     * Open a client to a well-known service on the remote endpoint via this connection.
+     *
+     * @param serviceSlot the service slot to connect to
+     * @param requestClass the request class
+     * @param replyClass the reply class
+     * @param optionMap the option map
+     * @param <I> the request type
+     * @param <O> the reply type
+     * @return the future client
+     */
+    <I, O> IoFuture<? extends Client<I, O>> openClient(int serviceSlot, Class<I> requestClass, Class<O> replyClass, OptionMap optionMap);
+
+    /**
+     * Locate and open a client on the remote side of this connection.
      *
      * @param serviceType the service type
      * @param groupName the group name
@@ -44,6 +70,20 @@ public interface Connection extends HandleableCloseable<Connection> {
      * @return the future client
      */
     <I, O> IoFuture<? extends Client<I, O>> openClient(String serviceType, String groupName, Class<I> requestClass, Class<O> replyClass);
+
+    /**
+     * Locate and open a client on the remote side of this connection.
+     *
+     * @param serviceType the service type
+     * @param groupName the group name
+     * @param requestClass the request class
+     * @param replyClass the reply class
+     * @param optionMap the option map
+     * @param <I> the request type
+     * @param <O> the reply type
+     * @return the future client
+     */
+    <I, O> IoFuture<? extends Client<I, O>> openClient(String serviceType, String groupName, Class<I> requestClass, Class<O> replyClass, OptionMap optionMap);
 
     /**
      * Create a client connector which may <b>only</b> transmitted to the remote side of this connection, allowing
@@ -57,4 +97,18 @@ public interface Connection extends HandleableCloseable<Connection> {
      * @return a connector which may be sent to the connection peer
      */
     <I, O> ClientConnector<I, O> createClientConnector(RequestListener<I, O> listener, Class<I> requestClass, Class<O> replyClass) throws IOException;
+
+    /**
+     * Create a client connector which may <b>only</b> transmitted to the remote side of this connection, allowing
+     * it to use the included service.
+     *
+     * @param listener the local listener
+     * @param requestClass the request class
+     * @param replyClass the reply class
+     * @param optionMap the option map
+     * @param <I> the request type
+     * @param <O> the reply type
+     * @return a connector which may be sent to the connection peer
+     */
+    <I, O> ClientConnector<I, O> createClientConnector(RequestListener<I, O> listener, Class<I> requestClass, Class<O> replyClass, OptionMap optionMap) throws IOException;
 }

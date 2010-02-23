@@ -39,7 +39,7 @@ import org.jboss.xnio.IoFuture;
  *
  * @apiviz.landmark
  */
-public interface Client<I, O> extends HandleableCloseable<Client<I, O>> {
+public interface Client<I, O> extends HandleableCloseable<Client<I, O>>, Attachable {
     /**
      * Send a request and block until a reply is received.  If the remote side manipulates a stream, the
      * current thread may be used to handle it.

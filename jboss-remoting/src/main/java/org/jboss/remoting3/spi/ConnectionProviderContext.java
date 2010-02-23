@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3.spi;
 
-import org.jboss.remoting3.HandleableCloseable;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
@@ -32,7 +31,7 @@ import java.util.concurrent.Executor;
  *
  * @remoting.consume
  */
-public interface ConnectionProviderContext extends HandleableCloseable<ConnectionProviderContext> {
+public interface ConnectionProviderContext {
 
     /**
      * Get the endpoint's executor.

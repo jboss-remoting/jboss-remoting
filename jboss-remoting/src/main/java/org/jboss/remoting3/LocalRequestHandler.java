@@ -26,10 +26,11 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
-import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.SpiUtils;
+import org.jboss.xnio.Cancellable;
+import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -53,7 +54,7 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
         this.replyClass = replyClass;
     }
 
-    public RemoteRequestContext receiveRequest(final Object request, final ReplyHandler replyHandler) {
+    public Cancellable receiveRequest(final Object request, final ReplyHandler replyHandler) {
         final RequestContextImpl<O> context = new RequestContextImpl<O>(replyHandler, clientContext, replyClass);
         try {
             final I castRequest;
@@ -61,7 +62,7 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
                 castRequest = requestClass.cast(request);
             } catch (ClassCastException e) {
                 SpiUtils.safeHandleException(replyHandler, new RemoteRequestException("Request is the wrong type; expected " + requestClass + " but got " + request.getClass()));
-                return SpiUtils.getBlankRemoteRequestContext();
+                return IoUtils.nullCancellable();
             }
             context.execute(new Runnable() {
                 public void run() {
@@ -76,10 +77,10 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
             });
         } catch (RejectedExecutionException e) {
             SpiUtils.safeHandleException(replyHandler, new RemoteRequestException("Execution was rejected (server may be too busy)", e));
-            return SpiUtils.getBlankRemoteRequestContext();
+            return IoUtils.nullCancellable();
         }
-        return new RemoteRequestContext() {
-            public RemoteRequestContext cancel() {
+        return new Cancellable() {
+            public Cancellable cancel() {
                 context.cancel();
                 return this;
             }

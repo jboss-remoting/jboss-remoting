@@ -34,9 +34,12 @@ package org.jboss.remoting3;
 public interface TypedRequest<I, O> {
 
     /**
-     * Get the reply type class for this request type.
+     * Check the reply type.  If the reply type is incorrect in any way, a {@code java.lang.ClassCastException} is
+     * thrown.
      *
-     * @return the reply type's class
+     * @param reply the raw reply
+     * @return the typesafe reply
+     * @throws ClassCastException if a type conversion error occurs
      */
-    Class<O> getReplyClass();
+    O castReply(Object reply) throws ClassCastException;
 }

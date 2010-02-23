@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2009, JBoss Inc., and individual contributors as indicated
+ * Copyright 2010, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -20,28 +20,12 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3;
+package org.jboss.remoting3.service;
 
-import java.io.IOException;
+public final class Services {
+    public static final int LOCATE_SERVICE = 1;
+    public static final int SERVICE_CLASS_LOOKUP = 2;
 
-/**
- * The server context for a single remote client instance.
- *
- * @apiviz.exclude
- */
-public interface ClientContext extends HandleableCloseable<ClientContext>, Attachable {
-
-    /**
-     * Get the connection associated with this client context.  If the client is local, {@code null} is returned.
-     *
-     * @return the connection, or {@code null} if there is none
-     */
-    Connection getConnection();
-
-    /**
-     * Close the client from the server side.
-     *
-     * @throws IOException if an I/O error occurs
-     */
-    void close() throws IOException;
+    private Services() {
+    }
 }

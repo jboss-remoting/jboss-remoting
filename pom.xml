@@ -29,6 +29,10 @@
     <name>JBoss Remoting Parent</name>
     <description>JBoss Remoting Parent POM</description>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting-all</artifactId>
     <packaging>pom</packaging>

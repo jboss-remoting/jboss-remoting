@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2009, JBoss Inc., and individual contributors as indicated
+ * Copyright 2010, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -20,28 +20,21 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3;
+package org.jboss.remoting3.service.classtable;
 
-import java.io.IOException;
+import java.io.Serializable;
 
-/**
- * The server context for a single remote client instance.
- *
- * @apiviz.exclude
- */
-public interface ClientContext extends HandleableCloseable<ClientContext>, Attachable {
+public final class ClassLookupRequest implements Serializable {
 
-    /**
-     * Get the connection associated with this client context.  If the client is local, {@code null} is returned.
-     *
-     * @return the connection, or {@code null} if there is none
-     */
-    Connection getConnection();
+    private static final long serialVersionUID = -2642558538967065976L;
 
-    /**
-     * Close the client from the server side.
-     *
-     * @throws IOException if an I/O error occurs
-     */
-    void close() throws IOException;
+    private final int id;
+
+    public ClassLookupRequest(final int id) {
+        this.id = id;
+    }
+
+    public int getId() {
+        return id;
+    }
 }

@@ -136,7 +136,7 @@ public final class ServiceURI {
      */
     public static URI create(String serviceType, String groupName, String endpointName) {
         try {
-            StringBuilder builder = new StringBuilder(serviceType.length() + groupName.length() + endpointName.length() + 2);
+            StringBuilder builder = new StringBuilder(32);
             if (serviceType != null && serviceType.length() > 0) {
                 builder.append(serviceType);
             }

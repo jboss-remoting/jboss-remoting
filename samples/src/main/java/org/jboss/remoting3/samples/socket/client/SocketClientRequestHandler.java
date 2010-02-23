@@ -27,10 +27,10 @@ import java.util.concurrent.Executor;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
-import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.SpiUtils;
+import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 
@@ -53,7 +53,7 @@ public class SocketClientRequestHandler extends AbstractHandleableCloseable<Requ
       this.unmarshaller = unmarshaller;
    }
 
-   public RemoteRequestContext receiveRequest(Object request, final ReplyHandler replyHandler) {
+   public Cancellable receiveRequest(Object request, final ReplyHandler replyHandler) {
       try {
          marshaller.writeObject(request);
          marshaller.flush();
@@ -78,8 +78,8 @@ public class SocketClientRequestHandler extends AbstractHandleableCloseable<Requ
          }
       });
 
-      return new RemoteRequestContext() {
-         public RemoteRequestContext cancel() {
+      return new Cancellable () {
+         public Cancellable cancel() {
             log.debug("Closing " + SocketClientRequestHandler.this);
             IoUtils.safeClose(SocketClientRequestHandler.this);
             return this;

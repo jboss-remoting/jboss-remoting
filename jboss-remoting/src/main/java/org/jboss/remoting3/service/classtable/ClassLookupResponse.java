@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2010, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -20,22 +20,21 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.spi;
+package org.jboss.remoting3.service.classtable;
 
-import java.util.concurrent.Executor;
-import org.jboss.remoting3.SimpleCloseable;
+import java.io.Serializable;
 
-/**
- * An abstract simple closeable implementation.
- */
-public abstract class AbstractSimpleCloseable extends AbstractHandleableCloseable<SimpleCloseable> implements SimpleCloseable {
+public final class ClassLookupResponse implements Serializable {
 
-    /**
-     * Basic constructor.
-     *
-     * @param executor the executor used to execute the close notification handlers
-     */
-    protected AbstractSimpleCloseable(final Executor executor) {
-        super(executor);
+    private static final long serialVersionUID = -7032893320952114274L;
+
+    private final Class<?> resolvedClass;
+
+    public ClassLookupResponse(final Class<?> resolvedClass) {
+        this.resolvedClass = resolvedClass;
+    }
+
+    public Class<?> getResolvedClass() {
+        return resolvedClass;
     }
 }

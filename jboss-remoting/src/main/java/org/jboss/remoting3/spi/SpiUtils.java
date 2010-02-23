@@ -23,15 +23,9 @@
 package org.jboss.remoting3.spi;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Modifier;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.RequestCancelHandler;
 import org.jboss.remoting3.RequestContext;
-import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -51,7 +45,7 @@ public final class SpiUtils {
      */
     public static void safeHandleException(final ReplyHandler replyHandler, final IOException exception) {
         try {
-            replyHandler.handleException(exception);
+            if (replyHandler != null) replyHandler.handleException(exception);
         } catch (Throwable t) {
             heLog.debug(t, "Failed to properly handle exception");
         }
@@ -66,7 +60,7 @@ public final class SpiUtils {
      */
     public static <O> void safeHandleReply(final ReplyHandler replyHandler, final O reply) {
         try {
-            replyHandler.handleReply(reply);
+            if (replyHandler != null) replyHandler.handleReply(reply);
         } catch (Throwable t) {
             heLog.debug(t, "Failed to properly handle reply");
         }
@@ -79,7 +73,7 @@ public final class SpiUtils {
      */
     public static void safeHandleCancellation(final ReplyHandler replyHandler) {
         try {
-            replyHandler.handleCancellation();
+            if (replyHandler != null) replyHandler.handleCancellation();
         } catch (Throwable t) {
             heLog.debug(t, "Failed to properly handle cancellation");
         }
@@ -94,7 +88,7 @@ public final class SpiUtils {
      */
     public static <O> void safeNotifyCancellation(final RequestCancelHandler<O> handler, final RequestContext<O> requestContext) {
         try {
-            handler.notifyCancel(requestContext);
+            if (handler != null && requestContext != null) handler.notifyCancel(requestContext);
         } catch (Throwable t) {
             heLog.error(t, "Request cancel handler threw an exception");
         }
@@ -109,26 +103,9 @@ public final class SpiUtils {
      */
     public static <T> void safeHandleClose(final CloseHandler<? super T> handler, final T closed) {
         try {
-            handler.handleClose(closed);
+            if (handler != null && closed != null) handler.handleClose(closed);
         } catch (Throwable t) {
             heLog.error(t, "Close handler threw an exception");
-        }
-    }
-
-    /**
-     * Get a remote request context that simply ignores a cancel request.
-     *
-     * @return a blank remote request context
-     */
-    public static RemoteRequestContext getBlankRemoteRequestContext() {
-        return BLANK_REMOTE_REQUEST_CONTEXT;
-    }
-
-    private static final RemoteRequestContext BLANK_REMOTE_REQUEST_CONTEXT = new BlankRemoteRequestContext();
-
-    private static final class BlankRemoteRequestContext implements RemoteRequestContext {
-        public RemoteRequestContext cancel() {
-            return this;
         }
     }
 }

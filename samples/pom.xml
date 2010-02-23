@@ -29,6 +29,10 @@
     <name>JBoss Remoting Samples</name>
     <description>JBoss Remoting Samples</description>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting-samples</artifactId>
     <packaging>jar</packaging>

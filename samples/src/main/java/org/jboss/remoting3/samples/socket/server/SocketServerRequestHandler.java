@@ -32,13 +32,14 @@ import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.ServiceNotFoundException;
+import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3.ServiceURI;
 import org.jboss.remoting3.samples.socket.RequestHandlerFuture;
 import org.jboss.remoting3.samples.socket.SocketProtocol;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
-import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.log.Logger;
 
@@ -72,8 +73,7 @@ public class SocketServerRequestHandler extends Thread implements RequestHandler
          marshaller.flush();
          unmarshaller = factory.createUnmarshaller(configuration);
          unmarshaller.start(Marshalling.createByteInput(socket.getInputStream()));
-         final String serviceType = unmarshaller.readUTF();
-         final String groupName = unmarshaller.readUTF();
+         final int slot = unmarshaller.readInt();
          final RequestHandlerFuture requestHandlerFuture = new RequestHandlerFuture();
 
          ConnectionHandlerContext.ServiceResult serviceResult = new ConnectionHandlerContext.ServiceResult() {
@@ -81,11 +81,16 @@ public class SocketServerRequestHandler extends Thread implements RequestHandler
                requestHandlerFuture.setResult(requestHandler);
             }
             public void notFound() {
-               requestHandlerFuture.setException(new ServiceNotFoundException(ServiceURI.create(serviceType, groupName, endpoint.getName()), "No such service located"));
+               requestHandlerFuture.setException(new ServiceOpenException("No such service located"));
             }
          };
-
-         connectionHandlerContext.openService(serviceType, groupName, OptionMap.EMPTY, serviceResult);
+         try
+         {
+            requestHandlerFuture.setResult(connectionHandlerContext.openService(slot, OptionMap.EMPTY));
+         } catch (IOException e)
+         {
+             requestHandlerFuture.setException(e);
+         }
          requestHandler = requestHandlerFuture.get();
          if (requestHandler == null) {
             throw requestHandlerFuture.getException();
@@ -142,7 +147,7 @@ public class SocketServerRequestHandler extends Thread implements RequestHandler
 
 
    @Override
-   public RemoteRequestContext receiveRequest(Object request, ReplyHandler replyHandler) {
+   public Cancellable receiveRequest(Object request, ReplyHandler replyHandler) {
       return null;
    }
 

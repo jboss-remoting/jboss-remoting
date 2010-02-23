@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3;
 
-import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.xnio.OptionMap;
 
 /**
@@ -37,7 +36,7 @@ public interface ServiceRegistrationListener {
      * Receive notification that a service was registered.
      *
      * @param listenerHandle the handle to this listener
-     * @param info the servce information
+     * @param info the service information
      */
     void serviceRegistered(Registration listenerHandle, ServiceInfo info);
 
@@ -52,7 +51,7 @@ public interface ServiceRegistrationListener {
         private ClassLoader serviceClassLoader;
         private Class<?> requestClass;
         private Class<?> replyClass;
-        private RequestHandlerConnector requestHandlerConnector;
+        private int slot;
         private Registration registrationHandle;
         private OptionMap optionMap;
 
@@ -153,6 +152,24 @@ public interface ServiceRegistrationListener {
         }
 
         /**
+         * Get the slot of the service.
+         *
+         * @return the slot
+         */
+        public int getSlot() {
+            return slot;
+        }
+
+        /**
+         * Set the slot of the service.
+         *
+         * @param slot the slot
+         */
+        public void setSlot(final int slot) {
+            this.slot = slot;
+        }
+
+        /**
          * Get the option map.
          *
          * @return the option map
@@ -168,24 +185,6 @@ public interface ServiceRegistrationListener {
          */
         public void setOptionMap(final OptionMap optionMap) {
             this.optionMap = optionMap;
-        }
-
-        /**
-         * Get the request handler source.
-         *
-         * @return the request handler source
-         */
-        public RequestHandlerConnector getRequestHandlerConnector() {
-            return requestHandlerConnector;
-        }
-
-        /**
-         * Set the request handler source.
-         *
-         * @param requestHandlerConnector the request handler source
-         */
-        public void setRequestHandlerConnector(final RequestHandlerConnector requestHandlerConnector) {
-            this.requestHandlerConnector = requestHandlerConnector;
         }
 
         /**

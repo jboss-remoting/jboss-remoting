@@ -44,7 +44,7 @@ public final class CloseableTestCase extends TestCase {
         try {
             final AtomicBoolean closed = new AtomicBoolean();
             final CountDownLatch latch = new CountDownLatch(1);
-            final AbstractSimpleCloseable closeable = new AbstractSimpleCloseable(executorService) {
+            final AbstractHandleableCloseable<?> closeable = new AbstractHandleableCloseable(executorService) {
                 // empty
             };
             try {

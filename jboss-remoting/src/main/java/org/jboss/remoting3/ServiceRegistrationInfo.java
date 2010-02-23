@@ -22,48 +22,34 @@
 
 package org.jboss.remoting3;
 
-import org.jboss.remoting3.spi.RequestHandlerConnector;
-import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.xnio.OptionMap;
 
 /**
  *
  */
-final class ServiceRegistration {
-    private final boolean remote;
+final class ServiceRegistrationInfo {
+
     private final String serviceType;
     private final String groupName;
     private final String endpointName;
     private final OptionMap optionMap;
-    private final RequestHandlerConnector requestHandlerConnector;
+    private final RequestHandlerFactory<?, ?> requestHandlerFactory;
     private volatile Registration handle;
+    private final int slot;
 
-    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final OptionMap optionMap, final RequestHandlerConnector requestHandlerConnector) {
-        this.requestHandlerConnector = requestHandlerConnector;
-        remote = true;
+    ServiceRegistrationInfo(final String serviceType, final String groupName, final String endpointName, final OptionMap optionMap, final RequestHandlerFactory<?, ?> requestHandlerFactory, final int slot) {
+        this.requestHandlerFactory = requestHandlerFactory;
+        this.slot = slot;
         this.serviceType = serviceType;
         this.groupName = groupName;
         this.endpointName = endpointName;
         this.optionMap = optionMap;
     }
 
-    ServiceRegistration(final String serviceType, final String groupName, final String endpointName, final RequestHandlerConnector requestHandlerConnector) {
-        this.requestHandlerConnector = requestHandlerConnector;
-        remote = false;
-        optionMap = OptionMap.EMPTY;
-        this.serviceType = serviceType;
-        this.groupName = groupName;
-        this.endpointName = endpointName;
-    }
-
     public boolean matches(final String serviceType, final String groupName, final String endpointName) {
         return  (serviceType == null || serviceType.length() == 0 || "*".equals(serviceType) || serviceType.equals(this.serviceType)) &&
                 (groupName == null || groupName.length() == 0 || "*".equals(groupName) || groupName.equals(this.groupName)) &&
                 (endpointName == null || endpointName.length() == 0 || "*".equals(endpointName) || endpointName.equals(this.endpointName));
-    }
-
-    public boolean isRemote() {
-        return remote;
     }
 
     public String getServiceType() {
@@ -82,8 +68,8 @@ final class ServiceRegistration {
         return optionMap;
     }
 
-    public RequestHandlerConnector getRequestHandlerConnector() {
-        return requestHandlerConnector;
+    public RequestHandlerFactory<?, ?> getRequestHandlerFactory() {
+        return requestHandlerFactory;
     }
 
     public Registration getHandle() {
@@ -92,5 +78,9 @@ final class ServiceRegistration {
 
     void setHandle(final Registration handle) {
         this.handle = handle;
+    }
+
+    public int getSlot() {
+        return slot;
     }
 }

@@ -22,6 +22,7 @@
 
 package org.jboss.remoting3.spi;
 
+import java.io.IOException;
 import org.jboss.xnio.OptionMap;
 
 /**
@@ -39,16 +40,16 @@ public interface ConnectionHandlerContext {
     ConnectionProviderContext getConnectionProviderContext();
 
     /**
-     * Open a service.
+     * Open a service.  This method should return immediately.
      *
      * @remoting.nonblocking
      *
-     * @param serviceType the service type
-     * @param groupName the service group name
-     * @param optionMap the open options
-     * @param serviceResult the result of the service open
+     * @param slotId the service slot ID
+     * @param optionMap the options to pass to the service
+     * @return the new request handler
+     * @throws IOException if an error occurs
      */
-    void openService(String serviceType, String groupName, OptionMap optionMap, ServiceResult serviceResult);
+    RequestHandler openService(int slotId, OptionMap optionMap) throws IOException;
 
     /**
      * Indicate that the remote side has terminated the connection, so the local side should be closed as well.

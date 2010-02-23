@@ -23,6 +23,7 @@
 package org.jboss.remoting3.spi;
 
 import org.jboss.remoting3.HandleableCloseable;
+import org.jboss.xnio.Cancellable;
 
 /**
  * A request handler.
@@ -41,7 +42,7 @@ public interface RequestHandler extends HandleableCloseable<RequestHandler> {
      *
      * @param request the request
      * @param replyHandler a handler for the reply
-     * @return a context which may be used to cancel the request
+     * @return a reference which may be used to cancel the request
      */
-    RemoteRequestContext receiveRequest(Object request, ReplyHandler replyHandler);
+    Cancellable receiveRequest(Object request, ReplyHandler replyHandler);
 }

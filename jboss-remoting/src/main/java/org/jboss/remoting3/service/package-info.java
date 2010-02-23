@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2010, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -20,18 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.spi;
-
-import org.jboss.xnio.Cancellable;
-
 /**
- * The context of an outstanding remote request.  This instance should be discarded when a reply (of any sort)
- * is received for the request.
+ * Container package for well-known Remoting services.
  */
-public interface RemoteRequestContext extends Cancellable {
-
-    /**
-     * Signal that the request should be cancelled, if possible.
-     */
-    RemoteRequestContext cancel();
-}
+package org.jboss.remoting3.service;

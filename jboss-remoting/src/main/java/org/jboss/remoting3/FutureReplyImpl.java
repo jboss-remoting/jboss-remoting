@@ -24,9 +24,9 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
-import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.xnio.AbstractIoFuture;
+import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoFuture;
 
 /**
@@ -35,16 +35,32 @@ import org.jboss.xnio.IoFuture;
 final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
 
     private final Executor executor;
-    private final Class<? extends O> replyType;
+    private final Checker<? extends O> checker;
     private final ReplyHandler replyHandler = new Handler();
-    private volatile RemoteRequestContext remoteRequestContext;
+    private volatile Cancellable remoteRequestContext;
 
-    FutureReplyImpl(final Executor executor, final Class<? extends O> replyType) {
+    FutureReplyImpl(final Executor executor, final Checker<? extends O> checker) {
         this.executor = executor;
-        this.replyType = replyType;
+        this.checker = checker;
     }
 
-    void setRemoteRequestContext(final RemoteRequestContext remoteRequestContext) {
+    FutureReplyImpl(final Executor executor, final Class<? extends O> expectedType) {
+        this(executor, new Checker<O>() {
+            public O cast(final Object input) {
+                return expectedType.cast(input);
+            }
+        });
+    }
+
+    FutureReplyImpl(final Executor executor, final TypedRequest<?, ? extends O> typedRequest) {
+        this(executor, new Checker<O>() {
+            public O cast(final Object input) {
+                return typedRequest.castReply(input);
+            }
+        });
+    }
+
+    void setRemoteRequestContext(final Cancellable remoteRequestContext) {
         this.remoteRequestContext = remoteRequestContext;
     }
 
@@ -62,25 +78,20 @@ final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
         return replyHandler;
     }
 
+    interface Checker<O> {
+        O cast(Object input);
+    }
+
     private final class Handler implements ReplyHandler {
 
         public void handleReply(final Object reply) {
-            final Class<? extends O> replyType = FutureReplyImpl.this.replyType;
+            final Checker<? extends O> checker = FutureReplyImpl.this.checker;
             final O actualReply;
             try {
-                actualReply = replyType.cast(reply);
+                actualReply = checker.cast(reply);
             } catch (ClassCastException e) {
                 // reply can't be null, else we wouldn't be here...
-                final Class<? extends Object> actualReplyType = reply.getClass();
-                final String actualReplyTypeName = actualReplyType.getName();
-                final String replyTypeName = replyType.getName();
-                final ReplyException replyException;
-                if (actualReplyTypeName.equals(replyTypeName)) {
-                    replyException = new ReplyException("Reply appears to be of the right type (" + replyTypeName + "), but from the wrong classloader (the reply is from classloader " + actualReplyType.getClassLoader() + " but the client expected it to be classloader " + replyType.getClassLoader() + ")");
-                } else {
-                    replyException = new ReplyException("Reply was of the wrong type (got a " + actualReplyTypeName + "; expected a " + replyTypeName + ")");
-                }
-                setException(replyException);
+                setException(new ReplyException("Reply was of unexpected type " + reply.getClass().getName()));
                 return;
             }
             setResult(actualReply);

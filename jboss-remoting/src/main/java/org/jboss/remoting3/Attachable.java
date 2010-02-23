@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2009, JBoss Inc., and individual contributors as indicated
+ * Copyright 2010, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -22,26 +22,15 @@
 
 package org.jboss.remoting3;
 
-import java.io.IOException;
-
 /**
- * The server context for a single remote client instance.
- *
- * @apiviz.exclude
+ * An entity which can hold attachments.
  */
-public interface ClientContext extends HandleableCloseable<ClientContext>, Attachable {
+public interface Attachable {
 
     /**
-     * Get the connection associated with this client context.  If the client is local, {@code null} is returned.
+     * Get the attachments for this entity.
      *
-     * @return the connection, or {@code null} if there is none
+     * @return the attachments
      */
-    Connection getConnection();
-
-    /**
-     * Close the client from the server side.
-     *
-     * @throws IOException if an I/O error occurs
-     */
-    void close() throws IOException;
+    Attachments getAttachments();
 }

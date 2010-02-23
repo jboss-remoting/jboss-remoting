@@ -22,12 +22,10 @@
 
 package org.jboss.remoting3;
 
-import java.io.Closeable;
-
 /**
  * A simple registration handle.  Registration handles are closeable but the close will not throw an exception.
  */
-public interface Registration extends Closeable {
+public interface Registration extends HandleableCloseable<Registration> {
 
     /**
      * Close the registration.

@@ -35,7 +35,16 @@ public final class Version {
     /**
      * The version.
      */
-    public static final String VERSION = "3.1.0.CR1";
+    public static final String VERSION = getVersionString();
+
+    /**
+     * Get the version string.
+     *
+     * @return the version string
+     */
+    static String getVersionString() {
+        return "TRUNK SNAPSHOT";
+    }
 
     /**
      * Print the version to {@code System.out}.

@@ -38,11 +38,13 @@ import java.util.Properties;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.lang.reflect.InvocationTargetException;
+import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.RemotingServiceDescriptor;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.ProtocolServiceType;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.Option;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.log.Logger;
 import org.jboss.marshalling.ClassTable;
@@ -66,11 +68,13 @@ public final class Remoting {
     private static Endpoint configuredEndpoint;
     private static final Object lock = new Object();
 
-    private static final EndpointPermission CREATE_ENDPOINT_PERM = new EndpointPermission("createEndpoint");
-    private static final EndpointPermission GET_CONFIGURED_ENDPOINT_PERM = new EndpointPermission("getConfiguredEndpoint");
+    private static final RemotingPermission CREATE_ENDPOINT_PERM = new RemotingPermission("createEndpoint");
+    private static final RemotingPermission GET_CONFIGURED_ENDPOINT_PERM = new RemotingPermission("getConfiguredEndpoint");
 
     private static final String PROPERTIES = "remoting.properties";
     private static final String PROPERTY_FILE_PROPNAME = "remoting.property.file";
+
+    static final Option<Boolean> UNCLOSEABLE = Option.simple(Remoting.class, "UNCLOSEABLE", Boolean.class);
 
     private static final ThreadFactory OUR_THREAD_FACTORY = new ThreadFactory() {
         private final ThreadFactory defaultThreadFactory = Executors.defaultThreadFactory();
@@ -135,7 +139,7 @@ public final class Remoting {
                     try {
                         final Endpoint endpoint;
                         try {
-                            endpoint = createEndpoint(props.getProperty("endpoint.name", "endpoint"), executor, OptionMap.builder().parseAll(props, "endpoint.option.").getMap());
+                            endpoint = createEndpoint(props.getProperty("endpoint.name", "endpoint"), executor, OptionMap.builder().parseAll(props, "endpoint.option.").set(UNCLOSEABLE, true).getMap());
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -265,7 +269,7 @@ public final class Remoting {
         if (sm != null) {
             sm.checkPermission(CREATE_ENDPOINT_PERM);
         }
-        final Endpoint endpoint = new EndpointImpl(executor, endpointName);
+        final Endpoint endpoint = new EndpointImpl(executor, endpointName, optionMap);
         return endpoint;
     }
 

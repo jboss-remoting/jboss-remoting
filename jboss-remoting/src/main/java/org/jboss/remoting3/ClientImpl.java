@@ -25,10 +25,10 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.CancellationException;
-import org.jboss.remoting3.spi.RemoteRequestContext;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
+import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
@@ -43,6 +43,7 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
     private final RequestHandler handler;
     private final Class<I> requestClass;
     private final Class<O> replyClass;
+    private final Attachments attachments = new AttachmentsImpl();
 
     private ClientImpl(final RequestHandler handler, final Executor executor, final Class<I> requestClass, final Class<O> replyClass) {
         super(executor);
@@ -59,6 +60,10 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
             }
         });
         return ci;
+    }
+
+    public Attachments getAttachments() {
+        return attachments;
     }
 
     protected void closeAction() throws IOException {
@@ -78,7 +83,7 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
        final QueueExecutor executor = new QueueExecutor();
        final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(executor, replyClass);
        final ReplyHandler replyHandler = futureReply.getReplyHandler();
-       final RemoteRequestContext requestContext = handler.receiveRequest(actualRequest, replyHandler);
+       final Cancellable requestContext = handler.receiveRequest(actualRequest, replyHandler);
        futureReply.setRemoteRequestContext(requestContext);
        futureReply.addNotifier(IoUtils.attachmentClosingNotifier(), executor);
        executor.runQueue();
@@ -97,7 +102,30 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
     }
 
     public <T extends O> T invokeTyped(final TypedRequest<? extends I, T> typedRequest) throws IOException, CancellationException {
-        return invoke(requestClass.cast(typedRequest), typedRequest.getReplyClass());
+        if (! isOpen()) {
+            throw new IOException("Client is not open");
+        }
+        log.trace("Client.invoke() sending request \"%s\"", typedRequest);
+        final I actualRequest = castRequest(typedRequest);
+        final QueueExecutor executor = new QueueExecutor();
+        final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(executor, typedRequest);
+        final ReplyHandler replyHandler = futureReply.getReplyHandler();
+        final Cancellable requestContext = handler.receiveRequest(actualRequest, replyHandler);
+        futureReply.setRemoteRequestContext(requestContext);
+        futureReply.addNotifier(IoUtils.attachmentClosingNotifier(), executor);
+        executor.runQueue();
+        try {
+            final T reply = futureReply.getInterruptibly();
+            log.trace("Client.invoke() received reply \"%s\"", reply);
+            return reply;
+        } catch (InterruptedException e) {
+            try {
+                futureReply.cancel();
+                throw new IndeterminateOutcomeException("The current thread was interrupted before the result could be read");
+            } finally {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     public IoFuture<? extends O> send(final I request) throws IOException {
@@ -112,13 +140,22 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
         final I actualRequest = castRequest(request);
         final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(getExecutor(), replyClass);
         final ReplyHandler replyHandler = futureReply.getReplyHandler();
-        final RemoteRequestContext requestContext = handler.receiveRequest(actualRequest, replyHandler);
+        final Cancellable requestContext = handler.receiveRequest(actualRequest, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         return futureReply;
     }
 
     public <T extends O> IoFuture<? extends T> sendTyped(final TypedRequest<? extends I, T> typedRequest) throws IOException {
-        return send(requestClass.cast(typedRequest), typedRequest.getReplyClass());
+        if (! isOpen()) {
+            throw new IOException("Client is not open");
+        }
+        log.trace("Client.send() sending request \"%s\"", typedRequest);
+        final I actualRequest = castRequest(typedRequest);
+        final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(getExecutor(), typedRequest);
+        final ReplyHandler replyHandler = futureReply.getReplyHandler();
+        final Cancellable requestContext = handler.receiveRequest(actualRequest, replyHandler);
+        futureReply.setRemoteRequestContext(requestContext);
+        return futureReply;
     }
 
     /**
