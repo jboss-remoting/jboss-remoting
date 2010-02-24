@@ -32,7 +32,7 @@ import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Result;
 
-public final class LocalConnectionHandler implements ConnectionHandler {
+final class LocalConnectionHandler implements ConnectionHandler {
 
     private final ConnectionHandlerContext connectionHandlerContext;
 
