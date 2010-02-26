@@ -33,21 +33,23 @@ final class RequestHandlerFactory<I, O> {
     private final ClientListener<? super I, ? extends O> clientListener;
     private final Class<I> requestClass;
     private final Class<O> replyClass;
+    private final ClassLoader serviceClassLoader;
 
-    RequestHandlerFactory(final Executor executor, final ClientListener<? super I, ? extends O> clientListener, final Class<I> requestClass, final Class<O> replyClass) {
+    RequestHandlerFactory(final Executor executor, final ClientListener<? super I, ? extends O> clientListener, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader serviceClassLoader) {
         this.executor = executor;
         this.clientListener = clientListener;
         this.requestClass = requestClass;
         this.replyClass = replyClass;
+        this.serviceClassLoader = serviceClassLoader;
     }
 
-    static <I, O> RequestHandlerFactory<I, O> create(final Executor executor, final ClientListener<? super I, ? extends O> clientListener, final Class<I> requestClass, final Class<O> replyClass) {
-        return new RequestHandlerFactory<I, O>(executor, clientListener, requestClass, replyClass);
+    static <I, O> RequestHandlerFactory<I, O> create(final Executor executor, final ClientListener<? super I, ? extends O> clientListener, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader serviceClassLoader) {
+        return new RequestHandlerFactory<I, O>(executor, clientListener, requestClass, replyClass, serviceClassLoader);
     }
 
     RequestHandler createRequestHandler(final Connection connection) {
         final ClientContextImpl context = new ClientContextImpl(executor, connection);
-        return new LocalRequestHandler<I, O>(executor, clientListener.handleClientOpen(context), context, requestClass, replyClass);
+        return new LocalRequestHandler<I, O>(executor, clientListener.handleClientOpen(context), context, requestClass, replyClass, serviceClassLoader);
     }
 
     Class<I> getRequestClass() {
@@ -56,5 +58,9 @@ final class RequestHandlerFactory<I, O> {
 
     Class<O> getReplyClass() {
         return replyClass;
+    }
+
+    ClassLoader getServiceClassLoader() {
+        return serviceClassLoader;
     }
 }

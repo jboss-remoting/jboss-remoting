@@ -81,6 +81,7 @@ public final class Remoting {
 
         public Thread newThread(final Runnable r) {
             final Thread thread = defaultThreadFactory.newThread(r);
+            thread.setDaemon(true);
             thread.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
                 public void uncaughtException(final Thread t, final Throwable e) {
                     log.error(e, "Uncaught exception in thread %s", t);
@@ -110,19 +111,23 @@ public final class Remoting {
                 public Endpoint run() {
                     boolean ok = false;
                     final String fileName = System.getProperty(PROPERTY_FILE_PROPNAME, PROPERTIES);
+                    log.trace("Searching for properties file named '%s'", fileName);
                     final Properties props = new Properties();
                     try {
-                        final InputStream stream = getClass().getResourceAsStream(fileName);
+                        final InputStream stream = getClass().getClassLoader().getResourceAsStream(fileName);
                         if (stream != null) try {
                             final InputStreamReader reader = new InputStreamReader(stream, "utf-8");
                             try {
                                 props.load(reader);
                                 reader.close();
+                                log.trace("Loaded properties");
                             } finally {
                                 IoUtils.safeClose(reader);
                             }
                         } finally {
                             IoUtils.safeClose(stream);
+                        } else {
+                            log.trace("No properties file found in classpath");
                         }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
@@ -143,6 +148,7 @@ public final class Remoting {
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
+                        log.trace("Created %s from configuration", endpoint);
                         try {
                             endpoint.addCloseHandler(new CloseHandler<Endpoint>() {
                                 public void handleClose(final Endpoint closed) {
@@ -165,7 +171,7 @@ public final class Remoting {
                                 }
                                 try {
                                     if (serviceType == ConnectionProviderFactory.class) {
-                                        endpoint.addConnectionProvider(name, (ConnectionProviderFactory<?>) service);
+                                        endpoint.addConnectionProvider(name, (ConnectionProviderFactory) service);
                                     } else if (serviceType == ClassTable.class) {
                                         endpoint.addProtocolService(ProtocolServiceType.CLASS_TABLE, name, (ClassTable) service);
                                     } else if (serviceType == ObjectTable.class) {
@@ -236,6 +242,7 @@ public final class Remoting {
                     try {
                         final Class<? extends T> instanceType = Class.forName(className).asSubclass(valueClass);
                         final T instance = instanceType.getConstructor().newInstance();
+                        log.trace("Adding protocol service '%s' of type '%s'", name, serviceType);
                         endpoint.addProtocolService(serviceType, name, instance);
                     } catch (InvocationTargetException e) {
                         log.warn(e.getCause(), "Unable to create %s instance '%s'", serviceType, name);

@@ -1,0 +1,4 @@
+#
+# Remoting "remote" protocol descriptor
+#
+org.jboss.remoting3.remote.RemoteProtocolDescriptor

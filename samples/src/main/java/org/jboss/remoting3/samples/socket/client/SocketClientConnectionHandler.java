@@ -76,7 +76,7 @@ public class SocketClientConnectionHandler extends AbstractHandleableCloseable<S
       } 
    }
 
-   public Cancellable open(int slot, Result<RequestHandler> result) {
+   public Cancellable open(final String serviceType, final String groupName, Result<RequestHandler> result) {
       try
       {
          final Socket socket = new Socket(remoteHost, remotePort);
@@ -86,7 +86,8 @@ public class SocketClientConnectionHandler extends AbstractHandleableCloseable<S
          final Marshaller marshaller = factory.createMarshaller(configuration);
          final Unmarshaller unmarshaller = factory.createUnmarshaller(configuration);
          marshaller.start(Marshalling.createByteOutput(socket.getOutputStream()));
-         marshaller.writeInt(slot);
+         marshaller.writeUTF(serviceType);
+         marshaller.writeUTF(groupName);
          marshaller.flush();
          unmarshaller.start(Marshalling.createByteInput(socket.getInputStream()));
          result.setResult(new SocketClientRequestHandler(getExecutor(), marshaller, unmarshaller));

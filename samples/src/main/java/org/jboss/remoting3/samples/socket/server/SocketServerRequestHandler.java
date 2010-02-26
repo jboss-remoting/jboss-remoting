@@ -73,7 +73,8 @@ public class SocketServerRequestHandler extends Thread implements RequestHandler
          marshaller.flush();
          unmarshaller = factory.createUnmarshaller(configuration);
          unmarshaller.start(Marshalling.createByteInput(socket.getInputStream()));
-         final int slot = unmarshaller.readInt();
+         final String serviceType = unmarshaller.readUTF();
+         final String groupName = unmarshaller.readUTF();
          final RequestHandlerFuture requestHandlerFuture = new RequestHandlerFuture();
 
          ConnectionHandlerContext.ServiceResult serviceResult = new ConnectionHandlerContext.ServiceResult() {
@@ -84,15 +85,14 @@ public class SocketServerRequestHandler extends Thread implements RequestHandler
                requestHandlerFuture.setException(new ServiceOpenException("No such service located"));
             }
          };
-         try
-         {
-            requestHandlerFuture.setResult(connectionHandlerContext.openService(slot, OptionMap.EMPTY));
-         } catch (IOException e)
-         {
-             requestHandlerFuture.setException(e);
-         }
-         requestHandler = requestHandlerFuture.get();
+         final RequestHandler requestHandler = connectionHandlerContext.openService(serviceType, groupName, OptionMap.EMPTY);
          if (requestHandler == null) {
+             requestHandlerFuture.setException(new ServiceNotFoundException(ServiceURI.create(serviceType, groupName, null)));
+         } else {
+             requestHandlerFuture.setResult(requestHandler);
+         }
+         this.requestHandler = requestHandlerFuture.get();
+         if (this.requestHandler == null) {
             throw requestHandlerFuture.getException();
          }
          replyHandler = new SocketServerReplyHandler(marshaller);

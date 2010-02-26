@@ -49,7 +49,7 @@ import javax.security.auth.callback.CallbackHandler;
  * Copyright Oct 14, 2009
  * </p>
  */
-public class SocketConnectionProvider<T, I, O> extends AbstractHandleableCloseable<SocketHandleableCloseable> implements ConnectionProvider<T> {
+public class SocketConnectionProvider<I, O> extends AbstractHandleableCloseable<SocketHandleableCloseable> implements ConnectionProvider {
    private Endpoint endpoint;
    private String host;
    private int port;
@@ -74,7 +74,7 @@ public class SocketConnectionProvider<T, I, O> extends AbstractHandleableCloseab
       return null;
    }
 
-   public T getProviderInterface() {
+   public Object getProviderInterface() {
       return null;
    }
 

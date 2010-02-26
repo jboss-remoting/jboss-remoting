@@ -35,7 +35,7 @@ import javax.security.auth.callback.CallbackHandler;
  *
  * @remoting.implement
  */
-public interface ConnectionProvider<T> {
+public interface ConnectionProvider {
 
     /**
      * Open an outbound connection to the given URI.  This method is expected to be non-blocking, with the result
@@ -55,5 +55,5 @@ public interface ConnectionProvider<T> {
      *
      * @return the user data
      */
-    T getProviderInterface();
+    Object getProviderInterface();
 }

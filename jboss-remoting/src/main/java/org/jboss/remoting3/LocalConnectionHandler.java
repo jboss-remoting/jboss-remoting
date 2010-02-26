@@ -40,13 +40,13 @@ final class LocalConnectionHandler implements ConnectionHandler {
         this.connectionHandlerContext = connectionHandlerContext;
     }
 
-    public Cancellable open(final int slot, final Result<RequestHandler> result) {
-        try {
-            // todo: support for call-by-value
-            final RequestHandler handler = connectionHandlerContext.openService(slot, OptionMap.EMPTY);
+    public Cancellable open(final String serviceType, final String groupName, final Result<RequestHandler> result) {
+        // todo: support for call-by-value
+        final RequestHandler handler = connectionHandlerContext.openService(serviceType, groupName, OptionMap.EMPTY);
+        if (handler == null) {
+            result.setException(new ServiceNotFoundException(ServiceURI.create(serviceType, groupName, null)));
+        } else {
             result.setResult(handler);
-        } catch (IOException e) {
-            result.setException(e);
         }
         return IoUtils.nullCancellable();
     }

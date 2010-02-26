@@ -22,30 +22,21 @@
 
 package org.jboss.remoting3.spi;
 
-import java.io.Closeable;
-import org.jboss.xnio.Cancellable;
-import org.jboss.xnio.Result;
+import java.net.InetSocketAddress;
+import org.jboss.xnio.ChannelListener;
+import org.jboss.xnio.OptionMap;
+import org.jboss.xnio.channels.ConnectedStreamChannel;
 
 /**
- * A connection to a foreign endpoint.  This interface is implemented by the protocol implementation.
+ * A provider interface implemented by connection providers which can be connected to across the network.
  */
-public interface ConnectionHandler extends Closeable {
+public interface NetworkServerProvider {
 
     /**
-     * Open a request handler.
+     * Get the channel open listener for servers of this connection provider type.
      *
-     * @param serviceType the service type string
-     * @param groupName the group name string
-     * @param result the result for the connected request handler  @return a handle which may be used to cancel the pending operation
+     * @param optionMap options which may be used to configure the returned server
+     * @return the channel listener
      */
-    Cancellable open(String serviceType, String groupName, Result<RequestHandler> result);
-
-    /**
-     * Create a connector which may be used to communicate with the given local RequestHandler.  The connector
-     * should only produce a result once it has passed to the remote side of this connection.
-     *
-     * @param localHandler the local handler
-     * @return the connector
-     */
-    RequestHandlerConnector createConnector(RequestHandler localHandler);
+    ChannelListener<ConnectedStreamChannel<InetSocketAddress>> getServerListener(OptionMap optionMap);
 }

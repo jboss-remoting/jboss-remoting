@@ -20,8 +20,16 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-/**
- * Package for the service location service classes.  This service is used to find other services by type and group
- * name.
- */
-package org.jboss.remoting3.service.locator;
+package org.jboss.remoting3.test;
+
+import java.io.IOException;
+import java.net.URI;
+import org.jboss.remoting3.Connection;
+import org.jboss.xnio.OptionMap;
+
+public final class LocalTestCase extends InvocationTestBase {
+
+    protected Connection getConnection() throws IOException {
+        return endpoint.connect(URI.create("local:///"), OptionMap.EMPTY).get();
+    }
+}

@@ -26,15 +26,13 @@ import org.jboss.remoting3.Registration;
 
 /**
  * A handle representing the registration of a connection provider.
- *
- * @param <T> the provider interface type
  */
-public interface ConnectionProviderRegistration<T> extends Registration {
+public interface ConnectionProviderRegistration extends Registration {
 
     /**
      * Get the created provider interface associated with this registration.
      *
      * @return the connection provider interface
      */
-    T getProviderInterface();
+    Object getProviderInterface();
 }

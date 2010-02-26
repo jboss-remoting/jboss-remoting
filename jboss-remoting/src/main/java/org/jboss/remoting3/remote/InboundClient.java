@@ -20,37 +20,24 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.service.locator;
+package org.jboss.remoting3.remote;
 
-import java.io.Serializable;
+import org.jboss.remoting3.spi.RequestHandler;
 
-public final class ServiceReply<I, O> implements Serializable {
+final class InboundClient {
+    private final RequestHandler handler;
+    private RemoteConnectionHandler remoteConnectionHandler;
 
-    private static final long serialVersionUID = 5722718939504235368L;
-
-    private final int slot;
-    private final Class<I> actualRequestClass;
-    private final Class<O> actualReplyClass;
-
-    public ServiceReply(final int slot, final Class<I> actualRequestClass, final Class<O> actualReplyClass) {
-        this.slot = slot;
-        this.actualRequestClass = actualRequestClass;
-        this.actualReplyClass = actualReplyClass;
+    InboundClient(final RemoteConnectionHandler remoteConnectionHandler, final RequestHandler handler) {
+        this.remoteConnectionHandler = remoteConnectionHandler;
+        this.handler = handler;
     }
 
-    public static <I, O> ServiceReply<I, O> create(final int slot, final Class<I> actualRequestClass, final Class<O> actualReplyClass) {
-        return new ServiceReply<I,O>(slot, actualRequestClass, actualReplyClass);
+    RequestHandler getHandler() {
+        return handler;
     }
 
-    public int getSlot() {
-        return slot;
-    }
-
-    public Class<I> getActualRequestClass() {
-        return actualRequestClass;
-    }
-
-    public Class<O> getActualReplyClass() {
-        return actualReplyClass;
+    RemoteConnectionHandler getRemoteConnectionHandler() {
+        return remoteConnectionHandler;
     }
 }

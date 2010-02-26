@@ -50,9 +50,6 @@ final class ClientConnectorImpl<I, O> implements ClientConnector<I, O>, Serializ
     }
 
     public IoFuture<? extends Client<I, O>> getFutureClient() throws SecurityException {
-        if (clientContext != null) {
-            throw new SecurityException("Connector has not been sent");
-        }
         final FutureResult<Client<I, O>> futureResult = new FutureResult<Client<I, O>>();
         requestHandlerConnector.createRequestHandler(new TranslatingResult<RequestHandler, Client<I, O>>(futureResult) {
             protected Client<I, O> translate(final RequestHandler input) throws IOException {

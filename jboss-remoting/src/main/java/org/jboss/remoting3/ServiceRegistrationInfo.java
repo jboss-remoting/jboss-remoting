@@ -35,11 +35,9 @@ final class ServiceRegistrationInfo {
     private final OptionMap optionMap;
     private final RequestHandlerFactory<?, ?> requestHandlerFactory;
     private volatile Registration handle;
-    private final int slot;
 
-    ServiceRegistrationInfo(final String serviceType, final String groupName, final String endpointName, final OptionMap optionMap, final RequestHandlerFactory<?, ?> requestHandlerFactory, final int slot) {
+    ServiceRegistrationInfo(final String serviceType, final String groupName, final String endpointName, final OptionMap optionMap, final RequestHandlerFactory<?, ?> requestHandlerFactory) {
         this.requestHandlerFactory = requestHandlerFactory;
-        this.slot = slot;
         this.serviceType = serviceType;
         this.groupName = groupName;
         this.endpointName = endpointName;
@@ -78,9 +76,5 @@ final class ServiceRegistrationInfo {
 
     void setHandle(final Registration handle) {
         this.handle = handle;
-    }
-
-    public int getSlot() {
-        return slot;
     }
 }

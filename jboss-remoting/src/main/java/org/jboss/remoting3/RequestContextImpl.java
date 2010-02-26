@@ -23,6 +23,8 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -48,11 +50,13 @@ final class RequestContextImpl<O> implements RequestContext<O> {
     private Set<RequestCancelHandler<O>> cancelHandlers;
     private final RequestListenerExecutor interruptingExecutor;
     private final Class<O> replyClass;
+    private final ClassLoader serviceClassLoader;
 
-    RequestContextImpl(final ReplyHandler replyHandler, final ClientContextImpl clientContext, final Class<O> replyClass) {
+    RequestContextImpl(final ReplyHandler replyHandler, final ClientContextImpl clientContext, final Class<O> replyClass, final ClassLoader serviceClassLoader) {
         this.replyHandler = replyHandler;
         this.clientContext = clientContext;
         this.replyClass = replyClass;
+        this.serviceClassLoader = serviceClassLoader;
         final Executor executor = clientContext.getExecutor();
         //noinspection ThisEscapedInObjectConstruction
         interruptingExecutor = new RequestListenerExecutor(executor, this);
@@ -123,7 +127,42 @@ final class RequestContextImpl<O> implements RequestContext<O> {
     }
 
     public void execute(final Runnable command) {
-        interruptingExecutor.execute(command);
+        interruptingExecutor.execute(new Runnable() {
+            public void run() {
+                final ClassLoader old;
+                final SecurityManager sm = System.getSecurityManager();
+                final ClassLoaderAction saveAction = new ClassLoaderAction(serviceClassLoader);
+                old = sm != null ? AccessController.doPrivileged(saveAction) : saveAction.run();
+                final ClassLoaderAction restoreAction = new ClassLoaderAction(old);
+                try {
+                    command.run();
+                } finally {
+                    if (sm != null) {
+                        AccessController.doPrivileged(restoreAction);
+                    } else {
+                        restoreAction.run();
+                    }
+                }
+            }
+        });
+    }
+
+    private static final class ClassLoaderAction implements PrivilegedAction<ClassLoader> {
+
+        private final ClassLoader classLoader;
+
+        public ClassLoaderAction(final ClassLoader classLoader) {
+            this.classLoader = classLoader;
+        }
+
+        public ClassLoader run() {
+            final Thread thread = Thread.currentThread();
+            try {
+                return thread.getContextClassLoader();
+            } finally {
+                thread.setContextClassLoader(classLoader);
+            }
+        }
     }
 
     protected void cancel() {

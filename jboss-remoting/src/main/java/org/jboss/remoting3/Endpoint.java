@@ -257,7 +257,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @return a handle which may be used to remove the registration
      * @throws DuplicateRegistrationException if there is already a provider registered to that URI scheme
      */
-    <T> ConnectionProviderRegistration<T> addConnectionProvider(String uriScheme, ConnectionProviderFactory<T> providerFactory) throws DuplicateRegistrationException;
+    ConnectionProviderRegistration addConnectionProvider(String uriScheme, ConnectionProviderFactory providerFactory) throws DuplicateRegistrationException;
 
     /**
      * Get the interface for a connection provider.

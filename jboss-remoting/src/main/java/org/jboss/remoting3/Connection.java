@@ -34,31 +34,6 @@ import org.jboss.xnio.OptionMap;
 public interface Connection extends HandleableCloseable<Connection>, Attachable {
 
     /**
-     * Open a client to a well-known service on the remote endpoint via this connection.
-     *
-     * @param serviceSlot the service slot to connect to
-     * @param requestClass the request class
-     * @param replyClass the reply class
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return the future client
-     */
-    <I, O> IoFuture<? extends Client<I, O>> openClient(int serviceSlot, Class<I> requestClass, Class<O> replyClass);
-
-    /**
-     * Open a client to a well-known service on the remote endpoint via this connection.
-     *
-     * @param serviceSlot the service slot to connect to
-     * @param requestClass the request class
-     * @param replyClass the reply class
-     * @param optionMap the option map
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return the future client
-     */
-    <I, O> IoFuture<? extends Client<I, O>> openClient(int serviceSlot, Class<I> requestClass, Class<O> replyClass, OptionMap optionMap);
-
-    /**
      * Locate and open a client on the remote side of this connection.
      *
      * @param serviceType the service type

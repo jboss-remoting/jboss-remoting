@@ -31,7 +31,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Random;
 import java.util.Set;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -39,12 +38,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.security.SimpleClientCallbackHandler;
-import org.jboss.remoting3.service.Services;
-import org.jboss.remoting3.service.locator.ServiceReply;
-import org.jboss.remoting3.service.locator.ServiceRequest;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
@@ -128,11 +123,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
      * The currently registered services.  Protected by {@link #serviceWriteLock}.
      */
     private final Map<String, Map<String, ServiceRegistrationInfo>> localServiceIndex = hashMap();
-    private final IntKeyMap<ServiceRegistrationInfo> localServiceTable = new IntKeyMap<ServiceRegistrationInfo>();
     /**
      * The currently registered connection providers.
      */
-    private final ConcurrentMap<String, ConnectionProvider<?>> connectionProviders = concurrentMap();
+    private final ConcurrentMap<String, ConnectionProvider> connectionProviders = concurrentMap();
     /**
      * The provider maps for the different protocol service types.
      */
@@ -162,15 +156,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         this.executor = executor;
         this.name = name;
         connectionProviderContext = new ConnectionProviderContextImpl();
-        // add local connection provider
+        // add default connection providers
         connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext));
         // add default services
-        serviceBuilder(ServiceRequest.class, ServiceReply.class)
-                .setOptionMap(OptionMap.builder().set(RemotingOptions.FIXED_SERVICE_ID, Services.LOCATE_SERVICE).getMap())
-                .setClientListener(new ServiceLocationListener())
-                .setServiceType("org.jboss.remoting.service.locate")
-                .setGroupName("default")
-                .register();
         this.optionMap = optionMap;
     }
 
@@ -204,13 +192,22 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public <I, O> RequestHandler createLocalRequestHandler(final RequestListener<? super I, ? extends O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
+        if (requestListener == null) {
+            throw new IllegalArgumentException("requestListener is null");
+        }
+        if (requestClass == null) {
+            throw new IllegalArgumentException("requestClass is null");
+        }
+        if (replyClass == null) {
+            throw new IllegalArgumentException("replyClass is null");
+        }
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CREATE_REQUEST_HANDLER_PERM);
         }
         checkOpen();
         final ClientContextImpl clientContext = new ClientContextImpl(executor, null);
-        final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(executor, requestListener, clientContext, requestClass, replyClass);
+        final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(executor, requestListener, clientContext, requestClass, replyClass, requestListener.getClass().getClassLoader());
         final WeakCloseable lrhCloseable = new WeakCloseable(localRequestHandler);
         clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
             public void handleClose(final ClientContext closed) {
@@ -330,31 +327,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             Lock lock = serviceWriteLock;
             lock.lock();
             try {
-                final int slot;
-                final Integer fixedServiceId = optionMap.get(RemotingOptions.FIXED_SERVICE_ID);
-                if (fixedServiceId != null) {
-                    slot = fixedServiceId.intValue();
-                    if (slot < 0) {
-                        throw new IllegalArgumentException("fixed service ID must be greater than or equal to zero");
-                    }
-                    // todo - check permission for fixed service ID
-                    if (localServiceTable.containsKey(slot)) {
-                        throw new DuplicateRegistrationException("A service with slot ID " + slot + " is already registered");
-                    }
-                } else {
-                    int id;
-                    do {
-                        id = getRandomSlotID();
-                    } while (localServiceTable.containsKey(id));
-                    slot = id;
-                }
-                log.trace("Registering a service type '%s' group name '%s' with ID %d", serviceType, groupName, Integer.valueOf(slot));
+                log.trace("Registering a service type '%s' group name '%s'", serviceType, groupName);
                 final String canonServiceType = serviceType.toLowerCase();
                 final String canonGroupName = groupName.toLowerCase();
                 final Executor executor = EndpointImpl.this.executor;
                 final Map<String, Map<String, ServiceRegistrationInfo>> registeredLocalServices = localServiceIndex;
-                final RequestHandlerFactory<I, O> handlerFactory = RequestHandlerFactory.create(executor, clientListener, requestType, replyType);
-                final ServiceRegistrationInfo registration = new ServiceRegistrationInfo(serviceType, groupName, name, optionMap, handlerFactory, slot);
+                final RequestHandlerFactory<I, O> handlerFactory = RequestHandlerFactory.create(executor, clientListener, requestType, replyType, classLoader);
+                final ServiceRegistrationInfo registration = new ServiceRegistrationInfo(serviceType, groupName, name, optionMap, handlerFactory);
                 // this handle is used to remove the service registration
                 class ServiceRegistration extends AbstractHandleableCloseable<Registration> implements Registration {
 
@@ -373,12 +352,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                                     submap.remove(groupName);
                                 }
                             }
-                            final int regSlot = slot;
-                            final ServiceRegistrationInfo oldReg = localServiceTable.get(regSlot);
-                            if (oldReg == registration) {
-                                localServiceTable.remove(regSlot);
-                            }
-                            log.trace("Removed service type '%s' group name '%s' with ID %d", serviceType, groupName, Integer.valueOf(slot));
+                            log.trace("Removed service type '%s' group name '%s'", serviceType, groupName);
                         } finally {
                             lock.unlock();
                         }
@@ -406,7 +380,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     registeredLocalServices.put(canonServiceType, submap);
                 }
                 submap.put(canonGroupName, registration);
-                localServiceTable.put(slot, registration);
                 // downgrade safely to read lock
                 final Lock readLock = serviceReadLock;
                 //noinspection LockAcquiredButNotSafelyReleased
@@ -425,7 +398,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 serviceInfo.setServiceType(serviceType);
                 serviceInfo.setOptionMap(optionMap);
                 serviceInfo.setRegistrationHandle(handle);
-                serviceInfo.setSlot(slot);
                 serviceInfo.setRequestClass(requestType);
                 serviceInfo.setReplyClass(replyType);
                 final ClassLoader classLoader = this.classLoader;
@@ -448,12 +420,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 lock.unlock();
             }
         }
-    }
-
-    private int getRandomSlotID() {
-        final Random random = new Random();
-        int id = random.nextInt() & 0x7fffffff;
-        return id;
     }
 
     private static void logListenerError(final Throwable t) {
@@ -543,10 +509,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         executor.execute(new Runnable() {
                             public void run() {
                                 final ServiceRegistrationListener.ServiceInfo serviceInfo = new ServiceRegistrationListener.ServiceInfo();
+                                final RequestHandlerFactory<?, ?> handlerFactory = service.getRequestHandlerFactory();
+                                serviceInfo.setRequestClass(handlerFactory.getRequestClass());
+                                serviceInfo.setReplyClass(handlerFactory.getReplyClass());
+                                serviceInfo.setServiceClassLoader(handlerFactory.getServiceClassLoader());
                                 serviceInfo.setGroupName(service.getGroupName());
                                 serviceInfo.setOptionMap(service.getOptionMap());
                                 serviceInfo.setRegistrationHandle(service.getHandle());
-                                serviceInfo.setSlot(service.getSlot());
                                 serviceInfo.setServiceType(service.getServiceType());
                                 try {
                                     listener.serviceRegistered(registration, serviceInfo);
@@ -574,7 +543,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             sm.checkPermission(CONNECT_PERM);
         }
         final String scheme = destination.getScheme();
-        final ConnectionProvider<?> connectionProvider = connectionProviders.get(scheme);
+        final ConnectionProvider connectionProvider = connectionProviders.get(scheme);
         if (connectionProvider == null) {
             throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
         }
@@ -593,17 +562,17 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return connect(destination, connectOptions, new SimpleClientCallbackHandler(actualUserName, actualUserRealm, password));
     }
 
-    public <T> ConnectionProviderRegistration<T> addConnectionProvider(final String uriScheme, final ConnectionProviderFactory<T> providerFactory) {
+    public ConnectionProviderRegistration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory) {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(ADD_CONNECTION_PROVIDER_PERM);
         }
         final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl();
-        final ConnectionProvider<T> provider = providerFactory.createInstance(context);
+        final ConnectionProvider provider = providerFactory.createInstance(context);
         if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
             throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
         }
-        final ConnectionProviderRegistration<T> handle = new ConnectionProviderRegistrationImpl<T>(uriScheme, provider);
+        final ConnectionProviderRegistration handle = new ConnectionProviderRegistrationImpl(uriScheme, provider);
         return handle;
     }
 
@@ -612,7 +581,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(GET_CONNECTION_PROVIDER_INTERFACE_PERM);
         }
-        final ConnectionProvider<?> provider = connectionProviders.get(uriScheme);
+        if (! expectedType.isInterface()) {
+            throw new IllegalArgumentException("Interface expected");
+        }
+        final ConnectionProvider provider = connectionProviders.get(uriScheme);
         if (provider == null) {
             throw new UnknownURISchemeException("No connection provider for URI scheme \"" + uriScheme + "\" is installed");
         }
@@ -680,16 +652,24 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             return connectionProviderContext;
         }
 
-        public RequestHandler openService(final int slotId, final OptionMap optionMap) throws ServiceOpenException {
-            serviceReadLock.lock();
+        public RequestHandler openService(final String serviceType, final String groupName, final OptionMap optionMap) {
+            final Lock lock = serviceReadLock;
+            lock.lock();
             try {
-                final ServiceRegistrationInfo info = localServiceTable.get(slotId);
+                final Map<String, ServiceRegistrationInfo> subMap = localServiceIndex.get(serviceType);
+                final ServiceRegistrationInfo info;
+                if (groupName == null || groupName.length() == 0 || "*".equals(groupName)) {
+                    final Iterator<ServiceRegistrationInfo> i = subMap.values().iterator();
+                    info = i.hasNext() ? i.next() : null;
+                } else {
+                    info = subMap == null ? null : subMap.get(groupName);
+                }
                 if (info == null) {
-                    throw new ServiceOpenException("No service with ID of " + slotId);
+                    return null;
                 }
                 return info.getRequestHandlerFactory().createRequestHandler(connection);
             } finally {
-                serviceReadLock.unlock();
+                lock.unlock();
             }
         }
 
@@ -720,12 +700,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
-    private class ConnectionProviderRegistrationImpl<T> extends AbstractHandleableCloseable<Registration> implements ConnectionProviderRegistration<T> {
+    private class ConnectionProviderRegistrationImpl extends AbstractHandleableCloseable<Registration> implements ConnectionProviderRegistration {
 
         private final String uriScheme;
-        private final ConnectionProvider<T> provider;
+        private final ConnectionProvider provider;
 
-        public ConnectionProviderRegistrationImpl(final String uriScheme, final ConnectionProvider<T> provider) {
+        public ConnectionProviderRegistrationImpl(final String uriScheme, final ConnectionProvider provider) {
             super(executor);
             this.uriScheme = uriScheme;
             this.provider = provider;
@@ -744,55 +724,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
         }
 
-        public T getProviderInterface() {
+        public Object getProviderInterface() {
             return provider.getProviderInterface();
-        }
-    }
-
-    final class ServiceLocationListener implements ClientListener<ServiceRequest, ServiceReply> {
-        private final RequestListener<ServiceRequest, ServiceReply> requestListener = new RequestListener<ServiceRequest, ServiceReply>() {
-            public void handleRequest(final RequestContext<ServiceReply> context, final ServiceRequest request) throws RemoteExecutionException {
-                final String requestGroupName = request.getGroupName();
-                final String requestServiceType = request.getServiceType();
-                final Lock lock = serviceReadLock;
-                lock.lock();
-                try {
-                    final Map<String, ServiceRegistrationInfo> submap = localServiceIndex.get(requestServiceType);
-                    if (submap != null) {
-                        final ServiceRegistrationInfo info;
-                        if (requestGroupName == null || "*".equals(requestGroupName)) {
-                            final Iterator<Map.Entry<String,ServiceRegistrationInfo>> i = submap.entrySet().iterator();
-                            if (i.hasNext()) {
-                                final Map.Entry<String, ServiceRegistrationInfo> entry = i.next();
-                                info = entry.getValue();
-                            } else {
-                                info = null;
-                            }
-                        } else {
-                            info = submap.get(requestGroupName);
-                        }
-                        if (info != null) {
-                            try {
-                                context.sendReply(ServiceReply.create(info.getSlot(), info.getRequestHandlerFactory().getRequestClass(), info.getRequestHandlerFactory().getReplyClass()));
-                            } catch (IOException e) {
-                                log.trace("Failed to send service reply: %s", e);
-                                // reply failed
-                            }
-                            return;
-                        }
-                    }
-                    throw new RemoteExecutionException(new ServiceNotFoundException(ServiceURI.create(requestServiceType, requestGroupName, null)));
-                } finally {
-                    lock.unlock();
-                }
-            }
-
-            public void handleClose() {
-            }
-        };
-
-        public RequestListener<ServiceRequest, ServiceReply> handleClientOpen(final ClientContext clientContext) {
-            return requestListener;
         }
     }
 }

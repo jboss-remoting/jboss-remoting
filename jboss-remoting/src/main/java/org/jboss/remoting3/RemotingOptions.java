@@ -135,11 +135,6 @@ public final class RemotingOptions {
     public static final Option<String> AUTH_REALM = Option.simple(RemotingOptions.class, "AUTH_REALM", String.class);
 
     /**
-     * Specify a fixed ID for a well-known service.
-     */
-    public static final Option<Integer> FIXED_SERVICE_ID = Option.simple(RemotingOptions.class, "FIXED_SERVICE_ID", Integer.class);
-
-    /**
      * Specify whether a local connection or client should call by reference (the usual default) or value.
      */
     public static final Option<Boolean> CALL_BY_VALUE = Option.simple(RemotingOptions.class, "CALL_BY_VALUE", Boolean.class);

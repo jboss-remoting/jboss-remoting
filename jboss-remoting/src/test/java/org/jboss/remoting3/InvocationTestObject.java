@@ -20,12 +20,10 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.service;
+package org.jboss.remoting3;
 
-public final class Services {
-    public static final int LOCATE_SERVICE = 1;
-    public static final int SERVICE_CLASS_LOOKUP = 2;
+import java.io.Serializable;
 
-    private Services() {
-    }
+public final class InvocationTestObject implements Serializable {
+    private static final long serialVersionUID = 7228470862155215008L;
 }

@@ -35,7 +35,7 @@ import org.jboss.xnio.Result;
 
 import javax.security.auth.callback.CallbackHandler;
 
-final class LocalConnectionProvider implements ConnectionProvider<Void> {
+final class LocalConnectionProvider implements ConnectionProvider {
     private final ConnectionProviderContext providerContext;
 
     public LocalConnectionProvider(final ConnectionProviderContext providerContext) {

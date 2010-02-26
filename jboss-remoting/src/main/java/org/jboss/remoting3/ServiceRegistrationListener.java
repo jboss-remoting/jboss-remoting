@@ -51,7 +51,6 @@ public interface ServiceRegistrationListener {
         private ClassLoader serviceClassLoader;
         private Class<?> requestClass;
         private Class<?> replyClass;
-        private int slot;
         private Registration registrationHandle;
         private OptionMap optionMap;
 
@@ -149,24 +148,6 @@ public interface ServiceRegistrationListener {
          */
         public void setReplyClass(final Class<?> replyClass) {
             this.replyClass = replyClass;
-        }
-
-        /**
-         * Get the slot of the service.
-         *
-         * @return the slot
-         */
-        public int getSlot() {
-            return slot;
-        }
-
-        /**
-         * Set the slot of the service.
-         *
-         * @param slot the slot
-         */
-        public void setSlot(final int slot) {
-            this.slot = slot;
         }
 
         /**

@@ -42,12 +42,14 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
     private final ClientContextImpl clientContext;
     private final Class<I> requestClass;
     private final Class<O> replyClass;
+    private final ClassLoader serviceClassLoader;
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.listener");
 
     @SuppressWarnings({ "unchecked" })
-    LocalRequestHandler(final Executor executor, final RequestListener<? super I, ? extends O> requestListener, final ClientContextImpl clientContext, final Class<I> requestClass, final Class<O> replyClass) {
+    LocalRequestHandler(final Executor executor, final RequestListener<? super I, ? extends O> requestListener, final ClientContextImpl clientContext, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader serviceClassLoader) {
         super(executor);
+        this.serviceClassLoader = serviceClassLoader;
         this.requestListener = (RequestListener<I, O>) requestListener;
         this.clientContext = clientContext;
         this.requestClass = requestClass;
@@ -55,7 +57,7 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
     }
 
     public Cancellable receiveRequest(final Object request, final ReplyHandler replyHandler) {
-        final RequestContextImpl<O> context = new RequestContextImpl<O>(replyHandler, clientContext, replyClass);
+        final RequestContextImpl<O> context = new RequestContextImpl<O>(replyHandler, clientContext, replyClass, serviceClassLoader);
         try {
             final I castRequest;
             try {

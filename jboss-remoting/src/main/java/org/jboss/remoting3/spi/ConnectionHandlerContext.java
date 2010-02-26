@@ -44,12 +44,13 @@ public interface ConnectionHandlerContext {
      *
      * @remoting.nonblocking
      *
-     * @param slotId the service slot ID
+     * @param serviceType the service type string
+     * @param groupName the group name, or {@code null} for any group name
      * @param optionMap the options to pass to the service
      * @return the new request handler
      * @throws IOException if an error occurs
      */
-    RequestHandler openService(int slotId, OptionMap optionMap) throws IOException;
+    RequestHandler openService(String serviceType, String groupName, OptionMap optionMap);
 
     /**
      * Indicate that the remote side has terminated the connection, so the local side should be closed as well.

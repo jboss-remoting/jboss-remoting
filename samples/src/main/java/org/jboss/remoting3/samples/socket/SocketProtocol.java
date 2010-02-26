@@ -57,9 +57,9 @@ public class SocketProtocol
     * This endpoint can be a socket transport client.
     */
    static public <T, I, O> void registerClientTransport(final Endpoint endpoint, final Executor executor, final String host) {
-      endpoint.addConnectionProvider("socket", new ConnectionProviderFactory<T>() {
-         public ConnectionProvider<T> createInstance(ConnectionProviderContext context) {
-            return new SocketConnectionProvider<T, I, O>(endpoint, executor, host);
+      endpoint.addConnectionProvider("socket", new ConnectionProviderFactory() {
+         public ConnectionProvider createInstance(ConnectionProviderContext context) {
+            return new SocketConnectionProvider<I, O>(endpoint, executor, host);
          }});
    }
 
@@ -69,9 +69,9 @@ public class SocketProtocol
     * This endpoint can be both a client and server for the socket transport.
     */
    static public <T, I, O> Cancellable registerServerTransport(Endpoint endpoint, Executor executor, final String host, final int port) {
-      final SocketConnectionProvider<T, I, O> connectionProvider = new SocketConnectionProvider<T, I, O>(endpoint, executor, host);
-      endpoint.addConnectionProvider("socket", new ConnectionProviderFactory<T>() {
-         public ConnectionProvider<T> createInstance(ConnectionProviderContext context) {
+      final SocketConnectionProvider<I, O> connectionProvider = new SocketConnectionProvider<I, O>(endpoint, executor, host);
+      endpoint.addConnectionProvider("socket", new ConnectionProviderFactory() {
+         public ConnectionProvider createInstance(ConnectionProviderContext context) {
             try {
                connectionProvider.start(context, port);
                return connectionProvider;
