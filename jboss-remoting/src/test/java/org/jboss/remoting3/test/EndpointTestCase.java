@@ -22,10 +22,10 @@
 
 package org.jboss.remoting3.test;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.io.IOException;
 import junit.framework.TestCase;
 import org.jboss.remoting3.Client;
 import org.jboss.remoting3.Endpoint;

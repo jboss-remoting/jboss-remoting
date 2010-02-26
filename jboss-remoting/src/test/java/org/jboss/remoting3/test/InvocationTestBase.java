@@ -30,7 +30,6 @@ import org.jboss.remoting3.ClientContext;
 import org.jboss.remoting3.ClientListener;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.InvocationTestObject;
 import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.RemoteExecutionException;
 import org.jboss.remoting3.Remoting;

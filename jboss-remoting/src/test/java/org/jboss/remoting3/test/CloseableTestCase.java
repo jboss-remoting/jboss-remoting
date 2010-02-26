@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.spi;
+package org.jboss.remoting3.test;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import junit.framework.TestCase;
 import org.jboss.remoting3.CloseHandler;
+import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 
@@ -54,11 +55,9 @@ public final class CloseableTestCase extends TestCase {
                         latch.countDown();
                     }
                 });
-                assertTrue(closeable.isOpen());
                 assertFalse(closed.get());
                 closeable.close();
                 assertTrue(latch.await(500L, TimeUnit.MILLISECONDS));
-                assertFalse(closeable.isOpen());
                 assertTrue(closed.get());
             } finally {
                 IoUtils.safeClose(closeable);
