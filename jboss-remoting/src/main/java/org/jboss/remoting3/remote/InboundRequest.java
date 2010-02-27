@@ -38,7 +38,7 @@ final class InboundRequest {
 
     InboundRequest(final RemoteConnectionHandler remoteConnectionHandler, final int rid) {
         this.remoteConnectionHandler = remoteConnectionHandler;
-        byteInput = new NioByteInput(new RequestInputHandler(this, rid));
+        byteInput = new NioByteInput(new InboundRequestInputHandler(this, rid));
     }
 
     void ack() {

@@ -221,7 +221,7 @@ final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandl
                 synchronized (outboundRequest) {
                     if ((flags & RemoteProtocol.MSG_FLAG_FIRST) != 0) {
                         // todo - check for duplicate
-                        outboundRequest.setByteInput(byteInput = new NioByteInput(new ReplyInputHandler(outboundRequest, rid)));
+                        outboundRequest.setByteInput(byteInput = new NioByteInput(new InboundReplyInputHandler(outboundRequest, rid)));
                         connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor().execute(new InboundReplyTask(connectionHandler, outboundRequest));
                     } else {
                         byteInput = outboundRequest.getByteInput();
@@ -262,7 +262,7 @@ final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandl
                 synchronized (outboundRequest) {
                     if ((flags & RemoteProtocol.MSG_FLAG_FIRST) != 0) {
                         // todo - check for duplicate
-                        outboundRequest.setByteInput(byteInput = new NioByteInput(new ReplyInputHandler(outboundRequest, rid)));
+                        outboundRequest.setByteInput(byteInput = new NioByteInput(new InboundReplyInputHandler(outboundRequest, rid)));
                         connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor().execute(new InboundReplyExceptionTask(connectionHandler, outboundRequest));
                     } else {
                         byteInput = outboundRequest.getByteInput();

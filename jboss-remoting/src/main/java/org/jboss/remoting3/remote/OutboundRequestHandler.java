@@ -55,7 +55,7 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
             while (outboundRequests.containsKey(rid = random.nextInt()));
             outboundRequests.put(rid, outboundRequest);
         }
-        final NioByteOutput byteOutput = new NioByteOutput(new RequestBufferWriter(outboundRequest, rid));
+        final NioByteOutput byteOutput = new NioByteOutput(new OutboundRequestBufferWriter(outboundRequest, rid));
         try {
             RemoteConnectionHandler.log.trace("Starting sending request %s", request);
             final Marshaller marshaller = connectionHandler.getMarshallerFactory().createMarshaller(connectionHandler.getMarshallingConfiguration());

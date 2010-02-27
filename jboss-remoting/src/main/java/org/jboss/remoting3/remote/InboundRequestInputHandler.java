@@ -27,11 +27,11 @@ import java.nio.ByteBuffer;
 import org.jboss.marshalling.NioByteInput;
 import org.jboss.xnio.Pool;
 
-final class RequestInputHandler implements NioByteInput.InputHandler {
+final class InboundRequestInputHandler implements NioByteInput.InputHandler {
     private final int rid;
     private final InboundRequest inboundRequest;
 
-    public RequestInputHandler(final InboundRequest inboundRequest, final int rid) {
+    public InboundRequestInputHandler(final InboundRequest inboundRequest, final int rid) {
         this.inboundRequest = inboundRequest;
         this.rid = rid;
     }

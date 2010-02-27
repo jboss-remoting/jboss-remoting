@@ -26,11 +26,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.jboss.marshalling.NioByteInput;
 
-final class ReplyInputHandler implements NioByteInput.InputHandler {
+final class InboundReplyInputHandler implements NioByteInput.InputHandler {
     private final int rid;
     private final OutboundRequest outboundRequest;
 
-    ReplyInputHandler(final OutboundRequest outboundRequest, final int rid) {
+    InboundReplyInputHandler(final OutboundRequest outboundRequest, final int rid) {
         this.outboundRequest = outboundRequest;
         this.rid = rid;
     }

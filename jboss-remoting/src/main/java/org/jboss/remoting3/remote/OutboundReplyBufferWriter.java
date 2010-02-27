@@ -27,58 +27,56 @@ import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.marshalling.NioByteOutput;
+import org.jboss.xnio.Pool;
 
-final class RequestBufferWriter implements NioByteOutput.BufferWriter {
+final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
 
     private final AtomicBoolean first = new AtomicBoolean(true);
-    private final int rid;
-    private final OutboundRequest outboundRequest;
+    private final int id;
+    private final boolean exception;
+    private final InboundRequest inboundRequest;
 
-    RequestBufferWriter(final OutboundRequest outboundRequest, final int rid) {
-        this.outboundRequest = outboundRequest;
-        this.rid = rid;
+    OutboundReplyBufferWriter(final InboundRequest inboundRequest, final int id, final boolean exception) {
+        this.inboundRequest = inboundRequest;
+        this.id = id;
+        this.exception = exception;
     }
 
     public ByteBuffer getBuffer() {
-        final ByteBuffer buffer = outboundRequest.getRemoteConnectionHandler().getBufferPool().allocate();
+        final RemoteConnectionHandler connectionHandler = inboundRequest.getRemoteConnectionHandler();
+        final Pool<ByteBuffer> bufferPool = connectionHandler.getBufferPool();
+        final ByteBuffer buffer = bufferPool.allocate();
         buffer.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
-        buffer.put(RemoteProtocol.REQUEST);
-        buffer.putInt(rid);
+        buffer.put(exception ? RemoteProtocol.REPLY_EXCEPTION : RemoteProtocol.REPLY);
+        buffer.putInt(id);
         final boolean isFirst = first.getAndSet(false);
         if (isFirst) {
             buffer.put((byte) RemoteProtocol.MSG_FLAG_FIRST);
-            buffer.putInt(outboundRequest.getClientId());
         } else {
             buffer.put((byte)0);
         }
-        RemoteConnectionHandler.log.trace("Allocated buffer %s for %s", buffer, this);
         return buffer;
     }
 
     public void accept(final ByteBuffer buffer, final boolean eof) throws IOException {
-        final OutboundRequest outboundRequest = this.outboundRequest;
+        final RemoteConnectionHandler connectionHandler = inboundRequest.getRemoteConnectionHandler();
         try {
-            outboundRequest.acquire();
+            inboundRequest.acquire();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new InterruptedIOException();
         }
-        final RemoteConnectionHandler remoteConnectionHandler = outboundRequest.getRemoteConnectionHandler();
         try {
             if (eof) {
                 buffer.put(7, (byte) (buffer.get(3) | RemoteProtocol.MSG_FLAG_LAST));
-                synchronized (outboundRequest) {
-                    outboundRequest.setState(OutboundRequest.State.REPLY_WAIT);
-                }
             }
-            RemoteConnectionHandler.log.trace("Sending buffer %s for %s", buffer, this);
-            remoteConnectionHandler.sendBlocking(buffer);
+            connectionHandler.sendBlocking(buffer);
         } finally {
-            remoteConnectionHandler.getBufferPool().free(buffer);
+            connectionHandler.getBufferPool().free(buffer);
         }
     }
 
     public void flush() throws IOException {
-        outboundRequest.getRemoteConnectionHandler().flushBlocking();
+        inboundRequest.getRemoteConnectionHandler().flushBlocking();
     }
 }
