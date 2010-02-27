@@ -26,4 +26,22 @@ import java.io.Serializable;
 
 public final class InvocationTestObject implements Serializable {
     private static final long serialVersionUID = 7228470862155215008L;
+
+    private final int frob = 12345;
+
+    public int getFrob() {
+        return frob;
+    }
+
+    public boolean equals(final Object obj) {
+        return obj instanceof InvocationTestObject && equals((InvocationTestObject) obj);
+    }
+
+    public boolean equals(final InvocationTestObject obj) {
+        return obj != null && obj.frob == frob;
+    }
+
+    public int hashCode() {
+        return frob;
+    }
 }
