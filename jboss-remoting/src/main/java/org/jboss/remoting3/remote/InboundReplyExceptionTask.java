@@ -61,6 +61,9 @@ final class InboundReplyExceptionTask implements Runnable {
             } catch (Exception e) {
                 SpiUtils.safeHandleException(replyHandler, new RemoteRequestException(e));
                 return;
+            } catch (Error e) {
+                SpiUtils.safeHandleException(replyHandler,new RemoteReplyException("Failed to unmarshall exception reply", e));
+                throw e;
             }
             RemoteReplyException rre;
             try {

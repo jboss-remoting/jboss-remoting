@@ -24,10 +24,10 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import org.jboss.marshalling.Unmarshaller;
-import org.jboss.remoting3.RemoteReplyException;
 import org.jboss.remoting3.RemoteRequestException;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.SpiUtils;
+import org.jboss.xnio.IoUtils;
 
 final class InboundReplyTask implements Runnable {
 
@@ -49,19 +49,28 @@ final class InboundReplyTask implements Runnable {
         try {
             final RemoteConnectionHandler connectionHandler = remoteConnectionHandler;
             final Unmarshaller unmarshaller = connectionHandler.getMarshallerFactory().createUnmarshaller(connectionHandler.getMarshallingConfiguration());
-            unmarshaller.start(outboundRequest.getByteInput());
-            reply = unmarshaller.readObject();
+            try {
+                RemoteConnectionHandler.log.trace("Unmarshalling inbound reply");
+                unmarshaller.start(outboundRequest.getByteInput());
+                reply = unmarshaller.readObject();
+                unmarshaller.close();
+                RemoteConnectionHandler.log.trace("Unmarshalled inbound reply %s", reply);
+            } finally {
+                IoUtils.safeClose(unmarshaller);
+            }
         } catch (IOException e) {
+            RemoteConnectionHandler.log.trace(e, "Unmarshalling inbound reply failed");
             SpiUtils.safeHandleException(replyHandler, e);
             return;
         } catch (Exception e) {
+            RemoteConnectionHandler.log.trace(e, "Unmarshalling inbound reply failed");
             SpiUtils.safeHandleException(replyHandler, new RemoteRequestException(e));
             return;
+        } catch (Error e) {
+            RemoteConnectionHandler.log.trace(e, "Unmarshalling inbound reply failed");
+            SpiUtils.safeHandleException(replyHandler, new RemoteRequestException(e));
+            throw e;
         }
-        try {
-            replyHandler.handleReply(reply);
-        } catch (IOException e) {
-            SpiUtils.safeHandleException(replyHandler, new RemoteReplyException("Remote reply failed", e));
-        }
+        SpiUtils.safeHandleReply(replyHandler, reply);
     }
 }

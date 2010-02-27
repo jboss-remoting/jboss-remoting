@@ -27,6 +27,7 @@ import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.RemoteRequestException;
 import org.jboss.remoting3.spi.SpiUtils;
+import org.jboss.xnio.IoUtils;
 
 final class InboundRequestTask implements Runnable {
 
@@ -51,14 +52,27 @@ final class InboundRequestTask implements Runnable {
         final Object request;
         try {
             final Unmarshaller unmarshaller = remoteConnectionHandler.getMarshallerFactory().createUnmarshaller(remoteConnectionHandler.getMarshallingConfiguration());
-            unmarshaller.start(inboundRequest.getByteInput());
-            request = unmarshaller.readObject();
+            try {
+                RemoteConnectionHandler.log.trace("Unmarshalling inbound request");
+                unmarshaller.start(inboundRequest.getByteInput());
+                request = unmarshaller.readObject();
+                unmarshaller.close();
+                RemoteConnectionHandler.log.trace("Unmarshalled inbound request %s", request);
+            } finally {
+                IoUtils.safeClose(unmarshaller);
+            }
         } catch (IOException e) {
+            RemoteConnectionHandler.log.trace(e, "Unmarshalling inbound request failed");
             SpiUtils.safeHandleException(replyHandler, e);
             return;
         } catch (Exception e) {
+            RemoteConnectionHandler.log.trace(e, "Unmarshalling inbound request failed");
             SpiUtils.safeHandleException(replyHandler, new RemoteRequestException(e));
             return;
+        } catch (Error e) {
+            RemoteConnectionHandler.log.trace(e, "Unmarshalling inbound request failed");
+            SpiUtils.safeHandleException(replyHandler, new RemoteRequestException(e));
+            throw e;
         }
         final InboundClient inboundClient;
         final IntKeyMap<InboundClient> inboundClients = remoteConnectionHandler.getInboundClients();
