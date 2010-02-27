@@ -145,14 +145,17 @@ final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandl
                 final InboundRequest inboundRequest;
                 final NioByteInput byteInput;
                 final IntKeyMap<InboundRequest> inboundRequests = connectionHandler.getInboundRequests();
+                final int cid;
+                boolean start = false;
                 synchronized (inboundRequests) {
                     if ((flags & RemoteProtocol.MSG_FLAG_FIRST) != 0) {
-                        final int cid = buffer.getInt();
-                        inboundRequest = new InboundRequest(connectionHandler);
+                        cid = buffer.getInt();
+                        inboundRequest = new InboundRequest(connectionHandler, 0);
+                        start = true;
                         // todo - check for duplicate
                         inboundRequests.put(rid, inboundRequest);
-                        connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor().execute(new InboundRequestTask(connectionHandler, inboundRequest, rid, cid));
                     } else {
+                        cid = 0;
                         inboundRequest = inboundRequests.get(rid);
                     }
                     if (inboundRequest == null) {
@@ -160,6 +163,9 @@ final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandl
                     }
                 }
                 synchronized (inboundRequest) {
+                    if (start) {
+                        connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor().execute(new InboundRequestTask(connectionHandler, inboundRequest, rid, cid));
+                    }
                     byteInput = inboundRequest.getByteInput();
                 }
                 byteInput.push(buffer);

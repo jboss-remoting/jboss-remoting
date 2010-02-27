@@ -32,12 +32,13 @@ final class InboundRequest {
 
     private Cancellable cancellable;
     private OutboundReplyHandler replyHandler;
-    private NioByteInput byteInput;
+    private final NioByteInput byteInput;
     private final RemoteConnectionHandler remoteConnectionHandler;
     private State state = State.RECEIVING;
 
-    InboundRequest(final RemoteConnectionHandler remoteConnectionHandler) {
+    InboundRequest(final RemoteConnectionHandler remoteConnectionHandler, final int rid) {
         this.remoteConnectionHandler = remoteConnectionHandler;
+        byteInput = new NioByteInput(new RequestInputHandler(this, rid));
     }
 
     void ack() {
@@ -54,10 +55,6 @@ final class InboundRequest {
 
     void acquire() throws InterruptedException {
         flowSemaphore.acquire();
-    }
-
-    void setByteInput(final NioByteInput byteInput) {
-        this.byteInput = byteInput;
     }
 
     void setReplyHandler(final OutboundReplyHandler replyHandler) {

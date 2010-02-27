@@ -23,7 +23,6 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
-import org.jboss.marshalling.NioByteInput;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.RemoteRequestException;
@@ -47,7 +46,6 @@ final class InboundRequestTask implements Runnable {
         final OutboundReplyHandler replyHandler;
         final InboundRequest inboundRequest = this.inboundRequest;
         synchronized (inboundRequest) {
-            inboundRequest.setByteInput(new NioByteInput(new RequestInputHandler(inboundRequest, rid)));
             inboundRequest.setReplyHandler(replyHandler = new OutboundReplyHandler(inboundRequest, rid));
         }
         final Object request;
