@@ -118,7 +118,7 @@ final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandl
                 synchronized (client) {
                     // todo assert client state == waiting
                     client.setState(OutboundClient.State.ESTABLISHED);
-                    client.getResult().setResult(new OutboundRequestHandler(client));
+                    client.setResult(new OutboundRequestHandler(client));
                 }
                 return;
             }
@@ -150,13 +150,15 @@ final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandl
                 synchronized (inboundRequests) {
                     if ((flags & RemoteProtocol.MSG_FLAG_FIRST) != 0) {
                         cid = buffer.getInt();
-                        inboundRequest = new InboundRequest(connectionHandler, 0);
+                        inboundRequest = new InboundRequest(connectionHandler, rid);
                         start = true;
                         // todo - check for duplicate
                         inboundRequests.put(rid, inboundRequest);
+                        RemoteConnectionHandler.log.trace("Received first request message %s for %s", buffer, inboundRequest);
                     } else {
                         cid = 0;
                         inboundRequest = inboundRequests.get(rid);
+                        RemoteConnectionHandler.log.trace("Received subsequent request message %s for %s", buffer, inboundRequest);
                     }
                     if (inboundRequest == null) {
                         RemoteConnectionHandler.log.trace("Received request for unknown request ID %d", Integer.valueOf(rid));
@@ -220,10 +222,12 @@ final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandl
                 }
                 synchronized (outboundRequest) {
                     if ((flags & RemoteProtocol.MSG_FLAG_FIRST) != 0) {
+                        RemoteConnectionHandler.log.trace("Received first reply message %s for %s", buffer, outboundRequest);
                         // todo - check for duplicate
                         outboundRequest.setByteInput(byteInput = new NioByteInput(new InboundReplyInputHandler(outboundRequest, rid)));
                         connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor().execute(new InboundReplyTask(connectionHandler, outboundRequest));
                     } else {
+                        RemoteConnectionHandler.log.trace("Received subsequent reply message %s for %s", buffer, outboundRequest);
                         byteInput = outboundRequest.getByteInput();
                     }
                 }

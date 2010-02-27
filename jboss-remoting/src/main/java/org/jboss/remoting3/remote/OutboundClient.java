@@ -36,6 +36,7 @@ final class OutboundClient implements Cancellable {
     private final String serviceType;
     private final String groupName;
     private RemoteConnectionHandler remoteConnectionHandler;
+    private RequestHandler requestHandler;
 
     OutboundClient(final RemoteConnectionHandler remoteConnectionHandler, final int id, final Result<RequestHandler> result, final String serviceType, final String groupName) {
         this.remoteConnectionHandler = remoteConnectionHandler;
@@ -86,6 +87,15 @@ final class OutboundClient implements Cancellable {
 
     public int getId() {
         return id;
+    }
+
+    RequestHandler getRequestHandler() {
+        return requestHandler;
+    }
+
+    void setResult(final RequestHandler requestHandler) {
+        result.setResult(requestHandler);
+        this.requestHandler = requestHandler;
     }
 
     enum State {

@@ -34,11 +34,13 @@ final class InboundRequest {
     private OutboundReplyHandler replyHandler;
     private final NioByteInput byteInput;
     private final RemoteConnectionHandler remoteConnectionHandler;
+    private final int rid;
     private State state = State.RECEIVING;
 
     InboundRequest(final RemoteConnectionHandler remoteConnectionHandler, final int rid) {
         this.remoteConnectionHandler = remoteConnectionHandler;
         byteInput = new NioByteInput(new InboundRequestInputHandler(this, rid));
+        this.rid = rid;
     }
 
     void ack() {
@@ -78,5 +80,9 @@ final class InboundRequest {
 
     RemoteConnectionHandler getRemoteConnectionHandler() {
         return remoteConnectionHandler;
+    }
+
+    public String toString() {
+        return "Inbound request ID " + rid;
     }
 }

@@ -167,7 +167,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
                 for (IntKeyMap.Entry<OutboundClient> entry : outboundClients) {
                     final OutboundClient outboundClient = entry.getValue();
                     synchronized (outboundClient) {
-                        // todo close the request handler
+                        IoUtils.safeClose(outboundClient.getRequestHandler());
                     }
                 }
                 for (IntKeyMap.Entry<InboundClient> entry : inboundClients) {

@@ -47,6 +47,8 @@ final class InboundRequestInputHandler implements NioByteInput.InputHandler {
             buffer.flip();
             connectionHandler.sendBlocking(buffer);
             connectionHandler.flushBlocking();
+        } catch (IOException e) {
+            RemoteConnectionHandler.log.trace(e, "Failed to acknowledge chunk for %s", this);
         } finally {
             bufferPool.free(buffer);
         }
@@ -54,5 +56,9 @@ final class InboundRequestInputHandler implements NioByteInput.InputHandler {
 
     public void close() throws IOException {
         // todo: stream was closed, no action needed
+    }
+
+    public String toString() {
+        return "Inbound request input handler for request ID " + rid;
     }
 }

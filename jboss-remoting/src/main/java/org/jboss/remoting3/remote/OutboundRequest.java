@@ -108,4 +108,8 @@ final class OutboundRequest implements Cancellable {
     ReplyHandler getInboundReplyHandler() {
         return inboundReplyHandler;
     }
+
+    public String toString() {
+        return "Outbound Request for client ID " + cid;
+    }
 }

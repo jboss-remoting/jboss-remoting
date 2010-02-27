@@ -41,6 +41,7 @@ final class OutboundRequestBufferWriter implements NioByteOutput.BufferWriter {
 
     public ByteBuffer getBuffer() {
         final ByteBuffer buffer = outboundRequest.getRemoteConnectionHandler().getBufferPool().allocate();
+        RemoteConnectionHandler.log.trace("Allocated buffer %s for %s", buffer, this);
         buffer.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
         buffer.put(RemoteProtocol.REQUEST);
         buffer.putInt(rid);
@@ -51,7 +52,7 @@ final class OutboundRequestBufferWriter implements NioByteOutput.BufferWriter {
         } else {
             buffer.put((byte)0);
         }
-        RemoteConnectionHandler.log.trace("Allocated buffer %s for %s", buffer, this);
+        RemoteConnectionHandler.log.trace("Prepopulated buffer %s for %s", buffer, this);
         return buffer;
     }
 

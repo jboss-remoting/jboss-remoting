@@ -46,6 +46,7 @@ final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
         final RemoteConnectionHandler connectionHandler = inboundRequest.getRemoteConnectionHandler();
         final Pool<ByteBuffer> bufferPool = connectionHandler.getBufferPool();
         final ByteBuffer buffer = bufferPool.allocate();
+        RemoteConnectionHandler.log.trace("Allocated buffer %s for %s", buffer, this);
         buffer.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
         buffer.put(exception ? RemoteProtocol.REPLY_EXCEPTION : RemoteProtocol.REPLY);
         buffer.putInt(id);
@@ -55,6 +56,7 @@ final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
         } else {
             buffer.put((byte)0);
         }
+        RemoteConnectionHandler.log.trace("Prepopulated buffer %s for %s", buffer, this);
         return buffer;
     }
 
@@ -70,6 +72,7 @@ final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
             if (eof) {
                 buffer.put(7, (byte) (buffer.get(3) | RemoteProtocol.MSG_FLAG_LAST));
             }
+            RemoteConnectionHandler.log.trace("Sending buffer %s for %s", buffer, this);
             connectionHandler.sendBlocking(buffer);
         } finally {
             connectionHandler.getBufferPool().free(buffer);
@@ -78,5 +81,9 @@ final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
 
     public void flush() throws IOException {
         inboundRequest.getRemoteConnectionHandler().flushBlocking();
+    }
+
+    public String toString() {
+        return "Outbound reply buffer writer for " + inboundRequest;
     }
 }
