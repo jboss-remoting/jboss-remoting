@@ -38,6 +38,7 @@ import org.jboss.remoting3.ServiceNotFoundException;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.log.Logger;
+import org.testng.SkipException;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -212,6 +213,8 @@ public abstract class InvocationTestBase {
             } finally {
                 IoUtils.safeClose(registration);
             }
+        } catch (UnsupportedOperationException e) {
+            throw new SkipException("Skipping test due to unsupported createClientConnector");
         } finally {
             exit();
         }
