@@ -120,21 +120,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                     this.closeHandlers = null;
                     break;
                 }
-                case CLOSING: {
-                    if (Thread.currentThread() != closingThread) {
-                        while (state != State.CLOSED) {
-                            try {
-                                closeLock.wait();
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                throw new InterruptedIOException("Close interrupted");
-                            }
-                        }
-                    } else {
-                        // reentrant close always goes through unblocked
-                    }
-                    return;
-                }
+                case CLOSING:
                 case CLOSED: return;
                 default: throw new IllegalStateException();
             }
@@ -155,6 +141,33 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                 closingThread = null;
                 closeLock.notifyAll();
             }
+        }
+    }
+
+    /** {@inheritDoc} */
+    public void awaitClosed() throws InterruptedException {
+        synchronized (closeLock) {
+            while (state != State.CLOSED) {
+                closeLock.wait();
+            }
+        }
+    }
+
+    /** {@inheritDoc} */
+    public void awaitClosedUninterruptibly() {
+        boolean intr = false;
+        try {
+            synchronized (closeLock) {
+                while (state != State.CLOSED) {
+                    try {
+                        closeLock.wait();
+                    } catch (InterruptedException e) {
+                        intr = true;
+                    }
+                }
+            }
+        } finally {
+            if (intr) Thread.currentThread().interrupt();
         }
     }
 

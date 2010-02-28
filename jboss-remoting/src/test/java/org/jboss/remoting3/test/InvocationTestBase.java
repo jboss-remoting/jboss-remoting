@@ -106,12 +106,15 @@ public abstract class InvocationTestBase {
                         assertEquals(replyObj, client.invoke(requestObj));
                     } finally {
                         IoUtils.safeClose(client);
+                        client.awaitClosedUninterruptibly();
                     }
                 } finally {
                     IoUtils.safeClose(connection);
+                    connection.awaitClosedUninterruptibly();
                 }
             } finally {
                 IoUtils.safeClose(registration);
+                registration.awaitClosedUninterruptibly();
             }
         } finally {
             exit();
@@ -151,12 +154,15 @@ public abstract class InvocationTestBase {
                         assertEquals(replyObj, client.send(requestObj).get());
                     } finally {
                         IoUtils.safeClose(client);
+                        client.awaitClosedUninterruptibly();
                     }
                 } finally {
                     IoUtils.safeClose(connection);
+                    connection.awaitClosedUninterruptibly();
                 }
             } finally {
                 IoUtils.safeClose(registration);
+                registration.awaitClosedUninterruptibly();
             }
         } finally {
             exit();
@@ -208,12 +214,15 @@ public abstract class InvocationTestBase {
                         }, InvocationTestObject.class, InvocationTestObject.class));
                     } finally {
                         IoUtils.safeClose(client);
+                        client.awaitClosedUninterruptibly();
                     }
                 } finally {
                     IoUtils.safeClose(connection);
+                    connection.awaitClosedUninterruptibly();
                 }
             } finally {
                 IoUtils.safeClose(registration);
+                registration.awaitClosedUninterruptibly();
             }
         } catch (UnsupportedOperationException e) {
             throw new SkipException("Skipping test due to unsupported createClientConnector");
@@ -244,6 +253,7 @@ public abstract class InvocationTestBase {
         enter();
         try {
             Xnio.getInstance().close();
+            System.runFinalization();
         } finally {
             exit();
         }

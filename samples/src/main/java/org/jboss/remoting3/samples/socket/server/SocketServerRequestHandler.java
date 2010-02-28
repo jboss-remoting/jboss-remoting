@@ -157,7 +157,15 @@ public class SocketServerRequestHandler extends Thread implements RequestHandler
       return null;
    }
 
-   public String toString() {
+    public void awaitClosed() throws InterruptedException {
+        throw new UnsupportedOperationException();
+    }
+
+    public void awaitClosedUninterruptibly() {
+        throw new UnsupportedOperationException();
+    }
+
+    public String toString() {
       return "SocketServerRequestHandler[" + super.toString() + "]";
    }
 

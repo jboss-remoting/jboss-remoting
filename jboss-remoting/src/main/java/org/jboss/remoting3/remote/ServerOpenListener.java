@@ -100,6 +100,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
                         try {
                             res = channel.write(buffer);
                         } catch (IOException e1) {
+                            RemoteConnectionHandler.log.trace(e1, "Failed to send server greeting message");
                             IoUtils.safeClose(connection);
                             connection.free(buffer);
                             return;

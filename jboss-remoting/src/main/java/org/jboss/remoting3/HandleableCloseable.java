@@ -43,6 +43,18 @@ public interface HandleableCloseable<T> extends Closeable {
     void close() throws IOException;
 
     /**
+     * Wait for a resource close to complete.
+     *
+     * @throws InterruptedException if the operation is interrupted
+     */
+    void awaitClosed() throws InterruptedException;
+
+    /**
+     * Wait for a resource close to complete.
+     */
+    void awaitClosedUninterruptibly();
+
+    /**
      * Add a handler that will be called upon close.  If the resource is already closed, the handler will be called
      * immediately.
      *
