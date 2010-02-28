@@ -155,7 +155,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     }
 
     public RequestHandlerConnector createConnector(final RequestHandler localHandler) {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     public void close() throws IOException {
