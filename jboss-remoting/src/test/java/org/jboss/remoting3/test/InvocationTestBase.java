@@ -86,6 +86,7 @@ public abstract class InvocationTestBase {
                     return new RequestListener<InvocationTestObject, InvocationTestObject>() {
                         public void handleRequest(final RequestContext<InvocationTestObject> objectRequestContext, final InvocationTestObject request) throws RemoteExecutionException {
                             try {
+                                log.info("Got request %s, sending reply %s", request, replyObj);
                                 objectRequestContext.sendReply(replyObj);
                             } catch (IOException e) {
                                 throw new RemoteExecutionException(e);
@@ -182,6 +183,7 @@ public abstract class InvocationTestBase {
                         public void handleRequest(final RequestContext<InvocationTestObject> objectRequestContext, final ClientConnector request) throws RemoteExecutionException {
                             try {
                                 assertEquals(replyObj, ((ClientConnector<InvocationTestObject, InvocationTestObject>)request).getFutureClient().get().invoke(requestObj));
+                                log.info("Got request %s, sending reply %s", request, replyObj);
                                 objectRequestContext.sendReply(replyObj);
                             } catch (Throwable e) {
                                 throw new RemoteExecutionException(e);
@@ -202,6 +204,7 @@ public abstract class InvocationTestBase {
                         client.invoke(connection.createClientConnector(new RequestListener<InvocationTestObject, InvocationTestObject>() {
                             public void handleRequest(final RequestContext<InvocationTestObject> requestContext, final InvocationTestObject request) throws RemoteExecutionException {
                                 try {
+                                    log.info("Got request %s, sending reply %s", request, replyObj);
                                     requestContext.sendReply(replyObj);
                                 } catch (IOException e) {
                                     throw new RemoteExecutionException(e);
