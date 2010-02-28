@@ -33,6 +33,11 @@ import org.jboss.xnio.channels.ConnectedStreamChannel;
  */
 public final class RemoteProtocol {
 
+    /**
+     * The highest-supported version of the remote protocol supported by this implementation.
+     */
+    public static final byte VERSION = 0;
+
     static final int MSG_FLAG_FIRST = 1;
     static final int MSG_FLAG_LAST = 2;
 
@@ -48,6 +53,19 @@ public final class RemoteProtocol {
     static final byte REPLY_EXCEPTION = 9;
     static final byte REPLY_ACK_CHUNK = 10;
     static final byte REPLY_EXCEPTION_ABORT = 11;
+
+    static final byte AUTH_REQUEST = 12;
+    static final byte AUTH_CHALLENGE = 13;
+    static final byte AUTH_RESPONSE = 14;
+    static final byte AUTH_COMPLETE = 15;
+    static final byte AUTH_REJECTED = 16;
+
+    static final byte ALIVE = 99;
+
+    // Greeting types
+
+    static final byte GREETING_VERSION = 0;   // sent by client & server
+    static final byte GREETING_SASL_MECH = 1; // sent by server
 
     /**
      * Create an instance of the connection provider for the "remote" protocol.

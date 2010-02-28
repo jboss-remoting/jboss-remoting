@@ -73,13 +73,13 @@ final class OutboundRequestBufferWriter implements NioByteOutput.BufferWriter {
                 }
             }
             RemoteConnectionHandler.log.trace("Sending buffer %s for %s", buffer, this);
-            remoteConnectionHandler.sendBlocking(buffer);
+            remoteConnectionHandler.getRemoteConnection().sendBlocking(buffer);
         } finally {
             remoteConnectionHandler.getBufferPool().free(buffer);
         }
     }
 
     public void flush() throws IOException {
-        outboundRequest.getRemoteConnectionHandler().flushBlocking();
+        outboundRequest.getRemoteConnectionHandler().getRemoteConnection().flushBlocking();
     }
 }

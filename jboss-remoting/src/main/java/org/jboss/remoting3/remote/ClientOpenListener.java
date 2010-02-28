@@ -24,32 +24,30 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import org.jboss.marshalling.MarshallerFactory;
-import org.jboss.marshalling.Marshalling;
-import org.jboss.marshalling.MarshallingConfiguration;
-import org.jboss.remoting3.spi.ConnectionHandler;
-import org.jboss.remoting3.spi.ConnectionHandlerContext;
+import java.nio.ByteBuffer;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.xnio.ChannelListener;
+import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Options;
 import org.jboss.xnio.Result;
-import org.jboss.xnio.channels.Channels;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
 
-final class RemoteOpenListener implements ChannelListener<ConnectedStreamChannel<InetSocketAddress>> {
+import javax.security.auth.callback.CallbackHandler;
 
-    private final boolean server;
+final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel<InetSocketAddress>> {
+
     private final OptionMap optionMap;
     private final ConnectionProviderContext connectionProviderContext;
     private final Result<ConnectionHandlerFactory> factoryResult;
+    private final CallbackHandler callbackHandler;
 
-    public RemoteOpenListener(final boolean server, final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult) {
-        this.server = server;
+    public ClientOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler) {
         this.optionMap = optionMap;
         this.connectionProviderContext = connectionProviderContext;
         this.factoryResult = factoryResult;
+        this.callbackHandler = callbackHandler;
     }
 
     public void handleEvent(final ConnectedStreamChannel<InetSocketAddress> channel) {
@@ -58,16 +56,28 @@ final class RemoteOpenListener implements ChannelListener<ConnectedStreamChannel
         } catch (IOException e) {
             // ignore
         }
-        // TODO: For now, just build a pre-set-up connection without a negotiation phase
-        factoryResult.setResult(new ConnectionHandlerFactory() {
-            public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                final MarshallerFactory marshallerFactory = Marshalling.getMarshallerFactory("river");
-                final MarshallingConfiguration marshallingConfiguration = new MarshallingConfiguration();
-                final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, channel, marshallerFactory, marshallingConfiguration);
-                Channels.createMessageReader(channel, optionMap).set(new RemoteMessageHandler(connectionHandler));
-                channel.resumeReads();
-                return connectionHandler;
-            }
-        });
+        final RemoteConnection connection = new RemoteConnection(connectionProviderContext.getExecutor(), channel, optionMap);
+
+        // Send client greeting packet...
+        final ByteBuffer buffer = connection.allocate();
+        try {
+            // length placeholder
+            buffer.putInt(0);
+            // version ID
+            GreetingUtils.writeByte(buffer, RemoteProtocol.GREETING_VERSION, RemoteProtocol.VERSION);
+            // that's it!
+            buffer.flip();
+            connection.sendBlocking(buffer);
+        } catch (IOException e1) {
+            // todo log it
+            factoryResult.setException(e1);
+            IoUtils.safeClose(connection);
+        } finally {
+            connection.free(buffer);
+        }
+
+        connection.setMessageHandler(new ClientGreetingHandler(connection, factoryResult, callbackHandler));
+        // start up the read cycle
+        channel.resumeReads();
     }
 }

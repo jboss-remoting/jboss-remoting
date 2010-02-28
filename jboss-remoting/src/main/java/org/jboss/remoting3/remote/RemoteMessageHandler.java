@@ -40,10 +40,12 @@ import org.jboss.xnio.Pool;
 
 final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandler {
 
-    private RemoteConnectionHandler remoteConnectionHandler;
+    private final RemoteConnection connection;
+    private final RemoteConnectionHandler remoteConnectionHandler;
 
-    public RemoteMessageHandler(final RemoteConnectionHandler remoteConnectionHandler) {
+    RemoteMessageHandler(final RemoteConnectionHandler remoteConnectionHandler, final RemoteConnection connection) {
         this.remoteConnectionHandler = remoteConnectionHandler;
+        this.connection = connection;
     }
 
     public void handleMessage(final ByteBuffer buffer) {
@@ -75,7 +77,7 @@ final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandl
                     outBuf.putInt(id);
                     outBuf.flip();
                     try {
-                        connectionHandler.sendBlocking(outBuf);
+                        connection.sendBlocking(outBuf);
                     } catch (IOException e) {
                         // the channel has suddenly failed
                         RemoteConnectionHandler.log.trace("Send failed: %s", e);
@@ -302,7 +304,7 @@ final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandl
                 return;
             }
             default: {
-                RemoteConnectionHandler.log.error("Received invalid packet type on %s, closing", connectionHandler.getChannel());
+                RemoteConnectionHandler.log.error("Received invalid packet type on %s, closing", connectionHandler);
                 IoUtils.safeClose(connectionHandler);
             }
         }

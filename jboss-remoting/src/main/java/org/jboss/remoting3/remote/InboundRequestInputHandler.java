@@ -45,8 +45,9 @@ final class InboundRequestInputHandler implements NioByteInput.InputHandler {
             buffer.put(RemoteProtocol.REQUEST_ACK_CHUNK);
             buffer.putInt(rid);
             buffer.flip();
-            connectionHandler.sendBlocking(buffer);
-            connectionHandler.flushBlocking();
+            final RemoteConnection connection = connectionHandler.getRemoteConnection();
+            connection.sendBlocking(buffer);
+            connection.flushBlocking();
         } catch (IOException e) {
             RemoteConnectionHandler.log.trace(e, "Failed to acknowledge chunk for %s", this);
         } finally {

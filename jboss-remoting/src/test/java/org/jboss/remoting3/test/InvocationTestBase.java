@@ -62,13 +62,15 @@ public abstract class InvocationTestBase {
         }
     }
 
-    private static void enter() {
-        log.info("Entering: %s", new Throwable().getStackTrace()[1].getMethodName());
+    static void enter() {
+        final StackTraceElement e = new Throwable().getStackTrace()[1];
+        log.info("Entering: %s#%s", e.getClassName(), e.getMethodName());
     }
 
-    private static void exit() {
-        log.info("Exiting: %s", new Throwable().getStackTrace()[1].getMethodName());
-        log.info("-----------------------------------------");
+    static void exit() {
+        final StackTraceElement e = new Throwable().getStackTrace()[1];
+        log.info("Exiting: %s#%s", e.getClassName(), e.getMethodName());
+        log.info("-------------------------------------------------------------");
     }
 
     protected abstract Connection getConnection() throws IOException;

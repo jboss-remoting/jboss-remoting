@@ -79,7 +79,7 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
             buf.putInt(rid);
             buf.flip();
             try {
-                connectionHandler.sendBlocking(buf);
+                connectionHandler.getRemoteConnection().sendBlocking(buf);
             } catch (IOException e1) {
                 // todo log it
             }
@@ -100,7 +100,7 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
             buf.put(RemoteProtocol.CLIENT_CLOSED);
             buf.putInt(outboundClient.getId());
             buf.flip();
-            connectionHandler.sendBlocking(buf);
+            connectionHandler.getRemoteConnection().sendBlocking(buf);
         } finally {
             bufferPool.free(buf);
         }

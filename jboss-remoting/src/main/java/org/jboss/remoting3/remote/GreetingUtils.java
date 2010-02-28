@@ -20,24 +20,34 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3;
+package org.jboss.remoting3.remote;
 
-import java.util.EventListener;
+import java.nio.ByteBuffer;
+import org.jboss.xnio.Buffers;
 
-/**
- * A handler which is notified of a resource close.
- *
- * @param <T> the type of resource
- *
- * @apiviz.exclude
- * @remoting.implement
- */
-public interface CloseHandler<T> extends EventListener {
+final class GreetingUtils {
 
-    /**
-     * Receive a notification that the resource was closed.
-     *
-     * @param closed the closed resource
-     */
-    void handleClose(T closed);
+    private GreetingUtils() {
+    }
+
+    static void writeString(ByteBuffer buffer, byte type, String data) {
+        buffer.put(type);
+        buffer.put((byte) 0); // length placeholder
+        int s = buffer.position();
+        Buffers.putModifiedUtf8(buffer, data);
+        final int len = buffer.position() - s;
+        if (len > 255) {
+            // truncate long name
+            buffer.position(s + 255);
+            buffer.put(s-1, (byte) 255);
+        } else {
+            buffer.put(s-1, (byte) len);
+        }
+    }
+
+    static void writeByte(ByteBuffer buffer, byte type, byte value) {
+        buffer.put(type);
+        buffer.put((byte) 1);
+        buffer.put(value);
+    }
 }

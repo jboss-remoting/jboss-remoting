@@ -22,15 +22,17 @@
 
 package org.jboss.remoting3.remote;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.NetworkServerProvider;
+import org.jboss.remoting3.spi.ProtocolServiceType;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.ChannelListener;
 import org.jboss.xnio.Connector;
@@ -68,7 +70,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
         // Open a client channel
         final IoFuture<? extends ConnectedStreamChannel<InetSocketAddress>> futureChannel;
         try {
-            futureChannel = connector.connectTo(new InetSocketAddress(InetAddress.getByName(host), port), new RemoteOpenListener(false, connectOptions, connectionProviderContext, result), null);
+            futureChannel = connector.connectTo(new InetSocketAddress(InetAddress.getByName(host), port), new ClientOpenListener(connectOptions, connectionProviderContext, result, callbackHandler), null);
         } catch (UnknownHostException e) {
             result.setException(e);
             return IoUtils.nullCancellable();
@@ -82,20 +84,12 @@ final class RemoteConnectionProvider implements ConnectionProvider {
 
     private class ProviderInterface implements NetworkServerProvider {
         public ChannelListener<ConnectedStreamChannel<InetSocketAddress>> getServerListener(final OptionMap optionMap) {
-            return new RemoteOpenListener(true, optionMap, connectionProviderContext, new Result<ConnectionHandlerFactory>() {
-                public boolean setResult(final ConnectionHandlerFactory result) {
-                    connectionProviderContext.accept(result);
-                    return true;
-                }
-
-                public boolean setException(final IOException exception) {
-                    return true;
-                }
-
-                public boolean setCancelled() {
-                    return true;
-                }
-            });
+            final String providerName = optionMap.get(RemotingOptions.AUTHENTICATION_PROVIDER);
+            final ServerAuthenticationProvider authenticationProvider = connectionProviderContext.getProtocolServiceProvider(ProtocolServiceType.SERVER_AUTHENTICATION_PROVIDER, providerName == null ? "default" : providerName);
+            if (authenticationProvider == null) {
+                throw new IllegalArgumentException("Missing authentication provider: " + (providerName == null ? "default" : providerName));
+            }
+            return new ServerOpenListener(optionMap, connectionProviderContext);
         }
     }
 }

@@ -20,24 +20,13 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3;
+package org.jboss.remoting3.security;
 
-import java.util.EventListener;
+import javax.security.auth.callback.CallbackHandler;
 
 /**
- * A handler which is notified of a resource close.
  *
- * @param <T> the type of resource
- *
- * @apiviz.exclude
- * @remoting.implement
  */
-public interface CloseHandler<T> extends EventListener {
-
-    /**
-     * Receive a notification that the resource was closed.
-     *
-     * @param closed the closed resource
-     */
-    void handleClose(T closed);
+public interface ServerAuthenticationProvider {
+    CallbackHandler getCallbackHandler();
 }

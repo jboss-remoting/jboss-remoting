@@ -29,6 +29,7 @@ import org.jboss.marshalling.ObjectResolver;
 import org.jboss.marshalling.ClassExternalizerFactory;
 import org.jboss.marshalling.ProviderDescriptor;
 import java.io.Serializable;
+import org.jboss.remoting3.security.ServerAuthenticationProvider;
 
 public final class ProtocolServiceType<T> implements Serializable {
 
@@ -77,6 +78,8 @@ public final class ProtocolServiceType<T> implements Serializable {
 
     public static final ProtocolServiceType<ClassExternalizerFactory> CLASS_EXTERNALIZER_FACTORY;
 
+    public static final ProtocolServiceType<ServerAuthenticationProvider> SERVER_AUTHENTICATION_PROVIDER;
+
     private static final ProtocolServiceType<?>[] SERVICE_TYPES;
 
     public static ProtocolServiceType<?>[] getServiceTypes() {
@@ -96,6 +99,7 @@ public final class ProtocolServiceType<T> implements Serializable {
                 CLASS_RESOLVER = new ProtocolServiceType<ClassResolver>(ClassResolver.class, "CLASS_RESOLVER", "Class resolver", index++),
                 OBJECT_RESOLVER = new ProtocolServiceType<ObjectResolver>(ObjectResolver.class, "OBJECT_RESOLVER", "Object resolver", index++),
                 CLASS_EXTERNALIZER_FACTORY = new ProtocolServiceType<ClassExternalizerFactory>(ClassExternalizerFactory.class, "CLASS_EXTERNALIZER_FACTORY", "Class externalizer factory", index++),
+                SERVER_AUTHENTICATION_PROVIDER = new ProtocolServiceType<ServerAuthenticationProvider>(ServerAuthenticationProvider.class, "SERVER_AUTHENTICATION_PROVIDER", "Server authentication provider", index++)
         };
     }
 

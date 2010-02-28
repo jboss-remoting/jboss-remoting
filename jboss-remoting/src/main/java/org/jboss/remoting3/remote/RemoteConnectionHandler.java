@@ -23,7 +23,6 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -42,7 +41,7 @@ import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Pool;
 import org.jboss.xnio.Result;
-import org.jboss.xnio.channels.StreamChannel;
+import org.jboss.xnio.channels.Channels;
 import org.jboss.xnio.log.Logger;
 
 final class RemoteConnectionHandler implements ConnectionHandler {
@@ -56,7 +55,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     private final MarshallingConfiguration marshallingConfiguration;
 
     private final ConnectionHandlerContext connectionContext;
-    private final StreamChannel channel;
+    private final RemoteConnection remoteConnection;
     private final Random random = new Random();
 
     private final IntKeyMap<OutboundClient> outboundClients = new IntKeyMap<OutboundClient>();
@@ -67,61 +66,11 @@ final class RemoteConnectionHandler implements ConnectionHandler {
 
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    public RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final StreamChannel channel, final MarshallerFactory marshallerFactory, final MarshallingConfiguration marshallingConfiguration) {
+    public RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final MarshallerFactory marshallerFactory, final MarshallingConfiguration marshallingConfiguration) {
         this.connectionContext = connectionContext;
-        this.channel = channel;
+        this.remoteConnection = remoteConnection;
         this.marshallerFactory = marshallerFactory;
         this.marshallingConfiguration = marshallingConfiguration;
-    }
-
-    void sendBlocking(final ByteBuffer buffer) throws IOException {
-        try {
-            sendBlockingNoClose(buffer);
-        } catch (IOException e) {
-            IoUtils.safeClose(this);
-            throw e;
-        } catch (RuntimeException e) {
-            IoUtils.safeClose(this);
-            throw e;
-        } catch (Error e) {
-            IoUtils.safeClose(this);
-            throw e;
-        }
-    }
-
-    void sendBlockingNoClose(final ByteBuffer buffer) throws IOException {
-        buffer.putInt(0, buffer.remaining() - 4);
-        boolean intr = false;
-        try {
-            while (buffer.hasRemaining()) {
-                if (channel.write(buffer) == 0) {
-                    try {
-                        channel.awaitWritable();
-                    } catch (InterruptedIOException e) {
-                        intr = Thread.interrupted();
-                    }
-                }
-            }
-        } finally {
-            if (intr) Thread.currentThread().interrupt();
-        }
-    }
-
-    void flushBlocking() throws IOException {
-        try {
-            while (! channel.flush()) {
-                channel.awaitWritable();
-            }
-        } catch (IOException e) {
-            IoUtils.safeClose(this);
-            throw e;
-        } catch (RuntimeException e) {
-            IoUtils.safeClose(this);
-            throw e;
-        } catch (Error e) {
-            IoUtils.safeClose(this);
-            throw e;
-        }
     }
 
     public Cancellable open(final String serviceType, final String groupName, final Result<RequestHandler> result) {
@@ -143,7 +92,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
             Buffers.putModifiedUtf8(buffer, groupName);
             buffer.put((byte) 0);
             buffer.flip();
-            sendBlocking(buffer);
+            remoteConnection.sendBlocking(buffer);
         } catch (IOException e) {
             result.setException(e);
         } catch (Throwable e) {
@@ -161,7 +110,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     public void close() throws IOException {
         if (! closed.getAndSet(true)) {
             try {
-                channel.close();
+                remoteConnection.close();
             } finally {
                 // other actions here
                 for (IntKeyMap.Entry<OutboundClient> entry : outboundClients) {
@@ -208,10 +157,6 @@ final class RemoteConnectionHandler implements ConnectionHandler {
         return connectionContext;
     }
 
-    StreamChannel getChannel() {
-        return channel;
-    }
-
     Random getRandom() {
         return random;
     }
@@ -234,5 +179,9 @@ final class RemoteConnectionHandler implements ConnectionHandler {
 
     AtomicBoolean getClosed() {
         return closed;
+    }
+
+    RemoteConnection getRemoteConnection() {
+        return remoteConnection;
     }
 }

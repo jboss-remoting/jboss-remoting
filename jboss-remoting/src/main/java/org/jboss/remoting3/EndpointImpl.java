@@ -591,7 +591,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return expectedType.cast(provider.getProviderInterface());
     }
 
-    private <T> Registration addMarshallingRegistration(final String name, final T target, final ConcurrentMap<String, T> map, final String descr) throws DuplicateRegistrationException {
+    public <T> Registration addProtocolService(final ProtocolServiceType<T> type, final String name, final T provider) throws DuplicateRegistrationException {
+        final ConcurrentMap<String, T> map = getMapFor(type);
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(ADD_MARSHALLING_PROTOCOL_PERM);
@@ -599,14 +600,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if ("default".equals(name)) {
             throw new IllegalArgumentException("'default' is not an allowed name");
         }
-        if (map.putIfAbsent(name, target) != null) {
-            throw new DuplicateRegistrationException(descr + " '" + name + "' is already registered");
+        if (map.putIfAbsent(name, provider) != null) {
+            throw new DuplicateRegistrationException(type.getDescription() + " '" + name + "' is already registered");
         }
-        return new MapRegistration<T>(map, name, target);
-    }
-
-    public <T> Registration addProtocolService(final ProtocolServiceType<T> type, final String name, final T provider) throws DuplicateRegistrationException {
-        return addMarshallingRegistration(name, provider, getMapFor(type), type.getDescription());
+        return new MapRegistration<T>(map, name, provider);
     }
 
     public String toString() {

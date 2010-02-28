@@ -24,33 +24,36 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.jboss.marshalling.NioByteInput;
+import org.jboss.xnio.channels.MessageHandler;
 
-final class InboundReplyInputHandler implements NioByteInput.InputHandler {
-    private final int rid;
-    private final OutboundRequest outboundRequest;
+import javax.security.sasl.SaslException;
 
-    InboundReplyInputHandler(final OutboundRequest outboundRequest, final int rid) {
-        this.outboundRequest = outboundRequest;
-        this.rid = rid;
+final class SaslUnwrappingMessageHandler implements MessageHandler, MessageHandler.Setter {
+    private final SaslContext saslContext;
+    private volatile MessageHandler delegate;
+
+    SaslUnwrappingMessageHandler(final SaslContext saslContext, final MessageHandler delegate) {
+        this.saslContext = saslContext;
+        this.delegate = delegate;
     }
 
-    public void acknowledge() throws IOException {
-        final RemoteConnectionHandler connectionHandler = outboundRequest.getRemoteConnectionHandler();
-        final ByteBuffer buffer = connectionHandler.getBufferPool().allocate();
+    public void handleMessage(final ByteBuffer buffer) {
         try {
-            buffer.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
-            buffer.put(RemoteProtocol.REQUEST_ACK_CHUNK);
-            buffer.putInt(rid);
-            buffer.flip();
-            final RemoteConnection connection = connectionHandler.getRemoteConnection();
-            connection.sendBlocking(buffer);
-            connection.flushBlocking();
-        } finally {
-            connectionHandler.getBufferPool().free(buffer);
+            delegate.handleMessage(saslContext.unwrap(buffer));
+        } catch (SaslException e) {
+            delegate.handleException(e);
         }
     }
 
-    public void close() throws IOException {
+    public void handleEof() {
+        delegate.handleEof();
+    }
+
+    public void handleException(final IOException e) {
+        delegate.handleException(e);
+    }
+
+    public void set(final MessageHandler messageHandler) {
+        delegate = messageHandler;
     }
 }
