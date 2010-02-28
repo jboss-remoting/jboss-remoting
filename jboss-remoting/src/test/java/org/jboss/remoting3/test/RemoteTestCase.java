@@ -37,6 +37,7 @@ import org.jboss.xnio.ChannelListener;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
+import org.jboss.xnio.Options;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.channels.BoundChannel;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
@@ -49,6 +50,7 @@ import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.PasswordCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
 import javax.security.sasl.AuthenticationException;
+import javax.security.sasl.AuthorizeCallback;
 import javax.security.sasl.RealmCallback;
 
 @Test(suiteName = "Remote tests")
@@ -66,7 +68,11 @@ public final class RemoteTestCase extends InvocationTestBase {
                             for (Callback callback : callbacks) {
                                 if (callback instanceof NameCallback) {
                                     final NameCallback nameCallback = (NameCallback) callback;
-                                    if (! nameCallback.getName().equals("user")) {
+                                    final String defaultName = nameCallback.getDefaultName();
+                                    if (defaultName != null) {
+                                        nameCallback.setName(defaultName);
+                                    }
+                                    if (!"user".equals(nameCallback.getName())) {
                                         throw new AuthenticationException("Invalid user name");
                                     }
                                 } else if (callback instanceof PasswordCallback) {
@@ -74,8 +80,11 @@ public final class RemoteTestCase extends InvocationTestBase {
                                     passwordCallback.setPassword("password".toCharArray());
                                 } else if (callback instanceof RealmCallback) {
                                     // allow
+                                } else if (callback instanceof AuthorizeCallback) {
+                                    final AuthorizeCallback authorizeCallback = (AuthorizeCallback) callback;
+                                    authorizeCallback.setAuthorized(authorizeCallback.getAuthenticationID().equals(authorizeCallback.getAuthorizationID()));
                                 } else {
-                                    throw new UnsupportedCallbackException(callback);
+                                    throw new UnsupportedCallbackException(callback, "Callback not supported: " + callback);
                                 }
                             }
                         }
@@ -89,14 +98,14 @@ public final class RemoteTestCase extends InvocationTestBase {
 
     protected Connection getConnection() throws IOException {
         final NetworkServerProvider provider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
-        final ChannelListener<ConnectedStreamChannel<InetSocketAddress>> listener = provider.getServerListener(OptionMap.builder().set(RemotingOptions.AUTHENTICATION_PROVIDER, "test").getMap());
+        final ChannelListener<ConnectedStreamChannel<InetSocketAddress>> listener = provider.getServerListener(OptionMap.builder().set(RemotingOptions.AUTHENTICATION_PROVIDER, "test").setSequence(Options.SASL_MECHANISMS, "DIGEST-MD5").getMap());
         final Xnio xnio = Xnio.getInstance();
         try {
-            final AcceptingServer<InetSocketAddress, ?, ?> server = xnio.createSslTcpServer(listener, OptionMap.EMPTY);
-//            final AcceptingServer<InetSocketAddress, ?, ?> server = xnio.createTcpServer(listener, OptionMap.EMPTY);
+//            final AcceptingServer<InetSocketAddress, ?, ?> server = xnio.createSslTcpServer(listener, OptionMap.EMPTY);
+            final AcceptingServer<InetSocketAddress, ?, ?> server = xnio.createTcpServer(listener, OptionMap.EMPTY);
             final IoFuture<? extends BoundChannel<InetSocketAddress>> future = server.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0));
             final InetSocketAddress localAddress = future.get().getLocalAddress();
-            final Connection connection = endpoint.connect(new URI("remote", null, localAddress.getAddress().getHostAddress(), localAddress.getPort(), null, null, null), OptionMap.EMPTY, "user", "realm", "password".toCharArray()).get();
+            final Connection connection = endpoint.connect(new URI("remote", null, localAddress.getAddress().getHostAddress(), localAddress.getPort(), null, null, null), OptionMap.EMPTY, "user", null, "password".toCharArray()).get();
             connection.addCloseHandler(new CloseHandler<Connection>() {
                 public void handleClose(final Connection closed) {
                     IoUtils.safeClose(server);

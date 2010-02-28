@@ -81,7 +81,7 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
             try {
                 connectionHandler.getRemoteConnection().sendBlocking(buf);
             } catch (IOException e1) {
-                // todo log it
+                RemoteConnectionHandler.log.trace("Send failed: %s", e1);
             }
         }
         return outboundRequest;

@@ -534,10 +534,19 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
-        return connect(destination, connectOptions, new SimpleClientCallbackHandler(connectOptions.get(RemotingOptions.AUTH_USER_NAME), connectOptions.get(RemotingOptions.AUTH_REALM), null));
+        final String uriUserInfo = destination.getUserInfo();
+        final OptionMap finalMap;
+        if (uriUserInfo != null) {
+            final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
+            builder.set(RemotingOptions.AUTH_USER_NAME, uriUserInfo);
+            finalMap = builder.getMap();
+        } else {
+            finalMap = connectOptions;
+        }
+        return doConnect(destination, connectOptions, new SimpleClientCallbackHandler(finalMap.get(RemotingOptions.AUTH_USER_NAME), finalMap.get(RemotingOptions.AUTH_REALM), null));
     }
 
-    public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
+    private IoFuture<? extends Connection> doConnect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CONNECT_PERM);
@@ -556,10 +565,28 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return futureResult.getIoFuture();
     }
 
+    public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
+        final String uriUserInfo = destination.getUserInfo();
+        final OptionMap finalMap;
+        if (uriUserInfo != null) {
+            final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
+            builder.set(RemotingOptions.AUTH_USER_NAME, uriUserInfo);
+            finalMap = builder.getMap();
+        } else {
+            finalMap = connectOptions;
+        }
+        return doConnect(destination, finalMap, callbackHandler);
+    }
+
     public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final String userName, final String realmName, final char[] password) throws IOException {
-        final String actualUserName = userName != null ? userName : connectOptions.get(RemotingOptions.AUTH_USER_NAME);
+        final String uriUserInfo = destination.getUserInfo();
+        final String actualUserName = userName != null ? userName : uriUserInfo != null ? uriUserInfo : connectOptions.get(RemotingOptions.AUTH_USER_NAME);
         final String actualUserRealm = realmName != null ? realmName : connectOptions.get(RemotingOptions.AUTH_REALM);
-        return connect(destination, connectOptions, new SimpleClientCallbackHandler(actualUserName, actualUserRealm, password));
+        final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
+        if (actualUserName != null) builder.set(RemotingOptions.AUTH_USER_NAME, actualUserName);
+        if (actualUserRealm != null) builder.set(RemotingOptions.AUTH_REALM, actualUserRealm);
+        final OptionMap finalMap = builder.getMap();
+        return doConnect(destination, finalMap, new SimpleClientCallbackHandler(actualUserName, actualUserRealm, password));
     }
 
     public ConnectionProviderRegistration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory) {
@@ -694,6 +721,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public <T> T getProtocolServiceProvider(final ProtocolServiceType<T> serviceType, final String name) {
             return getMapFor(serviceType).get(name);
+        }
+
+        public String getEndpointName() {
+            return getName();
         }
     }
 

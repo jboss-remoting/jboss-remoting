@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3.remote;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.jboss.marshalling.MarshallerFactory;
@@ -35,18 +34,18 @@ import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Result;
-import org.jboss.xnio.channels.MessageHandler;
 
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
 
-final class ClientAuthenticationHandler implements MessageHandler {
+final class ClientAuthenticationHandler extends AbstractClientMessageHandler {
 
     private final RemoteConnection remoteConnection;
     private final SaslClient saslClient;
     private final Result<ConnectionHandlerFactory> factoryResult;
 
-    public ClientAuthenticationHandler(final RemoteConnection remoteConnection, final SaslClient saslClient, final Result<ConnectionHandlerFactory> factoryResult) {
+    ClientAuthenticationHandler(final RemoteConnection remoteConnection, final SaslClient saslClient, final Result<ConnectionHandlerFactory> factoryResult) {
+        super(remoteConnection, factoryResult);
         this.remoteConnection = remoteConnection;
         this.saslClient = saslClient;
         this.factoryResult = factoryResult;
@@ -55,54 +54,92 @@ final class ClientAuthenticationHandler implements MessageHandler {
     public void handleMessage(final ByteBuffer buffer) {
         final byte msgType = buffer.get();
         switch (msgType) {
-            case RemoteProtocol.AUTH_CHALLENGE:
-            case RemoteProtocol.AUTH_COMPLETE: {
-                final byte[] response;
-                try {
-                    response = saslClient.evaluateChallenge(Buffers.take(buffer, buffer.remaining()));
-                } catch (SaslException e) {
-                    // todo log it
-                    factoryResult.setException(e);
+            case RemoteProtocol.AUTH_CHALLENGE: {
+                RemoteConnectionHandler.log.trace("Received challenge message");
+                final boolean clientComplete = saslClient.isComplete();
+                if (clientComplete) {
+                    RemoteConnectionHandler.log.trace("Received extra auth challenge message on %s after completion", remoteConnection);
+                    factoryResult.setException(new SaslException("Received extra auth message after completion"));
                     IoUtils.safeClose(remoteConnection);
                     return;
                 }
-                if (msgType == RemoteProtocol.AUTH_COMPLETE) {
-                    if ((response != null || response.length > 0)) {
-                        // todo log extraneous message
+                final byte[] response;
+                final byte[] challenge = Buffers.take(buffer, buffer.remaining());
+                try {
+                    response = saslClient.evaluateChallenge(challenge);
+                    if (msgType == RemoteProtocol.AUTH_COMPLETE && response != null && response.length > 0) {
+                        RemoteConnectionHandler.log.trace("Received extra auth message on %s", remoteConnection);
+                        factoryResult.setException(new SaslException("Received extra auth message after completion"));
                         IoUtils.safeClose(remoteConnection);
                         return;
                     }
-                    // auth complete.
-                    factoryResult.setResult(new ConnectionHandlerFactory() {
-                        public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                            // this happens immediately.
-                            final MarshallerFactory marshallerFactory = Marshalling.getMarshallerFactory("river");
-                            final MarshallingConfiguration marshallingConfiguration = new MarshallingConfiguration();
-                            final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, remoteConnection, marshallerFactory, marshallingConfiguration);
-                            remoteConnection.addCloseHandler(new CloseHandler<Object>() {
-                                public void handleClose(final Object closed) {
-                                    IoUtils.safeClose(connectionHandler);
-                                }
-                            });
-                            remoteConnection.setMessageHandler(new RemoteMessageHandler(connectionHandler, remoteConnection));
-                            return connectionHandler;
-                        }
-                    });
+                } catch (SaslException e) {
+                    RemoteConnectionHandler.log.trace(e, "Authentication error");
+                    factoryResult.setException(e);
+                    try {
+                        remoteConnection.shutdownWritesBlocking();
+                    } catch (IOException e1) {
+                        RemoteConnectionHandler.log.trace(e, "Unable to shut down writes");
+                    }
                     return;
                 }
-                break;
+                try {
+                    RemoteConnectionHandler.log.trace("Sending SASL response");
+                    remoteConnection.sendAuthMessage(RemoteProtocol.AUTH_RESPONSE, response);
+                } catch (IOException e) {
+                    factoryResult.setException(e);
+                    RemoteConnectionHandler.log.trace("Failed to send auth response message on %s", remoteConnection);
+                    IoUtils.safeClose(remoteConnection);
+                    return;
+                }
+                return;
+            }
+            case RemoteProtocol.AUTH_COMPLETE: {
+                RemoteConnectionHandler.log.trace("Received auth complete message");
+                final boolean clientComplete = saslClient.isComplete();
+                final byte[] challenge = Buffers.take(buffer, buffer.remaining());
+                if (! clientComplete) try {
+                    final byte[] response = saslClient.evaluateChallenge(challenge);
+                    if (response != null && response.length > 0) {
+                        RemoteConnectionHandler.log.trace("Received extra auth message on %s", remoteConnection);
+                        factoryResult.setException(new SaslException("Received extra auth message after completion"));
+                        IoUtils.safeClose(remoteConnection);
+                        return;
+                    }
+                    if (! saslClient.isComplete()) {
+                        RemoteConnectionHandler.log.trace("Client not complete after processing auth complete message on %s", remoteConnection);
+                        factoryResult.setException(new SaslException("Client not complete after processing auth complete message"));
+                        IoUtils.safeClose(remoteConnection);
+                        return;
+                    }
+                } catch (SaslException e) {
+                    RemoteConnectionHandler.log.trace(e, "Authentication error");
+                    factoryResult.setException(e);
+                    try {
+                        remoteConnection.shutdownWritesBlocking();
+                    } catch (IOException e1) {
+                        RemoteConnectionHandler.log.trace(e, "Unable to shut down writes");
+                    }
+                    return;
+                }
+                // auth complete.
+                factoryResult.setResult(new ConnectionHandlerFactory() {
+                    public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
+                        // this happens immediately.
+                        final MarshallerFactory marshallerFactory = Marshalling.getMarshallerFactory("river");
+                        final MarshallingConfiguration marshallingConfiguration = new MarshallingConfiguration();
+                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, remoteConnection, marshallerFactory, marshallingConfiguration);
+                        remoteConnection.addCloseHandler(new CloseHandler<Object>() {
+                            public void handleClose(final Object closed) {
+                                IoUtils.safeClose(connectionHandler);
+                            }
+                        });
+                        remoteConnection.setMessageHandler(new RemoteMessageHandler(connectionHandler, remoteConnection));
+                        return connectionHandler;
+                    }
+                });
+                return;
             }
         }
-    }
-
-    public void handleEof() {
-        factoryResult.setException(new EOFException("End of file on input"));
-        IoUtils.safeClose(remoteConnection);
-    }
-
-    public void handleException(final IOException e) {
-        // todo log it
-        factoryResult.setException(e);
-        IoUtils.safeClose(remoteConnection);
     }
 }

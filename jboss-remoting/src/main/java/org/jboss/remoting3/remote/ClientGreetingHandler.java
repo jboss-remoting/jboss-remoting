@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3.remote;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -31,23 +30,21 @@ import java.util.Map;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.xnio.Buffers;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.Option;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Result;
-import org.jboss.xnio.channels.MessageHandler;
 
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
 
-final class ClientGreetingHandler implements MessageHandler {
+final class ClientGreetingHandler extends AbstractClientMessageHandler {
     private final RemoteConnection connection;
     private final Result<ConnectionHandlerFactory> factoryResult;
     private final CallbackHandler callbackHandler;
 
-    public ClientGreetingHandler(final RemoteConnection connection, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler) {
+    ClientGreetingHandler(final RemoteConnection connection, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler) {
+        super(connection, factoryResult);
         this.connection = connection;
         this.factoryResult = factoryResult;
         this.callbackHandler = callbackHandler;
@@ -55,6 +52,7 @@ final class ClientGreetingHandler implements MessageHandler {
 
     public void handleMessage(final ByteBuffer buffer) {
         List<String> saslMechs = new ArrayList<String>();
+        String remoteEndpointName = "endpoint";
         switch (buffer.get()) {
             case RemoteProtocol.GREETING: {
                 while (buffer.hasRemaining()) {
@@ -71,6 +69,10 @@ final class ClientGreetingHandler implements MessageHandler {
                             saslMechs.add(Buffers.getModifiedUtf8(Buffers.slice(buffer, len)));
                             break;
                         }
+                        case RemoteProtocol.GREETING_ENDPOINT_NAME: {
+                            remoteEndpointName = Buffers.getModifiedUtf8(Buffers.slice(buffer, len));
+                            break;
+                        }
                         default: {
                             // unknown, skip it for forward compatibility.
                             Buffers.skip(buffer, len);
@@ -81,37 +83,49 @@ final class ClientGreetingHandler implements MessageHandler {
                 // OK now send our authentication request
                 final OptionMap optionMap = connection.getOptionMap();
                 final String userName = optionMap.get(RemotingOptions.AUTH_USER_NAME);
-                final String hostName = connection.getChannel().getPeerAddress().getHostName();
                 final Map<String, ?> propertyMap = SaslUtils.createPropertyMap(optionMap);
                 final SaslClient saslClient;
                 try {
-                    saslClient = Sasl.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName == null ? "anonymous" : userName, "remote", hostName, propertyMap, callbackHandler);
+                    saslClient = Sasl.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", remoteEndpointName, propertyMap, callbackHandler);
                 } catch (SaslException e) {
                     factoryResult.setException(e);
-                    // todo log exception @ error
-                    // todo send "goodbye" & close
-                    IoUtils.safeClose(connection);
+                    RemoteConnectionHandler.log.trace(e, "Client connect authentication error");
+                    try {
+                        remoteConnection.shutdownWritesBlocking();
+                    } catch (IOException e1) {
+                        RemoteConnectionHandler.log.trace(e1, "Failed to shutdown writes on %s", remoteConnection);
+                    }
                     return;
+                }
+                final String mechanismName = saslClient.getMechanismName();
+                RemoteConnectionHandler.log.trace("Sasl mechanism selected: %s", mechanismName);
+                final ByteBuffer outBuf = connection.allocate();
+                try {
+                    outBuf.putInt(0);
+                    outBuf.put(RemoteProtocol.AUTH_REQUEST);
+                    Buffers.putModifiedUtf8(outBuf, mechanismName);
+                    outBuf.flip();
+                    connection.sendBlocking(outBuf);
+                    connection.flushBlocking();
+                } catch (IOException e) {
+                    RemoteConnectionHandler.log.trace(e, "Failed to send auth request on %s", remoteConnection);
+                    factoryResult.setException(e);
+                    return;
+                } finally {
+                    connection.free(outBuf);
                 }
                 connection.setMessageHandler(new ClientAuthenticationHandler(connection, saslClient, factoryResult));
                 return;
             }
             default: {
-                // todo log invalid greeting
-                IoUtils.safeClose(connection);
+                RemoteConnectionHandler.log.warn("Received invalid greeting packet on %s", remoteConnection);
+                try {
+                    remoteConnection.shutdownWritesBlocking();
+                } catch (IOException e1) {
+                    RemoteConnectionHandler.log.trace(e1, "Failed to shutdown writes on %s", remoteConnection);
+                }
                 return;
             }
         }
-    }
-
-    public void handleEof() {
-        factoryResult.setException(new EOFException("End of file on input"));
-        IoUtils.safeClose(connection);
-    }
-
-    public void handleException(final IOException e) {
-        // todo log it
-        factoryResult.setException(e);
-        IoUtils.safeClose(connection);
     }
 }

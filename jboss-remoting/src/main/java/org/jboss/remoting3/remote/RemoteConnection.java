@@ -34,17 +34,16 @@ import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Pool;
 import org.jboss.xnio.channels.Channels;
-import org.jboss.xnio.channels.ConnectedChannel;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
 import org.jboss.xnio.channels.MessageHandler;
-
-import javax.security.auth.callback.CallbackHandler;
 
 final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnection> implements Closeable {
     private final ConnectedStreamChannel<InetSocketAddress> channel;
     private final Pool<ByteBuffer> bufferPool = Buffers.createHeapByteBufferAllocator(4096);
     private final MessageHandler.Setter messageHandlerSetter;
     private final OptionMap optionMap;
+    private boolean readDone;
+    private final Object writeLock = new Object();
 
     RemoteConnection(final Executor executor, final ConnectedStreamChannel<InetSocketAddress> channel, final OptionMap optionMap) {
         super(executor);
@@ -53,7 +52,28 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
         this.optionMap = optionMap;
     }
 
-    public void close() throws IOException {
+    protected void closeAction() throws IOException {
+        synchronized (writeLock) {
+            try {
+                shutdownWritesBlocking();
+            } catch (IOException e) {
+                readDone = true;
+                writeLock.notifyAll();
+                IoUtils.safeClose(channel);
+                return;
+            }
+            while (! readDone) {
+                try {
+                    writeLock.wait();
+                } catch (InterruptedException e) {
+                    readDone = true;
+                    writeLock.notifyAll();
+                    IoUtils.safeClose(channel);
+                    Thread.currentThread().interrupt();
+                    throw new InterruptedIOException();
+                }
+            }
+        }
         channel.close();
     }
 
@@ -61,7 +81,7 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
         return optionMap;
     }
 
-    ConnectedChannel<InetSocketAddress> getChannel() {
+    ConnectedStreamChannel<InetSocketAddress> getChannel() {
         return channel;
     }
 
@@ -93,54 +113,60 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
     }
 
     void sendBlockingNoClose(final ByteBuffer buffer) throws IOException {
-        buffer.putInt(0, buffer.remaining() - 4);
-        boolean intr = false;
-        try {
-            while (buffer.hasRemaining()) {
-                if (channel.write(buffer) == 0) {
-                    try {
-                        channel.awaitWritable();
-                    } catch (InterruptedIOException e) {
-                        intr = Thread.interrupted();
+        synchronized (writeLock) {
+            buffer.putInt(0, buffer.remaining() - 4);
+            boolean intr = false;
+            try {
+                while (buffer.hasRemaining()) {
+                    if (channel.write(buffer) == 0) {
+                        try {
+                            channel.awaitWritable();
+                        } catch (InterruptedIOException e) {
+                            intr = Thread.interrupted();
+                        }
                     }
                 }
+            } finally {
+                if (intr) Thread.currentThread().interrupt();
             }
-        } finally {
-            if (intr) Thread.currentThread().interrupt();
         }
     }
 
     void flushBlocking() throws IOException {
-        try {
-            while (! channel.flush()) {
-                channel.awaitWritable();
+        synchronized (writeLock) {
+            try {
+                while (! channel.flush()) {
+                    channel.awaitWritable();
+                }
+            } catch (IOException e) {
+                IoUtils.safeClose(this);
+                throw e;
+            } catch (RuntimeException e) {
+                IoUtils.safeClose(this);
+                throw e;
+            } catch (Error e) {
+                IoUtils.safeClose(this);
+                throw e;
             }
-        } catch (IOException e) {
-            IoUtils.safeClose(this);
-            throw e;
-        } catch (RuntimeException e) {
-            IoUtils.safeClose(this);
-            throw e;
-        } catch (Error e) {
-            IoUtils.safeClose(this);
-            throw e;
         }
     }
 
     void shutdownWritesBlocking() throws IOException {
-        try {
-            while (! channel.shutdownWrites()) {
-                channel.awaitWritable();
+        synchronized (writeLock) {
+            try {
+                while (! channel.shutdownWrites()) {
+                    channel.awaitWritable();
+                }
+            } catch (IOException e) {
+                IoUtils.safeClose(channel);
+                throw e;
+            } catch (RuntimeException e) {
+                IoUtils.safeClose(channel);
+                throw e;
+            } catch (Error e) {
+                IoUtils.safeClose(channel);
+                throw e;
             }
-        } catch (IOException e) {
-            IoUtils.safeClose(this);
-            throw e;
-        } catch (RuntimeException e) {
-            IoUtils.safeClose(this);
-            throw e;
-        } catch (Error e) {
-            IoUtils.safeClose(this);
-            throw e;
         }
     }
 
@@ -175,4 +201,13 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
     void shutdownReads() throws IOException {
         channel.shutdownReads();
     }
+
+    void readDone() {
+        synchronized (writeLock) {
+            readDone = true;
+            writeLock.notifyAll();
+        }
+    }
+
+
 }

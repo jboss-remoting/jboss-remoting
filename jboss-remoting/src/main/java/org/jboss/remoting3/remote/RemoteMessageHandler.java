@@ -38,12 +38,13 @@ import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Pool;
 
-final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandler {
+final class RemoteMessageHandler extends AbstractMessageHandler implements org.jboss.xnio.channels.MessageHandler {
 
     private final RemoteConnection connection;
     private final RemoteConnectionHandler remoteConnectionHandler;
 
     RemoteMessageHandler(final RemoteConnectionHandler remoteConnectionHandler, final RemoteConnection connection) {
+        super(connection);
         this.remoteConnectionHandler = remoteConnectionHandler;
         this.connection = connection;
     }
@@ -308,13 +309,5 @@ final class RemoteMessageHandler implements org.jboss.xnio.channels.MessageHandl
                 IoUtils.safeClose(connectionHandler);
             }
         }
-    }
-
-    public void handleEof() {
-        IoUtils.safeClose(remoteConnectionHandler);
-    }
-
-    public void handleException(final IOException e) {
-        IoUtils.safeClose(remoteConnectionHandler);
     }
 }

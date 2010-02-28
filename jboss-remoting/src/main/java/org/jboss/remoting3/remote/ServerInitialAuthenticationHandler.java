@@ -26,26 +26,27 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
+import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.channels.MessageHandler;
 
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslServer;
 
-final class ServerInitialAuthenticationHandler implements MessageHandler {
+final class ServerInitialAuthenticationHandler extends AbstractMessageHandler {
     private final RemoteConnection remoteConnection;
     private final Map<String, ?> saslPropertyMap;
-    private final Set<String> allowedMechsMap;
+    private final Set<String> allowedMechs;
     private final ServerAuthenticationProvider authenticationProvider;
     private final ConnectionProviderContext connectionProviderContext;
 
-    ServerInitialAuthenticationHandler(final RemoteConnection remoteConnection, final Map<String, ?> saslPropertyMap, final Set<String> allowedMechsMap, final ServerAuthenticationProvider authenticationProvider, final ConnectionProviderContext connectionProviderContext) {
+    ServerInitialAuthenticationHandler(final RemoteConnection remoteConnection, final Map<String, ?> saslPropertyMap, final Set<String> allowedMechs, final ServerAuthenticationProvider authenticationProvider, final ConnectionProviderContext connectionProviderContext) {
+        super(remoteConnection);
         this.remoteConnection = remoteConnection;
         this.saslPropertyMap = saslPropertyMap;
-        this.allowedMechsMap = allowedMechsMap;
+        this.allowedMechs = allowedMechs;
         this.authenticationProvider = authenticationProvider;
         this.connectionProviderContext = connectionProviderContext;
     }
@@ -56,37 +57,29 @@ final class ServerInitialAuthenticationHandler implements MessageHandler {
                 try {
                     // mech name
                     final String name = Buffers.getModifiedUtf8(buffer);
-                    if (allowedMechsMap.contains(name)) {
-                        final SaslServer server = Sasl.createSaslServer(name, "remote", remoteConnection.getChannel().getLocalAddress().getHostName(), saslPropertyMap, authenticationProvider.getCallbackHandler());
+                    if (allowedMechs.contains(name)) {
+                        RemoteConnectionHandler.log.trace("Selected SASL mechanism %s", name);
+                        final String realm = connectionProviderContext.getEndpointName();
+                        final SaslServer server = Sasl.createSaslServer(name, "remote", realm, saslPropertyMap, authenticationProvider.getCallbackHandler());
                         remoteConnection.setMessageHandler(new ServerAuthenticationHandler(remoteConnection, server, connectionProviderContext));
-                        remoteConnection.sendAuthMessage(RemoteProtocol.AUTH_CHALLENGE, SaslUtils.EMPTY);
+                        RemoteConnectionHandler.log.trace("Sending initial challenge");
+                        remoteConnection.sendAuthMessage(RemoteProtocol.AUTH_CHALLENGE, server.evaluateResponse(SaslUtils.EMPTY));
                         return;
                     } else {
+                        RemoteConnectionHandler.log.trace("Rejected invalid SASL mechanism %s", name);
                         remoteConnection.sendAuthReject("Invalid mechanism name");
                         return;
                     }
                 } catch (IOException e) {
                     IoUtils.safeClose(remoteConnection);
-                    // todo log it
+                    RemoteConnectionHandler.log.trace("Failed to send auth message: %s", e);
                     return;
                 }
             }
             default: {
-                // todo log invalid msg
+                RemoteConnectionHandler.log.warn("Server received invalid auth request message");
                 IoUtils.safeClose(remoteConnection);
             }
         }
-    }
-
-    public void handleEof() {
-        try {
-            remoteConnection.shutdownReads();
-        } catch (IOException e) {
-            // todo log it
-        }
-    }
-
-    public void handleException(final IOException e) {
-        // todo log it
     }
 }

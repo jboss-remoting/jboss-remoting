@@ -71,12 +71,28 @@ public class SimpleClientCallbackHandler implements CallbackHandler {
      */
     public void handle(final Callback[] callbacks) throws UnsupportedCallbackException {
         MAIN: for (Callback callback : callbacks) {
-            if (callback instanceof NameCallback && actualUserName != null) {
+            if (callback instanceof NameCallback) {
                 final NameCallback nameCallback = (NameCallback) callback;
-                nameCallback.setName(actualUserName);
-            } else if (callback instanceof RealmCallback && actualUserRealm != null) {
+                final String defaultName = nameCallback.getDefaultName();
+                log.trace("User name requested; prompt '%s', default is '%s', ours is '%s'", nameCallback.getPrompt(), defaultName, actualUserName);
+                if (actualUserName == null) {
+                    if (defaultName != null) {
+                        nameCallback.setName(defaultName);
+                    }
+                } else {
+                    nameCallback.setName(actualUserName);
+                }
+            } else if (callback instanceof RealmCallback) {
                 final RealmCallback realmCallback = (RealmCallback) callback;
-                realmCallback.setText(actualUserRealm);
+                final String defaultRealm = realmCallback.getDefaultText();
+                log.trace("Realm requested; prompt '%s', default is '%s', ours is '%s'", realmCallback.getPrompt(), defaultRealm, actualUserRealm);
+                if (actualUserRealm == null) {
+                    if (defaultRealm != null) {
+                        realmCallback.setText(defaultRealm);
+                    }
+                } else {
+                    realmCallback.setText(actualUserRealm);
+                }
             } else if (callback instanceof RealmChoiceCallback && actualUserRealm != null) {
                 final RealmChoiceCallback realmChoiceCallback = (RealmChoiceCallback) callback;
                 final String[] choices = realmChoiceCallback.getChoices();

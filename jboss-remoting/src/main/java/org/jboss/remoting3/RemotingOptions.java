@@ -143,9 +143,4 @@ public final class RemotingOptions {
      * Specify the name of a preregistered server authentication provider to use.
      */
     public static final Option<String> AUTHENTICATION_PROVIDER = Option.simple(RemotingOptions.class, "AUTHENTICATION_PROVIDER", String.class);
-
-    /**
-     * Specify a set of SASL server mechanisms to allow.  If not specified, no mechanisms will be excluded.
-     */
-    public static final Option<Sequence<String>> SASL_SERVER_MECHANISMS = Option.sequence(RemotingOptions.class, "SASL_SERVER_MECHANISMS", String.class);
 }

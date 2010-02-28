@@ -68,15 +68,20 @@ final class SaslUtils {
     }
 
     private static void addQopList(OptionMap optionMap, Option<Sequence<SaslQop>> option, Map<String, Object> map, String propName) {
-        final Sequence<SaslQop> seq = optionMap.get(option);
+        final Sequence<SaslQop> value = optionMap.get(option);
+        if (value == null) return;
+        final Sequence<SaslQop> seq = value;
         final StringBuilder builder = new StringBuilder();
         final Iterator<SaslQop> iterator = seq.iterator();
-        while (iterator.hasNext()) {
+        if (!iterator.hasNext()) {
+            return;
+        } else do {
             builder.append(iterator.next());
             if (iterator.hasNext()) {
                 builder.append(',');
             }
-        }
+        } while (iterator.hasNext());
+        map.put(propName, builder.toString());
     }
 
     private static final Set<String> SECURE_QOP;

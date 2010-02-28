@@ -43,7 +43,7 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
     private final Result<ConnectionHandlerFactory> factoryResult;
     private final CallbackHandler callbackHandler;
 
-    public ClientOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler) {
+    ClientOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler) {
         this.optionMap = optionMap;
         this.connectionProviderContext = connectionProviderContext;
         this.factoryResult = factoryResult;
@@ -60,24 +60,39 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
 
         // Send client greeting packet...
         final ByteBuffer buffer = connection.allocate();
-        try {
-            // length placeholder
-            buffer.putInt(0);
-            // version ID
-            GreetingUtils.writeByte(buffer, RemoteProtocol.GREETING_VERSION, RemoteProtocol.VERSION);
-            // that's it!
-            buffer.flip();
-            connection.sendBlocking(buffer);
-        } catch (IOException e1) {
-            // todo log it
-            factoryResult.setException(e1);
-            IoUtils.safeClose(connection);
-        } finally {
-            connection.free(buffer);
-        }
+        // length placeholder
+        buffer.putInt(0);
+        // version ID
+        GreetingUtils.writeByte(buffer, RemoteProtocol.GREETING_VERSION, RemoteProtocol.VERSION);
+        // that's it!
+        buffer.flip();
+        buffer.putInt(0, buffer.remaining() - 4);
+        channel.getWriteSetter().set(new ChannelListener<ConnectedStreamChannel<InetSocketAddress>>() {
+            public void handleEvent(final ConnectedStreamChannel<InetSocketAddress> channel) {
+                for (;;) {
+                    while (buffer.hasRemaining()) {
+                        final int res;
+                        try {
+                            res = channel.write(buffer);
+                        } catch (IOException e1) {
+                            IoUtils.safeClose(connection);
+                            connection.free(buffer);
+                            return;
+                        }
+                        if (res == 0) {
+                            channel.resumeWrites();
+                            return;
+                        }
+                    }
+                    connection.free(buffer);
+                    channel.resumeReads();
+                    return;
+                }
+            }
+        });
 
         connection.setMessageHandler(new ClientGreetingHandler(connection, factoryResult, callbackHandler));
-        // start up the read cycle
-        channel.resumeReads();
+        // and send the greeting
+        channel.resumeWrites();
     }
 }

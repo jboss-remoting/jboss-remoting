@@ -30,16 +30,16 @@ import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.channels.MessageHandler;
 
-final class ServerGreetingHandler implements MessageHandler {
+final class ServerGreetingHandler extends AbstractMessageHandler {
     private final RemoteConnection connection;
     private final ConnectionProviderContext connectionProviderContext;
     private final Set<String> saslMechs;
     private final ServerAuthenticationProvider provider;
     private final Map<String, Object> propertyMap;
 
-    public ServerGreetingHandler(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final Set<String> saslMechs, final ServerAuthenticationProvider provider, final Map<String, Object> propertyMap) {
+    ServerGreetingHandler(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final Set<String> saslMechs, final ServerAuthenticationProvider provider, final Map<String, Object> propertyMap) {
+        super(connection);
         this.connection = connection;
         this.connectionProviderContext = connectionProviderContext;
         this.saslMechs = saslMechs;
@@ -71,18 +71,9 @@ final class ServerGreetingHandler implements MessageHandler {
                 return;
             }
             default: {
-                // todo log invalid greeting
+                RemoteConnectionHandler.log.warn("Server received invalid greeting message");
                 IoUtils.safeClose(connection);
             }
         }
-    }
-
-    public void handleEof() {
-        IoUtils.safeClose(connection);
-    }
-
-    public void handleException(final IOException e) {
-        // todo log it
-        IoUtils.safeClose(connection);
     }
 }

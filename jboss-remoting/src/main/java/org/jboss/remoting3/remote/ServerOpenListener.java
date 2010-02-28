@@ -63,7 +63,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
         final RemoteConnection connection = new RemoteConnection(connectionProviderContext.getExecutor(), channel, optionMap);
 
         // Calculate available server mechanisms
-        final Sequence<String> mechs = optionMap.get(RemotingOptions.SASL_SERVER_MECHANISMS);
+        final Sequence<String> mechs = optionMap.get(Options.SASL_MECHANISMS);
         final Set<String> includes = mechs != null ? new HashSet<String>(mechs) : null;
         final Set<String> serverMechanisms = new LinkedHashSet<String>();
         final Map<String, Object> propertyMap = SaslUtils.createPropertyMap(optionMap);
@@ -79,24 +79,42 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
 
         // Send server greeting packet...
         final ByteBuffer buffer = connection.allocate();
-        try {
-            // length placeholder
-            buffer.putInt(0);
-            // version ID
-            GreetingUtils.writeByte(buffer, RemoteProtocol.GREETING_VERSION, RemoteProtocol.VERSION);
-            // SASL server mechs
-            for (String name : serverMechanisms) {
-                GreetingUtils.writeString(buffer, RemoteProtocol.GREETING_SASL_MECH, name);
-            }
-            // that's it!
-            buffer.flip();
-            connection.sendBlocking(buffer);
-        } catch (Exception e1) {
-            // todo log it
-            IoUtils.safeClose(connection);
-        } finally {
-            connection.free(buffer);
+        // length placeholder
+        buffer.putInt(0);
+        // version ID
+        GreetingUtils.writeByte(buffer, RemoteProtocol.GREETING_VERSION, RemoteProtocol.VERSION);
+        // SASL server mechs
+        for (String name : serverMechanisms) {
+            GreetingUtils.writeString(buffer, RemoteProtocol.GREETING_SASL_MECH, name);
+            RemoteConnectionHandler.log.trace("Offering SASL mechanism %s", name);
         }
+        GreetingUtils.writeString(buffer, RemoteProtocol.GREETING_ENDPOINT_NAME, connectionProviderContext.getEndpointName());
+        // that's it!
+        buffer.flip();
+        buffer.putInt(0, buffer.remaining() - 4);
+        channel.getWriteSetter().set(new ChannelListener<ConnectedStreamChannel<InetSocketAddress>>() {
+            public void handleEvent(final ConnectedStreamChannel<InetSocketAddress> channel) {
+                for (;;) {
+                    while (buffer.hasRemaining()) {
+                        final int res;
+                        try {
+                            res = channel.write(buffer);
+                        } catch (IOException e1) {
+                            IoUtils.safeClose(connection);
+                            connection.free(buffer);
+                            return;
+                        }
+                        if (res == 0) {
+                            channel.resumeWrites();
+                            return;
+                        }
+                    }
+                    connection.free(buffer);
+                    channel.resumeReads();
+                    return;
+                }
+            }
+        });
         final String authProvider = optionMap.get(RemotingOptions.AUTHENTICATION_PROVIDER);
         if (authProvider == null) {
             // todo log no valid auth provider
@@ -108,7 +126,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
             IoUtils.safeClose(connection);
         }
         connection.setMessageHandler(new ServerGreetingHandler(connection, connectionProviderContext, serverMechanisms, provider, propertyMap));
-        // start up the read cycle
-        channel.resumeReads();
+        // and send the greeting
+        channel.resumeWrites();
     }
 }

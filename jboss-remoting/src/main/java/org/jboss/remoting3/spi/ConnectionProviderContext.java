@@ -66,4 +66,11 @@ public interface ConnectionProviderContext {
      * @return the provider, or {@code null} if none was matched
      */
     <T> T getProtocolServiceProvider(ProtocolServiceType<T> serviceType, String name);
+
+    /**
+     * Get the endpoint's name.
+     *
+     * @return the endpoint name
+     */
+    String getEndpointName();
 }

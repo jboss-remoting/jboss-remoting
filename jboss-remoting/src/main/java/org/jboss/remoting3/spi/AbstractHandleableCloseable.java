@@ -23,6 +23,7 @@
 package org.jboss.remoting3.spi;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.IdentityHashMap;
@@ -49,8 +50,15 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     private final StackTraceElement[] backtrace;
 
     private final Object closeLock = new Object();
-    private boolean closed;
+    private Thread closingThread;
+    private State state = State.OPEN;
     private Map<Key, CloseHandler<? super T>> closeHandlers = null;
+
+    enum State {
+        OPEN,
+        CLOSING,
+        CLOSED,
+    }
 
     static {
         boolean b = false;
@@ -87,7 +95,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
      */
     protected boolean isOpen() {
         synchronized (closeLock) {
-            return ! closed;
+            return state == State.OPEN;
         }
     }
 
@@ -104,12 +112,32 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     public void close() throws IOException {
         final Map<Key, CloseHandler<? super T>> closeHandlers;
         synchronized (closeLock) {
-            if (closed) {
-                return;
+            switch (state) {
+                case OPEN: {
+                    state = State.CLOSING;
+                    closingThread = Thread.currentThread();
+                    closeHandlers = this.closeHandlers;
+                    this.closeHandlers = null;
+                    break;
+                }
+                case CLOSING: {
+                    if (Thread.currentThread() != closingThread) {
+                        while (state != State.CLOSED) {
+                            try {
+                                closeLock.wait();
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                throw new InterruptedIOException("Close interrupted");
+                            }
+                        }
+                    } else {
+                        // reentrant close always goes through unblocked
+                    }
+                    return;
+                }
+                case CLOSED: return;
+                default: throw new IllegalStateException();
             }
-            closed = true;
-            closeHandlers = this.closeHandlers;
-            this.closeHandlers = null;
         }
         if (closeHandlers != null) {
             log.trace("Closed %s", this);
@@ -119,7 +147,15 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                 }
             }
         }
-        closeAction();
+        try {
+            closeAction();
+        } finally {
+            synchronized (closeLock) {
+                state = State.CLOSED;
+                closingThread = null;
+                closeLock.notifyAll();
+            }
+        }
     }
 
     /**
@@ -130,7 +166,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             throw new NullPointerException("handler is null");
         }
         synchronized (closeLock) {
-            if (! closed) {
+            if (state == State.OPEN) {
                 final Key key = new KeyImpl<T>(this);
                 final Map<Key, CloseHandler<? super T>> closeHandlers = this.closeHandlers;
                 if (closeHandlers == null) {
@@ -215,7 +251,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
      */
     protected void checkOpen() throws NotOpenException {
         synchronized (closeLock) {
-            if (closed) {
+            if (state != State.OPEN) {
                 throw new NotOpenException(toString() + " is not open");
             }
         }

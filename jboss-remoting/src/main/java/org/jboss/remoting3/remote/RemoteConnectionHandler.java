@@ -31,6 +31,7 @@ import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.IndeterminateOutcomeException;
 import org.jboss.remoting3.ServiceOpenException;
+import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.RequestHandler;
@@ -41,10 +42,9 @@ import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Pool;
 import org.jboss.xnio.Result;
-import org.jboss.xnio.channels.Channels;
 import org.jboss.xnio.log.Logger;
 
-final class RemoteConnectionHandler implements ConnectionHandler {
+final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteConnectionHandler> implements ConnectionHandler {
 
     static final Logger log = Logger.getLogger("org.jboss.remoting.remote");
 
@@ -67,6 +67,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     private final AtomicBoolean closed = new AtomicBoolean();
 
     public RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final MarshallerFactory marshallerFactory, final MarshallingConfiguration marshallingConfiguration) {
+        super(connectionContext.getConnectionProviderContext().getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
         this.marshallerFactory = marshallerFactory;
@@ -107,35 +108,33 @@ final class RemoteConnectionHandler implements ConnectionHandler {
         throw new UnsupportedOperationException();
     }
 
-    public void close() throws IOException {
-        if (! closed.getAndSet(true)) {
-            try {
-                remoteConnection.close();
-            } finally {
-                // other actions here
-                for (IntKeyMap.Entry<OutboundClient> entry : outboundClients) {
-                    final OutboundClient outboundClient = entry.getValue();
-                    synchronized (outboundClient) {
-                        IoUtils.safeClose(outboundClient.getRequestHandler());
-                    }
+    protected void closeAction() throws IOException {
+        try {
+            remoteConnection.close();
+        } finally {
+            // other actions here
+            for (IntKeyMap.Entry<OutboundClient> entry : outboundClients) {
+                final OutboundClient outboundClient = entry.getValue();
+                synchronized (outboundClient) {
+                    IoUtils.safeClose(outboundClient.getRequestHandler());
                 }
-                for (IntKeyMap.Entry<InboundClient> entry : inboundClients) {
-                    final InboundClient inboundClient = entry.getValue();
-                    synchronized (inboundClient) {
-                        IoUtils.safeClose(inboundClient.getHandler());
-                    }
+            }
+            for (IntKeyMap.Entry<InboundClient> entry : inboundClients) {
+                final InboundClient inboundClient = entry.getValue();
+                synchronized (inboundClient) {
+                    IoUtils.safeClose(inboundClient.getHandler());
                 }
-                for (IntKeyMap.Entry<OutboundRequest> entry : outboundRequests) {
-                    final OutboundRequest outboundRequest = entry.getValue();
-                    synchronized (outboundRequest) {
-                        SpiUtils.safeHandleException(outboundRequest.getInboundReplyHandler(), new IndeterminateOutcomeException("Connection closed"));
-                    }
+            }
+            for (IntKeyMap.Entry<OutboundRequest> entry : outboundRequests) {
+                final OutboundRequest outboundRequest = entry.getValue();
+                synchronized (outboundRequest) {
+                    SpiUtils.safeHandleException(outboundRequest.getInboundReplyHandler(), new IndeterminateOutcomeException("Connection closed"));
                 }
-                for (IntKeyMap.Entry<InboundRequest> entry : inboundRequests) {
-                    final InboundRequest inboundRequest = entry.getValue();
-                    synchronized (inboundRequest) {
-                        inboundRequest.getCancellable().cancel();
-                    }
+            }
+            for (IntKeyMap.Entry<InboundRequest> entry : inboundRequests) {
+                final InboundRequest inboundRequest = entry.getValue();
+                synchronized (inboundRequest) {
+                    inboundRequest.getCancellable().cancel();
                 }
             }
         }

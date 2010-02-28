@@ -56,7 +56,7 @@ final class InboundRequestInputHandler implements NioByteInput.InputHandler {
     }
 
     public void close() throws IOException {
-        // todo: stream was closed, no action needed
+        // no operation
     }
 
     public String toString() {
