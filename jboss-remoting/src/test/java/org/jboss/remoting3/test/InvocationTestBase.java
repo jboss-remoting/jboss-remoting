@@ -23,7 +23,6 @@
 package org.jboss.remoting3.test;
 
 import java.io.IOException;
-import junit.framework.TestCase;
 import org.jboss.remoting3.Client;
 import org.jboss.remoting3.ClientConnector;
 import org.jboss.remoting3.ClientContext;
@@ -39,12 +38,20 @@ import org.jboss.remoting3.ServiceNotFoundException;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.log.Logger;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
+import org.testng.annotations.Test;
 
-public abstract class InvocationTestBase extends TestCase {
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.fail;
+
+@Test
+public abstract class InvocationTestBase {
     private static final Logger log = Logger.getLogger(InvocationTestBase.class);
 
     protected Endpoint endpoint;
 
+    @BeforeTest
     public void setUp() throws IOException {
         enter();
         try {
@@ -60,6 +67,7 @@ public abstract class InvocationTestBase extends TestCase {
 
     private static void exit() {
         log.info("Exiting: %s", new Throwable().getStackTrace()[1].getMethodName());
+        log.info("-----------------------------------------");
     }
 
     protected abstract Connection getConnection() throws IOException;
@@ -226,6 +234,7 @@ public abstract class InvocationTestBase extends TestCase {
         }
     }
 
+    @AfterTest
     public void tearDown() throws IOException {
         enter();
         try {

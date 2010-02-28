@@ -26,7 +26,9 @@ import java.io.IOException;
 import java.net.URI;
 import org.jboss.remoting3.Connection;
 import org.jboss.xnio.OptionMap;
+import org.testng.annotations.Test;
 
+@Test
 public final class LocalTestCase extends InvocationTestBase {
 
     protected Connection getConnection() throws IOException {

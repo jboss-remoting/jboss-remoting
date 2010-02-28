@@ -37,7 +37,9 @@ import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.channels.BoundChannel;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
+import org.testng.annotations.Test;
 
+@Test
 public final class RemoteTestCase extends InvocationTestBase {
 
     protected Connection getConnection() throws IOException {

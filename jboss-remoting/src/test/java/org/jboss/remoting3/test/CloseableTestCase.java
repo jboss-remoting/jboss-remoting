@@ -27,16 +27,20 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import junit.framework.TestCase;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
+import org.testng.annotations.Test;
+
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
 
 /**
  *
  */
-public final class CloseableTestCase extends TestCase {
+@Test
+public final class CloseableTestCase {
 
     public static final Logger log = Logger.getLogger(CloseableTestCase.class);
 

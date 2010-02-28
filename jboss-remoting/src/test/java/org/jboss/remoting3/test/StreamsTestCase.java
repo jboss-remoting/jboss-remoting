@@ -27,15 +27,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Vector;
-import junit.framework.TestCase;
 import org.jboss.remoting3.stream.ObjectSink;
 import org.jboss.remoting3.stream.ObjectSource;
 import org.jboss.remoting3.stream.Streams;
+import org.testng.annotations.Test;
+
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.fail;
 
 /**
  *
  */
-public final class StreamsTestCase extends TestCase {
+@Test
+public final class StreamsTestCase {
 
     public void testCollectionObjectSink() throws Throwable {
         final ArrayList<String> strings = new ArrayList<String>();

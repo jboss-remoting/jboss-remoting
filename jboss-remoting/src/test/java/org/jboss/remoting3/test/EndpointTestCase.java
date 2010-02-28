@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import junit.framework.TestCase;
 import org.jboss.remoting3.Client;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.RemoteExecutionException;
@@ -36,11 +35,16 @@ import org.jboss.remoting3.RequestListener;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.log.Logger;
+import org.testng.annotations.Test;
+
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 /**
  *
  */
-public final class EndpointTestCase extends TestCase {
+@Test
+public final class EndpointTestCase {
 
     private static final Logger log = Logger.getLogger(EndpointTestCase.class);
 
