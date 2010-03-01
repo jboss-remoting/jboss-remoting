@@ -36,7 +36,7 @@
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting-all</artifactId>
     <packaging>pom</packaging>
-    <version>3.1.0.Beta1</version>
+    <version>3.1.0.Beta2-SNAPSHOT</version>
     <modules>
         <module>taglet</module>
         <module>jboss-remoting</module>

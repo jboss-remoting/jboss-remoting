@@ -36,12 +36,12 @@
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting-samples</artifactId>
     <packaging>jar</packaging>
-    <version>3.1.0.Beta1</version>
+    <version>3.1.0.Beta2-SNAPSHOT</version>
     <dependencies>
         <dependency>
             <groupId>org.jboss.remoting</groupId>
             <artifactId>jboss-remoting</artifactId>
-            <version>3.1.0.Beta1</version>
+            <version>3.1.0.Beta2-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
