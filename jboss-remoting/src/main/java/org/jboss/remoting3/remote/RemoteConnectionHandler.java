@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.marshalling.MarshallerFactory;
+import org.jboss.marshalling.Marshalling;
 import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.IndeterminateOutcomeException;
@@ -66,19 +67,25 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
 
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    public RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final MarshallerFactory marshallerFactory, final MarshallingConfiguration marshallingConfiguration) {
+    public RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final MarshallerFactory marshallerFactory) {
         super(connectionContext.getConnectionProviderContext().getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
         this.marshallerFactory = marshallerFactory;
-        this.marshallingConfiguration = marshallingConfiguration;
+        final MarshallingConfiguration config = new MarshallingConfiguration();
+        config.setClassExternalizerFactory(PrimaryExternalizerFactory.INSTANCE);
+        config.setObjectTable(new PrimaryObjectTable(connectionContext.getConnectionProviderContext().getEndpoint()));
+        config.setStreamHeader(Marshalling.nullStreamHeader());
+        // fixed for now (v0)
+        config.setVersion(2);
+        this.marshallingConfiguration = config;
     }
 
     public Cancellable open(final String serviceType, final String groupName, final Result<RequestHandler> result) {
         final OutboundClient outboundClient;
         int id;
         synchronized (outboundClients) {
-            while (outboundClients.containsKey(id = random.nextInt()));
+            while (outboundClients.containsKey(id = random.nextInt() | 1));
             outboundClient = new OutboundClient(this, id, result, serviceType, groupName);
             outboundClients.put(id, outboundClient);
         }
@@ -105,7 +112,13 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
     }
 
     public RequestHandlerConnector createConnector(final RequestHandler localHandler) {
-        throw new UnsupportedOperationException();
+        final InboundClient inboundClient = new InboundClient(this, localHandler);
+        int id;
+        synchronized (inboundClients) {
+            while (inboundClients.containsKey(id = random.nextInt() & ~1));
+            inboundClients.put(id, inboundClient);
+        }
+        return new UnsentRequestHandlerConnector(id, this);
     }
 
     protected void closeAction() throws IOException {
@@ -182,5 +195,20 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
 
     RemoteConnection getRemoteConnection() {
         return remoteConnection;
+    }
+
+    private static final ThreadLocal<RemoteConnectionHandler> current = new ThreadLocal<RemoteConnectionHandler>();
+
+    static RemoteConnectionHandler getCurrent() {
+        return current.get();
+    }
+
+    static RemoteConnectionHandler setCurrent(RemoteConnectionHandler newCurrent) {
+        final ThreadLocal<RemoteConnectionHandler> current = RemoteConnectionHandler.current;
+        try {
+            return current.get();
+        } finally {
+            current.set(newCurrent);
+        }
     }
 }

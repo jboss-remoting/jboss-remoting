@@ -196,17 +196,17 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
             }
             case RemoteProtocol.REQUEST_ACK_CHUNK: {
                 final int rid = buffer.getInt();
-                final InboundRequest inboundRequest;
-                final IntKeyMap<InboundRequest> inboundRequests = connectionHandler.getInboundRequests();
-                synchronized (inboundRequests) {
-                    inboundRequest = inboundRequests.get(rid);
+                final OutboundRequest outboundRequest;
+                final IntKeyMap<OutboundRequest> outboundRequests = connectionHandler.getOutboundRequests();
+                synchronized (outboundRequests) {
+                    outboundRequest = outboundRequests.get(rid);
                 }
-                if (inboundRequest == null) {
+                if (outboundRequest == null) {
                     RemoteConnectionHandler.log.trace("Received request-ack-chunk for unknown request ID %d", Integer.valueOf(rid));
                     return;
                 }
-                synchronized (inboundRequest) {
-                    inboundRequest.ack();
+                synchronized (outboundRequest) {
+                    outboundRequest.ack();
                 }
                 return;
             }
@@ -239,17 +239,17 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
             }
             case RemoteProtocol.REPLY_ACK_CHUNK: {
                 final int rid = buffer.getInt();
-                final OutboundRequest outboundRequest;
-                final IntKeyMap<OutboundRequest> outboundRequests = connectionHandler.getOutboundRequests();
-                synchronized (outboundRequests) {
-                    outboundRequest = outboundRequests.get(rid);
+                final InboundRequest inboundRequest;
+                final IntKeyMap<InboundRequest> inboundRequests = connectionHandler.getInboundRequests();
+                synchronized (inboundRequests) {
+                    inboundRequest = inboundRequests.get(rid);
                 }
-                if (outboundRequest == null) {
+                if (inboundRequest == null) {
                     RemoteConnectionHandler.log.trace("Received reply-ack-chunk for unknown request ID %d", Integer.valueOf(rid));
                     return;
                 }
-                synchronized (outboundRequest) {
-                    outboundRequest.ack();
+                synchronized (inboundRequest) {
+                    inboundRequest.ack();
                 }
                 return;
             }

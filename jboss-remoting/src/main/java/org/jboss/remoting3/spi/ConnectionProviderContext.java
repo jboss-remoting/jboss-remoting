@@ -24,6 +24,7 @@ package org.jboss.remoting3.spi;
 
 import java.util.Map;
 import java.util.concurrent.Executor;
+import org.jboss.remoting3.Endpoint;
 
 /**
  * A context for a connection provider.  This provides additional endpoint methods to connection providers which are not
@@ -68,9 +69,9 @@ public interface ConnectionProviderContext {
     <T> T getProtocolServiceProvider(ProtocolServiceType<T> serviceType, String name);
 
     /**
-     * Get the endpoint's name.
+     * Get the endpoint.
      *
-     * @return the endpoint name
+     * @return the endpoint
      */
-    String getEndpointName();
+    Endpoint getEndpoint();
 }

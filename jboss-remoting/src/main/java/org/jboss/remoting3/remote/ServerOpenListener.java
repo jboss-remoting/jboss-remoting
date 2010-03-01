@@ -88,7 +88,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
             GreetingUtils.writeString(buffer, RemoteProtocol.GREETING_SASL_MECH, name);
             RemoteConnectionHandler.log.trace("Offering SASL mechanism %s", name);
         }
-        GreetingUtils.writeString(buffer, RemoteProtocol.GREETING_ENDPOINT_NAME, connectionProviderContext.getEndpointName());
+        GreetingUtils.writeString(buffer, RemoteProtocol.GREETING_ENDPOINT_NAME, connectionProviderContext.getEndpoint().getName());
         // that's it!
         buffer.flip();
         buffer.putInt(0, buffer.remaining() - 4);

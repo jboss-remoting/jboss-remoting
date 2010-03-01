@@ -55,8 +55,13 @@ final class InboundRequestTask implements Runnable {
             try {
                 RemoteConnectionHandler.log.trace("Unmarshalling inbound request");
                 unmarshaller.start(inboundRequest.getByteInput());
-                request = unmarshaller.readObject();
-                unmarshaller.close();
+                final RemoteConnectionHandler old = RemoteConnectionHandler.setCurrent(remoteConnectionHandler);
+                try {
+                    request = unmarshaller.readObject();
+                    unmarshaller.close();
+                } finally {
+                    RemoteConnectionHandler.setCurrent(old);
+                }
                 RemoteConnectionHandler.log.trace("Unmarshalled inbound request %s", request);
             } finally {
                 IoUtils.safeClose(unmarshaller);

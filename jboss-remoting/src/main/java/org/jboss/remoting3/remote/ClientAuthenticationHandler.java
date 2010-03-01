@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Marshalling;
-import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -127,8 +126,7 @@ final class ClientAuthenticationHandler extends AbstractClientMessageHandler {
                     public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                         // this happens immediately.
                         final MarshallerFactory marshallerFactory = Marshalling.getMarshallerFactory("river");
-                        final MarshallingConfiguration marshallingConfiguration = new MarshallingConfiguration();
-                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, remoteConnection, marshallerFactory, marshallingConfiguration);
+                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, remoteConnection, marshallerFactory);
                         remoteConnection.addCloseHandler(new CloseHandler<Object>() {
                             public void handleClose(final Object closed) {
                                 IoUtils.safeClose(connectionHandler);

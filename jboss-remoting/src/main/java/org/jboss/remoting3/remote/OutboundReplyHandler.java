@@ -46,8 +46,13 @@ final class OutboundReplyHandler implements ReplyHandler {
             final RemoteConnectionHandler connectionHandler = inboundRequest.getRemoteConnectionHandler();
             final Marshaller marshaller = connectionHandler.getMarshallerFactory().createMarshaller(connectionHandler.getMarshallingConfiguration());
             marshaller.start(new NioByteOutput(new OutboundReplyBufferWriter(inboundRequest, rid, false)));
-            marshaller.writeObject(reply);
-            marshaller.finish();
+            final RemoteConnectionHandler old = RemoteConnectionHandler.setCurrent(connectionHandler);
+            try {
+                marshaller.writeObject(reply);
+                marshaller.finish();
+            } finally {
+                RemoteConnectionHandler.setCurrent(old);
+            }
         }
     }
 
@@ -58,8 +63,13 @@ final class OutboundReplyHandler implements ReplyHandler {
             try {
                 final Marshaller marshaller = connectionHandler.getMarshallerFactory().createMarshaller(connectionHandler.getMarshallingConfiguration());
                 marshaller.start(new NioByteOutput(new OutboundReplyBufferWriter(inboundRequest, rid, true)));
-                marshaller.writeObject(exception);
-                marshaller.finish();
+                final RemoteConnectionHandler old = RemoteConnectionHandler.setCurrent(connectionHandler);
+                try {
+                    marshaller.writeObject(exception);
+                    marshaller.finish();
+                } finally {
+                    RemoteConnectionHandler.setCurrent(old);
+                }
                 ok = true;
             } finally {
                 if (! ok) {

@@ -57,11 +57,16 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
         }
         final NioByteOutput byteOutput = new NioByteOutput(new OutboundRequestBufferWriter(outboundRequest, rid));
         try {
-            RemoteConnectionHandler.log.trace("Starting sending request %s", request);
+            RemoteConnectionHandler.log.trace("Starting sending request %s for %s", request, Integer.valueOf(rid));
             final Marshaller marshaller = connectionHandler.getMarshallerFactory().createMarshaller(connectionHandler.getMarshallingConfiguration());
             marshaller.start(byteOutput);
-            marshaller.writeObject(request);
-            marshaller.finish();
+            RemoteConnectionHandler old = RemoteConnectionHandler.setCurrent(connectionHandler);
+            try {
+                marshaller.writeObject(request);
+                marshaller.finish();
+            } finally {
+                RemoteConnectionHandler.setCurrent(old);
+            }
             RemoteConnectionHandler.log.trace("Finished sending request %s", request);
         } catch (IOException e) {
             RemoteConnectionHandler.log.trace(e, "Got exception while marshalling request %s", request);

@@ -71,8 +71,7 @@ final class ServerAuthenticationHandler extends AbstractMessageHandler {
                         connectionProviderContext.accept(new ConnectionHandlerFactory() {
                             public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                 final MarshallerFactory marshallerFactory = Marshalling.getMarshallerFactory("river");
-                                final MarshallingConfiguration marshallingConfiguration = new MarshallingConfiguration();
-                                final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, remoteConnection, marshallerFactory, marshallingConfiguration);
+                                final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, remoteConnection, marshallerFactory);
                                 remoteConnection.addCloseHandler(new CloseHandler<Object>() {
                                     public void handleClose(final Object closed) {
                                         IoUtils.safeClose(connectionHandler);

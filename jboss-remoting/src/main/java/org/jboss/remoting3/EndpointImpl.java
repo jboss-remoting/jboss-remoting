@@ -723,8 +723,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             return getMapFor(serviceType).get(name);
         }
 
-        public String getEndpointName() {
-            return getName();
+        public Endpoint getEndpoint() {
+            return EndpointImpl.this;
         }
     }
 
