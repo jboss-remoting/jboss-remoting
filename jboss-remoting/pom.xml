@@ -38,7 +38,7 @@
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting</artifactId>
     <packaging>jar</packaging>
-    <version>3.1.0.CR1</version>
+    <version>3.1.0.Beta1</version>
     <dependencies>
         <dependency>
             <groupId>org.jboss.xnio</groupId>

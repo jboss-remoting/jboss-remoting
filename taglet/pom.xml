@@ -35,7 +35,7 @@
     <name>JBoss Remoting Taglet</name>
     <description>JBoss Remoting Documentation Taglet</description>
     <packaging>jar</packaging>
-    <version>3.1.0.CR1</version>
+    <version>3.1.0.Beta1</version>
 
     <dependencies>
         <dependency>
@@ -48,6 +48,13 @@
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
