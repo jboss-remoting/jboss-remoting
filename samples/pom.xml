@@ -75,7 +75,7 @@
         <repository>
             <id>repository.jboss.org</id>
             <name>JBoss Maven2 Repository</name>
-            <url>${repository.url}</url>
+            <url>http://repository.jboss.org/repos/maven2</url>
         </repository>
     </distributionManagement>
 </project>
