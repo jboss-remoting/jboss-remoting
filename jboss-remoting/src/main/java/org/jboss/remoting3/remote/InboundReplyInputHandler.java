@@ -40,7 +40,7 @@ final class InboundReplyInputHandler implements NioByteInput.InputHandler {
         final ByteBuffer buffer = connectionHandler.getBufferPool().allocate();
         try {
             buffer.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
-            buffer.put(RemoteProtocol.REQUEST_ACK_CHUNK);
+            buffer.put(RemoteProtocol.REPLY_ACK_CHUNK);
             buffer.putInt(rid);
             buffer.flip();
             final RemoteConnection connection = connectionHandler.getRemoteConnection();
