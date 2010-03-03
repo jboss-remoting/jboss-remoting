@@ -24,6 +24,7 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.jboss.marshalling.Pair;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.security.SimpleClientCallbackHandler;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
@@ -46,7 +48,6 @@ import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.ConnectionProviderRegistration;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ProtocolServiceType;
 import org.jboss.xnio.log.Logger;
@@ -142,7 +143,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private static final RemotingPermission ADD_SERVICE_LISTENER_PERM = new RemotingPermission("addServiceListener");
     private static final RemotingPermission CONNECT_PERM = new RemotingPermission("connect");
     private static final RemotingPermission ADD_CONNECTION_PROVIDER_PERM = new RemotingPermission("addConnectionProvider");
-    private static final RemotingPermission ADD_MARSHALLING_PROTOCOL_PERM = new RemotingPermission("addMarshallingProtocol");
+    private static final RemotingPermission ADD_PROTOCOL_SERVICE_PERM = new RemotingPermission("addProtocolService");
     private static final RemotingPermission GET_CONNECTION_PROVIDER_INTERFACE_PERM = new RemotingPermission("getConnectionProviderInterface");
 
     EndpointImpl(final Executor executor, final String name, final OptionMap optionMap) throws IOException {
@@ -533,17 +534,28 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return registration;
     }
 
-    public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
-        final String uriUserInfo = destination.getUserInfo();
+    public IoFuture<? extends Connection> connect(final URI destination) throws IOException {
+        final Pair<String, String> userRealm = getUserAndRealm(destination);
+        final String uriUserName = userRealm.getA();
+        final String uriUserRealm = userRealm.getB();
         final OptionMap finalMap;
-        if (uriUserInfo != null) {
-            final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
-            builder.set(RemotingOptions.AUTH_USER_NAME, uriUserInfo);
-            finalMap = builder.getMap();
-        } else {
-            finalMap = connectOptions;
-        }
-        return doConnect(destination, connectOptions, new SimpleClientCallbackHandler(finalMap.get(RemotingOptions.AUTH_USER_NAME), finalMap.get(RemotingOptions.AUTH_REALM), null));
+        final OptionMap.Builder builder = OptionMap.builder();
+        if (uriUserName != null) builder.set(RemotingOptions.AUTH_USER_NAME, uriUserName);
+        if (uriUserRealm != null) builder.set(RemotingOptions.AUTH_REALM, uriUserRealm);
+        finalMap = builder.getMap();
+        return doConnect(destination, finalMap, new SimpleClientCallbackHandler(finalMap.get(RemotingOptions.AUTH_USER_NAME), finalMap.get(RemotingOptions.AUTH_REALM), null));
+    }
+
+    public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
+        final Pair<String, String> userRealm = getUserAndRealm(destination);
+        final String uriUserName = userRealm.getA();
+        final String uriUserRealm = userRealm.getB();
+        final OptionMap finalMap;
+        final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
+        if (uriUserName != null) builder.set(RemotingOptions.AUTH_USER_NAME, uriUserName);
+        if (uriUserRealm != null) builder.set(RemotingOptions.AUTH_REALM, uriUserRealm);
+        finalMap = builder.getMap();
+        return doConnect(destination, finalMap, new SimpleClientCallbackHandler(finalMap.get(RemotingOptions.AUTH_USER_NAME), finalMap.get(RemotingOptions.AUTH_REALM), null));
     }
 
     private IoFuture<? extends Connection> doConnect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
@@ -566,22 +578,23 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
-        final String uriUserInfo = destination.getUserInfo();
+        final Pair<String, String> userRealm = getUserAndRealm(destination);
+        final String uriUserName = userRealm.getA();
+        final String uriUserRealm = userRealm.getB();
         final OptionMap finalMap;
-        if (uriUserInfo != null) {
-            final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
-            builder.set(RemotingOptions.AUTH_USER_NAME, uriUserInfo);
-            finalMap = builder.getMap();
-        } else {
-            finalMap = connectOptions;
-        }
+        final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
+        if (uriUserName != null) builder.set(RemotingOptions.AUTH_USER_NAME, uriUserName);
+        if (uriUserRealm != null) builder.set(RemotingOptions.AUTH_REALM, uriUserRealm);
+        finalMap = builder.getMap();
         return doConnect(destination, finalMap, callbackHandler);
     }
 
     public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final String userName, final String realmName, final char[] password) throws IOException {
-        final String uriUserInfo = destination.getUserInfo();
-        final String actualUserName = userName != null ? userName : uriUserInfo != null ? uriUserInfo : connectOptions.get(RemotingOptions.AUTH_USER_NAME);
-        final String actualUserRealm = realmName != null ? realmName : connectOptions.get(RemotingOptions.AUTH_REALM);
+        final Pair<String, String> userRealm = getUserAndRealm(destination);
+        final String uriUserName = userRealm.getA();
+        final String uriUserRealm = userRealm.getB();
+        final String actualUserName = userName != null ? userName : uriUserName != null ? uriUserName : connectOptions.get(RemotingOptions.AUTH_USER_NAME);
+        final String actualUserRealm = realmName != null ? realmName : uriUserRealm != null ? uriUserRealm : connectOptions.get(RemotingOptions.AUTH_REALM);
         final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
         if (actualUserName != null) builder.set(RemotingOptions.AUTH_USER_NAME, actualUserName);
         if (actualUserRealm != null) builder.set(RemotingOptions.AUTH_REALM, actualUserRealm);
@@ -589,7 +602,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return doConnect(destination, finalMap, new SimpleClientCallbackHandler(actualUserName, actualUserRealm, password));
     }
 
-    public ConnectionProviderRegistration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory) {
+    public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory) {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(ADD_CONNECTION_PROVIDER_PERM);
@@ -599,7 +612,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
             throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
         }
-        final ConnectionProviderRegistration handle = new ConnectionProviderRegistrationImpl(uriScheme, provider);
+        final Registration handle = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider);
         return handle;
     }
 
@@ -622,7 +635,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final ConcurrentMap<String, T> map = getMapFor(type);
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
-            sm.checkPermission(ADD_MARSHALLING_PROTOCOL_PERM);
+            sm.checkPermission(ADD_PROTOCOL_SERVICE_PERM);
         }
         if ("default".equals(name)) {
             throw new IllegalArgumentException("'default' is not an allowed name");
@@ -635,6 +648,41 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     public String toString() {
         return "endpoint \"" + name + "\" <" + Integer.toHexString(hashCode()) + ">";
+    }
+
+    private static final Charset UTF_8 = Charset.forName("UTF-8");
+
+    private static String uriDecode(String encoded) {
+        final char[] chars = encoded.toCharArray();
+        final int olen = chars.length;
+        final byte[] buf = new byte[olen];
+        int c = 0;
+        for (int i = 0; i < olen; i++) {
+            final char ch = chars[i];
+            if (ch == '%') {
+                buf[c++] = (byte) (Character.digit(chars[++i], 16) << 4 | Character.digit(chars[++i], 16));
+            } else if (ch < 32 || ch > 127) {
+                // skip it
+            } else {
+                buf[c++] = (byte) ch;
+            }
+        }
+        return new String(buf, 0, c, UTF_8);
+    }
+
+    private static final Pair<String, String> EMPTY = Pair.create(null, null);
+
+    private Pair<String, String> getUserAndRealm(URI uri) {
+        final String userInfo = uri.getRawUserInfo();
+        if (userInfo == null) {
+            return EMPTY;
+        }
+        int i = userInfo.indexOf(';');
+        if (i == -1) {
+            return Pair.create(uri.getUserInfo(), null);
+        } else {
+            return Pair.create(uriDecode(userInfo.substring(0, i)), uriDecode(userInfo.substring(i + 1)));
+        }
     }
 
     private class MapRegistration<T> extends AbstractHandleableCloseable<Registration> implements Registration {
@@ -725,35 +773,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public Endpoint getEndpoint() {
             return EndpointImpl.this;
-        }
-    }
-
-    private class ConnectionProviderRegistrationImpl extends AbstractHandleableCloseable<Registration> implements ConnectionProviderRegistration {
-
-        private final String uriScheme;
-        private final ConnectionProvider provider;
-
-        public ConnectionProviderRegistrationImpl(final String uriScheme, final ConnectionProvider provider) {
-            super(executor);
-            this.uriScheme = uriScheme;
-            this.provider = provider;
-        }
-
-        protected void closeAction() {
-            connectionProviders.remove(uriScheme, provider);
-        }
-
-        public void close() {
-            try {
-                super.close();
-            } catch (IOException e) {
-                // not possible
-                throw new IllegalStateException(e);
-            }
-        }
-
-        public Object getProviderInterface() {
-            return provider.getProviderInterface();
         }
     }
 }

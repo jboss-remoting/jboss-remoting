@@ -44,6 +44,8 @@ import org.jboss.xnio.channels.ConnectedStreamChannel;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
+import static org.testng.Assert.assertNotNull;
+
 @Test(suiteName = "Remote tests")
 public final class RemoteTestCase extends InvocationTestBase {
 
@@ -62,6 +64,7 @@ public final class RemoteTestCase extends InvocationTestBase {
 
     protected Connection getConnection() throws IOException {
         final NetworkServerProvider provider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
+        assertNotNull(provider, "No remote provider interface");
         final ChannelListener<ConnectedStreamChannel<InetSocketAddress>> listener = provider.getServerListener(OptionMap.builder().set(RemotingOptions.AUTHENTICATION_PROVIDER, "test").setSequence(Options.SASL_MECHANISMS, "DIGEST-MD5").getMap());
         final Xnio xnio = Xnio.getInstance();
         try {

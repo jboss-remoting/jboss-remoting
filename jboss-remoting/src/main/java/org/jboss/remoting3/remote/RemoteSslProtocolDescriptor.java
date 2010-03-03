@@ -35,25 +35,31 @@ import org.jboss.xnio.Xnio;
 import org.jboss.xnio.channels.TcpChannel;
 
 /**
- * The protocol descriptor for the "remote" connection protocol.  This class is used to auto-detect the "remote" protocol
+ * The protocol descriptor for the "remote+ssl" connection protocol.  This class is used to auto-detect the "remote+ssl" protocol
  * in standalone environments.
  */
-public final class RemoteProtocolDescriptor implements RemotingServiceDescriptor<ConnectionProviderFactory> {
+public final class RemoteSslProtocolDescriptor implements RemotingServiceDescriptor<ConnectionProviderFactory> {
 
     public Class<ConnectionProviderFactory> getType() {
         return ConnectionProviderFactory.class;
     }
 
     public String getName() {
-        return "remote";
+        return "remote+ssl";
     }
 
     public ConnectionProviderFactory getService(final Properties properties) throws IOException {
-        final String providerName = properties.getProperty("remote.xnio.provider", "default");
+        final String providerName = properties.getProperty("remote+ssl.xnio.provider", "default");
         final Xnio xnio = Xnio.getInstance(providerName);
-        final OptionMap connectorOptions = OptionMap.builder().parseAll(properties, "remote.connector.option").getMap();
+        final OptionMap connectorOptions = OptionMap.builder().parseAll(properties, "remote+ssl.connector.option").getMap();
         final Connector<InetSocketAddress, ? extends TcpChannel> connector;
-        connector = xnio.createTcpConnector(connectorOptions);
+        try {
+            connector = xnio.createSslTcpConnector(null, connectorOptions);
+        } catch (Exception e) {
+            final IOException ioe = new IOException("Failed to create connector");
+            ioe.initCause(e);
+            throw ioe;
+        }
         return new ConnectionProviderFactory() {
             public ConnectionProvider createInstance(final ConnectionProviderContext context) {
                 return RemoteProtocol.getRemoteConnectionProvider(context, connector);

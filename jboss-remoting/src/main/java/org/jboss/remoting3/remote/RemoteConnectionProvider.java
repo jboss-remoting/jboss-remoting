@@ -51,6 +51,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
 
     private final ConnectionProviderContext connectionProviderContext;
     private final Connector<InetSocketAddress, ? extends ConnectedStreamChannel<InetSocketAddress>> connector;
+    private final ProviderInterface providerInterface = new ProviderInterface();
 
     RemoteConnectionProvider(final ConnectionProviderContext connectionProviderContext, final Connector<InetSocketAddress, ? extends ConnectedStreamChannel<InetSocketAddress>> connector) {
         this.connectionProviderContext = connectionProviderContext;
@@ -79,7 +80,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
     }
 
     public NetworkServerProvider getProviderInterface() {
-        return new ProviderInterface();
+        return providerInterface;
     }
 
     private class ProviderInterface implements NetworkServerProvider {

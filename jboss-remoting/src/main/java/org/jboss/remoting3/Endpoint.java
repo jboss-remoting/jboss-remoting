@@ -27,7 +27,6 @@ import java.net.URI;
 import java.util.Set;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.ConnectionProviderRegistration;
 import org.jboss.remoting3.spi.ProtocolServiceType;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.OptionMap;
@@ -121,6 +120,14 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
         ServiceBuilder<I, O> setClientListener(ClientListener<? super I, ? extends O> clientListener);
 
         /**
+         * Set the service class loader.  This class loader will be used to unmarshall incoming requests.
+         *
+         * @param classLoader the service class loader
+         * @return this builder
+         */
+        ServiceBuilder<I, O> setClassLoader(final ClassLoader classLoader);
+
+        /**
          * Set the option map for the service.  The options may include, but are not limited to:
          * <ul>
          * <li>{@link RemotingOptions#BUFFER_SIZE} - the recommended buffer size for marshallers to use for this service</li>
@@ -208,6 +215,18 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
+     * @return the future connection
+     * @throws IOException if an error occurs while starting the connect attempt
+     */
+    IoFuture<? extends Connection> connect(URI destination) throws IOException;
+
+    /**
+     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * This method does not block; use the return value to wait for a result if you wish to block.
+     * <p/>
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
+     *
+     * @param destination the destination
      * @param connectOptions options to configure this connection
      * @return the future connection
      * @throws IOException if an error occurs while starting the connect attempt
@@ -257,7 +276,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @return a handle which may be used to remove the registration
      * @throws DuplicateRegistrationException if there is already a provider registered to that URI scheme
      */
-    ConnectionProviderRegistration addConnectionProvider(String uriScheme, ConnectionProviderFactory providerFactory) throws DuplicateRegistrationException;
+    Registration addConnectionProvider(String uriScheme, ConnectionProviderFactory providerFactory) throws DuplicateRegistrationException;
 
     /**
      * Get the interface for a connection provider.
