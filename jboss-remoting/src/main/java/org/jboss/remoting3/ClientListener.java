@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3;
 
+import java.util.EventListener;
+
 /**
  * A client listener associated with a service.  When a client is opened for this service, a new request listener
  * is created and returned.
@@ -31,7 +33,7 @@ package org.jboss.remoting3;
  *
  * @apiviz.landmark
  */
-public interface ClientListener<I, O> {
+public interface ClientListener<I, O> extends EventListener {
 
     /**
      * Handle a client open by returning a new request listener.  The supplied client context may be used to register

@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3;
 
+import java.util.EventListener;
+
 /**
  * A request listener.  Implementations of this interface will reply to client requests.
  *
@@ -31,7 +33,7 @@ package org.jboss.remoting3;
  * @remoting.implement
  * @apiviz.landmark
  */
-public interface RequestListener<I, O> {
+public interface RequestListener<I, O> extends EventListener {
     /**
      * Handle a request.  If this method throws {@code RemoteExecutionException}, then that exception is passed
      * back to the caller and the request is marked as complete.  Otherwise, the request
