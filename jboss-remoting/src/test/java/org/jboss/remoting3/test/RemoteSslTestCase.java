@@ -23,20 +23,25 @@
 package org.jboss.remoting3.test;
 
 import java.net.InetSocketAddress;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import org.jboss.xnio.ChannelListener;
 import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.TcpServer;
+import org.jboss.xnio.Options;
+import org.jboss.xnio.SslTcpServer;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 
-@Test(suiteName = "Remote tests")
-public final class RemoteTestCase extends AbstractRemoteTestCase {
-    protected TcpServer getServer(final ChannelListener<ConnectedStreamChannel<InetSocketAddress>> listener, final Xnio xnio) {
-        return xnio.createTcpServer(listener, OptionMap.EMPTY);
+@Test(suiteName = "Remote SSL tests")
+public final class RemoteSslTestCase extends AbstractRemoteTestCase {
+    protected SslTcpServer getServer(final ChannelListener<ConnectedStreamChannel<InetSocketAddress>> listener, final Xnio xnio) throws NoSuchProviderException, NoSuchAlgorithmException {
+        return xnio.createSslTcpServer(listener, OptionMap.builder().setSequence(Options.SSL_ENABLED_CIPHER_SUITES, "TLS_RSA_WITH_AES_128_CBC_SHA").getMap());
     }
 
     protected String getScheme() {
-        return "remote";
+        if (true) throw new SkipException("SSL");
+        return "remote+ssl";
     }
 }
