@@ -46,10 +46,4 @@ public interface RequestListener<I, O> extends EventListener {
      * @throws RemoteExecutionException if the execution failed in some way
      */
     void handleRequest(RequestContext<O> context, I request) throws RemoteExecutionException;
-
-    /**
-     * Handle the client closing.  Free up any resources.  This method is called after the close has occurred,
-     * so exceptions thrown will be ignored.
-     */
-    void handleClose();
 }

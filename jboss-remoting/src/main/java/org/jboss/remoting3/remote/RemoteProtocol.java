@@ -67,6 +67,7 @@ public final class RemoteProtocol {
     static final byte GREETING_VERSION = 0;   // sent by client & server
     static final byte GREETING_SASL_MECH = 1; // sent by server
     static final byte GREETING_ENDPOINT_NAME = 2; // sent by client & server
+    static final byte GREETING_MARSHALLER_VERSION = 3; // sent by client & server
 
     /**
      * Create an instance of the connection provider for the "remote" protocol.

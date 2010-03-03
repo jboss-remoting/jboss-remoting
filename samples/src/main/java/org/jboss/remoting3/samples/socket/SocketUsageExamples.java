@@ -354,9 +354,6 @@ public class SocketUsageExamples extends TestCase {
 
 
    public static class DrNickRequestListener implements RequestListener<String, String> {
-      public void handleClose() {  
-      }
-
       public void handleRequest(RequestContext<String> context, String request) throws RemoteExecutionException {
          try {
             log.info(this + ": got request: " + request);
@@ -376,9 +373,6 @@ public class SocketUsageExamples extends TestCase {
 
 
    public static class DrFrankensteinRequestListener implements RequestListener<String, String> {
-      public void handleClose() {  
-      }
-
       public void handleRequest(RequestContext<String> context, String request) throws RemoteExecutionException {
          try {
             log.info(this + ": got request: " + request);
@@ -437,9 +431,6 @@ public class SocketUsageExamples extends TestCase {
          this.endpoint = endpoint;
       }
 
-      public void handleClose() {  
-      }
-
       public void handleRequest(RequestContext<RequestWrapper> context, RequestWrapper request) throws RemoteExecutionException {
          log.info(this + ": got request: " + request);
          Connection connection = null;
@@ -482,16 +473,16 @@ public class SocketUsageExamples extends TestCase {
       private Client<Object, Object> client;
       private int counter;
 
-      public void handleClose() {
-         if (client != null) {
-            try {
-               client.close();
-               client = null;
-            } catch (IOException e) {
-               log.warn(this + " unable to close Client " + client);
-            }
-         }
-      }
+//      public void handleClose() {
+//         if (client != null) {
+//            try {
+//               client.close();
+//               client = null;
+//            } catch (IOException e) {
+//               log.warn(this + " unable to close Client " + client);
+//            }
+//         }
+//      }
 
       @SuppressWarnings("unchecked")
       @Override
@@ -560,9 +551,6 @@ public class SocketUsageExamples extends TestCase {
    public static class CallbackReceiverRequestListener implements RequestListener<Object, Object> {
       private static Logger log = Logger.getLogger(CallbackReceiverRequestListener.class);
       private ArrayList<Object> callbacks = new ArrayList<Object>();
-
-      public void handleClose() {  
-      }
 
       public void handleRequest(RequestContext<Object> context, Object callback) throws RemoteExecutionException {
          log.info(this + ": got callback: " + callback);

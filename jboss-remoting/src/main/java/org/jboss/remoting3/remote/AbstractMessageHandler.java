@@ -23,6 +23,7 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.channels.MessageHandler;
 
@@ -36,14 +37,18 @@ abstract class AbstractMessageHandler implements MessageHandler {
     public void handleEof() {
         try {
             remoteConnection.getChannel().shutdownReads();
+            return;
         } catch (IOException e) {
             RemoteConnectionHandler.log.trace(e, "Failed to shut down reads for %s", remoteConnection);
+            IoUtils.safeClose(remoteConnection);
         }
-        remoteConnection.readDone();
-        IoUtils.safeClose(remoteConnection);
     }
 
     public void handleException(final IOException e) {
+        if (e instanceof ClosedChannelException) {
+            // ignore; just means there was a race.
+            return;
+        }
         RemoteConnectionHandler.log.trace(e, "Received exception from %s", remoteConnection);
         IoUtils.safeClose(remoteConnection);
     }

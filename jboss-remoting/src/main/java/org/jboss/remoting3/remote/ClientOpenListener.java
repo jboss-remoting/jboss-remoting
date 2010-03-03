@@ -25,6 +25,7 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.xnio.ChannelListener;
@@ -42,12 +43,14 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
     private final ConnectionProviderContext connectionProviderContext;
     private final Result<ConnectionHandlerFactory> factoryResult;
     private final CallbackHandler callbackHandler;
+    private final ProviderDescriptor providerDescriptor;
 
-    ClientOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler) {
+    ClientOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler, final ProviderDescriptor providerDescriptor) {
         this.optionMap = optionMap;
         this.connectionProviderContext = connectionProviderContext;
         this.factoryResult = factoryResult;
         this.callbackHandler = callbackHandler;
+        this.providerDescriptor = providerDescriptor;
     }
 
     public void handleEvent(final ConnectedStreamChannel<InetSocketAddress> channel) {
@@ -56,12 +59,17 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
         } catch (IOException e) {
             // ignore
         }
-        final RemoteConnection connection = new RemoteConnection(connectionProviderContext.getExecutor(), channel, optionMap);
-
+        final RemoteConnection connection = new RemoteConnection(connectionProviderContext.getExecutor(), channel, optionMap, providerDescriptor);
         // Send client greeting packet...
         final ByteBuffer buffer = connection.allocate();
         // length placeholder
         buffer.putInt(0);
+        buffer.put(RemoteProtocol.GREETING);
+        // marshaller versions
+        final int[] versions = providerDescriptor.getSupportedVersions();
+        for (int version : versions) {
+            GreetingUtils.writeInt(buffer, RemoteProtocol.GREETING_MARSHALLER_VERSION, version);
+        }
         // version ID
         GreetingUtils.writeByte(buffer, RemoteProtocol.GREETING_VERSION, RemoteProtocol.VERSION);
         // that's it!
@@ -85,6 +93,7 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
                             return;
                         }
                     }
+                    RemoteConnectionHandler.log.warn("Client sent greeting message");
                     connection.free(buffer);
                     channel.resumeReads();
                     return;

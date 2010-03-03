@@ -25,8 +25,6 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.jboss.marshalling.MarshallerFactory;
-import org.jboss.marshalling.Marshalling;
-import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -70,7 +68,7 @@ final class ServerAuthenticationHandler extends AbstractMessageHandler {
                         remoteConnection.sendAuthMessage(RemoteProtocol.AUTH_COMPLETE, challenge);
                         connectionProviderContext.accept(new ConnectionHandlerFactory() {
                             public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                                final MarshallerFactory marshallerFactory = Marshalling.getMarshallerFactory("river");
+                                final MarshallerFactory marshallerFactory = remoteConnection.getProviderDescriptor().getMarshallerFactory();
                                 final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, remoteConnection, marshallerFactory);
                                 remoteConnection.addCloseHandler(new CloseHandler<Object>() {
                                     public void handleClose(final Object closed) {
@@ -96,13 +94,5 @@ final class ServerAuthenticationHandler extends AbstractMessageHandler {
                 IoUtils.safeClose(remoteConnection);
             }
         }
-    }
-
-    public void handleEof() {
-        IoUtils.safeClose(remoteConnection);
-    }
-
-    public void handleException(final IOException e) {
-        IoUtils.safeClose(remoteConnection);
     }
 }

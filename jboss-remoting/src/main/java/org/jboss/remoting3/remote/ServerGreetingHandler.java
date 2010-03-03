@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3.remote;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
@@ -50,19 +49,35 @@ final class ServerGreetingHandler extends AbstractMessageHandler {
     public void handleMessage(final ByteBuffer buffer) {
         switch (buffer.get()) {
             case RemoteProtocol.GREETING: {
+                RemoteConnectionHandler.log.trace("Server received greeting message");
+                final int[] ourVersions = connection.getProviderDescriptor().getSupportedVersions();
+                int bestVersion = -1;
                 while (buffer.hasRemaining()) {
                     final byte type = buffer.get();
                     final int len = buffer.get() & 0xff;
+                    final ByteBuffer data = Buffers.slice(buffer, len);
                     switch (type) {
                         case RemoteProtocol.GREETING_VERSION: {
                             // We only support version zero, so knowing the other side's version is not useful presently
-                            buffer.get();
-                            if (len > 1) Buffers.skip(buffer, len - 1);
+                            break;
+                        }
+                        case RemoteProtocol.GREETING_MARSHALLER_VERSION: {
+                            final int remoteVersion = data.getInt();
+                            // is it better than the best one?  if not, don't bother
+                            if (remoteVersion <= bestVersion) {
+                                break;
+                            }
+                            // do we support it?  if not, skip
+                            for (int ourVersion : ourVersions) {
+                                if (ourVersion == remoteVersion) {
+                                    bestVersion = remoteVersion;
+                                    break;
+                                }
+                            }
                             break;
                         }
                         default: {
                             // unknown, skip it for forward compatibility.
-                            Buffers.skip(buffer, len);
                             break;
                         }
                     }

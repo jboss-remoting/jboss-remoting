@@ -31,8 +31,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <xnio.version>2.1.0.CR1</xnio.version>
-        <jbmar.version>1.3.0.CR1</jbmar.version>
+        <xnio.version>2.1.0.CR2-SNAPSHOT</xnio.version>
+        <jbmar.version>1.3.0.CR2-SNAPSHOT</jbmar.version>
     </properties>
 
     <groupId>org.jboss.remoting</groupId>
@@ -54,15 +54,15 @@
         </dependency>
         <dependency>
             <groupId>org.jboss.marshalling</groupId>
-            <artifactId>marshalling-api</artifactId>
+            <artifactId>jboss-marshalling</artifactId>
             <version>${jbmar.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.jboss.marshalling</groupId>
-            <artifactId>river</artifactId>
+            <artifactId>jboss-marshalling-river</artifactId>
             <version>${jbmar.version}</version>
-            <scope>test</scope>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.testng</groupId>
@@ -89,6 +89,10 @@
                         <property>
                             <name>java.util.logging.manager</name>
                             <value>org.jboss.logmanager.LogManager</value>
+                        </property>
+                        <property>
+                            <name>jboss.remoting.leakdebugging</name>
+                            <value>true</value>
                         </property>
                     </systemProperties>
                 </configuration>

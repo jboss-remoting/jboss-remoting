@@ -23,10 +23,12 @@
 package org.jboss.remoting3.test;
 
 import java.io.IOException;
+import org.jboss.marshalling.river.RiverMarshaller;
 import org.jboss.remoting3.Client;
 import org.jboss.remoting3.ClientConnector;
 import org.jboss.remoting3.ClientContext;
 import org.jboss.remoting3.ClientListener;
+import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Registration;
@@ -56,6 +58,7 @@ public abstract class InvocationTestBase {
     public void setUp() throws IOException {
         enter();
         try {
+            Thread.currentThread().setContextClassLoader(RiverMarshaller.class.getClassLoader());
             endpoint = Remoting.getConfiguredEndpoint();
         } finally {
             exit();
@@ -83,6 +86,11 @@ public abstract class InvocationTestBase {
             final Registration registration = endpoint.serviceBuilder().setGroupName("foo").setServiceType("test1").setRequestType(InvocationTestObject.class).
                     setReplyType(InvocationTestObject.class).setClientListener(new ClientListener<InvocationTestObject, InvocationTestObject>() {
                 public RequestListener<InvocationTestObject, InvocationTestObject> handleClientOpen(final ClientContext clientContext) {
+                    clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
+                        public void handleClose(final ClientContext closed) {
+                            log.info("Client closed");
+                        }
+                    });
                     return new RequestListener<InvocationTestObject, InvocationTestObject>() {
                         public void handleRequest(final RequestContext<InvocationTestObject> objectRequestContext, final InvocationTestObject request) throws RemoteExecutionException {
                             try {
@@ -91,10 +99,6 @@ public abstract class InvocationTestBase {
                             } catch (IOException e) {
                                 throw new RemoteExecutionException(e);
                             }
-                        }
-
-                        public void handleClose() {
-                            log.info("Listener closed");
                         }
                     };
                 }
@@ -130,6 +134,11 @@ public abstract class InvocationTestBase {
             final Registration registration = endpoint.serviceBuilder().setGroupName("foo").setServiceType("test2").setRequestType(InvocationTestObject.class).
                     setReplyType(InvocationTestObject.class).setClientListener(new ClientListener<InvocationTestObject, InvocationTestObject>() {
                 public RequestListener<InvocationTestObject, InvocationTestObject> handleClientOpen(final ClientContext clientContext) {
+                    clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
+                        public void handleClose(final ClientContext closed) {
+                            log.info("Listener closed");
+                        }
+                    });
                     return new RequestListener<InvocationTestObject, InvocationTestObject>() {
                         public void handleRequest(final RequestContext<InvocationTestObject> objectRequestContext, final InvocationTestObject request) throws RemoteExecutionException {
                             try {
@@ -139,10 +148,6 @@ public abstract class InvocationTestBase {
                                 log.error(e, "reply");
                                 throw new RemoteExecutionException(e);
                             }
-                        }
-
-                        public void handleClose() {
-                            log.info("Listener closed");
                         }
                     };
                 }
@@ -179,6 +184,11 @@ public abstract class InvocationTestBase {
             final Registration registration = endpoint.serviceBuilder().setGroupName("foo").setServiceType("test3").setRequestType(ClientConnector.class).
                     setReplyType(InvocationTestObject.class).setClientListener(new ClientListener<ClientConnector, InvocationTestObject>() {
                 public RequestListener<ClientConnector, InvocationTestObject> handleClientOpen(final ClientContext clientContext) {
+                    clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
+                        public void handleClose(final ClientContext closed) {
+                            log.info("Listener closed");
+                        }
+                    });
                     return new RequestListener<ClientConnector, InvocationTestObject>() {
                         public void handleRequest(final RequestContext<InvocationTestObject> objectRequestContext, final ClientConnector request) throws RemoteExecutionException {
                             try {
@@ -189,10 +199,6 @@ public abstract class InvocationTestBase {
                                 throw new RemoteExecutionException(e);
                             }
                         }
-
-                        public void handleClose() {
-                            log.info("Listener closed");
-                        }
                     };
                 }
             }).register();
@@ -201,7 +207,7 @@ public abstract class InvocationTestBase {
                 try {
                     final Client<ClientConnector, InvocationTestObject> client = connection.openClient("test3", "*", ClientConnector.class, InvocationTestObject.class).get();
                     try {
-                        client.invoke(connection.createClientConnector(new RequestListener<InvocationTestObject, InvocationTestObject>() {
+                        final ClientConnector<InvocationTestObject, InvocationTestObject> clientConnector = connection.createClientConnector(new RequestListener<InvocationTestObject, InvocationTestObject>() {
                             public void handleRequest(final RequestContext<InvocationTestObject> requestContext, final InvocationTestObject request) throws RemoteExecutionException {
                                 try {
                                     log.info("Got request %s, sending reply %s", request, replyObj);
@@ -210,11 +216,19 @@ public abstract class InvocationTestBase {
                                     throw new RemoteExecutionException(e);
                                 }
                             }
-
-                            public void handleClose() {
+                        }, InvocationTestObject.class, InvocationTestObject.class);
+                        final ClientContext context = clientConnector.getClientContext();
+                        context.addCloseHandler(new CloseHandler<ClientContext>() {
+                            public void handleClose(final ClientContext closed) {
                                 log.info("Inner listener closed");
                             }
-                        }, InvocationTestObject.class, InvocationTestObject.class));
+                        });
+                        try {
+                            client.invoke(clientConnector);
+                        } finally {
+                            IoUtils.safeClose(context);
+                            context.awaitClosedUninterruptibly();
+                        }
                     } finally {
                         IoUtils.safeClose(client);
                         client.awaitClosedUninterruptibly();

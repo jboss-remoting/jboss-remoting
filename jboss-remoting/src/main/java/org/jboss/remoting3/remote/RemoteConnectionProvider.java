@@ -26,6 +26,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
@@ -52,10 +53,16 @@ final class RemoteConnectionProvider implements ConnectionProvider {
     private final ConnectionProviderContext connectionProviderContext;
     private final Connector<InetSocketAddress, ? extends ConnectedStreamChannel<InetSocketAddress>> connector;
     private final ProviderInterface providerInterface = new ProviderInterface();
+    private final ProviderDescriptor providerDescriptor;
 
     RemoteConnectionProvider(final ConnectionProviderContext connectionProviderContext, final Connector<InetSocketAddress, ? extends ConnectedStreamChannel<InetSocketAddress>> connector) {
         this.connectionProviderContext = connectionProviderContext;
         this.connector = connector;
+        final ProviderDescriptor providerDescriptor = connectionProviderContext.getProtocolServiceProvider(ProtocolServiceType.MARSHALLER_PROVIDER_DESCRIPTOR, "river");
+        if (providerDescriptor == null) {
+            throw new IllegalArgumentException("River marshalling protocol is not installed");
+        }
+        this.providerDescriptor = providerDescriptor;
     }
 
     public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
@@ -71,7 +78,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
         // Open a client channel
         final IoFuture<? extends ConnectedStreamChannel<InetSocketAddress>> futureChannel;
         try {
-            futureChannel = connector.connectTo(new InetSocketAddress(InetAddress.getByName(host), port), new ClientOpenListener(connectOptions, connectionProviderContext, result, callbackHandler), null);
+            futureChannel = connector.connectTo(new InetSocketAddress(InetAddress.getByName(host), port), new ClientOpenListener(connectOptions, connectionProviderContext, result, callbackHandler, providerDescriptor), null);
         } catch (UnknownHostException e) {
             result.setException(e);
             return IoUtils.nullCancellable();
@@ -90,7 +97,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
             if (authenticationProvider == null) {
                 throw new IllegalArgumentException("Missing authentication provider: " + (providerName == null ? "default" : providerName));
             }
-            return new ServerOpenListener(optionMap, connectionProviderContext);
+            return new ServerOpenListener(optionMap, connectionProviderContext, providerDescriptor);
         }
     }
 }

@@ -27,9 +27,11 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.jboss.remoting3.ProtocolException;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.xnio.Buffers;
+import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Result;
 
@@ -53,32 +55,55 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
     public void handleMessage(final ByteBuffer buffer) {
         List<String> saslMechs = new ArrayList<String>();
         String remoteEndpointName = "endpoint";
+        final int[] ourVersions = connection.getProviderDescriptor().getSupportedVersions();
+        int bestVersion = -1;
         switch (buffer.get()) {
             case RemoteProtocol.GREETING: {
+                RemoteConnectionHandler.log.warn("Client received greeting message");
                 while (buffer.hasRemaining()) {
                     final byte type = buffer.get();
                     final int len = buffer.get() & 0xff;
+                    final ByteBuffer data = Buffers.slice(buffer, len);
                     switch (type) {
                         case RemoteProtocol.GREETING_VERSION: {
                             // We only support version zero, so knowing the other side's version is not useful presently
-                            buffer.get();
-                            if (len > 1) Buffers.skip(buffer, len - 1);
                             break;
                         }
                         case RemoteProtocol.GREETING_SASL_MECH: {
-                            saslMechs.add(Buffers.getModifiedUtf8(Buffers.slice(buffer, len)));
+                            saslMechs.add(Buffers.getModifiedUtf8(data));
                             break;
                         }
                         case RemoteProtocol.GREETING_ENDPOINT_NAME: {
-                            remoteEndpointName = Buffers.getModifiedUtf8(Buffers.slice(buffer, len));
+                            remoteEndpointName = Buffers.getModifiedUtf8(data);
+                            break;
+                        }
+                        case RemoteProtocol.GREETING_MARSHALLER_VERSION: {
+                            final int remoteVersion = data.getInt();
+                            // is it better than the best one?  if not, don't bother
+                            if (remoteVersion <= bestVersion) {
+                                break;
+                            }
+                            // do we support it?  if not, skip
+                            for (int ourVersion : ourVersions) {
+                                if (ourVersion == remoteVersion) {
+                                    bestVersion = remoteVersion;
+                                    break;
+                                }
+                            }
                             break;
                         }
                         default: {
                             // unknown, skip it for forward compatibility.
-                            Buffers.skip(buffer, len);
                             break;
                         }
                     }
+                }
+                // Check the greeting
+                if (bestVersion == -1) {
+                    // no matches.
+                    factoryResult.setException(new ProtocolException("No matching Marshalling versions could be found"));
+                    IoUtils.safeClose(connection);
+                    return;
                 }
                 // OK now send our authentication request
                 final OptionMap optionMap = connection.getOptionMap();

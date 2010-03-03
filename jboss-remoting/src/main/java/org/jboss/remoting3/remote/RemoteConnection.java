@@ -28,6 +28,7 @@ import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
+import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
@@ -39,15 +40,17 @@ import org.jboss.xnio.channels.MessageHandler;
 
 final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnection> implements Closeable {
     private final ConnectedStreamChannel<InetSocketAddress> channel;
+    private final ProviderDescriptor providerDescriptor;
     private final Pool<ByteBuffer> bufferPool = Buffers.createHeapByteBufferAllocator(4096);
     private final MessageHandler.Setter messageHandlerSetter;
     private final OptionMap optionMap;
     private boolean readDone;
     private final Object writeLock = new Object();
 
-    RemoteConnection(final Executor executor, final ConnectedStreamChannel<InetSocketAddress> channel, final OptionMap optionMap) {
+    RemoteConnection(final Executor executor, final ConnectedStreamChannel<InetSocketAddress> channel, final OptionMap optionMap, final ProviderDescriptor providerDescriptor) {
         super(executor);
         this.channel = channel;
+        this.providerDescriptor = providerDescriptor;
         messageHandlerSetter = Channels.createMessageReader(channel, optionMap);
         this.optionMap = optionMap;
     }
@@ -57,24 +60,10 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
             try {
                 shutdownWritesBlocking();
             } catch (IOException e) {
-                readDone = true;
-                writeLock.notifyAll();
                 IoUtils.safeClose(channel);
                 return;
             }
-            while (! readDone) {
-                try {
-                    writeLock.wait();
-                } catch (InterruptedException e) {
-                    readDone = true;
-                    writeLock.notifyAll();
-                    IoUtils.safeClose(channel);
-                    Thread.currentThread().interrupt();
-                    throw new InterruptedIOException();
-                }
-            }
         }
-        channel.close();
     }
 
     OptionMap getOptionMap() {
@@ -101,13 +90,13 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
         try {
             sendBlockingNoClose(buffer);
         } catch (IOException e) {
-            IoUtils.safeClose(this);
+            IoUtils.safeClose(channel);
             throw e;
         } catch (RuntimeException e) {
-            IoUtils.safeClose(this);
+            IoUtils.safeClose(channel);
             throw e;
         } catch (Error e) {
-            IoUtils.safeClose(this);
+            IoUtils.safeClose(channel);
             throw e;
         }
     }
@@ -139,13 +128,13 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
                     channel.awaitWritable();
                 }
             } catch (IOException e) {
-                IoUtils.safeClose(this);
+                IoUtils.safeClose(channel);
                 throw e;
             } catch (RuntimeException e) {
-                IoUtils.safeClose(this);
+                IoUtils.safeClose(channel);
                 throw e;
             } catch (Error e) {
-                IoUtils.safeClose(this);
+                IoUtils.safeClose(channel);
                 throw e;
             }
         }
@@ -202,12 +191,7 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
         channel.shutdownReads();
     }
 
-    void readDone() {
-        synchronized (writeLock) {
-            readDone = true;
-            writeLock.notifyAll();
-        }
+    ProviderDescriptor getProviderDescriptor() {
+        return providerDescriptor;
     }
-
-
 }

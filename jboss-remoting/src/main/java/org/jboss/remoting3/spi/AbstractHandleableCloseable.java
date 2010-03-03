@@ -50,7 +50,6 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     private final StackTraceElement[] backtrace;
 
     private final Object closeLock = new Object();
-    private Thread closingThread;
     private State state = State.OPEN;
     private Map<Key, CloseHandler<? super T>> closeHandlers = null;
 
@@ -115,7 +114,6 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             switch (state) {
                 case OPEN: {
                     state = State.CLOSING;
-                    closingThread = Thread.currentThread();
                     closeHandlers = this.closeHandlers;
                     this.closeHandlers = null;
                     break;
@@ -138,7 +136,6 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         } finally {
             synchronized (closeLock) {
                 state = State.CLOSED;
-                closingThread = null;
                 closeLock.notifyAll();
             }
         }
@@ -244,13 +241,13 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         try {
             super.finalize();
         } finally {
-            if (! isOpen()) {
+            if (isOpen()) {
                 if (LEAK_DEBUGGING) {
                     final Throwable t = new LeakThrowable();
                     t.setStackTrace(backtrace);
                     log.warn(t, "Leaked a %s instance: %s", getClass().getName(), this);
                 } else {
-                    log.warn("Leaked a %s instance: %s", getClass().getName(), this);
+                    log.trace("Leaked a %s instance: %s", getClass().getName(), this);
                 }
                 IoUtils.safeClose(this);
             }

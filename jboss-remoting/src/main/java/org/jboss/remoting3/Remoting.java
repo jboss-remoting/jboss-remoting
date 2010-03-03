@@ -25,6 +25,8 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -160,6 +162,7 @@ public final class Remoting {
                             addServices(endpoint, ProtocolServiceType.CLASS_RESOLVER, props);
                             addServices(endpoint, ProtocolServiceType.OBJECT_RESOLVER, props);
                             addServices(endpoint, ProtocolServiceType.CLASS_EXTERNALIZER_FACTORY, props);
+                            final List<RemotingServiceDescriptor<?>> connectionProviders = new ArrayList<RemotingServiceDescriptor<?>>();
                             for (RemotingServiceDescriptor<?> descriptor : ServiceLoader.load(RemotingServiceDescriptor.class)) {
                                 final String name = descriptor.getName();
                                 final Class<?> serviceType = descriptor.getType();
@@ -171,7 +174,7 @@ public final class Remoting {
                                 }
                                 try {
                                     if (serviceType == ConnectionProviderFactory.class) {
-                                        endpoint.addConnectionProvider(name, (ConnectionProviderFactory) service);
+                                        connectionProviders.add(descriptor);
                                     } else if (serviceType == ClassTable.class) {
                                         endpoint.addProtocolService(ProtocolServiceType.CLASS_TABLE, name, (ClassTable) service);
                                     } else if (serviceType == ObjectTable.class) {
@@ -184,7 +187,7 @@ public final class Remoting {
                                         endpoint.addProtocolService(ProtocolServiceType.CLASS_EXTERNALIZER_FACTORY, name, (ClassExternalizerFactory) service);
                                     }
                                 } catch (DuplicateRegistrationException e) {
-                                    log.warn("Duplicate registration for '" + name + "' of " + serviceType);
+                                    log.warn("Duplicate registration for %s '%s'", serviceType, name);
                                 }
                             }
                             final Map<String, ProviderDescriptor> found = new HashMap<String, ProviderDescriptor>();
@@ -199,7 +202,18 @@ public final class Remoting {
                                 try {
                                     endpoint.addProtocolService(ProtocolServiceType.MARSHALLER_PROVIDER_DESCRIPTOR, name, found.get(name));
                                 } catch (DuplicateRegistrationException e) {
-                                    log.warn("Duplicate registration for '" + name + "' of " + MarshallerFactory.class);
+                                    log.warn("Duplicate registration for marshaller factory '%s'", name);
+                                }
+                            }
+                            // last but not least, install all the protocol service providers which may depend on prior items
+                            for (RemotingServiceDescriptor<?> descriptor : connectionProviders) {
+                                final String name = descriptor.getName();
+                                try {
+                                    endpoint.addConnectionProvider(name, (ConnectionProviderFactory) descriptor.getService(props));
+                                } catch (IOException e) {
+                                    throw new RuntimeException(e);
+                                } catch (DuplicateRegistrationException e) {
+                                    log.warn("Duplicate registration for connection provider '%s'", name);
                                 }
                             }
                             ok = true;

@@ -23,6 +23,7 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.xnio.Result;
 
@@ -35,6 +36,9 @@ abstract class AbstractClientMessageHandler extends AbstractMessageHandler {
     }
 
     public void handleException(final IOException e) {
+        if (e instanceof ClosedChannelException) {
+            return;
+        }
         result.setException(e);
         super.handleException(e);
     }

@@ -168,9 +168,5 @@ final class RemoteClassTable implements ClassTable {
                 // no action necessary.
             }
         }
-
-        public void handleClose() {
-            // ---
-        }
     }
 }

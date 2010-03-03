@@ -50,4 +50,10 @@ final class GreetingUtils {
         buffer.put((byte) 1);
         buffer.put(value);
     }
+
+    static void writeInt(ByteBuffer buffer, byte type, int value) {
+        buffer.put(type);
+        buffer.put((byte) 4);
+        buffer.putInt(value);
+    }
 }

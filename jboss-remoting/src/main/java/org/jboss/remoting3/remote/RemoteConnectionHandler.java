@@ -67,7 +67,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
 
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    public RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final MarshallerFactory marshallerFactory) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final MarshallerFactory marshallerFactory) {
         super(connectionContext.getConnectionProviderContext().getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;

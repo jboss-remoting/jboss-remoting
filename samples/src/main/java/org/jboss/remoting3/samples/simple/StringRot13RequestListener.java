@@ -28,9 +28,6 @@ public final class StringRot13RequestListener implements RequestListener<String,
         }
     }
 
-    public void handleClose() {
-    }
-
     private char rot13(final char i) {
         if (i >= 'A' && i <= 'M' || i >= 'a' && i <= 'm') {
             return (char) (i + 13);

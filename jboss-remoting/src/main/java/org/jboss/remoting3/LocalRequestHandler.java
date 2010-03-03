@@ -90,11 +90,7 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
     }
 
     protected void closeAction() throws IOException {
-        try {
-            requestListener.handleClose();
-        } catch (Throwable t) {
-            log.error(t, "Unexpected exception in request listener handleClose() method");
-        }
+        clientContext.close();
     }
 
     public String toString() {

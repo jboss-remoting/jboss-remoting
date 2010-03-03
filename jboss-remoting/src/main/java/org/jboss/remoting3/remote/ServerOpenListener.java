@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
@@ -48,10 +49,12 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
 
     private final OptionMap optionMap;
     private final ConnectionProviderContext connectionProviderContext;
+    private final ProviderDescriptor providerDescriptor;
 
-    ServerOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) {
+    ServerOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final ProviderDescriptor providerDescriptor) {
         this.optionMap = optionMap;
         this.connectionProviderContext = connectionProviderContext;
+        this.providerDescriptor = providerDescriptor;
     }
 
     public void handleEvent(final ConnectedStreamChannel<InetSocketAddress> channel) {
@@ -60,7 +63,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
         } catch (IOException e) {
             // ignore
         }
-        final RemoteConnection connection = new RemoteConnection(connectionProviderContext.getExecutor(), channel, optionMap);
+        final RemoteConnection connection = new RemoteConnection(connectionProviderContext.getExecutor(), channel, optionMap, providerDescriptor);
 
         // Calculate available server mechanisms
         final Sequence<String> mechs = optionMap.get(Options.SASL_MECHANISMS);
@@ -81,8 +84,14 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
         final ByteBuffer buffer = connection.allocate();
         // length placeholder
         buffer.putInt(0);
+        buffer.put(RemoteProtocol.GREETING);
         // version ID
         GreetingUtils.writeByte(buffer, RemoteProtocol.GREETING_VERSION, RemoteProtocol.VERSION);
+        // marshaller versions
+        final int[] versions = providerDescriptor.getSupportedVersions();
+        for (int version : versions) {
+            GreetingUtils.writeInt(buffer, RemoteProtocol.GREETING_MARSHALLER_VERSION, version);
+        }
         // SASL server mechs
         for (String name : serverMechanisms) {
             GreetingUtils.writeString(buffer, RemoteProtocol.GREETING_SASL_MECH, name);
@@ -110,6 +119,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
                             return;
                         }
                     }
+                    RemoteConnectionHandler.log.warn("Server sent greeting message");
                     connection.free(buffer);
                     channel.resumeReads();
                     return;

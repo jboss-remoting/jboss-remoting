@@ -612,6 +612,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
             throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
         }
+        log.trace("Adding registration for connection provider named %s: %s", name, provider);
         final Registration handle = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider);
         return handle;
     }
@@ -643,6 +644,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (map.putIfAbsent(name, provider) != null) {
             throw new DuplicateRegistrationException(type.getDescription() + " '" + name + "' is already registered");
         }
+        log.trace("Adding registration for %s named %s: %s", type, name, provider);
         return new MapRegistration<T>(map, name, provider);
     }
 

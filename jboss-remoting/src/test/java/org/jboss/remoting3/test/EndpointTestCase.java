@@ -27,6 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.jboss.remoting3.Client;
+import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.RemoteExecutionException;
 import org.jboss.remoting3.Remoting;
@@ -88,11 +89,12 @@ public final class EndpointTestCase {
                             throw new RemoteExecutionException(e);
                         }
                     }
-
-                    public void handleClose() {
+                }, Object.class, Object.class);
+                localClient.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
+                    public void handleClose(final Client<Object, Object> closed) {
                         log.info("Listener closed");
                     }
-                }, Object.class, Object.class);
+                });
                 try {
                     assertEquals(replyObj, localClient.invoke(requestObj));
                 } finally {
@@ -121,11 +123,12 @@ public final class EndpointTestCase {
                             throw new RemoteExecutionException(e);
                         }
                     }
-
-                    public void handleClose() {
+                }, Object.class, Object.class);
+                localClient.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
+                    public void handleClose(final Client<Object, Object> closed) {
                         log.info("Listener closed");
                     }
-                }, Object.class, Object.class);
+                });
                 try {
                     assertEquals(replyObj, localClient.send(requestObj).get());
                 } finally {
