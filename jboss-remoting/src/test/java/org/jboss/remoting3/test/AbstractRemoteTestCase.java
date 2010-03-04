@@ -62,28 +62,32 @@ public abstract class AbstractRemoteTestCase extends InvocationTestBase {
         }
     }
 
-    protected Connection getConnection() throws IOException {
+    protected Connection getConnection() throws Exception {
         final NetworkServerProvider provider = endpoint.getConnectionProviderInterface(getScheme(), NetworkServerProvider.class);
         assertNotNull(provider, "No remote provider interface");
-        final ChannelListener<ConnectedStreamChannel<InetSocketAddress>> listener = provider.getServerListener(OptionMap.builder().set(RemotingOptions.AUTHENTICATION_PROVIDER, "test").setSequence(Options.SASL_MECHANISMS, "DIGEST-MD5").getMap());
+        final OptionMap serverOptions = OptionMap.builder()
+                .set(RemotingOptions.AUTHENTICATION_PROVIDER, "test")
+//                .setSequence(Options.SASL_MECHANISMS, "EXTERNAL", "DIGEST-MD5")
+                .setSequence(Options.SASL_MECHANISMS, "DIGEST-MD5")
+                .getMap();
+        final ChannelListener<ConnectedStreamChannel<InetSocketAddress>> listener = provider.getServerListener(serverOptions);
         final Xnio xnio = Xnio.getInstance();
-        try {
-            final AcceptingServer<InetSocketAddress, ?, ?> server = getServer(listener, xnio);
-            final IoFuture<? extends BoundChannel<InetSocketAddress>> future = server.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0));
-            final InetSocketAddress localAddress = future.get().getLocalAddress();
-            final Connection connection = endpoint.connect(new URI(getScheme(), null, localAddress.getAddress().getHostAddress(), localAddress.getPort(), null, null, null), OptionMap.builder().setSequence(Options.SSL_ENABLED_CIPHER_SUITES, "TLS_RSA_WITH_AES_128_CBC_SHA").getMap(), "user", null, "password".toCharArray()).get();
-            connection.addCloseHandler(new CloseHandler<Connection>() {
-                public void handleClose(final Connection closed) {
-                    IoUtils.safeClose(server);
-                }
-            });
-            return connection;
-        } catch (Exception e) {
-            final IOException ioe = new IOException();
-            ioe.initCause(e);
-            throw ioe;
-        }
+        final AcceptingServer<InetSocketAddress, ?, ?> server = getServer(listener, xnio);
+        final IoFuture<? extends BoundChannel<InetSocketAddress>> future = server.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0));
+        final InetSocketAddress localAddress = future.get().getLocalAddress();
+        final OptionMap clientOptions = OptionMap.builder()
+                .setSequence(Options.SSL_ENABLED_CIPHER_SUITES, "TLS_RSA_WITH_AES_128_CBC_SHA")
+                .getMap();
+        final Connection connection = endpoint.connect(new URI(getScheme(), null, localAddress.getAddress().getHostAddress(), localAddress.getPort(), null, null, null), clientOptions, "user", null, "password".toCharArray()).get();
+        connection.addCloseHandler(new CloseHandler<Connection>() {
+            public void handleClose(final Connection closed) {
+                IoUtils.safeClose(server);
+            }
+        });
+        return connection;
     }
+
+    protected void addClientOptions(OptionMap.Builder optionMapBuilder) {}
 
     protected abstract String getScheme();
 

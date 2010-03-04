@@ -84,6 +84,7 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
                             res = channel.write(buffer);
                         } catch (IOException e1) {
                             RemoteConnectionHandler.log.trace(e1, "Failed to send client greeting message");
+                            factoryResult.setException(e1);
                             IoUtils.safeClose(connection);
                             connection.free(buffer);
                             return;
@@ -93,8 +94,16 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
                             return;
                         }
                     }
-                    RemoteConnectionHandler.log.warn("Client sent greeting message");
                     connection.free(buffer);
+                    try {
+                        while (! channel.flush());
+                    } catch (IOException e) {
+                        RemoteConnectionHandler.log.trace(e, "Failed to flush client greeting message");
+                        factoryResult.setException(e);
+                        IoUtils.safeClose(connection);
+                        return;
+                    }
+                    RemoteConnectionHandler.log.trace("Client sent greeting message");
                     channel.resumeReads();
                     return;
                 }

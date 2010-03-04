@@ -137,6 +137,11 @@ final class ClientAuthenticationHandler extends AbstractClientMessageHandler {
                 });
                 return;
             }
+            case RemoteProtocol.AUTH_REJECTED: {
+                RemoteConnectionHandler.log.trace("Received auth rejected message");
+                factoryResult.setException(new SaslException("Authentication failed"));
+                IoUtils.safeClose(remoteConnection);
+            }
         }
     }
 }

@@ -62,7 +62,7 @@
             <groupId>org.jboss.marshalling</groupId>
             <artifactId>jboss-marshalling-river</artifactId>
             <version>${jbmar.version}</version>
-            <scope>compile</scope>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testng</groupId>
@@ -92,7 +92,7 @@
                         </property>
                         <property>
                             <name>jboss.remoting.leakdebugging</name>
-                            <value>true</value>
+                            <value>false</value>
                         </property>
                     </systemProperties>
                 </configuration>

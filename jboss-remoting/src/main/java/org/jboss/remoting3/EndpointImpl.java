@@ -26,14 +26,15 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
@@ -43,20 +44,20 @@ import org.jboss.marshalling.Pair;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.security.SimpleClientCallbackHandler;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
+import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
-import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ProtocolServiceType;
-import org.jboss.xnio.log.Logger;
+import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.xnio.FutureResult;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.TranslatingResult;
+import org.jboss.xnio.Result;
 import org.jboss.xnio.WeakCloseable;
+import org.jboss.xnio.log.Logger;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -339,7 +340,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 class ServiceRegistration extends AbstractHandleableCloseable<Registration> implements Registration {
 
                     ServiceRegistration() {
-                        super(executor);
+                        super(executor, false);
                     }
 
                     protected void closeAction() {
@@ -468,7 +469,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         class ServiceListenerRegistration extends AbstractHandleableCloseable<Registration> implements Registration {
 
             ServiceListenerRegistration() {
-                super(executor);
+                super(executor, false);
             }
 
             protected void closeAction() {
@@ -569,9 +570,21 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
         }
         final FutureResult<Connection> futureResult = new FutureResult<Connection>(executor);
-        futureResult.addCancelHandler(connectionProvider.connect(destination, connectOptions, new TranslatingResult<ConnectionHandlerFactory, Connection>(futureResult) {
-            protected Connection translate(final ConnectionHandlerFactory input) {
-                return new ConnectionImpl(EndpointImpl.this, input, connectionProviderContext, destination.toString());
+        // Mark the stack because otherwise debugging connect problems can be incredibly tough
+        final Throwable t = new Throwable();
+        futureResult.addCancelHandler(connectionProvider.connect(destination, connectOptions, new Result<ConnectionHandlerFactory>() {
+            public boolean setResult(final ConnectionHandlerFactory result) {
+                return futureResult.setResult(new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext, destination.toString()));
+            }
+
+            public boolean setException(final IOException exception) {
+                final StackTraceElement[] st0 = t.getStackTrace();
+                exception.setStackTrace(Arrays.copyOfRange(st0, 1, st0.length));
+                return futureResult.setException(exception);
+            }
+
+            public boolean setCancelled() {
+                return futureResult.setCancelled();
             }
         }, callbackHandler));
         return futureResult.getIoFuture();
@@ -612,7 +625,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
             throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
         }
-        log.trace("Adding registration for connection provider named %s: %s", name, provider);
+        log.trace("Adding connection provider registration named '%s': %s", uriScheme, provider);
         final Registration handle = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider);
         return handle;
     }
@@ -644,7 +657,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (map.putIfAbsent(name, provider) != null) {
             throw new DuplicateRegistrationException(type.getDescription() + " '" + name + "' is already registered");
         }
-        log.trace("Adding registration for %s named %s: %s", type, name, provider);
+        log.trace("Adding '%s' registration named '%s': %s", type, name, provider);
         return new MapRegistration<T>(map, name, provider);
     }
 
@@ -694,7 +707,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         private final T value;
 
         private MapRegistration(final ConcurrentMap<String, T> map, final String key, final T value) {
-            super(executor);
+            super(executor, false);
             this.map = map;
             this.key = key;
             this.value = value;
@@ -710,6 +723,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }
+        }
+
+        public String toString() {
+            return String.format("Registration of '%s': %s", key, value);
         }
     }
 

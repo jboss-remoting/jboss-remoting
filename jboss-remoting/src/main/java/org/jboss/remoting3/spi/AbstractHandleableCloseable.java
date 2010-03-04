@@ -48,6 +48,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
 
     private final Executor executor;
     private final StackTraceElement[] backtrace;
+    private final boolean autoClose;
 
     private final Object closeLock = new Object();
     private State state = State.OPEN;
@@ -79,11 +80,22 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
      * @param executor the executor used to execute the close notification handlers
      */
     protected AbstractHandleableCloseable(final Executor executor) {
+        this(executor, true);
+    }
+
+    /**
+     * Basic constructor.
+     *
+     * @param executor the executor used to execute the close notification handlers
+     * @param autoClose {@code true} if this instance should automatically close on finalize
+     */
+    protected AbstractHandleableCloseable(final Executor executor, final boolean autoClose) {
         if (executor == null) {
             throw new NullPointerException("executor is null");
         }
         this.executor = executor;
         backtrace = LEAK_DEBUGGING ? new Throwable().getStackTrace() : null;
+        this.autoClose = autoClose;
     }
 
     /**
@@ -241,7 +253,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         try {
             super.finalize();
         } finally {
-            if (isOpen()) {
+            if (autoClose && isOpen()) {
                 if (LEAK_DEBUGGING) {
                     final Throwable t = new LeakThrowable();
                     t.setStackTrace(backtrace);

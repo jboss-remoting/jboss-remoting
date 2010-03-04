@@ -24,20 +24,21 @@ package org.jboss.remoting3.remote;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.Set;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
 
+import javax.security.sasl.SaslServerFactory;
+
 final class ServerGreetingHandler extends AbstractMessageHandler {
     private final RemoteConnection connection;
     private final ConnectionProviderContext connectionProviderContext;
-    private final Set<String> saslMechs;
+    private final Map<String, SaslServerFactory> saslMechs;
     private final ServerAuthenticationProvider provider;
     private final Map<String, Object> propertyMap;
 
-    ServerGreetingHandler(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final Set<String> saslMechs, final ServerAuthenticationProvider provider, final Map<String, Object> propertyMap) {
+    ServerGreetingHandler(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final Map<String, SaslServerFactory> saslMechs, final ServerAuthenticationProvider provider, final Map<String, Object> propertyMap) {
         super(connection);
         this.connection = connection;
         this.connectionProviderContext = connectionProviderContext;

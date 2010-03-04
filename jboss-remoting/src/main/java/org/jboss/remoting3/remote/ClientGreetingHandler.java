@@ -24,9 +24,9 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import org.jboss.remoting3.ProtocolException;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
@@ -53,13 +53,13 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
     }
 
     public void handleMessage(final ByteBuffer buffer) {
-        List<String> saslMechs = new ArrayList<String>();
+        Set<String> saslMechs = new LinkedHashSet<String>();
         String remoteEndpointName = "endpoint";
         final int[] ourVersions = connection.getProviderDescriptor().getSupportedVersions();
         int bestVersion = -1;
         switch (buffer.get()) {
             case RemoteProtocol.GREETING: {
-                RemoteConnectionHandler.log.warn("Client received greeting message");
+                RemoteConnectionHandler.log.trace("Client received greeting message");
                 while (buffer.hasRemaining()) {
                     final byte type = buffer.get();
                     final int len = buffer.get() & 0xff;
@@ -102,6 +102,11 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
                 if (bestVersion == -1) {
                     // no matches.
                     factoryResult.setException(new ProtocolException("No matching Marshalling versions could be found"));
+                    IoUtils.safeClose(connection);
+                    return;
+                }
+                if (saslMechs.isEmpty()) {
+                    factoryResult.setException(new SaslException("No more authentication mechanisms to try"));
                     IoUtils.safeClose(connection);
                     return;
                 }

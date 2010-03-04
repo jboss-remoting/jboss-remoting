@@ -76,9 +76,9 @@ public abstract class InvocationTestBase {
         log.info("-------------------------------------------------------------");
     }
 
-    protected abstract Connection getConnection() throws IOException;
+    protected abstract Connection getConnection() throws Exception;
 
-    public void testBasicInvoke() throws IOException {
+    public void testBasicInvoke() throws Exception {
         enter();
         try {
             final InvocationTestObject requestObj = new InvocationTestObject();
@@ -126,7 +126,7 @@ public abstract class InvocationTestBase {
         }
     }
 
-    public void testBasicSend() throws IOException {
+    public void testBasicSend() throws Exception {
         enter();
         try {
             final InvocationTestObject requestObj = new InvocationTestObject();
@@ -175,7 +175,7 @@ public abstract class InvocationTestBase {
         }
     }
 
-    public void testBasicClientConnector() throws Throwable {
+    public void testBasicClientConnector() throws Exception {
         enter();
         try {
             final InvocationTestObject requestObj = new InvocationTestObject();

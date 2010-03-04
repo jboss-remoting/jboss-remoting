@@ -40,12 +40,14 @@ final class ServerAuthenticationHandler extends AbstractMessageHandler {
     private final RemoteConnection remoteConnection;
     private final SaslServer saslServer;
     private final ConnectionProviderContext connectionProviderContext;
+    private final ServerInitialAuthenticationHandler initialAuthHandler;
 
-    ServerAuthenticationHandler(final RemoteConnection remoteConnection, final SaslServer saslServer, final ConnectionProviderContext connectionProviderContext) {
+    ServerAuthenticationHandler(final RemoteConnection remoteConnection, final SaslServer saslServer, final ConnectionProviderContext connectionProviderContext, final ServerInitialAuthenticationHandler initialAuthHandler) {
         super(remoteConnection);
         this.saslServer = saslServer;
         this.remoteConnection = remoteConnection;
         this.connectionProviderContext = connectionProviderContext;
+        this.initialAuthHandler = initialAuthHandler;
     }
 
     public void handleMessage(final ByteBuffer buffer) {
@@ -58,8 +60,8 @@ final class ServerAuthenticationHandler extends AbstractMessageHandler {
                         challenge = saslServer.evaluateResponse(Buffers.take(buffer, buffer.remaining()));
                     } catch (SaslException e) {
                         RemoteConnectionHandler.log.trace(e, "Server authentication failed");
-                        remoteConnection.sendAuthReject("Authentication failed");
-                        remoteConnection.flushBlocking();
+                        initialAuthHandler.rejectAuth();
+                        remoteConnection.setMessageHandler(initialAuthHandler);
                         return;
                     }
                     final boolean complete = saslServer.isComplete();

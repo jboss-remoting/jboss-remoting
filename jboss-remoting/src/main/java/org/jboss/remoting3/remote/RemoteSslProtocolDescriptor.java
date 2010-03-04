@@ -51,7 +51,7 @@ public final class RemoteSslProtocolDescriptor implements RemotingServiceDescrip
     public ConnectionProviderFactory getService(final Properties properties) throws IOException {
         final String providerName = properties.getProperty("remote+ssl.xnio.provider", "default");
         final Xnio xnio = Xnio.getInstance(providerName);
-        final OptionMap connectorOptions = OptionMap.builder().parseAll(properties, "remote+ssl.connector.option").getMap();
+        final OptionMap connectorOptions = OptionMap.builder().parseAll(properties, "remote+ssl.connector.option.", getClass().getClassLoader()).getMap();
         final Connector<InetSocketAddress, ? extends TcpChannel> connector;
         try {
             connector = xnio.createSslTcpConnector(null, connectorOptions);

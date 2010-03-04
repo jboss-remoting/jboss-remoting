@@ -51,7 +51,7 @@ public final class RemoteProtocolDescriptor implements RemotingServiceDescriptor
     public ConnectionProviderFactory getService(final Properties properties) throws IOException {
         final String providerName = properties.getProperty("remote.xnio.provider", "default");
         final Xnio xnio = Xnio.getInstance(providerName);
-        final OptionMap connectorOptions = OptionMap.builder().parseAll(properties, "remote.connector.option").getMap();
+        final OptionMap connectorOptions = OptionMap.builder().parseAll(properties, "remote.connector.option.", getClass().getClassLoader()).getMap();
         final Connector<InetSocketAddress, ? extends TcpChannel> connector;
         connector = xnio.createTcpConnector(connectorOptions);
         return new ConnectionProviderFactory() {

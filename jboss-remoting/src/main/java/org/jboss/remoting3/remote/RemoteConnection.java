@@ -44,7 +44,6 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
     private final Pool<ByteBuffer> bufferPool = Buffers.createHeapByteBufferAllocator(4096);
     private final MessageHandler.Setter messageHandlerSetter;
     private final OptionMap optionMap;
-    private boolean readDone;
     private final Object writeLock = new Object();
 
     RemoteConnection(final Executor executor, final ConnectedStreamChannel<InetSocketAddress> channel, final OptionMap optionMap, final ProviderDescriptor providerDescriptor) {
@@ -90,12 +89,15 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
         try {
             sendBlockingNoClose(buffer);
         } catch (IOException e) {
+            RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to send");
             IoUtils.safeClose(channel);
             throw e;
         } catch (RuntimeException e) {
+            RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to send");
             IoUtils.safeClose(channel);
             throw e;
         } catch (Error e) {
+            RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to send");
             IoUtils.safeClose(channel);
             throw e;
         }
@@ -128,12 +130,15 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
                     channel.awaitWritable();
                 }
             } catch (IOException e) {
+                RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to flush");
                 IoUtils.safeClose(channel);
                 throw e;
             } catch (RuntimeException e) {
+                RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to flush");
                 IoUtils.safeClose(channel);
                 throw e;
             } catch (Error e) {
+                RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to flush");
                 IoUtils.safeClose(channel);
                 throw e;
             }
@@ -147,12 +152,15 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
                     channel.awaitWritable();
                 }
             } catch (IOException e) {
+                RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to shutdown writes");
                 IoUtils.safeClose(channel);
                 throw e;
             } catch (RuntimeException e) {
+                RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to shutdown writes");
                 IoUtils.safeClose(channel);
                 throw e;
             } catch (Error e) {
+                RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to shutdown writes");
                 IoUtils.safeClose(channel);
                 throw e;
             }
@@ -193,5 +201,13 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
 
     ProviderDescriptor getProviderDescriptor() {
         return providerDescriptor;
+    }
+
+    void terminate() {
+        try {
+            channel.close();
+        } catch (IOException e) {
+            RemoteConnectionHandler.log.trace("Channel terminate exception: %s", e);
+        }
     }
 }

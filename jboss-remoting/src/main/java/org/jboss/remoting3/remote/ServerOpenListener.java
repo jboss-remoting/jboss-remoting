@@ -27,7 +27,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.jboss.marshalling.ProviderDescriptor;
@@ -41,6 +41,7 @@ import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Options;
 import org.jboss.xnio.Sequence;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
+import org.jboss.xnio.channels.SslChannel;
 
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslServerFactory;
@@ -65,18 +66,48 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
         }
         final RemoteConnection connection = new RemoteConnection(connectionProviderContext.getExecutor(), channel, optionMap, providerDescriptor);
 
+        // Get the server authentication provider
+        final String authProvider = optionMap.get(RemotingOptions.AUTHENTICATION_PROVIDER);
+        if (authProvider == null) {
+            RemoteConnectionHandler.log.warn("No authentication provider available");
+            IoUtils.safeClose(connection);
+            return;
+        }
+        final ServerAuthenticationProvider provider = connectionProviderContext.getProtocolServiceProvider(ProtocolServiceType.SERVER_AUTHENTICATION_PROVIDER, authProvider);
+        if (provider == null) {
+            RemoteConnectionHandler.log.warn("No authentication provider available");
+            IoUtils.safeClose(connection);
+            return;
+        }
+
         // Calculate available server mechanisms
         final Sequence<String> mechs = optionMap.get(Options.SASL_MECHANISMS);
         final Set<String> includes = mechs != null ? new HashSet<String>(mechs) : null;
-        final Set<String> serverMechanisms = new LinkedHashSet<String>();
         final Map<String, Object> propertyMap = SaslUtils.createPropertyMap(optionMap);
         final Enumeration<SaslServerFactory> e = Sasl.getSaslServerFactories();
+        final Map<String, SaslServerFactory> saslServerFactories = new LinkedHashMap<String, SaslServerFactory>();
+        if (channel instanceof SslChannel && (includes == null | includes.contains("EXTERNAL"))) {
+            // automatically the best mechanism.
+            saslServerFactories.put("EXTERNAL", new ExternalSaslServerFactory((SslChannel) channel));
+        }
         while (e.hasMoreElements()) {
             final SaslServerFactory saslServerFactory = e.nextElement();
             for (String name : saslServerFactory.getMechanismNames(propertyMap)) {
                 if (includes == null || includes.contains(name)) {
-                    serverMechanisms.add(name);
+                    saslServerFactories.put(name, saslServerFactory);
                 }
+            }
+        }
+        if (saslServerFactories.isEmpty()) {
+            try {
+                RemoteConnectionHandler.log.trace("Sending server no-mechanisms message");
+                connection.sendAuthReject("No mechanisms available");
+                connection.close();
+                return;
+            } catch (IOException e1) {
+                RemoteConnectionHandler.log.trace(e1, "Failed to send server no-mechanisms message");
+                IoUtils.safeClose(connection);
+                return;
             }
         }
 
@@ -93,7 +124,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
             GreetingUtils.writeInt(buffer, RemoteProtocol.GREETING_MARSHALLER_VERSION, version);
         }
         // SASL server mechs
-        for (String name : serverMechanisms) {
+        for (String name : saslServerFactories.keySet()) {
             GreetingUtils.writeString(buffer, RemoteProtocol.GREETING_SASL_MECH, name);
             RemoteConnectionHandler.log.trace("Offering SASL mechanism %s", name);
         }
@@ -119,24 +150,21 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
                             return;
                         }
                     }
-                    RemoteConnectionHandler.log.warn("Server sent greeting message");
                     connection.free(buffer);
+                    try {
+                        while (! channel.flush());
+                    } catch (IOException e) {
+                        RemoteConnectionHandler.log.trace(e, "Failed to flush server greeting message");
+                        IoUtils.safeClose(connection);
+                        return;
+                    }
+                    RemoteConnectionHandler.log.trace("Server sent greeting message");
                     channel.resumeReads();
                     return;
                 }
             }
         });
-        final String authProvider = optionMap.get(RemotingOptions.AUTHENTICATION_PROVIDER);
-        if (authProvider == null) {
-            // todo log no valid auth provider
-            IoUtils.safeClose(connection);
-        }
-        final ServerAuthenticationProvider provider = connectionProviderContext.getProtocolServiceProvider(ProtocolServiceType.SERVER_AUTHENTICATION_PROVIDER, authProvider);
-        if (provider == null) {
-            // todo log no valid auth provider
-            IoUtils.safeClose(connection);
-        }
-        connection.setMessageHandler(new ServerGreetingHandler(connection, connectionProviderContext, serverMechanisms, provider, propertyMap));
+        connection.setMessageHandler(new ServerGreetingHandler(connection, connectionProviderContext, saslServerFactories, provider, propertyMap));
         // and send the greeting
         channel.resumeWrites();
     }

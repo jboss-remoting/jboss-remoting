@@ -22,6 +22,7 @@
 
 package org.jboss.remoting3.test;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -36,12 +37,33 @@ import org.testng.annotations.Test;
 
 @Test(suiteName = "Remote SSL tests")
 public final class RemoteSslTestCase extends AbstractRemoteTestCase {
+    // Use anonymous ciphers so we don't need a trust store configuration of any sort
+    private static final String[] CIPHER_SUITES = {
+            "SSL_DH_anon_EXPORT_WITH_DES40_CBC_SHA",
+            "SSL_DH_anon_EXPORT_WITH_RC4_40_MD5",
+            "TLS_DH_anon_WITH_AES_128_CBC_SHA",
+            "TLS_DH_anon_WITH_AES_256_CBC_SHA",
+            "SSL_DH_anon_WITH_3DES_EDE_CBC_SHA",
+            "SSL_DH_anon_WITH_DES_CBC_SHA",
+            "SSL_DH_anon_WITH_RC4_128_MD5",
+            "SSL_DH_anon_EXPORT_WITH_DES40_CBC_SHA",
+            "SSL_DH_anon_EXPORT_WITH_RC4_40_MD5",
+    };
+
+    private static final String[] PROTOCOLS = {
+            "TLSv1",
+    };
+
     protected SslTcpServer getServer(final ChannelListener<ConnectedStreamChannel<InetSocketAddress>> listener, final Xnio xnio) throws NoSuchProviderException, NoSuchAlgorithmException {
-        return xnio.createSslTcpServer(listener, OptionMap.builder().setSequence(Options.SSL_ENABLED_CIPHER_SUITES, "TLS_RSA_WITH_AES_128_CBC_SHA").getMap());
+        final OptionMap serverOptions = OptionMap.builder()
+                .setSequence(Options.SSL_ENABLED_CIPHER_SUITES, CIPHER_SUITES)
+                .setSequence(Options.SSL_ENABLED_PROTOCOLS, PROTOCOLS)
+                .getMap();
+        return xnio.createSslTcpServer(listener, serverOptions);
     }
 
     protected String getScheme() {
-        if (true) throw new SkipException("SSL");
+        if (false) throw new SkipException("SSL");
         return "remote+ssl";
     }
 }

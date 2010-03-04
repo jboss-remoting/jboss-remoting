@@ -106,4 +106,8 @@ public final class ProtocolServiceType<T> implements Serializable {
     public String getDescription() {
         return description;
     }
+
+    public String toString() {
+        return "protocol service type: \"" + getDescription() + "\"";
+    }
 }

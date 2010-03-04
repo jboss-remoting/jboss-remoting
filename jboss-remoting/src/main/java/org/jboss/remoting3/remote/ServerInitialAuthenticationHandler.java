@@ -25,29 +25,32 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
-import java.util.Set;
+import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
 
-import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
+import javax.security.sasl.SaslServerFactory;
 
 final class ServerInitialAuthenticationHandler extends AbstractMessageHandler {
     private final RemoteConnection remoteConnection;
     private final Map<String, ?> saslPropertyMap;
-    private final Set<String> allowedMechs;
+    private final Map<String, SaslServerFactory> allowedMechs;
     private final ServerAuthenticationProvider authenticationProvider;
     private final ConnectionProviderContext connectionProviderContext;
+    private int retries;
 
-    ServerInitialAuthenticationHandler(final RemoteConnection remoteConnection, final Map<String, ?> saslPropertyMap, final Set<String> allowedMechs, final ServerAuthenticationProvider authenticationProvider, final ConnectionProviderContext connectionProviderContext) {
+    ServerInitialAuthenticationHandler(final RemoteConnection remoteConnection, final Map<String, ?> saslPropertyMap, final Map<String, SaslServerFactory> allowedMechs, final ServerAuthenticationProvider authenticationProvider, final ConnectionProviderContext connectionProviderContext) {
         super(remoteConnection);
         this.remoteConnection = remoteConnection;
         this.saslPropertyMap = saslPropertyMap;
         this.allowedMechs = allowedMechs;
         this.authenticationProvider = authenticationProvider;
         this.connectionProviderContext = connectionProviderContext;
+        retries = remoteConnection.getOptionMap().get(RemotingOptions.AUTHENTICATION_RETRIES, 3);
     }
 
     public void handleMessage(final ByteBuffer buffer) {
@@ -56,17 +59,26 @@ final class ServerInitialAuthenticationHandler extends AbstractMessageHandler {
                 try {
                     // mech name
                     final String name = Buffers.getModifiedUtf8(buffer);
-                    if (allowedMechs.contains(name)) {
+                    final SaslServerFactory serverFactory = allowedMechs.get(name);
+                    if (serverFactory != null) {
                         RemoteConnectionHandler.log.trace("Selected SASL mechanism %s", name);
                         final String realm = connectionProviderContext.getEndpoint().getName();
-                        final SaslServer server = Sasl.createSaslServer(name, "remote", realm, saslPropertyMap, authenticationProvider.getCallbackHandler());
-                        remoteConnection.setMessageHandler(new ServerAuthenticationHandler(remoteConnection, server, connectionProviderContext));
+                        final SaslServer server = serverFactory.createSaslServer(name, "remote", realm, saslPropertyMap, authenticationProvider.getCallbackHandler());
+                        remoteConnection.setMessageHandler(new ServerAuthenticationHandler(remoteConnection, server, connectionProviderContext, this));
                         RemoteConnectionHandler.log.trace("Sending initial challenge");
-                        remoteConnection.sendAuthMessage(RemoteProtocol.AUTH_CHALLENGE, server.evaluateResponse(SaslUtils.EMPTY));
+                        final byte[] resp;
+                        try {
+                            resp = server.evaluateResponse(SaslUtils.EMPTY);
+                        } catch (SaslException e) {
+                            RemoteConnectionHandler.log.trace("Rejected invalid SASL response: %s", e);
+                            rejectAuth();
+                            return;
+                        }
+                        remoteConnection.sendAuthMessage(RemoteProtocol.AUTH_CHALLENGE, resp);
                         return;
                     } else {
                         RemoteConnectionHandler.log.trace("Rejected invalid SASL mechanism %s", name);
-                        remoteConnection.sendAuthReject("Invalid mechanism name");
+                        rejectAuth();
                         return;
                     }
                 } catch (IOException e) {
@@ -79,6 +91,14 @@ final class ServerInitialAuthenticationHandler extends AbstractMessageHandler {
                 RemoteConnectionHandler.log.warn("Server received invalid auth request message");
                 IoUtils.safeClose(remoteConnection);
             }
+        }
+    }
+
+    void rejectAuth() throws IOException {
+        remoteConnection.sendAuthReject("Authentication failed");
+        if (retries-- == 0) {
+            // too bad
+            remoteConnection.terminate();
         }
     }
 }

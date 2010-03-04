@@ -20,18 +20,34 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.test;
+package org.jboss.remoting3.remote;
 
-import java.io.IOException;
-import java.net.URI;
-import org.jboss.remoting3.Connection;
-import org.jboss.xnio.OptionMap;
-import org.testng.annotations.Test;
+import java.util.Map;
+import org.jboss.xnio.channels.SslChannel;
 
-@Test(description = "Local Tests")
-public final class LocalTestCase extends InvocationTestBase {
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslServer;
+import javax.security.sasl.SaslServerFactory;
 
-    protected Connection getConnection() throws IOException {
-        return endpoint.connect(URI.create("local:///"), OptionMap.EMPTY).get();
+final class ExternalSaslServerFactory implements SaslServerFactory {
+
+    private static final String[] NAMES = new String[] { "EXTERNAL" };
+
+    private final SslChannel sslChannel;
+
+    ExternalSaslServerFactory(final SslChannel sslChannel) {
+        this.sslChannel = sslChannel;
+    }
+
+    public SaslServer createSaslServer(final String mechanism, final String protocol, final String serverName, final Map<String, ?> props, final CallbackHandler cbh) throws SaslException {
+        if (! "EXTERNAL".equalsIgnoreCase(mechanism)) {
+            return null;
+        }
+        return new ExternalSaslServer(sslChannel, cbh);
+    }
+
+    public String[] getMechanismNames(final Map<String, ?> props) {
+        return NAMES;
     }
 }
