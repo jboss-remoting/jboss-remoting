@@ -85,9 +85,32 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
         messageHandlerSetter.set(handler);
     }
 
-    void sendBlocking(final ByteBuffer buffer) throws IOException {
+    void sendBlocking(final ByteBuffer buffer, boolean flush) throws IOException {
         try {
-            sendBlockingNoClose(buffer);
+            synchronized (writeLock) {
+                buffer.putInt(0, buffer.remaining() - 4);
+                boolean intr = false;
+                try {
+                    while (buffer.hasRemaining()) {
+                        if (channel.write(buffer) == 0) {
+                            try {
+                                channel.awaitWritable();
+                            } catch (InterruptedIOException e) {
+                                intr = Thread.interrupted();
+                            }
+                        }
+                    }
+                    if (flush) while (! channel.flush()) {
+                        try {
+                            channel.awaitWritable();
+                        } catch (InterruptedIOException e) {
+                            intr = Thread.interrupted();
+                        }
+                    }
+                } finally {
+                    if (intr) Thread.currentThread().interrupt();
+                }
+            }
         } catch (IOException e) {
             RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to send");
             IoUtils.safeClose(channel);
@@ -100,26 +123,6 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
             RemoteConnectionHandler.log.trace(e, "Closing channel due to failure to send");
             IoUtils.safeClose(channel);
             throw e;
-        }
-    }
-
-    void sendBlockingNoClose(final ByteBuffer buffer) throws IOException {
-        synchronized (writeLock) {
-            buffer.putInt(0, buffer.remaining() - 4);
-            boolean intr = false;
-            try {
-                while (buffer.hasRemaining()) {
-                    if (channel.write(buffer) == 0) {
-                        try {
-                            channel.awaitWritable();
-                        } catch (InterruptedIOException e) {
-                            intr = Thread.interrupted();
-                        }
-                    }
-                }
-            } finally {
-                if (intr) Thread.currentThread().interrupt();
-            }
         }
     }
 
@@ -174,8 +177,7 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
             buf.put(RemoteProtocol.AUTH_REJECTED);
             Buffers.putModifiedUtf8(buf, msg);
             buf.flip();
-            sendBlocking(buf);
-            flushBlocking();
+            sendBlocking(buf, true);
         } finally {
             free(buf);
         }
@@ -188,8 +190,7 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
             buf.put(msgType);
             if (message != null) buf.put(message);
             buf.flip();
-            sendBlocking(buf);
-            flushBlocking();
+            sendBlocking(buf, true);
         } finally {
             free(buf);
         }

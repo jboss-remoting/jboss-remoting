@@ -81,7 +81,7 @@ final class OutboundReplyHandler implements ReplyHandler {
                         buffer.put(RemoteProtocol.REPLY_EXCEPTION_ABORT);
                         buffer.putInt(rid);
                         buffer.flip();
-                        connectionHandler.getRemoteConnection().sendBlocking(buffer);
+                        connectionHandler.getRemoteConnection().sendBlocking(buffer, true);
                     } finally {
                         bufferPool.free(buffer);
                     }

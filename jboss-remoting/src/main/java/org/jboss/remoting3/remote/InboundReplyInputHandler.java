@@ -44,8 +44,7 @@ final class InboundReplyInputHandler implements NioByteInput.InputHandler {
             buffer.putInt(rid);
             buffer.flip();
             final RemoteConnection connection = connectionHandler.getRemoteConnection();
-            connection.sendBlocking(buffer);
-            connection.flushBlocking();
+            connection.sendBlocking(buffer, true);
         } finally {
             connectionHandler.getBufferPool().free(buffer);
         }

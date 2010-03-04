@@ -78,7 +78,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     outBuf.putInt(id);
                     outBuf.flip();
                     try {
-                        connection.sendBlocking(outBuf);
+                        connection.sendBlocking(outBuf, true);
                     } catch (IOException e) {
                         // the channel has suddenly failed
                         RemoteConnectionHandler.log.trace("Send failed: %s", e);

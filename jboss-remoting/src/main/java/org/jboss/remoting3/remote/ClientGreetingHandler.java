@@ -135,8 +135,7 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
                     outBuf.put(RemoteProtocol.AUTH_REQUEST);
                     Buffers.putModifiedUtf8(outBuf, mechanismName);
                     outBuf.flip();
-                    connection.sendBlocking(outBuf);
-                    connection.flushBlocking();
+                    connection.sendBlocking(outBuf, true);
                 } catch (IOException e) {
                     RemoteConnectionHandler.log.trace(e, "Failed to send auth request on %s", remoteConnection);
                     factoryResult.setException(e);

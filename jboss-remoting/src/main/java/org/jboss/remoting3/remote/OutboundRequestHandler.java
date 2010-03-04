@@ -84,7 +84,7 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
             buf.putInt(rid);
             buf.flip();
             try {
-                connectionHandler.getRemoteConnection().sendBlocking(buf);
+                connectionHandler.getRemoteConnection().sendBlocking(buf, true);
             } catch (IOException e1) {
                 RemoteConnectionHandler.log.trace("Send failed: %s", e1);
             }
@@ -105,7 +105,7 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
             buf.put(RemoteProtocol.CLIENT_CLOSED);
             buf.putInt(outboundClient.getId());
             buf.flip();
-            connectionHandler.getRemoteConnection().sendBlocking(buf);
+            connectionHandler.getRemoteConnection().sendBlocking(buf, true);
         } finally {
             bufferPool.free(buf);
         }

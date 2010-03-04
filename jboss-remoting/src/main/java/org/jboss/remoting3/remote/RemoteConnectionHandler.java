@@ -100,7 +100,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
             Buffers.putModifiedUtf8(buffer, groupName);
             buffer.put((byte) 0);
             buffer.flip();
-            remoteConnection.sendBlocking(buffer);
+            remoteConnection.sendBlocking(buffer, true);
         } catch (IOException e) {
             result.setException(e);
         } catch (Throwable e) {

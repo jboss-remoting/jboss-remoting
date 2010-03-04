@@ -73,7 +73,7 @@ final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
                 buffer.put(7, (byte) (buffer.get(3) | RemoteProtocol.MSG_FLAG_LAST));
             }
             RemoteConnectionHandler.log.trace("Sending buffer %s for %s", buffer, this);
-            connectionHandler.getRemoteConnection().sendBlocking(buffer);
+            connectionHandler.getRemoteConnection().sendBlocking(buffer, false);
         } finally {
             connectionHandler.getBufferPool().free(buffer);
         }
