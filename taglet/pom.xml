@@ -30,7 +30,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <groupId>org.jboss.remoting</groupId>
+    <groupId>org.jboss.remoting3</groupId>
     <artifactId>jboss-remoting-taglet</artifactId>
     <name>JBoss Remoting Taglet</name>
     <description>JBoss Remoting Documentation Taglet</description>
