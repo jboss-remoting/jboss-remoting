@@ -25,11 +25,11 @@ package org.jboss.remoting3.stream;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.io.EOFException;
+import java.util.ArrayDeque;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.Condition;
 import java.util.Queue;
-import java.util.LinkedList;
 import java.util.NoSuchElementException;
 
 /**
@@ -46,7 +46,7 @@ public final class ObjectPipe<T> {
     // signal on read, await on write
     private final Condition readCondition = queueLock.newCondition();
 
-    private final Queue<T> queue = new LinkedList<T>();
+    private final Queue<T> queue;
 
     private final Source source = new Source();
     private final Sink sink = new Sink();
@@ -60,6 +60,7 @@ public final class ObjectPipe<T> {
      */
     public ObjectPipe(int max) {
         this.max = max;
+        queue = new ArrayDeque<T>(max);
     }
 
     /**
