@@ -26,10 +26,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.Principal;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.jboss.xnio.channels.SslChannel;
 
-import javax.net.ssl.SSLPeerUnverifiedException;
-import javax.net.ssl.SSLSession;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.UnsupportedCallbackException;
@@ -40,13 +37,13 @@ import javax.security.sasl.SaslServer;
 final class ExternalSaslServer implements SaslServer {
     private final AtomicBoolean complete = new AtomicBoolean();
     private String authorizationID;
-    private final SslChannel sslChannel;
+    private final Principal peerPrincipal;
     private final CallbackHandler callbackHandler;
     private static final byte[] EMPTY = new byte[0];
 
-    ExternalSaslServer(final SslChannel sslChannel, final CallbackHandler callbackHandler) {
-        this.sslChannel = sslChannel;
+    ExternalSaslServer(final CallbackHandler callbackHandler, final Principal peerPrincipal) {
         this.callbackHandler = callbackHandler;
+        this.peerPrincipal = peerPrincipal;
     }
 
     public String getMechanismName() {
@@ -62,13 +59,6 @@ final class ExternalSaslServer implements SaslServer {
             userName = new String(response, "UTF8");
         } catch (UnsupportedEncodingException e) {
             throw new SaslException("Cannot convert user name from UTF-8", e);
-        }
-        final SSLSession session = sslChannel.getSslSession();
-        final Principal peerPrincipal;
-        try {
-            peerPrincipal = session.getPeerPrincipal();
-        } catch (SSLPeerUnverifiedException e) {
-            throw new SaslException("SSL peer is unverified", e);
         }
         final AuthorizeCallback authorizeCallback = new AuthorizeCallback(peerPrincipal.getName(), userName);
         handleCallback(callbackHandler, authorizeCallback);

@@ -65,6 +65,9 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
     private final IntKeyMap<OutboundRequest> outboundRequests = new IntKeyMap<OutboundRequest>();
     private final IntKeyMap<InboundRequest> inboundRequests = new IntKeyMap<InboundRequest>();
 
+    private final IntKeyMap<OutboundStream> outboundStreams = new IntKeyMap<OutboundStream>();
+    private final IntKeyMap<InboundStream> inboundStreams = new IntKeyMap<InboundStream>();
+
     private final AtomicBoolean closed = new AtomicBoolean();
 
     RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final MarshallerFactory marshallerFactory) {
@@ -74,7 +77,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
         this.marshallerFactory = marshallerFactory;
         final MarshallingConfiguration config = new MarshallingConfiguration();
         config.setClassExternalizerFactory(PrimaryExternalizerFactory.INSTANCE);
-        config.setObjectTable(new PrimaryObjectTable(connectionContext.getConnectionProviderContext().getEndpoint()));
+        config.setObjectTable(new PrimaryObjectTable(connectionContext.getConnectionProviderContext().getEndpoint(), this));
         config.setStreamHeader(Marshalling.nullStreamHeader());
         // fixed for now (v0)
         config.setVersion(2);
@@ -189,8 +192,12 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
         return inboundRequests;
     }
 
-    AtomicBoolean getClosed() {
-        return closed;
+    IntKeyMap<OutboundStream> getOutboundStreams() {
+        return outboundStreams;
+    }
+
+    IntKeyMap<InboundStream> getInboundStreams() {
+        return inboundStreams;
     }
 
     RemoteConnection getRemoteConnection() {

@@ -25,6 +25,7 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.security.Principal;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -43,6 +44,8 @@ import org.jboss.xnio.Sequence;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
 import org.jboss.xnio.channels.SslChannel;
 
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslServerFactory;
 
@@ -87,8 +90,15 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
         final Enumeration<SaslServerFactory> e = Sasl.getSaslServerFactories();
         final Map<String, SaslServerFactory> saslServerFactories = new LinkedHashMap<String, SaslServerFactory>();
         if (channel instanceof SslChannel && (includes == null | includes.contains("EXTERNAL"))) {
-            // automatically the best mechanism.
-            saslServerFactories.put("EXTERNAL", new ExternalSaslServerFactory((SslChannel) channel));
+            final SslChannel sslChannel = (SslChannel) channel;
+            final SSLSession session = sslChannel.getSslSession();
+            try {
+                final Principal peerPrincipal = session.getPeerPrincipal();
+                // automatically the best mechanism.
+                saslServerFactories.put("EXTERNAL", new ExternalSaslServerFactory(peerPrincipal));
+            } catch (SSLPeerUnverifiedException e1) {
+                // ignore
+            }
         }
         while (e.hasMoreElements()) {
             final SaslServerFactory saslServerFactory = e.nextElement();

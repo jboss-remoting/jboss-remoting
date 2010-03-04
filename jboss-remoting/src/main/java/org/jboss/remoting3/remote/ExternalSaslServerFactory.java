@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3.remote;
 
+import java.security.Principal;
 import java.util.Map;
-import org.jboss.xnio.channels.SslChannel;
 
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.SaslException;
@@ -34,17 +34,14 @@ final class ExternalSaslServerFactory implements SaslServerFactory {
 
     private static final String[] NAMES = new String[] { "EXTERNAL" };
 
-    private final SslChannel sslChannel;
+    private final Principal peerPrincipal;
 
-    ExternalSaslServerFactory(final SslChannel sslChannel) {
-        this.sslChannel = sslChannel;
+    ExternalSaslServerFactory(final Principal peerPrincipal) {
+        this.peerPrincipal = peerPrincipal;
     }
 
     public SaslServer createSaslServer(final String mechanism, final String protocol, final String serverName, final Map<String, ?> props, final CallbackHandler cbh) throws SaslException {
-        if (! "EXTERNAL".equalsIgnoreCase(mechanism)) {
-            return null;
-        }
-        return new ExternalSaslServer(sslChannel, cbh);
+        return new ExternalSaslServer(cbh, peerPrincipal);
     }
 
     public String[] getMechanismNames(final Map<String, ?> props) {
