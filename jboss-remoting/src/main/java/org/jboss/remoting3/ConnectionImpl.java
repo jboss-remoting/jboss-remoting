@@ -92,7 +92,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
 
         private final Class<I> requestClass;
         private final Class<O> replyClass;
-        private EndpointImpl endpoint;
+        private final EndpointImpl endpoint;
 
         public ClientWrapper(final EndpointImpl endpoint, final FutureResult<Client<I, O>> futureResult, final Class<I> requestClass, final Class<O> replyClass) {
             super(futureResult);

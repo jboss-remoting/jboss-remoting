@@ -24,6 +24,9 @@ package org.jboss.remoting3.stream;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.UnsupportedCharsetException;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.Iterator;
@@ -272,6 +275,14 @@ public final class Streams {
      */
     public static <T> ObjectSource<T> getEnumerationObjectSource(Enumeration<T> enumeration) {
         return new EnumerationObjectSource<T>(enumeration);
+    }
+
+    static Charset getCharset(final String charsetName) throws UnsupportedEncodingException {
+        try {
+            return Charset.forName(charsetName);
+        } catch (UnsupportedCharsetException e) {
+            throw new UnsupportedEncodingException(e.getMessage());
+        }
     }
 
     private static final class CollectionObjectSink<T> implements ObjectSink<T> {

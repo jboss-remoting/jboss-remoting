@@ -26,6 +26,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.security.AccessControlContext;
+import java.security.AccessController;
 import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
@@ -75,10 +77,12 @@ final class RemoteConnectionProvider implements ConnectionProvider {
         if (port < 1) {
             throw new IllegalArgumentException("Port number must be specified");
         }
+        // Get the caller context so that GSSAPI can work
+        final AccessControlContext acc = AccessController.getContext();
         // Open a client channel
         final IoFuture<? extends ConnectedStreamChannel<InetSocketAddress>> futureChannel;
         try {
-            futureChannel = connector.connectTo(new InetSocketAddress(InetAddress.getByName(host), port), new ClientOpenListener(connectOptions, connectionProviderContext, result, callbackHandler, providerDescriptor), null);
+            futureChannel = connector.connectTo(new InetSocketAddress(InetAddress.getByName(host), port), new ClientOpenListener(connectOptions, connectionProviderContext, result, callbackHandler, providerDescriptor, acc), null);
         } catch (UnknownHostException e) {
             result.setException(e);
             return IoUtils.nullCancellable();

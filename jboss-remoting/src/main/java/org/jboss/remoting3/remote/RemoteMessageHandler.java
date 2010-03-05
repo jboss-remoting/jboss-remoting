@@ -125,7 +125,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                 }
                 return;
             }
-            case RemoteProtocol.CLIENT_CLOSED: {
+            case RemoteProtocol.CLIENT_CLOSE: {
                 final int id = buffer.getInt();
 
                 final InboundClient client;
@@ -286,7 +286,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     outboundRequest = outboundRequests.get(rid);
                 }
                 if (outboundRequest == null) {
-                    RemoteConnectionHandler.log.trace("Received reply-exception-abort for unknown request ID %d", Integer.valueOf(rid));
+                    RemoteConnectionHandler.log.warn("Received reply-exception-abort for unknown request ID %d", Integer.valueOf(rid));
                     return;
                 }
                 final NioByteInput byteInput;
@@ -302,6 +302,108 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                 if (replyHandler != null) {
                     SpiUtils.safeHandleException(replyHandler, re);
                 }
+                return;
+            }
+            case RemoteProtocol.ALIVE: {
+                // todo - mark the time
+                return;
+            }
+            case RemoteProtocol.STREAM_ACK: {
+                final int sid = buffer.getInt();
+                final IntKeyMap<OutboundStream> outboundStreams = connectionHandler.getOutboundStreams();
+                final OutboundStream outboundStream;
+                synchronized (outboundStreams) {
+                    outboundStream = outboundStreams.get(sid);
+                }
+                if (outboundStream == null) {
+                    RemoteConnectionHandler.log.warn("Received stream-ack for unknown stream ID %d", Integer.valueOf(sid));
+                    return;
+                }
+                outboundStream.ack();
+                return;
+            }
+            case RemoteProtocol.STREAM_ASYNC_CLOSE: {
+                final int sid = buffer.getInt();
+                final IntKeyMap<OutboundStream> outboundStreams = connectionHandler.getOutboundStreams();
+                final OutboundStream outboundStream;
+                synchronized (outboundStreams) {
+                    outboundStream = outboundStreams.get(sid);
+                }
+                if (outboundStream == null) {
+                    RemoteConnectionHandler.log.warn("Received stream-ack for unknown stream ID %d", Integer.valueOf(sid));
+                    return;
+                }
+                outboundStream.asyncClose();
+                return;
+            }
+            case RemoteProtocol.STREAM_ASYNC_EXCEPTION: {
+                final int sid = buffer.getInt();
+                final IntKeyMap<OutboundStream> outboundStreams = connectionHandler.getOutboundStreams();
+                final OutboundStream outboundStream;
+                synchronized (outboundStreams) {
+                    outboundStream = outboundStreams.get(sid);
+                }
+                if (outboundStream == null) {
+                    RemoteConnectionHandler.log.warn("Received stream-async-exception for unknown stream ID %d", Integer.valueOf(sid));
+                    return;
+                }
+                outboundStream.asyncException();
+                return;
+            }
+            case RemoteProtocol.STREAM_ASYNC_START: {
+                final int sid = buffer.getInt();
+                final IntKeyMap<OutboundStream> outboundStreams = connectionHandler.getOutboundStreams();
+                final OutboundStream outboundStream;
+                synchronized (outboundStreams) {
+                    outboundStream = outboundStreams.get(sid);
+                }
+                if (outboundStream == null) {
+                    RemoteConnectionHandler.log.warn("Received stream-async-start for unknown stream ID %d", Integer.valueOf(sid));
+                    return;
+                }
+                outboundStream.asyncStart();
+                return;
+            }
+            case RemoteProtocol.STREAM_CLOSE: {
+                final int sid = buffer.getInt();
+                final IntKeyMap<InboundStream> inboundStreams = connectionHandler.getInboundStreams();
+                final InboundStream inboundStream;
+                synchronized (inboundStreams) {
+                    inboundStream = inboundStreams.get(sid);
+                }
+                if (inboundStream == null) {
+                    RemoteConnectionHandler.log.warn("Received stream-close for unknown stream ID %d", Integer.valueOf(sid));
+                    return;
+                }
+                inboundStream.getReceiver().pushEof();
+                return;
+            }
+            case RemoteProtocol.STREAM_DATA: {
+                final int sid = buffer.getInt();
+                final IntKeyMap<InboundStream> inboundStreams = connectionHandler.getInboundStreams();
+                final InboundStream inboundStream;
+                synchronized (inboundStreams) {
+                    inboundStream = inboundStreams.get(sid);
+                }
+                if (inboundStream == null) {
+                    RemoteConnectionHandler.log.warn("Received stream-data for unknown stream ID %d", Integer.valueOf(sid));
+                    return;
+                }
+                inboundStream.getReceiver().push(buffer);
+                return;
+            }
+            case RemoteProtocol.STREAM_EXCEPTION: {
+                final int sid = buffer.getInt();
+                final IntKeyMap<InboundStream> inboundStreams = connectionHandler.getInboundStreams();
+                final InboundStream inboundStream;
+                synchronized (inboundStreams) {
+                    inboundStream = inboundStreams.get(sid);
+                }
+                if (inboundStream == null) {
+                    RemoteConnectionHandler.log.warn("Received stream-exception for unknown stream ID %d", Integer.valueOf(sid));
+                    return;
+                }
+                inboundStream.getReceiver().pushException();
                 return;
             }
             default: {

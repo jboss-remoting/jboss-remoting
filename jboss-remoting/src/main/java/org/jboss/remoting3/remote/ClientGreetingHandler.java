@@ -24,6 +24,10 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.security.AccessControlContext;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -44,16 +48,18 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
     private final RemoteConnection connection;
     private final Result<ConnectionHandlerFactory> factoryResult;
     private final CallbackHandler callbackHandler;
+    private final AccessControlContext accessControlContext;
 
-    ClientGreetingHandler(final RemoteConnection connection, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler) {
+    ClientGreetingHandler(final RemoteConnection connection, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler, final AccessControlContext accessControlContext) {
         super(connection, factoryResult);
         this.connection = connection;
         this.factoryResult = factoryResult;
         this.callbackHandler = callbackHandler;
+        this.accessControlContext = accessControlContext;
     }
 
     public void handleMessage(final ByteBuffer buffer) {
-        Set<String> saslMechs = new LinkedHashSet<String>();
+        final Set<String> saslMechs = new LinkedHashSet<String>();
         String remoteEndpointName = "endpoint";
         final int[] ourVersions = connection.getProviderDescriptor().getSupportedVersions();
         int bestVersion = -1;
@@ -116,10 +122,16 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
                 final Map<String, ?> propertyMap = SaslUtils.createPropertyMap(optionMap);
                 final SaslClient saslClient;
                 try {
-                    saslClient = Sasl.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", remoteEndpointName, propertyMap, callbackHandler);
-                } catch (SaslException e) {
-                    factoryResult.setException(e);
-                    RemoteConnectionHandler.log.trace(e, "Client connect authentication error");
+                    final String finalRemoteEndpointName = remoteEndpointName;
+                    saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
+                        public SaslClient run() throws SaslException {
+                            return Sasl.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", finalRemoteEndpointName, propertyMap, callbackHandler);
+                        }
+                    }, accessControlContext);
+                } catch (PrivilegedActionException e) {
+                    final SaslException se = (SaslException) e.getCause();
+                    factoryResult.setException(se);
+                    RemoteConnectionHandler.log.trace(se, "Client connect authentication error");
                     try {
                         remoteConnection.shutdownWritesBlocking();
                     } catch (IOException e1) {

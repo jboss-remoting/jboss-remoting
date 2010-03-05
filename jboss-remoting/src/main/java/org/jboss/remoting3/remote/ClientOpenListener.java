@@ -25,6 +25,7 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.security.AccessControlContext;
 import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
@@ -44,13 +45,15 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
     private final Result<ConnectionHandlerFactory> factoryResult;
     private final CallbackHandler callbackHandler;
     private final ProviderDescriptor providerDescriptor;
+    private final AccessControlContext accessControlContext;
 
-    ClientOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler, final ProviderDescriptor providerDescriptor) {
+    ClientOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler, final ProviderDescriptor providerDescriptor, final AccessControlContext accessControlContext) {
         this.optionMap = optionMap;
         this.connectionProviderContext = connectionProviderContext;
         this.factoryResult = factoryResult;
         this.callbackHandler = callbackHandler;
         this.providerDescriptor = providerDescriptor;
+        this.accessControlContext = accessControlContext;
     }
 
     public void handleEvent(final ConnectedStreamChannel<InetSocketAddress> channel) {
@@ -110,7 +113,7 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
             }
         });
 
-        connection.setMessageHandler(new ClientGreetingHandler(connection, factoryResult, callbackHandler));
+        connection.setMessageHandler(new ClientGreetingHandler(connection, factoryResult, callbackHandler, accessControlContext));
         // and send the greeting
         channel.resumeWrites();
     }

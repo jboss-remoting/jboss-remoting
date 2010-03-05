@@ -102,7 +102,7 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
         final ByteBuffer buf = bufferPool.allocate();
         try {
             buf.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
-            buf.put(RemoteProtocol.CLIENT_CLOSED);
+            buf.put(RemoteProtocol.CLIENT_CLOSE);
             buf.putInt(outboundClient.getId());
             buf.flip();
             connectionHandler.getRemoteConnection().sendBlocking(buf, true);

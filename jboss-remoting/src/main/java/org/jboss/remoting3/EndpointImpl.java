@@ -571,15 +571,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
         final FutureResult<Connection> futureResult = new FutureResult<Connection>(executor);
         // Mark the stack because otherwise debugging connect problems can be incredibly tough
-        final Throwable t = new Throwable();
+        final Throwable mark = new Throwable();
         futureResult.addCancelHandler(connectionProvider.connect(destination, connectOptions, new Result<ConnectionHandlerFactory>() {
             public boolean setResult(final ConnectionHandlerFactory result) {
                 return futureResult.setResult(new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext, destination.toString()));
             }
 
             public boolean setException(final IOException exception) {
-                final StackTraceElement[] st0 = t.getStackTrace();
-                exception.setStackTrace(Arrays.copyOfRange(st0, 1, st0.length));
+                glueStackTraces(exception, mark, 1);
                 return futureResult.setException(exception);
             }
 
@@ -588,6 +587,15 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
         }, callbackHandler));
         return futureResult.getIoFuture();
+    }
+
+    static void glueStackTraces(final Throwable exception, final Throwable markerThrowable, final int trimCount) {
+        final StackTraceElement[] est = exception.getStackTrace();
+        final StackTraceElement[] ust = markerThrowable.getStackTrace();
+        final StackTraceElement[] fst = Arrays.copyOf(est, est.length + ust.length);
+        fst[est.length] = new StackTraceElement("...asynchronous invocation..", "", null, -1);
+        System.arraycopy(ust, trimCount, fst, est.length + 1, ust.length - trimCount);
+        exception.setStackTrace(fst);
     }
 
     public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
