@@ -71,7 +71,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                         outBuf.put(RemoteProtocol.SERVICE_NOT_FOUND);
                     } else {
                         // service opened locally, now register the success
-                        final InboundClient inboundClient = new InboundClient(connectionHandler, handler);
+                        final InboundClient inboundClient = new InboundClient(connectionHandler, handler, id);
                         final IntKeyMap<InboundClient> inboundClients = connectionHandler.getInboundClients();
                         synchronized (inboundClients) {
                             inboundClients.put(id, inboundClient);
@@ -142,6 +142,23 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                 }
                 synchronized (client) {
                     IoUtils.safeClose(client.getHandler());
+                }
+                return;
+            }
+            case RemoteProtocol.CLIENT_ASYNC_CLOSE: {
+                final int id = buffer.getInt();
+
+                final OutboundClient client;
+                final IntKeyMap<OutboundClient> outboundClients = connectionHandler.getOutboundClients();
+                synchronized (outboundClients) {
+                    client = outboundClients.remove(id);
+                }
+                if (client == null) {
+                    log.trace("Received client-closed for unknown client %d", Integer.valueOf(id));
+                    return;
+                }
+                synchronized (client) {
+                    IoUtils.safeClose(client.getRequestHandler());
                 }
                 return;
             }

@@ -22,15 +22,25 @@
 
 package org.jboss.remoting3.remote;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.spi.RequestHandler;
 
 final class InboundClient {
     private final RequestHandler handler;
-    private RemoteConnectionHandler remoteConnectionHandler;
+    private final RemoteConnectionHandler remoteConnectionHandler;
+    private final int id;
 
-    InboundClient(final RemoteConnectionHandler remoteConnectionHandler, final RequestHandler handler) {
+    InboundClient(final RemoteConnectionHandler remoteConnectionHandler, final RequestHandler handler, final int id) {
         this.remoteConnectionHandler = remoteConnectionHandler;
         this.handler = handler;
+        this.id = id;
+        handler.addCloseHandler(new CloseHandler<RequestHandler>() {
+            public void handleClose(final RequestHandler closed) {
+                close();
+            }
+        });
     }
 
     RequestHandler getHandler() {
@@ -39,5 +49,23 @@ final class InboundClient {
 
     RemoteConnectionHandler getRemoteConnectionHandler() {
         return remoteConnectionHandler;
+    }
+
+    void close() {
+        final RemoteConnection remoteConnection = remoteConnectionHandler.getRemoteConnection();
+        final ByteBuffer buffer = remoteConnection.allocate();
+        try {
+            buffer.position(4);
+            buffer.put(RemoteProtocol.CLIENT_ASYNC_CLOSE);
+            buffer.putInt(id);
+            buffer.flip();
+            try {
+                remoteConnection.sendBlocking(buffer, true);
+            } catch (IOException e) {
+                // irrelevant
+            }
+        } finally {
+            remoteConnection.free(buffer);
+        }
     }
 }

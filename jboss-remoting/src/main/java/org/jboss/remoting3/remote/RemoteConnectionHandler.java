@@ -112,10 +112,10 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
     }
 
     public RequestHandlerConnector createConnector(final RequestHandler localHandler) {
-        final InboundClient inboundClient = new InboundClient(this, localHandler);
         int id;
         synchronized (inboundClients) {
             while (inboundClients.containsKey(id = random.nextInt() & ~1));
+            final InboundClient inboundClient = new InboundClient(this, localHandler, id);
             inboundClients.put(id, inboundClient);
         }
         return new UnsentRequestHandlerConnector(id, this);
