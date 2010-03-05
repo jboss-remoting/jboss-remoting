@@ -27,12 +27,15 @@ import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.marshalling.NioByteOutput;
+import org.jboss.xnio.log.Logger;
 
 final class OutboundRequestBufferWriter implements NioByteOutput.BufferWriter {
 
     private final AtomicBoolean first = new AtomicBoolean(true);
     private final int rid;
     private final OutboundRequest outboundRequest;
+
+    private static final Logger log = Loggers.main;
 
     OutboundRequestBufferWriter(final OutboundRequest outboundRequest, final int rid) {
         this.outboundRequest = outboundRequest;
@@ -41,7 +44,7 @@ final class OutboundRequestBufferWriter implements NioByteOutput.BufferWriter {
 
     public ByteBuffer getBuffer() {
         final ByteBuffer buffer = outboundRequest.getRemoteConnectionHandler().getBufferPool().allocate();
-        RemoteConnectionHandler.log.trace("Allocated buffer %s for %s", buffer, this);
+        log.trace("Allocated buffer %s for %s", buffer, this);
         buffer.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
         buffer.put(RemoteProtocol.REQUEST);
         buffer.putInt(rid);
@@ -52,7 +55,7 @@ final class OutboundRequestBufferWriter implements NioByteOutput.BufferWriter {
         } else {
             buffer.put((byte)0);
         }
-        RemoteConnectionHandler.log.trace("Prepopulated buffer %s for %s", buffer, this);
+        log.trace("Prepopulated buffer %s for %s", buffer, this);
         return buffer;
     }
 
@@ -72,7 +75,7 @@ final class OutboundRequestBufferWriter implements NioByteOutput.BufferWriter {
                     outboundRequest.setState(OutboundRequest.State.REPLY_WAIT);
                 }
             }
-            RemoteConnectionHandler.log.trace("Sending buffer %s for %s", buffer, this);
+            log.trace("Sending buffer %s for %s", buffer, this);
             remoteConnectionHandler.getRemoteConnection().sendBlocking(buffer, eof);
         } finally {
             remoteConnectionHandler.getBufferPool().free(buffer);

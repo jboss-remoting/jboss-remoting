@@ -43,6 +43,7 @@ import org.jboss.xnio.Options;
 import org.jboss.xnio.Sequence;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
 import org.jboss.xnio.channels.SslChannel;
+import org.jboss.xnio.log.Logger;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
@@ -54,6 +55,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
     private final OptionMap optionMap;
     private final ConnectionProviderContext connectionProviderContext;
     private final ProviderDescriptor providerDescriptor;
+    private static final Logger log = Loggers.serverSasl;
 
     ServerOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final ProviderDescriptor providerDescriptor) {
         this.optionMap = optionMap;
@@ -72,13 +74,13 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
         // Get the server authentication provider
         final String authProvider = optionMap.get(RemotingOptions.AUTHENTICATION_PROVIDER);
         if (authProvider == null) {
-            RemoteConnectionHandler.log.warn("No authentication provider available");
+            log.warn("No authentication provider available");
             IoUtils.safeClose(connection);
             return;
         }
         final ServerAuthenticationProvider provider = connectionProviderContext.getProtocolServiceProvider(ProtocolServiceType.SERVER_AUTHENTICATION_PROVIDER, authProvider);
         if (provider == null) {
-            RemoteConnectionHandler.log.warn("No authentication provider available");
+            log.warn("No authentication provider available");
             IoUtils.safeClose(connection);
             return;
         }
@@ -110,12 +112,12 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
         }
         if (saslServerFactories.isEmpty()) {
             try {
-                RemoteConnectionHandler.log.trace("Sending server no-mechanisms message");
+                log.trace("Sending server no-mechanisms message");
                 connection.sendAuthReject("No mechanisms available");
                 connection.close();
                 return;
             } catch (IOException e1) {
-                RemoteConnectionHandler.log.trace(e1, "Failed to send server no-mechanisms message");
+                log.trace(e1, "Failed to send server no-mechanisms message");
                 IoUtils.safeClose(connection);
                 return;
             }
@@ -136,7 +138,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
         // SASL server mechs
         for (String name : saslServerFactories.keySet()) {
             GreetingUtils.writeString(buffer, RemoteProtocol.GREETING_SASL_MECH, name);
-            RemoteConnectionHandler.log.trace("Offering SASL mechanism %s", name);
+            log.trace("Offering SASL mechanism %s", name);
         }
         GreetingUtils.writeString(buffer, RemoteProtocol.GREETING_ENDPOINT_NAME, connectionProviderContext.getEndpoint().getName());
         // that's it!
@@ -150,7 +152,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
                         try {
                             res = channel.write(buffer);
                         } catch (IOException e1) {
-                            RemoteConnectionHandler.log.trace(e1, "Failed to send server greeting message");
+                            log.trace(e1, "Failed to send server greeting message");
                             IoUtils.safeClose(connection);
                             connection.free(buffer);
                             return;
@@ -164,11 +166,11 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
                     try {
                         while (! channel.flush());
                     } catch (IOException e) {
-                        RemoteConnectionHandler.log.trace(e, "Failed to flush server greeting message");
+                        log.trace(e, "Failed to flush server greeting message");
                         IoUtils.safeClose(connection);
                         return;
                     }
-                    RemoteConnectionHandler.log.trace("Server sent greeting message");
+                    log.trace("Server sent greeting message");
                     channel.resumeReads();
                     return;
                 }

@@ -27,6 +27,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import org.jboss.marshalling.NioByteInput;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 
 final class InboundStream {
     private final int id;
@@ -34,6 +35,7 @@ final class InboundStream {
     private final Receiver receiver;
 
     private State state;
+    private static final Logger log = Loggers.main;
 
     InboundStream(final int id, final RemoteConnection remoteConnection, final Receiver receiver) {
         this.id = id;
@@ -228,7 +230,7 @@ final class InboundStream {
                     outputStream.write(array);
                 }
             } catch (IOException e) {
-                RemoteConnectionHandler.log.trace("Output stream write failed: %s", e);
+                log.trace("Output stream write failed: %s", e);
                 sendAsyncException();
             }
         }

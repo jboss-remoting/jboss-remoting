@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.marshalling.NioByteOutput;
 import org.jboss.xnio.Pool;
+import org.jboss.xnio.log.Logger;
 
 final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
 
@@ -35,6 +36,7 @@ final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
     private final int id;
     private final boolean exception;
     private final InboundRequest inboundRequest;
+    private static final Logger log = Loggers.main;
 
     OutboundReplyBufferWriter(final InboundRequest inboundRequest, final int id, final boolean exception) {
         this.inboundRequest = inboundRequest;
@@ -46,7 +48,7 @@ final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
         final RemoteConnectionHandler connectionHandler = inboundRequest.getRemoteConnectionHandler();
         final Pool<ByteBuffer> bufferPool = connectionHandler.getBufferPool();
         final ByteBuffer buffer = bufferPool.allocate();
-        RemoteConnectionHandler.log.trace("Allocated buffer %s for %s", buffer, this);
+        log.trace("Allocated buffer %s for %s", buffer, this);
         buffer.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
         buffer.put(exception ? RemoteProtocol.REPLY_EXCEPTION : RemoteProtocol.REPLY);
         buffer.putInt(id);
@@ -56,7 +58,7 @@ final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
         } else {
             buffer.put((byte)0);
         }
-        RemoteConnectionHandler.log.trace("Prepopulated buffer %s for %s", buffer, this);
+        log.trace("Prepopulated buffer %s for %s", buffer, this);
         return buffer;
     }
 
@@ -72,7 +74,7 @@ final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
             if (eof) {
                 buffer.put(7, (byte) (buffer.get(3) | RemoteProtocol.MSG_FLAG_LAST));
             }
-            RemoteConnectionHandler.log.trace("Sending buffer %s for %s", buffer, this);
+            log.trace("Sending buffer %s for %s", buffer, this);
             connectionHandler.getRemoteConnection().sendBlocking(buffer, eof);
         } finally {
             connectionHandler.getBufferPool().free(buffer);

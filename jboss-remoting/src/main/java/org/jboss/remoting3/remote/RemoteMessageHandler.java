@@ -37,11 +37,14 @@ import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Pool;
+import org.jboss.xnio.log.Logger;
 
 final class RemoteMessageHandler extends AbstractMessageHandler implements org.jboss.xnio.channels.MessageHandler {
 
     private final RemoteConnection connection;
     private final RemoteConnectionHandler remoteConnectionHandler;
+
+    private static final Logger log = Loggers.main;
 
     RemoteMessageHandler(final RemoteConnectionHandler remoteConnectionHandler, final RemoteConnection connection) {
         super(connection);
@@ -81,7 +84,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                         connection.sendBlocking(outBuf, true);
                     } catch (IOException e) {
                         // the channel has suddenly failed
-                        RemoteConnectionHandler.log.trace("Send failed: %s", e);
+                        log.trace("Send failed: %s", e);
                     }
                     return;
                 } finally {
@@ -97,7 +100,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     client = outboundClients.remove(id);
                 }
                 if (client == null) {
-                    RemoteConnectionHandler.log.trace("Received service-not-found for unknown client %d", Integer.valueOf(id));
+                    log.trace("Received service-not-found for unknown client %d", Integer.valueOf(id));
                     return;
                 }
                 synchronized (client) {
@@ -115,7 +118,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     client = outboundClients.get(id);
                 }
                 if (client == null) {
-                    RemoteConnectionHandler.log.trace("Received service-client-opened for unknown client %d", Integer.valueOf(id));
+                    log.trace("Received service-client-opened for unknown client %d", Integer.valueOf(id));
                     return;
                 }
                 synchronized (client) {
@@ -134,7 +137,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     client = inboundClients.remove(id);
                 }
                 if (client == null) {
-                    RemoteConnectionHandler.log.trace("Received client-closed for unknown client %d", Integer.valueOf(id));
+                    log.trace("Received client-closed for unknown client %d", Integer.valueOf(id));
                     return;
                 }
                 synchronized (client) {
@@ -157,14 +160,14 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                         start = true;
                         // todo - check for duplicate
                         inboundRequests.put(rid, inboundRequest);
-                        RemoteConnectionHandler.log.trace("Received first request message %s for %s", buffer, inboundRequest);
+                        log.trace("Received first request message %s for %s", buffer, inboundRequest);
                     } else {
                         cid = 0;
                         inboundRequest = inboundRequests.get(rid);
-                        RemoteConnectionHandler.log.trace("Received subsequent request message %s for %s", buffer, inboundRequest);
+                        log.trace("Received subsequent request message %s for %s", buffer, inboundRequest);
                     }
                     if (inboundRequest == null) {
-                        RemoteConnectionHandler.log.trace("Received request for unknown request ID %d", Integer.valueOf(rid));
+                        log.trace("Received request for unknown request ID %d", Integer.valueOf(rid));
                     }
                 }
                 synchronized (inboundRequest) {
@@ -184,7 +187,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     inboundRequest = inboundRequests.remove(rid);
                 }
                 if (inboundRequest == null) {
-                    RemoteConnectionHandler.log.trace("Received request-abort for unknown request ID %d", Integer.valueOf(rid));
+                    log.trace("Received request-abort for unknown request ID %d", Integer.valueOf(rid));
                     return;
                 }
                 synchronized (inboundRequest) {
@@ -202,7 +205,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     outboundRequest = outboundRequests.get(rid);
                 }
                 if (outboundRequest == null) {
-                    RemoteConnectionHandler.log.trace("Received request-ack-chunk for unknown request ID %d", Integer.valueOf(rid));
+                    log.trace("Received request-ack-chunk for unknown request ID %d", Integer.valueOf(rid));
                     return;
                 }
                 synchronized (outboundRequest) {
@@ -220,17 +223,17 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     outboundRequest = outboundRequests.get(rid);
                 }
                 if (outboundRequest == null) {
-                    RemoteConnectionHandler.log.trace("Received reply for unknown request ID %d", Integer.valueOf(rid));
+                    log.trace("Received reply for unknown request ID %d", Integer.valueOf(rid));
                     return;
                 }
                 synchronized (outboundRequest) {
                     if ((flags & RemoteProtocol.MSG_FLAG_FIRST) != 0) {
-                        RemoteConnectionHandler.log.trace("Received first reply message %s for %s", buffer, outboundRequest);
+                        log.trace("Received first reply message %s for %s", buffer, outboundRequest);
                         // todo - check for duplicate
                         outboundRequest.setByteInput(byteInput = new NioByteInput(new InboundReplyInputHandler(outboundRequest, rid)));
                         connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor().execute(new InboundReplyTask(connectionHandler, outboundRequest));
                     } else {
-                        RemoteConnectionHandler.log.trace("Received subsequent reply message %s for %s", buffer, outboundRequest);
+                        log.trace("Received subsequent reply message %s for %s", buffer, outboundRequest);
                         byteInput = outboundRequest.getByteInput();
                     }
                 }
@@ -245,7 +248,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     inboundRequest = inboundRequests.get(rid);
                 }
                 if (inboundRequest == null) {
-                    RemoteConnectionHandler.log.trace("Received reply-ack-chunk for unknown request ID %d", Integer.valueOf(rid));
+                    log.trace("Received reply-ack-chunk for unknown request ID %d", Integer.valueOf(rid));
                     return;
                 }
                 synchronized (inboundRequest) {
@@ -263,7 +266,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     outboundRequest = outboundRequests.get(rid);
                 }
                 if (outboundRequest == null) {
-                    RemoteConnectionHandler.log.trace("Received reply-exception for unknown request ID %d", Integer.valueOf(rid));
+                    log.trace("Received reply-exception for unknown request ID %d", Integer.valueOf(rid));
                     return;
                 }
                 synchronized (outboundRequest) {
@@ -286,7 +289,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     outboundRequest = outboundRequests.get(rid);
                 }
                 if (outboundRequest == null) {
-                    RemoteConnectionHandler.log.warn("Received reply-exception-abort for unknown request ID %d", Integer.valueOf(rid));
+                    log.warn("Received reply-exception-abort for unknown request ID %d", Integer.valueOf(rid));
                     return;
                 }
                 final NioByteInput byteInput;
@@ -316,7 +319,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     outboundStream = outboundStreams.get(sid);
                 }
                 if (outboundStream == null) {
-                    RemoteConnectionHandler.log.warn("Received stream-ack for unknown stream ID %d", Integer.valueOf(sid));
+                    log.warn("Received stream-ack for unknown stream ID %d", Integer.valueOf(sid));
                     return;
                 }
                 outboundStream.ack();
@@ -330,7 +333,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     outboundStream = outboundStreams.get(sid);
                 }
                 if (outboundStream == null) {
-                    RemoteConnectionHandler.log.warn("Received stream-ack for unknown stream ID %d", Integer.valueOf(sid));
+                    log.warn("Received stream-ack for unknown stream ID %d", Integer.valueOf(sid));
                     return;
                 }
                 outboundStream.asyncClose();
@@ -344,7 +347,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     outboundStream = outboundStreams.get(sid);
                 }
                 if (outboundStream == null) {
-                    RemoteConnectionHandler.log.warn("Received stream-async-exception for unknown stream ID %d", Integer.valueOf(sid));
+                    log.warn("Received stream-async-exception for unknown stream ID %d", Integer.valueOf(sid));
                     return;
                 }
                 outboundStream.asyncException();
@@ -358,7 +361,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     outboundStream = outboundStreams.get(sid);
                 }
                 if (outboundStream == null) {
-                    RemoteConnectionHandler.log.warn("Received stream-async-start for unknown stream ID %d", Integer.valueOf(sid));
+                    log.warn("Received stream-async-start for unknown stream ID %d", Integer.valueOf(sid));
                     return;
                 }
                 outboundStream.asyncStart();
@@ -372,7 +375,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     inboundStream = inboundStreams.get(sid);
                 }
                 if (inboundStream == null) {
-                    RemoteConnectionHandler.log.warn("Received stream-close for unknown stream ID %d", Integer.valueOf(sid));
+                    log.warn("Received stream-close for unknown stream ID %d", Integer.valueOf(sid));
                     return;
                 }
                 inboundStream.getReceiver().pushEof();
@@ -386,7 +389,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     inboundStream = inboundStreams.get(sid);
                 }
                 if (inboundStream == null) {
-                    RemoteConnectionHandler.log.warn("Received stream-data for unknown stream ID %d", Integer.valueOf(sid));
+                    log.warn("Received stream-data for unknown stream ID %d", Integer.valueOf(sid));
                     return;
                 }
                 inboundStream.getReceiver().push(buffer);
@@ -400,14 +403,14 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     inboundStream = inboundStreams.get(sid);
                 }
                 if (inboundStream == null) {
-                    RemoteConnectionHandler.log.warn("Received stream-exception for unknown stream ID %d", Integer.valueOf(sid));
+                    log.warn("Received stream-exception for unknown stream ID %d", Integer.valueOf(sid));
                     return;
                 }
                 inboundStream.getReceiver().pushException();
                 return;
             }
             default: {
-                RemoteConnectionHandler.log.error("Received invalid packet type on %s, closing", connectionHandler);
+                log.error("Received invalid packet type on %s, closing", connectionHandler);
                 IoUtils.safeClose(connectionHandler);
             }
         }

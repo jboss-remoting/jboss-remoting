@@ -22,34 +22,16 @@
 
 package org.jboss.remoting3.remote;
 
-import java.io.IOException;
-import java.nio.channels.ClosedChannelException;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.channels.MessageHandler;
+import org.jboss.xnio.log.Logger;
 
-abstract class AbstractMessageHandler implements MessageHandler {
-    protected final RemoteConnection remoteConnection;
+final class Loggers {
 
-    protected AbstractMessageHandler(final RemoteConnection remoteConnection) {
-        this.remoteConnection = remoteConnection;
-    }
+    static final Logger main = Logger.getLogger("org.jboss.remoting.remote");
+    static final Logger client = Logger.getLogger("org.jboss.remoting.remote.client");
+    static final Logger clientSasl = Logger.getLogger("org.jboss.remoting.remote.client.sasl");
+    static final Logger server = Logger.getLogger("org.jboss.remoting.remote.server");
+    static final Logger serverSasl = Logger.getLogger("org.jboss.remoting.remote.server.sasl");
 
-    public void handleEof() {
-        try {
-            remoteConnection.getChannel().shutdownReads();
-            return;
-        } catch (IOException e) {
-            Loggers.main.trace(e, "Failed to shut down reads for %s", remoteConnection);
-            IoUtils.safeClose(remoteConnection);
-        }
-    }
-
-    public void handleException(final IOException e) {
-        if (e instanceof ClosedChannelException) {
-            // ignore; just means there was a race.
-            return;
-        }
-        Loggers.main.trace(e, "Received exception from %s", remoteConnection);
-        IoUtils.safeClose(remoteConnection);
+    private Loggers() {
     }
 }

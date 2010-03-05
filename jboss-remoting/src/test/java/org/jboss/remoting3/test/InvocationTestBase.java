@@ -50,7 +50,7 @@ import static org.testng.Assert.fail;
 
 @Test
 public abstract class InvocationTestBase {
-    private static final Logger log = Logger.getLogger(InvocationTestBase.class);
+    private static final Logger log = Logger.getLogger("test");
 
     protected Endpoint endpoint;
 

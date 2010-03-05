@@ -23,7 +23,6 @@
 package org.jboss.remoting3.spi;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.IdentityHashMap;

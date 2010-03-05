@@ -32,6 +32,7 @@ import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
@@ -41,6 +42,8 @@ final class ServerAuthenticationHandler extends AbstractMessageHandler {
     private final SaslServer saslServer;
     private final ConnectionProviderContext connectionProviderContext;
     private final ServerInitialAuthenticationHandler initialAuthHandler;
+
+    private static final Logger log = Loggers.serverSasl;
 
     ServerAuthenticationHandler(final RemoteConnection remoteConnection, final SaslServer saslServer, final ConnectionProviderContext connectionProviderContext, final ServerInitialAuthenticationHandler initialAuthHandler) {
         super(remoteConnection);
@@ -53,20 +56,20 @@ final class ServerAuthenticationHandler extends AbstractMessageHandler {
     public void handleMessage(final ByteBuffer buffer) {
         switch (buffer.get()) {
             case RemoteProtocol.AUTH_RESPONSE: {
-                RemoteConnectionHandler.log.trace("Received SASL response");
+                log.trace("Received SASL response");
                 final byte[] challenge;
                 try {
                     try {
                         challenge = saslServer.evaluateResponse(Buffers.take(buffer, buffer.remaining()));
                     } catch (SaslException e) {
-                        RemoteConnectionHandler.log.trace(e, "Server authentication failed");
+                        log.trace(e, "Server authentication failed");
                         initialAuthHandler.rejectAuth();
                         remoteConnection.setMessageHandler(initialAuthHandler);
                         return;
                     }
                     final boolean complete = saslServer.isComplete();
                     if (complete) {
-                        RemoteConnectionHandler.log.trace("Sending SASL complete");
+                        log.trace("Sending SASL complete");
                         remoteConnection.sendAuthMessage(RemoteProtocol.AUTH_COMPLETE, challenge);
                         connectionProviderContext.accept(new ConnectionHandlerFactory() {
                             public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
@@ -82,17 +85,17 @@ final class ServerAuthenticationHandler extends AbstractMessageHandler {
                             }
                         });
                     } else {
-                        RemoteConnectionHandler.log.trace("Sending subsequent SASL challenge");
+                        log.trace("Sending subsequent SASL challenge");
                         remoteConnection.sendAuthMessage(RemoteProtocol.AUTH_CHALLENGE, challenge);
                     }
                 } catch (IOException e) {
-                    RemoteConnectionHandler.log.trace(e, "Failed to send auth message");
+                    log.trace(e, "Failed to send auth message");
                     IoUtils.safeClose(remoteConnection);
                 }
                 break;
             }
             default: {
-                RemoteConnectionHandler.log.warn("Server received invalid message on %s", remoteConnection);
+                log.warn("Server received invalid message on %s", remoteConnection);
                 IoUtils.safeClose(remoteConnection);
             }
         }

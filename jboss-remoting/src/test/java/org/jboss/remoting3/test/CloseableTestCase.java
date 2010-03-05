@@ -42,7 +42,7 @@ import static org.testng.Assert.assertTrue;
 @Test
 public final class CloseableTestCase {
 
-    public static final Logger log = Logger.getLogger(CloseableTestCase.class);
+    private static final Logger log = Logger.getLogger("test");
 
     public void testBasic() throws Throwable {
         final ExecutorService executorService = Executors.newCachedThreadPool();

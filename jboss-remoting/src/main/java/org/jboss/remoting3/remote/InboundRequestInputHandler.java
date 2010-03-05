@@ -26,10 +26,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.jboss.marshalling.NioByteInput;
 import org.jboss.xnio.Pool;
+import org.jboss.xnio.log.Logger;
 
 final class InboundRequestInputHandler implements NioByteInput.InputHandler {
     private final int rid;
     private final InboundRequest inboundRequest;
+
+    private static final Logger log = Loggers.main;
 
     public InboundRequestInputHandler(final InboundRequest inboundRequest, final int rid) {
         this.inboundRequest = inboundRequest;
@@ -48,7 +51,7 @@ final class InboundRequestInputHandler implements NioByteInput.InputHandler {
             final RemoteConnection connection = connectionHandler.getRemoteConnection();
             connection.sendBlocking(buffer, true);
         } catch (IOException e) {
-            RemoteConnectionHandler.log.trace(e, "Failed to acknowledge chunk for %s", this);
+            log.trace(e, "Failed to acknowledge chunk for %s", this);
         } finally {
             bufferPool.free(buffer);
         }

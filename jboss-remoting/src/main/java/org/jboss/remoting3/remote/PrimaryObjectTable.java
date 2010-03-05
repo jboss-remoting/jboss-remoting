@@ -40,12 +40,14 @@ import org.jboss.remoting3.stream.ObjectSink;
 import org.jboss.remoting3.stream.ObjectSource;
 import org.jboss.remoting3.stream.ReaderInputStream;
 import org.jboss.remoting3.stream.WriterOutputStream;
+import org.jboss.xnio.log.Logger;
 
 final class PrimaryObjectTable implements ObjectTable {
 
     private final Endpoint endpoint;
     private final RemoteConnectionHandler connectionHandler;
     private final Executor executor;
+    private static final Logger log = Loggers.main;
 
     PrimaryObjectTable(final Endpoint endpoint, final RemoteConnectionHandler connectionHandler) {
         this.endpoint = endpoint;
@@ -126,7 +128,7 @@ final class PrimaryObjectTable implements ObjectTable {
                     try {
                         executor.execute(new InboundObjectSinkReceiveTask(nioByteInput, inboundStream, connectionHandler, objectSink));
                     } catch (RejectedExecutionException e) {
-                        RemoteConnectionHandler.log.warn("Unable to start task for forwarded stream: %s", e);
+                        log.warn("Unable to start task for forwarded stream: %s", e);
                         inboundStream.sendAsyncException();
                     }
                 }
@@ -149,7 +151,7 @@ final class PrimaryObjectTable implements ObjectTable {
         try {
             executor.execute(new OutboundObjectSourceTransmitTask(objectSource, outboundStream, connectionHandler));
         } catch (RejectedExecutionException e) {
-            RemoteConnectionHandler.log.warn("Unable to start task for forwarded stream: %s", e);
+            log.warn("Unable to start task for forwarded stream: %s", e);
             outboundStream.sendException();
         }
     }
@@ -189,7 +191,7 @@ final class PrimaryObjectTable implements ObjectTable {
         try {
             executor.execute(new OutboundInputStreamTransmitTask(inputStream, outboundStream));
         } catch (RejectedExecutionException e) {
-            RemoteConnectionHandler.log.warn("Unable to start task for forwarded stream: %s", e);
+            log.warn("Unable to start task for forwarded stream: %s", e);
             outboundStream.sendException();
         }
     }

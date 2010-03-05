@@ -38,6 +38,7 @@ import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Result;
+import org.jboss.xnio.log.Logger;
 
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.Sasl;
@@ -49,6 +50,8 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
     private final Result<ConnectionHandlerFactory> factoryResult;
     private final CallbackHandler callbackHandler;
     private final AccessControlContext accessControlContext;
+
+    private static final Logger log = Loggers.clientSasl;
 
     ClientGreetingHandler(final RemoteConnection connection, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler, final AccessControlContext accessControlContext) {
         super(connection, factoryResult);
@@ -65,7 +68,7 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
         int bestVersion = -1;
         switch (buffer.get()) {
             case RemoteProtocol.GREETING: {
-                RemoteConnectionHandler.log.trace("Client received greeting message");
+                log.trace("Client received greeting message");
                 while (buffer.hasRemaining()) {
                     final byte type = buffer.get();
                     final int len = buffer.get() & 0xff;
@@ -131,16 +134,16 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
                 } catch (PrivilegedActionException e) {
                     final SaslException se = (SaslException) e.getCause();
                     factoryResult.setException(se);
-                    RemoteConnectionHandler.log.trace(se, "Client connect authentication error");
+                    log.trace(se, "Client connect authentication error");
                     try {
                         remoteConnection.shutdownWritesBlocking();
                     } catch (IOException e1) {
-                        RemoteConnectionHandler.log.trace(e1, "Failed to shutdown writes on %s", remoteConnection);
+                        log.trace(e1, "Failed to shutdown writes on %s", remoteConnection);
                     }
                     return;
                 }
                 final String mechanismName = saslClient.getMechanismName();
-                RemoteConnectionHandler.log.trace("Sasl mechanism selected: %s", mechanismName);
+                log.trace("Sasl mechanism selected: %s", mechanismName);
                 final ByteBuffer outBuf = connection.allocate();
                 try {
                     outBuf.putInt(0);
@@ -149,7 +152,7 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
                     outBuf.flip();
                     connection.sendBlocking(outBuf, true);
                 } catch (IOException e) {
-                    RemoteConnectionHandler.log.trace(e, "Failed to send auth request on %s", remoteConnection);
+                    log.trace(e, "Failed to send auth request on %s", remoteConnection);
                     factoryResult.setException(e);
                     return;
                 } finally {
@@ -159,11 +162,11 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
                 return;
             }
             default: {
-                RemoteConnectionHandler.log.warn("Received invalid greeting packet on %s", remoteConnection);
+                log.warn("Received invalid greeting packet on %s", remoteConnection);
                 try {
                     remoteConnection.shutdownWritesBlocking();
                 } catch (IOException e1) {
-                    RemoteConnectionHandler.log.trace(e1, "Failed to shutdown writes on %s", remoteConnection);
+                    log.trace(e1, "Failed to shutdown writes on %s", remoteConnection);
                 }
                 return;
             }

@@ -35,6 +35,7 @@ import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Options;
 import org.jboss.xnio.Result;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
+import org.jboss.xnio.log.Logger;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -46,6 +47,8 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
     private final CallbackHandler callbackHandler;
     private final ProviderDescriptor providerDescriptor;
     private final AccessControlContext accessControlContext;
+
+    private static final Logger log = Loggers.client;
 
     ClientOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler, final ProviderDescriptor providerDescriptor, final AccessControlContext accessControlContext) {
         this.optionMap = optionMap;
@@ -86,7 +89,7 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
                         try {
                             res = channel.write(buffer);
                         } catch (IOException e1) {
-                            RemoteConnectionHandler.log.trace(e1, "Failed to send client greeting message");
+                            log.trace(e1, "Failed to send client greeting message");
                             factoryResult.setException(e1);
                             IoUtils.safeClose(connection);
                             connection.free(buffer);
@@ -101,12 +104,12 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
                     try {
                         while (! channel.flush());
                     } catch (IOException e) {
-                        RemoteConnectionHandler.log.trace(e, "Failed to flush client greeting message");
+                        log.trace(e, "Failed to flush client greeting message");
                         factoryResult.setException(e);
                         IoUtils.safeClose(connection);
                         return;
                     }
-                    RemoteConnectionHandler.log.trace("Client sent greeting message");
+                    log.trace("Client sent greeting message");
                     channel.resumeReads();
                     return;
                 }

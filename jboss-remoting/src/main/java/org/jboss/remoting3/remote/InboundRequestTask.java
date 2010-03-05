@@ -28,6 +28,7 @@ import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.RemoteRequestException;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 
 final class InboundRequestTask implements Runnable {
 
@@ -35,6 +36,8 @@ final class InboundRequestTask implements Runnable {
     private final int rid;
     private final int cid;
     private RemoteConnectionHandler remoteConnectionHandler;
+
+    private static final Logger log = Loggers.main;
 
     InboundRequestTask(final RemoteConnectionHandler remoteConnectionHandler, final InboundRequest inboundRequest, final int rid, final int cid) {
         this.remoteConnectionHandler = remoteConnectionHandler;
@@ -53,7 +56,7 @@ final class InboundRequestTask implements Runnable {
         try {
             final Unmarshaller unmarshaller = remoteConnectionHandler.getMarshallerFactory().createUnmarshaller(remoteConnectionHandler.getMarshallingConfiguration());
             try {
-                RemoteConnectionHandler.log.trace("Unmarshalling inbound request");
+                log.trace("Unmarshalling inbound request");
                 unmarshaller.start(inboundRequest.getByteInput());
                 final RemoteConnectionHandler old = RemoteConnectionHandler.setCurrent(remoteConnectionHandler);
                 try {
@@ -62,20 +65,20 @@ final class InboundRequestTask implements Runnable {
                 } finally {
                     RemoteConnectionHandler.setCurrent(old);
                 }
-                RemoteConnectionHandler.log.trace("Unmarshalled inbound request %s", request);
+                log.trace("Unmarshalled inbound request %s", request);
             } finally {
                 IoUtils.safeClose(unmarshaller);
             }
         } catch (IOException e) {
-            RemoteConnectionHandler.log.trace(e, "Unmarshalling inbound request failed");
+            log.trace(e, "Unmarshalling inbound request failed");
             SpiUtils.safeHandleException(replyHandler, e);
             return;
         } catch (Exception e) {
-            RemoteConnectionHandler.log.trace(e, "Unmarshalling inbound request failed");
+            log.trace(e, "Unmarshalling inbound request failed");
             SpiUtils.safeHandleException(replyHandler, new RemoteRequestException(e));
             return;
         } catch (Error e) {
-            RemoteConnectionHandler.log.trace(e, "Unmarshalling inbound request failed");
+            log.trace(e, "Unmarshalling inbound request failed");
             SpiUtils.safeHandleException(replyHandler, new RemoteRequestException(e));
             throw e;
         }

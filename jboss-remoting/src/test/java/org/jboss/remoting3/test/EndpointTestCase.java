@@ -47,7 +47,7 @@ import static org.testng.Assert.assertTrue;
 @Test
 public final class EndpointTestCase {
 
-    private static final Logger log = Logger.getLogger(EndpointTestCase.class);
+    private static final Logger log = Logger.getLogger("test");
 
     private static void enter() {
         log.info("Entering: %s", new Throwable().getStackTrace()[1].getMethodName());

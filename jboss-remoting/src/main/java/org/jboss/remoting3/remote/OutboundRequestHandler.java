@@ -28,17 +28,18 @@ import java.util.Random;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.NioByteOutput;
 import org.jboss.marshalling.util.IntKeyMap;
-import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ReplyHandler;
 import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.Pool;
+import org.jboss.xnio.log.Logger;
 
 final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHandler> implements RequestHandler {
 
     private final OutboundClient outboundClient;
+    private static final Logger log = Loggers.main;
 
     OutboundRequestHandler(final OutboundClient outboundClient) {
         super(outboundClient.getRemoteConnectionHandler().getConnectionContext().getConnectionProviderContext().getExecutor());
@@ -57,7 +58,7 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
         }
         final NioByteOutput byteOutput = new NioByteOutput(new OutboundRequestBufferWriter(outboundRequest, rid));
         try {
-            RemoteConnectionHandler.log.trace("Starting sending request %s for %s", request, Integer.valueOf(rid));
+            log.trace("Starting sending request %s for %s", request, Integer.valueOf(rid));
             final Marshaller marshaller = connectionHandler.getMarshallerFactory().createMarshaller(connectionHandler.getMarshallingConfiguration());
             marshaller.start(byteOutput);
             RemoteConnectionHandler old = RemoteConnectionHandler.setCurrent(connectionHandler);
@@ -67,9 +68,9 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
             } finally {
                 RemoteConnectionHandler.setCurrent(old);
             }
-            RemoteConnectionHandler.log.trace("Finished sending request %s", request);
+            log.trace("Finished sending request %s", request);
         } catch (IOException e) {
-            RemoteConnectionHandler.log.trace(e, "Got exception while marshalling request %s", request);
+            log.trace(e, "Got exception while marshalling request %s", request);
             SpiUtils.safeHandleException(replyHandler, e);
             synchronized (outboundRequests) {
                 outboundRequests.remove(rid);
@@ -86,7 +87,7 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
             try {
                 connectionHandler.getRemoteConnection().sendBlocking(buf, true);
             } catch (IOException e1) {
-                RemoteConnectionHandler.log.trace("Send failed: %s", e1);
+                log.trace("Send failed: %s", e1);
             }
         }
         return outboundRequest;
@@ -109,9 +110,5 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
         } finally {
             bufferPool.free(buf);
         }
-    }
-
-    public Key addCloseHandler(final CloseHandler<? super RequestHandler> closeHandler) {
-        return null;
     }
 }

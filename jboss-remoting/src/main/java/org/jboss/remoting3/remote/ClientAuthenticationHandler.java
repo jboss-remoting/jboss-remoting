@@ -32,6 +32,7 @@ import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Result;
+import org.jboss.xnio.log.Logger;
 
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
@@ -41,6 +42,7 @@ final class ClientAuthenticationHandler extends AbstractClientMessageHandler {
     private final RemoteConnection remoteConnection;
     private final SaslClient saslClient;
     private final Result<ConnectionHandlerFactory> factoryResult;
+    private static final Logger log = Loggers.clientSasl;
 
     ClientAuthenticationHandler(final RemoteConnection remoteConnection, final SaslClient saslClient, final Result<ConnectionHandlerFactory> factoryResult) {
         super(remoteConnection, factoryResult);
@@ -53,10 +55,10 @@ final class ClientAuthenticationHandler extends AbstractClientMessageHandler {
         final byte msgType = buffer.get();
         switch (msgType) {
             case RemoteProtocol.AUTH_CHALLENGE: {
-                RemoteConnectionHandler.log.trace("Received challenge message");
+                log.trace("Received challenge message");
                 final boolean clientComplete = saslClient.isComplete();
                 if (clientComplete) {
-                    RemoteConnectionHandler.log.trace("Received extra auth challenge message on %s after completion", remoteConnection);
+                    log.trace("Received extra auth challenge message on %s after completion", remoteConnection);
                     factoryResult.setException(new SaslException("Received extra auth message after completion"));
                     IoUtils.safeClose(remoteConnection);
                     return;
@@ -66,57 +68,57 @@ final class ClientAuthenticationHandler extends AbstractClientMessageHandler {
                 try {
                     response = saslClient.evaluateChallenge(challenge);
                     if (msgType == RemoteProtocol.AUTH_COMPLETE && response != null && response.length > 0) {
-                        RemoteConnectionHandler.log.trace("Received extra auth message on %s", remoteConnection);
+                        log.trace("Received extra auth message on %s", remoteConnection);
                         factoryResult.setException(new SaslException("Received extra auth message after completion"));
                         IoUtils.safeClose(remoteConnection);
                         return;
                     }
                 } catch (SaslException e) {
-                    RemoteConnectionHandler.log.trace(e, "Authentication error");
+                    log.trace(e, "Authentication error");
                     factoryResult.setException(e);
                     try {
                         remoteConnection.shutdownWritesBlocking();
                     } catch (IOException e1) {
-                        RemoteConnectionHandler.log.trace(e, "Unable to shut down writes");
+                        log.trace(e, "Unable to shut down writes");
                     }
                     return;
                 }
                 try {
-                    RemoteConnectionHandler.log.trace("Sending SASL response");
+                    log.trace("Sending SASL response");
                     remoteConnection.sendAuthMessage(RemoteProtocol.AUTH_RESPONSE, response);
                 } catch (IOException e) {
                     factoryResult.setException(e);
-                    RemoteConnectionHandler.log.trace("Failed to send auth response message on %s", remoteConnection);
+                    log.trace("Failed to send auth response message on %s", remoteConnection);
                     IoUtils.safeClose(remoteConnection);
                     return;
                 }
                 return;
             }
             case RemoteProtocol.AUTH_COMPLETE: {
-                RemoteConnectionHandler.log.trace("Received auth complete message");
+                log.trace("Received auth complete message");
                 final boolean clientComplete = saslClient.isComplete();
                 final byte[] challenge = Buffers.take(buffer, buffer.remaining());
                 if (! clientComplete) try {
                     final byte[] response = saslClient.evaluateChallenge(challenge);
                     if (response != null && response.length > 0) {
-                        RemoteConnectionHandler.log.trace("Received extra auth message on %s", remoteConnection);
+                        log.trace("Received extra auth message on %s", remoteConnection);
                         factoryResult.setException(new SaslException("Received extra auth message after completion"));
                         IoUtils.safeClose(remoteConnection);
                         return;
                     }
                     if (! saslClient.isComplete()) {
-                        RemoteConnectionHandler.log.trace("Client not complete after processing auth complete message on %s", remoteConnection);
+                        log.trace("Client not complete after processing auth complete message on %s", remoteConnection);
                         factoryResult.setException(new SaslException("Client not complete after processing auth complete message"));
                         IoUtils.safeClose(remoteConnection);
                         return;
                     }
                 } catch (SaslException e) {
-                    RemoteConnectionHandler.log.trace(e, "Authentication error");
+                    log.trace(e, "Authentication error");
                     factoryResult.setException(e);
                     try {
                         remoteConnection.shutdownWritesBlocking();
                     } catch (IOException e1) {
-                        RemoteConnectionHandler.log.trace(e, "Unable to shut down writes");
+                        log.trace(e, "Unable to shut down writes");
                     }
                     return;
                 }
@@ -138,7 +140,7 @@ final class ClientAuthenticationHandler extends AbstractClientMessageHandler {
                 return;
             }
             case RemoteProtocol.AUTH_REJECTED: {
-                RemoteConnectionHandler.log.trace("Received auth rejected message");
+                log.trace("Received auth rejected message");
                 factoryResult.setException(new SaslException("Authentication failed"));
                 IoUtils.safeClose(remoteConnection);
             }

@@ -28,6 +28,7 @@ import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.log.Logger;
 
 import javax.security.sasl.SaslServerFactory;
 
@@ -37,6 +38,8 @@ final class ServerGreetingHandler extends AbstractMessageHandler {
     private final Map<String, SaslServerFactory> saslMechs;
     private final ServerAuthenticationProvider provider;
     private final Map<String, Object> propertyMap;
+
+    private static final Logger log = Loggers.server;
 
     ServerGreetingHandler(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final Map<String, SaslServerFactory> saslMechs, final ServerAuthenticationProvider provider, final Map<String, Object> propertyMap) {
         super(connection);
@@ -50,7 +53,7 @@ final class ServerGreetingHandler extends AbstractMessageHandler {
     public void handleMessage(final ByteBuffer buffer) {
         switch (buffer.get()) {
             case RemoteProtocol.GREETING: {
-                RemoteConnectionHandler.log.trace("Server received greeting message");
+                log.trace("Server received greeting message");
                 final int[] ourVersions = connection.getProviderDescriptor().getSupportedVersions();
                 int bestVersion = -1;
                 while (buffer.hasRemaining()) {
@@ -87,7 +90,7 @@ final class ServerGreetingHandler extends AbstractMessageHandler {
                 return;
             }
             default: {
-                RemoteConnectionHandler.log.warn("Server received invalid greeting message");
+                log.warn("Server received invalid greeting message");
                 IoUtils.safeClose(connection);
             }
         }

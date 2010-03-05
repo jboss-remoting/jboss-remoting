@@ -43,11 +43,8 @@ import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Pool;
 import org.jboss.xnio.Result;
-import org.jboss.xnio.log.Logger;
 
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteConnectionHandler> implements ConnectionHandler {
-
-    static final Logger log = Logger.getLogger("org.jboss.remoting.remote");
 
     static final int LENGTH_PLACEHOLDER = 0;
 
@@ -81,7 +78,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
         config.setStreamHeader(Marshalling.nullStreamHeader());
         // fixed for now (v0)
         config.setVersion(2);
-        this.marshallingConfiguration = config;
+        marshallingConfiguration = config;
     }
 
     public Cancellable open(final String serviceType, final String groupName, final Result<RequestHandler> result) {
