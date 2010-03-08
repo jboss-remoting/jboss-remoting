@@ -29,7 +29,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.jboss.remoting3.spi.RemoteReplyHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 
@@ -42,7 +41,6 @@ final class RequestContextImpl<O> implements RequestContext<O> {
     private final Object cancelLock = new Object();
     private final RemoteReplyHandler replyHandler;
     private final ClientContextImpl clientContext;
-    private final AtomicInteger taskCount = new AtomicInteger();
 
     // @protectedby cancelLock
     private boolean cancelled;
@@ -59,7 +57,7 @@ final class RequestContextImpl<O> implements RequestContext<O> {
         this.serviceClassLoader = serviceClassLoader;
         final Executor executor = clientContext.getExecutor();
         //noinspection ThisEscapedInObjectConstruction
-        interruptingExecutor = new RequestListenerExecutor(executor, this);
+        interruptingExecutor = new RequestListenerExecutor(executor);
     }
 
     public ClientContext getContext() {
@@ -184,13 +182,8 @@ final class RequestContextImpl<O> implements RequestContext<O> {
         }
     }
 
-    void startTask() {
-        taskCount.incrementAndGet();
-    }
-
-    void finishTask() {
-        if (taskCount.decrementAndGet() == 0 && ! closed.getAndSet(true)) {
-            // no response sent!  send back IndeterminateOutcomeException
+    protected void finalize() throws Throwable {
+        if (! closed.getAndSet(true)) {
             SpiUtils.safeHandleException(replyHandler, new IndeterminateOutcomeException("No reply was sent by the request listener"));
         }
     }

@@ -34,11 +34,9 @@ final class RequestListenerExecutor implements Executor {
 
     private final Set<Task> tasks = Collections.synchronizedSet(new HashSet<Task>());
     private final Executor executor;
-    private final RequestContextImpl<?> requestContext;
 
-    public RequestListenerExecutor(final Executor executor, final RequestContextImpl<?> context) {
+    public RequestListenerExecutor(final Executor executor) {
         this.executor = executor;
-        requestContext = context;
     }
 
     private final class Task implements Runnable {
@@ -50,13 +48,11 @@ final class RequestListenerExecutor implements Executor {
         }
 
         public void run() {
-            requestContext.startTask();
             thread = Thread.currentThread();
             tasks.add(this);
             try {
                 runnable.run();
             } finally {
-                requestContext.finishTask();
                 tasks.remove(this);
                 thread = null;
             }
