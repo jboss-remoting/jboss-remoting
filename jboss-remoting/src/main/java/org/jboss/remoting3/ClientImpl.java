@@ -23,11 +23,12 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.CancellationException;
-import org.jboss.remoting3.spi.ReplyHandler;
-import org.jboss.remoting3.spi.RequestHandler;
+import java.util.concurrent.Executor;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
+import org.jboss.remoting3.spi.LocalReplyHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
+import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
@@ -40,25 +41,23 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.client");
 
-    private final RequestHandler handler;
+    private final RemoteRequestHandler handler;
     private final Class<I> requestClass;
     private final Class<O> replyClass;
+    private final ClassLoader clientClassLoader;
     private final Attachments attachments = new AttachmentsImpl();
 
-    private ClientImpl(final RequestHandler handler, final Executor executor, final Class<I> requestClass, final Class<O> replyClass) {
+    private ClientImpl(final RemoteRequestHandler handler, final Executor executor, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader clientClassLoader) {
         super(executor);
         this.handler = handler;
         this.requestClass = requestClass;
         this.replyClass = replyClass;
+        this.clientClassLoader = clientClassLoader;
     }
 
-    static <I, O> ClientImpl<I, O> create(final RequestHandler handler, final Executor executor, final Class<I> requestClass, final Class<O> replyClass) {
-        final ClientImpl<I, O> ci = new ClientImpl<I, O>(handler, executor, requestClass, replyClass);
-        handler.addCloseHandler(new CloseHandler<RequestHandler>() {
-            public void handleClose(final RequestHandler closed) {
-                IoUtils.safeClose(ci);
-            }
-        });
+    static <I, O> ClientImpl<I, O> create(final RemoteRequestHandler handler, final Executor executor, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader clientClassLoader) {
+        final ClientImpl<I, O> ci = new ClientImpl<I, O>(handler, executor, requestClass, replyClass, clientClassLoader);
+        handler.addCloseHandler(SpiUtils.closingCloseHandler(ci));
         return ci;
     }
 
@@ -81,8 +80,8 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
        log.trace("Client.invoke() sending request \"%s\"", request);
        final I actualRequest = castRequest(request);
        final QueueExecutor executor = new QueueExecutor();
-       final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(executor, replyClass);
-       final ReplyHandler replyHandler = futureReply.getReplyHandler();
+       final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(executor, replyClass, clientClassLoader);
+       final LocalReplyHandler replyHandler = futureReply.getReplyHandler();
        final Cancellable requestContext = handler.receiveRequest(actualRequest, replyHandler);
        futureReply.setRemoteRequestContext(requestContext);
        futureReply.addNotifier(IoUtils.attachmentClosingNotifier(), executor);
@@ -108,8 +107,8 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
         log.trace("Client.invoke() sending request \"%s\"", typedRequest);
         final I actualRequest = castRequest(typedRequest);
         final QueueExecutor executor = new QueueExecutor();
-        final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(executor, typedRequest);
-        final ReplyHandler replyHandler = futureReply.getReplyHandler();
+        final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(executor, typedRequest, clientClassLoader);
+        final LocalReplyHandler replyHandler = futureReply.getReplyHandler();
         final Cancellable requestContext = handler.receiveRequest(actualRequest, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         futureReply.addNotifier(IoUtils.attachmentClosingNotifier(), executor);
@@ -138,8 +137,8 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
         }
         log.trace("Client.send() sending request \"%s\"", request);
         final I actualRequest = castRequest(request);
-        final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(getExecutor(), replyClass);
-        final ReplyHandler replyHandler = futureReply.getReplyHandler();
+        final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(getExecutor(), replyClass, clientClassLoader);
+        final LocalReplyHandler replyHandler = futureReply.getReplyHandler();
         final Cancellable requestContext = handler.receiveRequest(actualRequest, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         return futureReply;
@@ -151,18 +150,15 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
         }
         log.trace("Client.send() sending request \"%s\"", typedRequest);
         final I actualRequest = castRequest(typedRequest);
-        final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(getExecutor(), typedRequest);
-        final ReplyHandler replyHandler = futureReply.getReplyHandler();
+        final FutureReplyImpl<T> futureReply = new FutureReplyImpl<T>(getExecutor(), typedRequest, clientClassLoader);
+        final LocalReplyHandler replyHandler = futureReply.getReplyHandler();
         final Cancellable requestContext = handler.receiveRequest(actualRequest, replyHandler);
         futureReply.setRemoteRequestContext(requestContext);
         return futureReply;
     }
 
-    /**
+    /*
      * Since type is erased, it's possible that the wrong type was passed.
-     * @param request
-     * @return
-     * @throws RemoteRequestException
      */
     private I castRequest(final Object request) throws RemoteRequestException {
         try {
@@ -176,7 +172,7 @@ final class ClientImpl<I, O> extends AbstractHandleableCloseable<Client<I, O>> i
         return "client instance <" + Integer.toHexString(hashCode()) + ">";
     }
 
-    RequestHandler getRequestHandler() {
+    RemoteRequestHandler getRequestHandler() {
         return handler;
     }
 

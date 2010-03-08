@@ -27,8 +27,8 @@ import java.util.concurrent.Executor;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
-import org.jboss.remoting3.spi.ReplyHandler;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalReplyHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
@@ -41,7 +41,7 @@ import org.jboss.xnio.log.Logger;
  * Copyright Oct 14, 2009
  * </p>
  */
-public class SocketClientRequestHandler extends AbstractHandleableCloseable<RequestHandler> implements RequestHandler {
+public class SocketClientRequestHandler extends AbstractHandleableCloseable<RemoteRequestHandler> implements RemoteRequestHandler {
    private static final Logger log = Logger.getLogger("org.jboss.remoting.samples.socket.SocketRequestHandler");
 
    private Marshaller marshaller;
@@ -53,7 +53,7 @@ public class SocketClientRequestHandler extends AbstractHandleableCloseable<Requ
       this.unmarshaller = unmarshaller;
    }
 
-   public Cancellable receiveRequest(Object request, final ReplyHandler replyHandler) {
+   public Cancellable receiveRequest(Object request, final LocalReplyHandler replyHandler) {
       try {
          marshaller.writeObject(request);
          marshaller.flush();

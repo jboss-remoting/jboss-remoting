@@ -30,13 +30,13 @@ import java.nio.charset.UnsupportedCharsetException;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.concurrent.Executor;
 import org.jboss.marshalling.Pair;
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.FutureResult;
 import org.jboss.xnio.Cancellable;
+import org.jboss.xnio.FutureResult;
+import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
 
 /**

@@ -40,7 +40,7 @@ import static org.testng.Assert.fail;
 /**
  *
  */
-@Test(suiteName = "Streams Tests")
+@Test(suiteName = "streams")
 public final class StreamsTestCase {
 
     public void testCollectionObjectSink() throws Throwable {

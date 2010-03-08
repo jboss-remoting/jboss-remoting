@@ -35,12 +35,14 @@ import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalRequestHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Pool;
 import org.jboss.xnio.Result;
 
@@ -81,7 +83,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
         marshallingConfiguration = config;
     }
 
-    public Cancellable open(final String serviceType, final String groupName, final Result<RequestHandler> result) {
+    public Cancellable open(final String serviceType, final String groupName, final Result<RemoteRequestHandler> result, final ClassLoader classLoader, final OptionMap optionMap) {
         final OutboundClient outboundClient;
         int id;
         synchronized (outboundClients) {
@@ -111,7 +113,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
         return outboundClient;
     }
 
-    public RequestHandlerConnector createConnector(final RequestHandler localHandler) {
+    public RequestHandlerConnector createConnector(final LocalRequestHandler localHandler) {
         int id;
         synchronized (inboundClients) {
             while (inboundClients.containsKey(id = random.nextInt() & ~1));

@@ -27,7 +27,7 @@ import org.jboss.marshalling.NioByteInput;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.RemoteReplyException;
 import org.jboss.remoting3.RemoteRequestException;
-import org.jboss.remoting3.spi.ReplyHandler;
+import org.jboss.remoting3.spi.LocalReplyHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 
 final class InboundReplyExceptionTask implements Runnable {
@@ -41,7 +41,7 @@ final class InboundReplyExceptionTask implements Runnable {
     }
 
     public void run() {
-        final ReplyHandler replyHandler;
+        final LocalReplyHandler replyHandler;
         final OutboundRequest outboundRequest = this.outboundRequest;
         final NioByteInput oldByteInput;
         synchronized (outboundRequest) {

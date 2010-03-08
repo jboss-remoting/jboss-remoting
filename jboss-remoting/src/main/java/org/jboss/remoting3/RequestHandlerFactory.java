@@ -23,7 +23,8 @@
 package org.jboss.remoting3;
 
 import java.util.concurrent.Executor;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalRequestHandler;
+import org.jboss.xnio.OptionMap;
 
 /**
  * A factory which creates request handlers corresponding to request listeners for a given client listener.
@@ -47,9 +48,9 @@ final class RequestHandlerFactory<I, O> {
         return new RequestHandlerFactory<I, O>(executor, clientListener, requestClass, replyClass, serviceClassLoader);
     }
 
-    RequestHandler createRequestHandler(final Connection connection) {
+    LocalRequestHandler createRequestHandler(final Connection connection, final OptionMap optionMap) {
         final ClientContextImpl context = new ClientContextImpl(executor, connection);
-        return new LocalRequestHandler<I, O>(executor, clientListener.handleClientOpen(context), context, requestClass, replyClass, serviceClassLoader);
+        return new TerminatingLocalRequestHandler<I, O>(executor, clientListener.handleClientOpen(context, optionMap), context, requestClass, replyClass, serviceClassLoader);
     }
 
     Class<I> getRequestClass() {

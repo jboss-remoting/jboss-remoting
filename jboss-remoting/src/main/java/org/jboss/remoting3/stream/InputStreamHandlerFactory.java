@@ -26,9 +26,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
+import org.jboss.xnio.ChannelListener;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.ChannelListener;
 import org.jboss.xnio.channels.StreamChannel;
 import org.jboss.xnio.log.Logger;
 

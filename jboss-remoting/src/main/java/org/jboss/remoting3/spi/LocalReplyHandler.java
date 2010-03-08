@@ -23,39 +23,36 @@
 package org.jboss.remoting3.spi;
 
 import java.io.IOException;
-import org.jboss.xnio.OptionMap;
 
 /**
- * The context for connection handlers.  Used to inform the endpoint of incoming events on an established connection.
- *
- * @remoting.consume
+ * A reply handler which is local to this machine.
  */
-public interface ConnectionHandlerContext {
+public interface LocalReplyHandler {
 
     /**
-     * Get the connection provider context associated with this connection handler context.
+     * Get the class loader to be used to unmarshall replies.
      *
-     * @return the connection provider context
+     * @return the class loader
      */
-    ConnectionProviderContext getConnectionProviderContext();
+    ClassLoader getClassLoader();
 
     /**
-     * Open a service.  This method should return immediately.
+     * Handle a successful reply.  If the reply could not be forwarded, an exception is thrown.
      *
-     * @remoting.nonblocking
-     *
-     * @param serviceType the service type string
-     * @param groupName the group name, or {@code null} for any group name
-     * @param optionMap the options to pass to the service
-     * @return the new request handler
-     * @throws IOException if an error occurs
+     * @param reply the reply
      */
-    LocalRequestHandler openService(String serviceType, String groupName, OptionMap optionMap);
+    void handleReply(Object reply);
 
     /**
-     * Indicate that the remote side has terminated the connection, so the local side should be closed as well.
+     * Handle an exception.  If the exception could not be forwarded, a (different) {@code IOException} is thrown.
      *
-     * @remoting.nonblocking
+     * @param exception an exception which describes the problem
      */
-    void remoteClosed();
+    void handleException(IOException exception);
+
+    /**
+     * Handle a cancellation acknowledgement.  If the cancellation acknowledgement could not be forwarded, an exception is
+     * thrown.
+     */
+    void handleCancellation();
 }

@@ -41,6 +41,16 @@ public interface ClientConnector<I, O> {
     IoFuture<? extends Client<I, O>> getFutureClient() throws SecurityException;
 
     /**
+     * Get the future client associated with this connector.  This method may only be called after this connector
+     * has passed over its associated connection.
+     *
+     * @param classloader the explicit classloader to use for unmarshalling replies
+     * @return the future client
+     * @throws SecurityException if this client is being accessed from the wrong peer
+     */
+    IoFuture<? extends Client<I, O>> getFutureClient(ClassLoader classloader) throws SecurityException;
+
+    /**
      * Get the client context associated with this connector.  This method may only be called from the originating
      * side of the connection.
      *

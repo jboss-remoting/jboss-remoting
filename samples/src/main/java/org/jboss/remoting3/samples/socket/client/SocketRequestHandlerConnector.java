@@ -42,7 +42,8 @@ import org.jboss.remoting3.samples.socket.SocketHandleableCloseable;
 import org.jboss.remoting3.samples.socket.SocketProtocol;
 import org.jboss.remoting3.samples.socket.server.SocketServerRequestHandler;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalRequestHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
@@ -70,7 +71,7 @@ public class SocketRequestHandlerConnector<I, O> extends AbstractHandleableClose
       super(new ThreadPoolExecutor(10, 10, 0L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>()));
    }
    
-   public SocketRequestHandlerConnector(Executor executor, RequestHandler localRequestHandler, String callbackHost) throws IOException {
+   public SocketRequestHandlerConnector(Executor executor, LocalRequestHandler localRequestHandler, String callbackHost) throws IOException {
       super(executor);
       this.callbackHost = callbackHost;
       requestHandlerServer = new RequestHandlerServer(localRequestHandler, callbackHost);
@@ -78,7 +79,7 @@ public class SocketRequestHandlerConnector<I, O> extends AbstractHandleableClose
       requestHandlerServer.start();
    }
 
-   public Cancellable createRequestHandler(Result<RequestHandler> result) throws SecurityException {
+   public Cancellable createRequestHandler(Result<RemoteRequestHandler> result) throws SecurityException {
       if (socketClientRequestHandler != null) {
          throw new SecurityException(this + ": a SocketClientRequestHandler has already been created");
       }
@@ -125,12 +126,12 @@ public class SocketRequestHandlerConnector<I, O> extends AbstractHandleableClose
    }
 
    static class RequestHandlerServer extends Thread {
-      private RequestHandler localRequestHandler;
+      private LocalRequestHandler localRequestHandler;
       private ServerSocket serverSocket;
       private Socket socket;
       private SocketServerRequestHandler socketServerRequestHandler;
 
-      RequestHandlerServer(RequestHandler localRequestHandler, String localHost) throws IOException {
+      RequestHandlerServer(LocalRequestHandler localRequestHandler, String localHost) throws IOException {
          this.localRequestHandler = localRequestHandler;
          serverSocket = new ServerSocket();
          serverSocket.bind(new InetSocketAddress(localHost, 0));

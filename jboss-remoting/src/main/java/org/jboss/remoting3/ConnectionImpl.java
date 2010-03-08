@@ -23,15 +23,18 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalRequestHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
+import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.FutureResult;
 import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.TranslatingResult;
 
@@ -59,8 +62,23 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     }
 
     public <I, O> IoFuture<? extends Client<I, O>> openClient(final String serviceType, final String groupName, final Class<I> requestClass, final Class<O> replyClass, final OptionMap optionMap) {
+        ClassLoader classLoader;
+        final SecurityManager sm = System.getSecurityManager();
+        if (sm == null) {
+            classLoader = Thread.currentThread().getContextClassLoader();
+        } else {
+            classLoader = AccessController.doPrivileged(new PrivilegedAction<ClassLoader>() {
+                public ClassLoader run() {
+                    return Thread.currentThread().getContextClassLoader();
+                }
+            });
+        }
+        return openClient(serviceType, groupName, requestClass, replyClass, classLoader, optionMap);
+    }
+
+    public <I, O> IoFuture<? extends Client<I, O>> openClient(final String serviceType, final String groupName, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader classLoader, final OptionMap optionMap) {
         final FutureResult<Client<I, O>> futureResult = new FutureResult<Client<I, O>>();
-        futureResult.addCancelHandler(connectionHandler.open(serviceType, groupName, new ClientWrapper<I, O>(endpoint, futureResult, requestClass, replyClass)));
+        futureResult.addCancelHandler(connectionHandler.open(serviceType, groupName, new ClientWrapper<I, O>(endpoint, futureResult, requestClass, replyClass, classLoader), classLoader, optionMap));
         return futureResult.getIoFuture();
     }
 
@@ -69,14 +87,10 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     }
 
     public <I, O> ClientConnector<I, O> createClientConnector(final RequestListener<I, O> listener, final Class<I> requestClass, final Class<O> replyClass, final OptionMap optionMap) throws IOException {
-        final RequestHandler localRequestHandler = endpoint.createLocalRequestHandler(listener, requestClass, replyClass);
-        final RequestHandlerConnector connector = connectionHandler.createConnector(localRequestHandler);
         final ClientContextImpl context = new ClientContextImpl(getExecutor(), this);
-        context.addCloseHandler(new CloseHandler<ClientContext>() {
-            public void handleClose(final ClientContext closed) {
-                IoUtils.safeClose(localRequestHandler);
-            }
-        });
+        final LocalRequestHandler localRequestHandler = endpoint.createLocalRequestHandler(listener, context, requestClass, replyClass, optionMap);
+        final RequestHandlerConnector connector = connectionHandler.createConnector(localRequestHandler);
+        context.addCloseHandler(SpiUtils.closingCloseHandler(localRequestHandler));
         return new ClientConnectorImpl<I, O>(connector, endpoint, requestClass, replyClass, context);
     }
 
@@ -88,21 +102,23 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
         return "Connection to " + name;
     }
 
-    private static class ClientWrapper<I, O> extends TranslatingResult<RequestHandler, Client<I, O>> {
+    private static class ClientWrapper<I, O> extends TranslatingResult<RemoteRequestHandler, Client<I, O>> {
 
         private final Class<I> requestClass;
         private final Class<O> replyClass;
         private final EndpointImpl endpoint;
+        private final ClassLoader classLoader;
 
-        public ClientWrapper(final EndpointImpl endpoint, final FutureResult<Client<I, O>> futureResult, final Class<I> requestClass, final Class<O> replyClass) {
+        public ClientWrapper(final EndpointImpl endpoint, final FutureResult<Client<I, O>> futureResult, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader classLoader) {
             super(futureResult);
             this.requestClass = requestClass;
             this.replyClass = replyClass;
             this.endpoint = endpoint;
+            this.classLoader = classLoader;
         }
 
-        protected Client<I, O> translate(final RequestHandler input) throws IOException {
-            return endpoint.createClient(input, requestClass, replyClass);
+        protected Client<I, O> translate(final RemoteRequestHandler input) throws IOException {
+            return endpoint.createClient(input, requestClass, replyClass, classLoader);
         }
     }
 }

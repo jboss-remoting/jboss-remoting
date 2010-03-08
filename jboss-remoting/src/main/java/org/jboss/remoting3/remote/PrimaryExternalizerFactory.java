@@ -35,7 +35,7 @@ final class PrimaryExternalizerFactory implements ClassExternalizerFactory {
 
     public Externalizer getExternalizer(final Class<?> type) {
         if (type == UnsentRequestHandlerConnector.class) {
-            return new RequestHandlerConnectorExternalizer();
+            return RequestHandlerConnectorExternalizer.INSTANCE;
         }
         return null;
     }

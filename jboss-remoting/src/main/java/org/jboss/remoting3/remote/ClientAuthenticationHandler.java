@@ -25,10 +25,10 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.jboss.marshalling.MarshallerFactory;
-import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
+import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Result;
@@ -128,11 +128,7 @@ final class ClientAuthenticationHandler extends AbstractClientMessageHandler {
                         // this happens immediately.
                         final MarshallerFactory marshallerFactory = remoteConnection.getProviderDescriptor().getMarshallerFactory();
                         final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, remoteConnection, marshallerFactory);
-                        remoteConnection.addCloseHandler(new CloseHandler<Object>() {
-                            public void handleClose(final Object closed) {
-                                IoUtils.safeClose(connectionHandler);
-                            }
-                        });
+                        remoteConnection.addCloseHandler(SpiUtils.closingCloseHandler(connectionHandler));
                         remoteConnection.setMessageHandler(new RemoteMessageHandler(connectionHandler, remoteConnection));
                         return connectionHandler;
                     }

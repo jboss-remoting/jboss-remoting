@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3.stream;
 
-import java.nio.channels.Channel;
 import java.io.IOException;
+import java.nio.channels.Channel;
 
 /**
  * A stream handler factory.  Produces stream handler instances for the given object, which in turn uses a specified

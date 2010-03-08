@@ -24,7 +24,7 @@ package org.jboss.remoting3.remote;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.jboss.marshalling.util.IntKeyMap;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.Result;
@@ -42,7 +42,7 @@ final class UnsentRequestHandlerConnector implements RequestHandlerConnector {
         this.remoteConnectionHandler = remoteConnectionHandler;
     }
 
-    public Cancellable createRequestHandler(final Result<RequestHandler> result) throws SecurityException {
+    public Cancellable createRequestHandler(final Result<RemoteRequestHandler> result) throws SecurityException {
         throw new SecurityException("Request handler not sent");
     }
 

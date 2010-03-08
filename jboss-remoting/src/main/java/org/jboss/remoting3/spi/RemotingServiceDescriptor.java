@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3.spi;
 
-import java.util.Properties;
 import java.io.IOException;
+import java.util.Properties;
 
 /**
  * A descriptor for automatically-discovered remoting service types.  Since instances of this interface are

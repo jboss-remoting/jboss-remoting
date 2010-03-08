@@ -23,6 +23,7 @@
 package org.jboss.remoting3;
 
 import java.util.EventListener;
+import org.jboss.xnio.OptionMap;
 
 /**
  * A client listener associated with a service.  When a client is opened for this service, a new request listener
@@ -42,7 +43,8 @@ public interface ClientListener<I, O> extends EventListener {
      * If {@code null} is returned, the client is closed with an error.
      *
      * @param clientContext the client context
+     * @param optionMap the service open options
      * @return the request listener
      */
-    RequestListener<I, O> handleClientOpen(ClientContext clientContext);
+    RequestListener<I, O> handleClientOpen(ClientContext clientContext, OptionMap optionMap);
 }

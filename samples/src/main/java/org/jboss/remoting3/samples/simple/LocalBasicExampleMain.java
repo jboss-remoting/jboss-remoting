@@ -5,6 +5,7 @@ import org.jboss.remoting3.Client;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.OptionMap;
 
 /**
  *
@@ -15,10 +16,10 @@ public final class LocalBasicExampleMain {
     }
 
     public static void main(String[] args) throws IOException {
-        final StringRot13RequestListener listener = new StringRot13RequestListener();
+        final StringRot13ClientListener  listener = new StringRot13ClientListener();
         final Endpoint endpoint = Remoting.getConfiguredEndpoint();
         try {
-            final Client<String,String> client = Remoting.createLocalClient(endpoint, listener, null, null);
+            final Client<String,String> client = endpoint.createLocalClient(listener, String.class, String.class, Thread.currentThread().getContextClassLoader(), OptionMap.EMPTY);
             try {
                 final String original = "The Secret Message\n";
                 final String result = client.invoke(original);

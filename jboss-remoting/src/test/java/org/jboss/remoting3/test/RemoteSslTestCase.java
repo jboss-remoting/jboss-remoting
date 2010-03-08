@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3.test;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -35,7 +34,7 @@ import org.jboss.xnio.channels.ConnectedStreamChannel;
 import org.testng.SkipException;
 import org.testng.annotations.Test;
 
-@Test(suiteName = "Remote SSL tests")
+@Test(suiteName = "remote+ssl")
 public final class RemoteSslTestCase extends AbstractRemoteTestCase {
     // Use anonymous ciphers so we don't need a trust store configuration of any sort
     private static final String[] CIPHER_SUITES = {

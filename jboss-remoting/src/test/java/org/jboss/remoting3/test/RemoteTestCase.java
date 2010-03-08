@@ -30,7 +30,7 @@ import org.jboss.xnio.Xnio;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
 import org.testng.annotations.Test;
 
-@Test(suiteName = "Remote tests")
+@Test(suiteName = "remote")
 public final class RemoteTestCase extends AbstractRemoteTestCase {
     protected TcpServer getServer(final ChannelListener<ConnectedStreamChannel<InetSocketAddress>> listener, final Xnio xnio) {
         return xnio.createTcpServer(listener, OptionMap.EMPTY);

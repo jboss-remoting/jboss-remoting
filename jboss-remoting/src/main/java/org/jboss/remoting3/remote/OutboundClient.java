@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3.remote;
 
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.Result;
 
@@ -30,15 +30,15 @@ final class OutboundClient implements Cancellable {
 
     private State state = State.REPLY_WAIT;
 
-    private Result<RequestHandler> result;
+    private Result<RemoteRequestHandler> result;
 
     private final int id;
     private final String serviceType;
     private final String groupName;
     private RemoteConnectionHandler remoteConnectionHandler;
-    private RequestHandler requestHandler;
+    private RemoteRequestHandler requestHandler;
 
-    OutboundClient(final RemoteConnectionHandler remoteConnectionHandler, final int id, final Result<RequestHandler> result, final String serviceType, final String groupName) {
+    OutboundClient(final RemoteConnectionHandler remoteConnectionHandler, final int id, final Result<RemoteRequestHandler> result, final String serviceType, final String groupName) {
         this.remoteConnectionHandler = remoteConnectionHandler;
         this.id = id;
         this.result = result;
@@ -69,7 +69,7 @@ final class OutboundClient implements Cancellable {
         return this;
     }
 
-    Result<RequestHandler> getResult() {
+    Result<RemoteRequestHandler> getResult() {
         return result;
     }
 
@@ -89,11 +89,11 @@ final class OutboundClient implements Cancellable {
         return id;
     }
 
-    RequestHandler getRequestHandler() {
+    RemoteRequestHandler getRequestHandler() {
         return requestHandler;
     }
 
-    void setResult(final RequestHandler requestHandler) {
+    void setResult(final RemoteRequestHandler requestHandler) {
         result.setResult(requestHandler);
         this.requestHandler = requestHandler;
     }

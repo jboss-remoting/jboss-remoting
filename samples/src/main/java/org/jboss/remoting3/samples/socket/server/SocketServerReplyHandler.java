@@ -24,7 +24,7 @@ package org.jboss.remoting3.samples.socket.server;
 import java.io.IOException;
 
 import org.jboss.marshalling.Marshaller;
-import org.jboss.remoting3.spi.ReplyHandler;
+import org.jboss.remoting3.spi.RemoteReplyHandler;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -34,7 +34,7 @@ import org.jboss.xnio.log.Logger;
  * Copyright Oct 16, 2009
  * </p>
  */
-public class SocketServerReplyHandler implements ReplyHandler
+public class SocketServerReplyHandler implements RemoteReplyHandler
 {
    private static final Logger log = Logger.getLogger(SocketServerReplyHandler.class);
    private Marshaller marshaller;

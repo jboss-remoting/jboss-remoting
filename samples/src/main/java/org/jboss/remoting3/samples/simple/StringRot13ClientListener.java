@@ -25,10 +25,11 @@ package org.jboss.remoting3.samples.simple;
 import org.jboss.remoting3.ClientListener;
 import org.jboss.remoting3.RequestListener;
 import org.jboss.remoting3.ClientContext;
+import org.jboss.xnio.OptionMap;
 
 public final class StringRot13ClientListener implements ClientListener<String, String> {
 
-    public RequestListener<String, String> handleClientOpen(final ClientContext clientContext) {
+    public RequestListener<String, String> handleClientOpen(final ClientContext clientContext, final OptionMap optionMap) {
         return new StringRot13RequestListener();
     }
 }

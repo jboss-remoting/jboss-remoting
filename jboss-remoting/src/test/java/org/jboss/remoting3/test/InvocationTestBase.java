@@ -23,7 +23,6 @@
 package org.jboss.remoting3.test;
 
 import java.io.IOException;
-import org.jboss.marshalling.river.RiverMarshaller;
 import org.jboss.remoting3.Client;
 import org.jboss.remoting3.ClientConnector;
 import org.jboss.remoting3.ClientContext;
@@ -38,6 +37,7 @@ import org.jboss.remoting3.RequestContext;
 import org.jboss.remoting3.RequestListener;
 import org.jboss.remoting3.ServiceNotFoundException;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.log.Logger;
 import org.testng.SkipException;
@@ -58,7 +58,7 @@ public abstract class InvocationTestBase {
     public void setUp() throws IOException {
         enter();
         try {
-            Thread.currentThread().setContextClassLoader(RiverMarshaller.class.getClassLoader());
+            Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
             endpoint = Remoting.getConfiguredEndpoint();
         } finally {
             exit();
@@ -85,7 +85,7 @@ public abstract class InvocationTestBase {
             final InvocationTestObject replyObj = new InvocationTestObject();
             final Registration registration = endpoint.serviceBuilder().setGroupName("foo").setServiceType("test1").setRequestType(InvocationTestObject.class).
                     setReplyType(InvocationTestObject.class).setClientListener(new ClientListener<InvocationTestObject, InvocationTestObject>() {
-                public RequestListener<InvocationTestObject, InvocationTestObject> handleClientOpen(final ClientContext clientContext) {
+                public RequestListener<InvocationTestObject, InvocationTestObject> handleClientOpen(final ClientContext clientContext, final OptionMap optionMap) {
                     clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
                         public void handleClose(final ClientContext closed) {
                             log.info("Client closed");
@@ -106,7 +106,7 @@ public abstract class InvocationTestBase {
             try {
                 final Connection connection = getConnection();
                 try {
-                    final Client<InvocationTestObject, InvocationTestObject> client = connection.openClient("test1", "*", InvocationTestObject.class, InvocationTestObject.class).get();
+                    final Client<InvocationTestObject, InvocationTestObject> client = connection.openClient("test1", "*", InvocationTestObject.class, InvocationTestObject.class, getClass().getClassLoader(), OptionMap.EMPTY).get();
                     try {
                         assertEquals(replyObj, client.invoke(requestObj));
                     } finally {
@@ -133,7 +133,7 @@ public abstract class InvocationTestBase {
             final InvocationTestObject replyObj = new InvocationTestObject();
             final Registration registration = endpoint.serviceBuilder().setGroupName("foo").setServiceType("test2").setRequestType(InvocationTestObject.class).
                     setReplyType(InvocationTestObject.class).setClientListener(new ClientListener<InvocationTestObject, InvocationTestObject>() {
-                public RequestListener<InvocationTestObject, InvocationTestObject> handleClientOpen(final ClientContext clientContext) {
+                public RequestListener<InvocationTestObject, InvocationTestObject> handleClientOpen(final ClientContext clientContext, final OptionMap optionMap) {
                     clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
                         public void handleClose(final ClientContext closed) {
                             log.info("Listener closed");
@@ -183,7 +183,7 @@ public abstract class InvocationTestBase {
 
             final Registration registration = endpoint.serviceBuilder().setGroupName("foo").setServiceType("test3").setRequestType(ClientConnector.class).
                     setReplyType(InvocationTestObject.class).setClientListener(new ClientListener<ClientConnector, InvocationTestObject>() {
-                public RequestListener<ClientConnector, InvocationTestObject> handleClientOpen(final ClientContext clientContext) {
+                public RequestListener<ClientConnector, InvocationTestObject> handleClientOpen(final ClientContext clientContext, final OptionMap optionMap) {
                     clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
                         public void handleClose(final ClientContext closed) {
                             log.info("Listener closed");

@@ -24,7 +24,7 @@ package org.jboss.remoting3.samples.socket;
 
 import java.io.IOException;
 
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.xnio.Result;
 
 /**
@@ -34,8 +34,8 @@ import org.jboss.xnio.Result;
  * Copyright Oct 24, 2009
  * </p>
  */
-public class RequestHandlerFuture implements Result<RequestHandler> {
-   private RequestHandler requestHandler;
+public class RequestHandlerFuture implements Result<RemoteRequestHandler> {
+   private RemoteRequestHandler requestHandler;
    private IOException exception;
 
    @Override
@@ -48,12 +48,12 @@ public class RequestHandlerFuture implements Result<RequestHandler> {
    }
 
    @Override
-   public boolean setResult(RequestHandler result) {
+   public boolean setResult(RemoteRequestHandler result) {
       this.requestHandler = result;
       return true;
    }
 
-   public RequestHandler get() {
+   public RemoteRequestHandler get() {
       return requestHandler;
    }
    

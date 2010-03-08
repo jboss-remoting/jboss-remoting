@@ -22,10 +22,10 @@
 
 package org.jboss.remoting3.stream;
 
-import org.jboss.marshalling.Marshaller;
-import org.jboss.marshalling.Unmarshaller;
 import java.io.Serializable;
 import java.util.concurrent.Executor;
+import org.jboss.marshalling.Marshaller;
+import org.jboss.marshalling.Unmarshaller;
 
 /**
  *

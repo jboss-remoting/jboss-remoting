@@ -27,6 +27,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.jboss.remoting3.Client;
+import org.jboss.remoting3.ClientContext;
+import org.jboss.remoting3.ClientListener;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.RemoteExecutionException;
@@ -44,7 +46,7 @@ import static org.testng.Assert.assertTrue;
 /**
  *
  */
-@Test
+@Test(suiteName = "endpoint")
 public final class EndpointTestCase {
 
     private static final Logger log = Logger.getLogger("test");
@@ -81,15 +83,19 @@ public final class EndpointTestCase {
             try {
                 final Object requestObj = new Object();
                 final Object replyObj = new Object();
-                final Client<Object, Object> localClient = Remoting.createLocalClient(endpoint, new RequestListener<Object, Object>() {
-                    public void handleRequest(final RequestContext<Object> objectRequestContext, final Object request) throws RemoteExecutionException {
-                        try {
-                            objectRequestContext.sendReply(replyObj);
-                        } catch (IOException e) {
-                            throw new RemoteExecutionException(e);
-                        }
+                final Client<Object, Object> localClient = endpoint.createLocalClient(new ClientListener<Object, Object>() {
+                    public RequestListener<Object, Object> handleClientOpen(final ClientContext clientContext, final OptionMap optionMap) {
+                        return new RequestListener<Object, Object>() {
+                            public void handleRequest(final RequestContext<Object> objectRequestContext, final Object request) throws RemoteExecutionException {
+                                try {
+                                    objectRequestContext.sendReply(replyObj);
+                                } catch (IOException e) {
+                                    throw new RemoteExecutionException(e);
+                                }
+                            }
+                        };
                     }
-                }, Object.class, Object.class);
+                }, Object.class, Object.class, Thread.currentThread().getContextClassLoader(), OptionMap.EMPTY);
                 localClient.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
                     public void handleClose(final Client<Object, Object> closed) {
                         log.info("Listener closed");
@@ -115,15 +121,19 @@ public final class EndpointTestCase {
             try {
                 final Object requestObj = new Object();
                 final Object replyObj = new Object();
-                final Client<Object, Object> localClient = Remoting.createLocalClient(endpoint, new RequestListener<Object, Object>() {
-                    public void handleRequest(final RequestContext<Object> objectRequestContext, final Object request) throws RemoteExecutionException {
-                        try {
-                            objectRequestContext.sendReply(replyObj);
-                        } catch (IOException e) {
-                            throw new RemoteExecutionException(e);
-                        }
+                final Client<Object, Object> localClient = endpoint.createLocalClient(new ClientListener<Object, Object>() {
+                    public RequestListener<Object, Object> handleClientOpen(final ClientContext clientContext, final OptionMap optionMap) {
+                        return new RequestListener<Object, Object>() {
+                            public void handleRequest(final RequestContext<Object> objectRequestContext, final Object request) throws RemoteExecutionException {
+                                try {
+                                    objectRequestContext.sendReply(replyObj);
+                                } catch (IOException e) {
+                                    throw new RemoteExecutionException(e);
+                                }
+                            }
+                        };
                     }
-                }, Object.class, Object.class);
+                }, Object.class, Object.class, Thread.currentThread().getContextClassLoader(), OptionMap.EMPTY);
                 localClient.addCloseHandler(new CloseHandler<Client<Object, Object>>() {
                     public void handleClose(final Client<Object, Object> closed) {
                         log.info("Listener closed");

@@ -29,14 +29,14 @@ import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.NioByteOutput;
 import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
-import org.jboss.remoting3.spi.ReplyHandler;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalReplyHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.Pool;
 import org.jboss.xnio.log.Logger;
 
-final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHandler> implements RequestHandler {
+final class OutboundRequestHandler extends AbstractHandleableCloseable<RemoteRequestHandler> implements RemoteRequestHandler {
 
     private final OutboundClient outboundClient;
     private static final Logger log = Loggers.main;
@@ -46,7 +46,7 @@ final class OutboundRequestHandler extends AbstractHandleableCloseable<RequestHa
         this.outboundClient = outboundClient;
     }
 
-    public Cancellable receiveRequest(final Object request, final ReplyHandler replyHandler) {
+    public Cancellable receiveRequest(final Object request, final LocalReplyHandler replyHandler) {
         final RemoteConnectionHandler connectionHandler = outboundClient.getRemoteConnectionHandler();
         final OutboundRequest outboundRequest = new OutboundRequest(connectionHandler, replyHandler, outboundClient.getId());
         int rid;

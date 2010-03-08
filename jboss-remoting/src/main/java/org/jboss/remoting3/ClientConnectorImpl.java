@@ -22,13 +22,13 @@
 
 package org.jboss.remoting3;
 
+import java.io.IOException;
+import java.io.Serializable;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
-import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.xnio.FutureResult;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.TranslatingResult;
-import java.io.Serializable;
-import java.io.IOException;
 
 final class ClientConnectorImpl<I, O> implements ClientConnector<I, O>, Serializable {
 
@@ -37,11 +37,11 @@ final class ClientConnectorImpl<I, O> implements ClientConnector<I, O>, Serializ
     private transient final ClientContext clientContext;
 
     private final RequestHandlerConnector requestHandlerConnector;
-    private final Endpoint endpoint;
+    private final EndpointImpl endpoint;
     private final Class<I> requestClass;
     private final Class<O> replyClass;
 
-    ClientConnectorImpl(final RequestHandlerConnector requestHandlerConnector, final Endpoint endpoint, final Class<I> requestClass, final Class<O> replyClass, final ClientContext clientContext) {
+    ClientConnectorImpl(final RequestHandlerConnector requestHandlerConnector, final EndpointImpl endpoint, final Class<I> requestClass, final Class<O> replyClass, final ClientContext clientContext) {
         this.requestHandlerConnector = requestHandlerConnector;
         this.endpoint = endpoint;
         this.requestClass = requestClass;
@@ -50,10 +50,14 @@ final class ClientConnectorImpl<I, O> implements ClientConnector<I, O>, Serializ
     }
 
     public IoFuture<? extends Client<I, O>> getFutureClient() throws SecurityException {
+        return getFutureClient(Thread.currentThread().getContextClassLoader());
+    }
+
+    public IoFuture<? extends Client<I, O>> getFutureClient(final ClassLoader classloader) throws SecurityException {
         final FutureResult<Client<I, O>> futureResult = new FutureResult<Client<I, O>>();
-        requestHandlerConnector.createRequestHandler(new TranslatingResult<RequestHandler, Client<I, O>>(futureResult) {
-            protected Client<I, O> translate(final RequestHandler input) throws IOException {
-                return endpoint.createClient(input, requestClass, replyClass);
+        requestHandlerConnector.createRequestHandler(new TranslatingResult<RemoteRequestHandler, Client<I, O>>(futureResult) {
+            protected Client<I, O> translate(final RemoteRequestHandler input) throws IOException {
+                return endpoint.createClient(input, requestClass, replyClass, classloader);
             }
         });
         return futureResult.getIoFuture();

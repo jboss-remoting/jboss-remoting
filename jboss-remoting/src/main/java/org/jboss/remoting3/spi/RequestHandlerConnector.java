@@ -23,6 +23,7 @@
 package org.jboss.remoting3.spi;
 
 import org.jboss.xnio.Cancellable;
+import org.jboss.xnio.Result;
 
 /**
  * A holder for a request handler that is to be sent to a remote peer.
@@ -37,5 +38,5 @@ public interface RequestHandlerConnector {
      * @return the cancellation handle
      * @throws SecurityException if this is a forwarding connector, thrown if the connector was not forwarded or if this method is called more than one time
      */
-    Cancellable createRequestHandler(org.jboss.xnio.Result<RequestHandler> result) throws SecurityException;
+    Cancellable createRequestHandler(Result<RemoteRequestHandler> result) throws SecurityException;
 }

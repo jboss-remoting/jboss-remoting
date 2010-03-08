@@ -49,8 +49,10 @@ import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
+import org.jboss.remoting3.spi.LocalRequestHandler;
 import org.jboss.remoting3.spi.ProtocolServiceType;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
+import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.FutureResult;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
@@ -138,7 +140,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
      */
     private final ConnectionProviderContext connectionProviderContext;
 
-    private static final RemotingPermission CREATE_REQUEST_HANDLER_PERM = new RemotingPermission("createRequestHandler");
     private static final RemotingPermission REGISTER_SERVICE_PERM = new RemotingPermission("registerService");
     private static final RemotingPermission CREATE_CLIENT_PERM = new RemotingPermission("createClient");
     private static final RemotingPermission ADD_SERVICE_LISTENER_PERM = new RemotingPermission("addServiceListener");
@@ -193,7 +194,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
-    public <I, O> RequestHandler createLocalRequestHandler(final RequestListener<? super I, ? extends O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
+    <I, O> LocalRequestHandler createLocalRequestHandler(final RequestListener<? super I, ? extends O> requestListener, final ClientContextImpl clientContext, final Class<I> requestClass, final Class<O> replyClass, final OptionMap optionMap) throws IOException {
         if (requestListener == null) {
             throw new IllegalArgumentException("requestListener is null");
         }
@@ -203,13 +204,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (replyClass == null) {
             throw new IllegalArgumentException("replyClass is null");
         }
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            sm.checkPermission(CREATE_REQUEST_HANDLER_PERM);
-        }
         checkOpen();
-        final ClientContextImpl clientContext = new ClientContextImpl(executor, null);
-        final LocalRequestHandler<I, O> localRequestHandler = new LocalRequestHandler<I, O>(executor, requestListener, clientContext, requestClass, replyClass, requestListener.getClass().getClassLoader());
+        final TerminatingLocalRequestHandler<I, O> localRequestHandler = new TerminatingLocalRequestHandler<I, O>(executor, requestListener, clientContext, requestClass, replyClass, requestListener.getClass().getClassLoader());
         final WeakCloseable lrhCloseable = new WeakCloseable(localRequestHandler);
         clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
             public void handleClose(final ClientContext closed) {
@@ -221,8 +217,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 IoUtils.safeClose(lrhCloseable);
             }
         });
-        localRequestHandler.addCloseHandler(new CloseHandler<RequestHandler>() {
-            public void handleClose(final RequestHandler closed) {
+        localRequestHandler.addCloseHandler(new CloseHandler<LocalRequestHandler>() {
+            public void handleClose(final LocalRequestHandler closed) {
                 key.remove();
             }
         });
@@ -333,6 +329,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 final String canonServiceType = serviceType.toLowerCase();
                 final String canonGroupName = groupName.toLowerCase();
                 final Executor executor = EndpointImpl.this.executor;
+                final ClassLoader classLoader = this.classLoader == null ? clientListener.getClass().getClassLoader() : this.classLoader;
                 final Map<String, Map<String, ServiceRegistrationInfo>> registeredLocalServices = localServiceIndex;
                 final RequestHandlerFactory<I, O> handlerFactory = RequestHandlerFactory.create(executor, clientListener, requestType, replyType, classLoader);
                 final ServiceRegistrationInfo registration = new ServiceRegistrationInfo(serviceType, groupName, name, optionMap, handlerFactory);
@@ -402,8 +399,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 serviceInfo.setRegistrationHandle(handle);
                 serviceInfo.setRequestClass(requestType);
                 serviceInfo.setReplyClass(replyType);
-                final ClassLoader classLoader = this.classLoader;
-                serviceInfo.setServiceClassLoader(classLoader == null ? clientListener.getClass().getClassLoader() : classLoader);
+                serviceInfo.setServiceClassLoader(classLoader);
                 executor.execute(new Runnable() {
                     public void run() {
                         final Iterator<Map.Entry<Registration,ServiceRegistrationListener>> iter = serviceListenerRegistrations;
@@ -428,7 +424,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         log.error(t, "Service listener threw an exception");
     }
 
-    public <I, O> Client<I, O> createClient(final RequestHandler requestHandler, final Class<I> requestType, final Class<O> replyType) throws IOException {
+    <I, O> Client<I, O> createClient(final RemoteRequestHandler requestHandler, final Class<I> requestType, final Class<O> replyType, final ClassLoader clientClassLoader) throws IOException {
         SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CREATE_CLIENT_PERM);
@@ -443,14 +439,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             throw new NullPointerException("replyType is null");
         }
         checkOpen();
-        final ClientImpl<I, O> client = ClientImpl.create(requestHandler, executor, requestType, replyType);
+        final ClientImpl<I, O> client = ClientImpl.create(requestHandler, executor, requestType, replyType, clientClassLoader);
         final WeakCloseable lrhCloseable = new WeakCloseable(client);
         // this registration closes the client when the endpoint is closed
-        final Key key = addCloseHandler(new CloseHandler<Endpoint>() {
-            public void handleClose(final Endpoint closed) {
-                IoUtils.safeClose(lrhCloseable);
-            }
-        });
+        final Key key = addCloseHandler(SpiUtils.closingCloseHandler(lrhCloseable));
         // this registration removes the prior registration if the client is closed
         client.addCloseHandler(new CloseHandler<Client>() {
             public void handleClose(final Client closed) {
@@ -535,6 +527,18 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return registration;
     }
 
+    public <I, O> Client<I, O> createLocalClient(final ClientListener<I, O> clientListener, final Class<I> requestClass, final Class<O> replyClass, final OptionMap optionMap) throws IOException {
+        return createLocalClient(clientListener, requestClass, replyClass, Thread.currentThread().getContextClassLoader(), optionMap);
+    }
+
+    public <I, O> Client<I, O> createLocalClient(final ClientListener<I, O> clientListener, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader clientClassLoader, final OptionMap optionMap) throws IOException {
+        final ClientContextImpl context = new ClientContextImpl(executor, null);
+        final RequestListener<I, O> requestListener = clientListener.handleClientOpen(context, optionMap);
+        final LocalRequestHandler localRequestHandler = createLocalRequestHandler(requestListener, context, requestClass, replyClass, optionMap);
+        final LocalRemoteRequestHandler remoteRequestHandler = new LocalRemoteRequestHandler(localRequestHandler, clientClassLoader, optionMap, this.optionMap, executor);
+        return ClientImpl.create(remoteRequestHandler, executor, requestClass, replyClass, clientClassLoader);
+    }
+
     public IoFuture<? extends Connection> connect(final URI destination) throws IOException {
         final Pair<String, String> userRealm = getUserAndRealm(destination);
         final String uriUserName = userRealm.getA();
@@ -578,7 +582,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
 
             public boolean setException(final IOException exception) {
-                glueStackTraces(exception, mark, 1);
+                glueStackTraces(exception, mark, 1, "asynchronous invocation");
                 return futureResult.setException(exception);
             }
 
@@ -589,11 +593,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return futureResult.getIoFuture();
     }
 
-    static void glueStackTraces(final Throwable exception, final Throwable markerThrowable, final int trimCount) {
+    static void glueStackTraces(final Throwable exception, final Throwable markerThrowable, final int trimCount, final String msg) {
         final StackTraceElement[] est = exception.getStackTrace();
         final StackTraceElement[] ust = markerThrowable.getStackTrace();
         final StackTraceElement[] fst = Arrays.copyOf(est, est.length + ust.length);
-        fst[est.length] = new StackTraceElement("...asynchronous invocation..", "", null, -1);
+        fst[est.length] = new StackTraceElement("..." + msg + "..", "", null, -1);
         System.arraycopy(ust, trimCount, fst, est.length + 1, ust.length - trimCount);
         exception.setStackTrace(fst);
     }
@@ -751,7 +755,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             return connectionProviderContext;
         }
 
-        public RequestHandler openService(final String serviceType, final String groupName, final OptionMap optionMap) {
+        public LocalRequestHandler openService(final String serviceType, final String groupName, final OptionMap optionMap) {
             final Lock lock = serviceReadLock;
             lock.lock();
             try {
@@ -766,7 +770,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 if (info == null) {
                     return null;
                 }
-                return info.getRequestHandlerFactory().createRequestHandler(connection);
+                return info.getRequestHandlerFactory().createRequestHandler(connection, optionMap);
             } finally {
                 lock.unlock();
             }

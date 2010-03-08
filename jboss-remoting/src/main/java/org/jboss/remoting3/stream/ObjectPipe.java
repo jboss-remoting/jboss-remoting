@@ -22,15 +22,15 @@
 
 package org.jboss.remoting3.stream;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.io.EOFException;
 import java.util.ArrayDeque;
+import java.util.NoSuchElementException;
+import java.util.Queue;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.locks.Condition;
-import java.util.Queue;
-import java.util.NoSuchElementException;
 
 /**
  * A pipe for objects.  Typically, data is written to the sink side of the pipe from one thread while being read from

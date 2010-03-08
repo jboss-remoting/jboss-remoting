@@ -30,7 +30,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jboss.remoting3.spi.ReplyHandler;
+import org.jboss.remoting3.spi.RemoteReplyHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 
 /**
@@ -40,7 +40,7 @@ final class RequestContextImpl<O> implements RequestContext<O> {
 
     private final AtomicBoolean closed = new AtomicBoolean();
     private final Object cancelLock = new Object();
-    private final ReplyHandler replyHandler;
+    private final RemoteReplyHandler replyHandler;
     private final ClientContextImpl clientContext;
     private final AtomicInteger taskCount = new AtomicInteger();
 
@@ -52,7 +52,7 @@ final class RequestContextImpl<O> implements RequestContext<O> {
     private final Class<O> replyClass;
     private final ClassLoader serviceClassLoader;
 
-    RequestContextImpl(final ReplyHandler replyHandler, final ClientContextImpl clientContext, final Class<O> replyClass, final ClassLoader serviceClassLoader) {
+    RequestContextImpl(final RemoteReplyHandler replyHandler, final ClientContextImpl clientContext, final Class<O> replyClass, final ClassLoader serviceClassLoader) {
         this.replyHandler = replyHandler;
         this.clientContext = clientContext;
         this.replyClass = replyClass;

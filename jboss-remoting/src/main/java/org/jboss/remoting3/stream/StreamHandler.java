@@ -22,10 +22,10 @@
 
 package org.jboss.remoting3.stream;
 
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.ChannelListener;
-import java.nio.channels.Channel;
 import java.io.Serializable;
+import java.nio.channels.Channel;
+import org.jboss.xnio.ChannelListener;
+import org.jboss.xnio.IoFuture;
 
 /**
  * A stream handler for an individual object instance.  Instances of this class are used on both

@@ -20,36 +20,32 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.remote;
+package org.jboss.remoting3;
 
-import org.jboss.marshalling.util.IntKeyMap;
+import java.util.concurrent.Executor;
+import org.jboss.remoting3.spi.LocalRequestHandler;
 import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
+import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
+import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Result;
 
-final class ReceivedRequestHandlerConnector implements RequestHandlerConnector {
-    private final RemoteConnectionHandler connectionHandler;
-    private final int clientId;
+final class LocalRequestHandlerConnector implements RequestHandlerConnector {
 
-    ReceivedRequestHandlerConnector(final RemoteConnectionHandler connectionHandler, final int clientId) {
-        this.connectionHandler = connectionHandler;
-        this.clientId = clientId;
+    private final LocalRequestHandler localHandler;
+    private final Executor executor;
+
+    LocalRequestHandlerConnector(final LocalRequestHandler localHandler, final Executor executor) {
+        this.localHandler = localHandler;
+        this.executor = executor;
     }
 
     public Cancellable createRequestHandler(final Result<RemoteRequestHandler> result) throws SecurityException {
-        final OutboundClient client = new OutboundClient(connectionHandler, clientId, result, "anonymous", "anonymous");
-        final IntKeyMap<OutboundClient> outboundClients = connectionHandler.getOutboundClients();
-        synchronized (outboundClients) {
-            outboundClients.put(clientId, client);
-        }
-        final OutboundRequestHandler requestHandler = new OutboundRequestHandler(client);
-        synchronized (client) {
-            client.setState(OutboundClient.State.ESTABLISHED);
-            client.setResult(requestHandler);
-        }
-        result.setResult(requestHandler);
+        final LocalRemoteRequestHandler handler = new LocalRemoteRequestHandler(localHandler, null, OptionMap.EMPTY, OptionMap.EMPTY, executor);
+        localHandler.addCloseHandler(SpiUtils.closingCloseHandler(handler));
+        result.setResult(handler);
         return IoUtils.nullCancellable();
     }
 }

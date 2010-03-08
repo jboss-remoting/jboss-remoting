@@ -22,17 +22,18 @@
 
 package org.jboss.remoting3;
 
-import java.util.Map;
-import java.util.Set;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
+
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
-import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableCollection;
+import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
-import java.util.concurrent.ConcurrentMap;
 
 final class CopyOnWriteHashMap<K, V> implements ConcurrentMap<K, V> {
     private final boolean identity;

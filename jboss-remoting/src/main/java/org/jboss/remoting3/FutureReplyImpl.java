@@ -24,7 +24,7 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.util.concurrent.Executor;
-import org.jboss.remoting3.spi.ReplyHandler;
+import org.jboss.remoting3.spi.LocalReplyHandler;
 import org.jboss.xnio.AbstractIoFuture;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoFuture;
@@ -36,28 +36,30 @@ final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
 
     private final Executor executor;
     private final Checker<? extends O> checker;
-    private final ReplyHandler replyHandler = new Handler();
+    private final ClassLoader classLoader;
+    private final LocalReplyHandler replyHandler = new Handler();
     private volatile Cancellable remoteRequestContext;
 
-    FutureReplyImpl(final Executor executor, final Checker<? extends O> checker) {
+    FutureReplyImpl(final Executor executor, final Checker<? extends O> checker, final ClassLoader classLoader) {
         this.executor = executor;
         this.checker = checker;
+        this.classLoader = classLoader;
     }
 
-    FutureReplyImpl(final Executor executor, final Class<? extends O> expectedType) {
+    FutureReplyImpl(final Executor executor, final Class<? extends O> expectedType, final ClassLoader classLoader) {
         this(executor, new Checker<O>() {
             public O cast(final Object input) {
                 return expectedType.cast(input);
             }
-        });
+        }, classLoader);
     }
 
-    FutureReplyImpl(final Executor executor, final TypedRequest<?, ? extends O> typedRequest) {
+    FutureReplyImpl(final Executor executor, final TypedRequest<?, ? extends O> typedRequest, final ClassLoader classLoader) {
         this(executor, new Checker<O>() {
             public O cast(final Object input) {
                 return typedRequest.castReply(input);
             }
-        });
+        }, classLoader);
     }
 
     void setRemoteRequestContext(final Cancellable remoteRequestContext) {
@@ -74,7 +76,7 @@ final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
         return executor;
     }
 
-    ReplyHandler getReplyHandler() {
+    LocalReplyHandler getReplyHandler() {
         return replyHandler;
     }
 
@@ -82,7 +84,7 @@ final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
         O cast(Object input);
     }
 
-    private final class Handler implements ReplyHandler {
+    private final class Handler implements LocalReplyHandler {
 
         public void handleReply(final Object reply) {
             final Checker<? extends O> checker = FutureReplyImpl.this.checker;
@@ -103,6 +105,10 @@ final class FutureReplyImpl<O> extends AbstractIoFuture<O> {
 
         public void handleCancellation() {
             setCancelled();
+        }
+
+        public ClassLoader getClassLoader() {
+            return classLoader;
         }
     }
 }

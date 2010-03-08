@@ -23,39 +23,37 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.ServiceLoader;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.ServiceLoader;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Properties;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.lang.reflect.InvocationTargetException;
+import org.jboss.marshalling.ClassExternalizerFactory;
+import org.jboss.marshalling.ClassResolver;
+import org.jboss.marshalling.ClassTable;
+import org.jboss.marshalling.ObjectResolver;
+import org.jboss.marshalling.ObjectTable;
+import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.security.RemotingPermission;
-import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.RemotingServiceDescriptor;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.ProtocolServiceType;
+import org.jboss.remoting3.spi.RemotingServiceDescriptor;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.Option;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.log.Logger;
-import org.jboss.marshalling.ClassTable;
-import org.jboss.marshalling.ObjectTable;
-import org.jboss.marshalling.ClassResolver;
-import org.jboss.marshalling.ObjectResolver;
-import org.jboss.marshalling.ClassExternalizerFactory;
-import org.jboss.marshalling.ProviderDescriptor;
-import org.jboss.marshalling.MarshallerFactory;
 
 /**
  * The standalone interface into Remoting.  This class contains static methods that are useful to standalone programs
@@ -292,33 +290,6 @@ public final class Remoting {
         }
         final Endpoint endpoint = new EndpointImpl(executor, endpointName, optionMap);
         return endpoint;
-    }
-
-    /**
-     * Create a local client from a request listener.  The client will retain the sole reference to the request listener,
-     * so when the client is closed, the listener will also be closed (unless the client is sent to a remote endpoint).
-     *
-     * @param endpoint the endpoint to bind the request listener to
-     * @param requestListener the request listener
-     * @param requestClass the request class
-     * @param replyClass the reply class
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return a new client
-     * @throws IOException if an error occurs
-     */
-    public static <I, O> Client<I, O> createLocalClient(final Endpoint endpoint, final RequestListener<I, O> requestListener, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
-        boolean ok = false;
-        final RequestHandler requestHandler = endpoint.createLocalRequestHandler(requestListener, requestClass, replyClass);
-        try {
-            final Client<I, O> client = endpoint.createClient(requestHandler, requestClass, replyClass);
-            ok = true;
-            return client;
-        } finally {
-            if (! ok) {
-                IoUtils.safeClose(requestHandler);
-            }
-        }
     }
 
     private Remoting() { /* empty */ }

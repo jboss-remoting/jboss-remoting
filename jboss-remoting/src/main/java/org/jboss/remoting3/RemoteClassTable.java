@@ -31,6 +31,7 @@ import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.service.classtable.ClassLookupRequest;
 import org.jboss.remoting3.service.classtable.ClassLookupResponse;
+import org.jboss.xnio.OptionMap;
 
 final class RemoteClassTable implements ClassTable {
     private final Client<ClassLookupRequest, ClassLookupResponse> resolver;
@@ -148,7 +149,7 @@ final class RemoteClassTable implements ClassTable {
     }
 
     private class RctClientListener implements ClientListener<ClassLookupRequest, ClassLookupResponse> {
-        public RequestListener<ClassLookupRequest, ClassLookupResponse> handleClientOpen(final ClientContext clientContext) {
+        public RequestListener<ClassLookupRequest, ClassLookupResponse> handleClientOpen(final ClientContext clientContext, final OptionMap optionMap) {
             return requestListener;
         }
     }

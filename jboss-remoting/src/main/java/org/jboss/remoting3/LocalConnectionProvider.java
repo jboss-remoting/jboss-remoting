@@ -48,9 +48,9 @@ final class LocalConnectionProvider implements ConnectionProvider {
                 final Holder h = new Holder();
                 providerContext.accept(new ConnectionHandlerFactory() {
                     public ConnectionHandler createInstance(final ConnectionHandlerContext inboundContext) {
-                        final LocalConnectionHandler inboundHandler = new LocalConnectionHandler(inboundContext);
+                        final LocalConnectionHandler inboundHandler = new LocalConnectionHandler(inboundContext, connectOptions);
                         h.set(inboundHandler);
-                        return new LocalConnectionHandler(outboundContext);
+                        return new LocalConnectionHandler(outboundContext, connectOptions);
                     }
                 });
                 return h.get(); // outbound connection handler

@@ -26,18 +26,19 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
-import static java.lang.Math.min;
-import static java.lang.Thread.currentThread;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.ChannelListener;
+import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.IoUtils;
-import static org.jboss.xnio.IoUtils.safeClose;
 import org.jboss.xnio.channels.ChannelInputStream;
 import org.jboss.xnio.channels.StreamChannel;
+
+import static java.lang.Math.min;
+import static java.lang.Thread.currentThread;
+import static org.jboss.xnio.IoUtils.safeClose;
 
 /**
  * A handler factory for automatic forwarding of output streams.

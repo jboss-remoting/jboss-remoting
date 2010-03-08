@@ -30,6 +30,7 @@ import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.RequestListener;
 import org.jboss.remoting3.samples.socket.SocketServiceConfiguration;
+import org.jboss.xnio.OptionMap;
 
 /**
  * @author <a href="ron.sigal@jboss.com">Ron Sigal</a>
@@ -62,7 +63,7 @@ public class SocketClientListener<I, O> implements ClientListener<I, O> {
       this.requestListener = requestListener;
    }
    
-   public RequestListener<I, O> handleClientOpen(ClientContext clientContext) {
+   public RequestListener<I, O> handleClientOpen(ClientContext clientContext, final OptionMap optionMap) {
       return requestListener;
    }
 }

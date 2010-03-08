@@ -27,10 +27,10 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.NioByteOutput;
-import org.jboss.remoting3.spi.ReplyHandler;
+import org.jboss.remoting3.spi.RemoteReplyHandler;
 import org.jboss.xnio.Pool;
 
-final class OutboundReplyHandler implements ReplyHandler {
+final class OutboundReplyHandler implements RemoteReplyHandler {
 
     private final int rid;
     private final AtomicBoolean done = new AtomicBoolean();

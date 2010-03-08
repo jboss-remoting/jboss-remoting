@@ -20,33 +20,19 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.spi;
+package org.jboss.remoting3.test;
 
 import java.io.IOException;
+import java.net.URI;
+import org.jboss.remoting3.Connection;
+import org.jboss.remoting3.RemotingOptions;
+import org.jboss.xnio.OptionMap;
+import org.testng.annotations.Test;
 
-/**
- * A handler for replies from a request.  The handler should respect the first invocation made on it, and ignore
- * any subsequent invocations.
- */
-public interface ReplyHandler {
+@Test(suiteName = "local")
+public final class LocalValueTestCase extends InvocationTestBase {
 
-    /**
-     * Handle a successful reply.  If the reply could not be forwarded, an exception is thrown.
-     *
-     * @param reply the reply
-     */
-    void handleReply(Object reply) throws IOException;
-
-    /**
-     * Handle an exception.  If the exception could not be forwarded, a (different) {@code IOException} is thrown.
-     *
-     * @param exception an exception which describes the problem
-     */
-    void handleException(IOException exception) throws IOException;
-
-    /**
-     * Handle a cancellation acknowledgement.  If the cancellation acknowledgement could not be forwarded, an
-     * exception is thrown.
-     */
-    void handleCancellation() throws IOException;
+    protected Connection getConnection() throws IOException {
+        return endpoint.connect(URI.create("local:///"), OptionMap.builder().set(RemotingOptions.CALL_BY_VALUE, true).getMap()).get();
+    }
 }

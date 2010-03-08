@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3.compat;
 
-import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.ReplyHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
+import org.jboss.remoting3.spi.RemoteReplyHandler;
 import java.util.concurrent.Executor;
 import org.jboss.xnio.Cancellable;
 
@@ -31,16 +31,16 @@ import org.jboss.xnio.Cancellable;
  * A request handler which wraps a Remoting 3-style plain request (or an instance of {@link org.jboss.remoting3.compat.Request Request}
  * with a Remoting 2-style invocation request.
  */
-public final class WrappingRequestHandler extends AbstractAutoCloseable<RequestHandler> implements RequestHandler {
+public final class WrappingRequestHandler extends AbstractAutoCloseable<RemoteRequestHandler> implements RemoteRequestHandler {
 
-    private final RequestHandler next;
+    private final RemoteRequestHandler next;
 
-    public WrappingRequestHandler(final RequestHandler next, final Executor executor) {
+    public WrappingRequestHandler(final RemoteRequestHandler next, final Executor executor) {
         super(executor);
         this.next = next;
     }
 
-    public Cancellable receiveRequest(final Object obj, final ReplyHandler replyHandler) {
+    public Cancellable receiveRequest(final Object obj, final RemoteReplyHandler replyHandler) {
         final CompatabilityInvocationRequest cir = new CompatabilityInvocationRequest();
         if (obj instanceof Request) {
             final Request request = (Request) obj;

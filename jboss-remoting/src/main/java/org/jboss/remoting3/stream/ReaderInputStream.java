@@ -33,31 +33,66 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
+import org.jboss.marshalling.ByteInput;
 import org.jboss.xnio.Buffers;
 
-public final class ReaderInputStream extends InputStream {
+/**
+ * An input stream which encodes characters into bytes.
+ */
+public final class ReaderInputStream extends InputStream implements ByteInput {
 
     private final Reader reader;
     private final CharsetEncoder encoder;
     private final CharBuffer charBuffer;
     private final ByteBuffer byteBuffer;
 
+    /**
+     * Construct a new instance.
+     *
+     * @param reader the reader to encode from
+     */
     public ReaderInputStream(final Reader reader) {
         this(reader, Charset.defaultCharset());
     }
 
+    /**
+     * Construct a new instance.
+     *
+     * @param reader the reader to encode from
+     * @param charsetName the character set name
+     * @throws UnsupportedEncodingException if the character set is not supported
+     */
     public ReaderInputStream(final Reader reader, final String charsetName) throws UnsupportedEncodingException {
         this(reader, Streams.getCharset(charsetName));
     }
 
+    /**
+     * Construct a new instance.
+     *
+     * @param reader the reader to encode from
+     * @param charset the character set
+     */
     public ReaderInputStream(final Reader reader, final Charset charset) {
         this(reader, getEncoder(charset));
     }
 
+    /**
+     * Construct a new instance.
+     *
+     * @param reader the reader to encode from
+     * @param encoder the character set encoder
+     */
     public ReaderInputStream(final Reader reader, final CharsetEncoder encoder) {
         this(reader, encoder, 1024);
     }
 
+    /**
+     * Construct a new instance.
+     *
+     * @param reader the reader to encode from
+     * @param encoder the character set encoder
+     * @param bufferSize the buffer size to use
+     */
     public ReaderInputStream(final Reader reader, final CharsetEncoder encoder, final int bufferSize) {
         this.reader = reader;
         this.encoder = encoder;
@@ -72,6 +107,7 @@ public final class ReaderInputStream extends InputStream {
         return encoder;
     }
 
+    /** {@inheritDoc} */
     public int read() throws IOException {
         final ByteBuffer byteBuffer = this.byteBuffer;
         if (! byteBuffer.hasRemaining()) {
@@ -82,6 +118,7 @@ public final class ReaderInputStream extends InputStream {
         return byteBuffer.get() & 0xff;
     }
 
+    /** {@inheritDoc} */
     public int read(final byte[] b, int off, int len) throws IOException {
         final ByteBuffer byteBuffer = this.byteBuffer;
         int cnt = 0;
@@ -140,6 +177,7 @@ public final class ReaderInputStream extends InputStream {
         }
     }
 
+    /** {@inheritDoc} */
     public long skip(long n) throws IOException {
         final ByteBuffer byteBuffer = this.byteBuffer;
         int cnt = 0;
@@ -157,16 +195,23 @@ public final class ReaderInputStream extends InputStream {
         return cnt;
     }
 
+    /** {@inheritDoc} */
     public int available() throws IOException {
         return byteBuffer.remaining();
     }
 
+    /** {@inheritDoc} */
     public void close() throws IOException {
         byteBuffer.clear();
         charBuffer.clear();
         reader.close();
     }
 
+    /**
+     * Get a string representation of this object.
+     *
+     * @return the string
+     */
     public String toString() {
         return "ReaderInputStream over " + reader;
     }

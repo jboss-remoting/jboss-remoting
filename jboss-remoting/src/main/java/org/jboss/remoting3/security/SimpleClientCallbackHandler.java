@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3.security;
 
-import java.io.IOException;
 import org.jboss.xnio.log.Logger;
 
 import javax.security.auth.callback.Callback;

@@ -25,7 +25,8 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalRequestHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
@@ -35,29 +36,26 @@ import org.jboss.xnio.Result;
 final class LocalConnectionHandler implements ConnectionHandler {
 
     private final ConnectionHandlerContext connectionHandlerContext;
+    private final OptionMap connectionOptionMap;
 
-    public LocalConnectionHandler(final ConnectionHandlerContext connectionHandlerContext) {
+    public LocalConnectionHandler(final ConnectionHandlerContext connectionHandlerContext, final OptionMap connectionOptionMap) {
         this.connectionHandlerContext = connectionHandlerContext;
+        this.connectionOptionMap = connectionOptionMap;
     }
 
-    public Cancellable open(final String serviceType, final String groupName, final Result<RequestHandler> result) {
-        // todo: support for call-by-value
-        final RequestHandler handler = connectionHandlerContext.openService(serviceType, groupName, OptionMap.EMPTY);
+    public Cancellable open(final String serviceType, final String groupName, final Result<RemoteRequestHandler> result, final ClassLoader classLoader, final OptionMap optionMap) {
+        final LocalRequestHandler handler = connectionHandlerContext.openService(serviceType, groupName, optionMap);
         if (handler == null) {
             result.setException(new ServiceNotFoundException(ServiceURI.create(serviceType, groupName, null)));
         } else {
-            result.setResult(handler);
+            final LocalRemoteRequestHandler requestHandler = new LocalRemoteRequestHandler(handler, classLoader, optionMap, connectionOptionMap, connectionHandlerContext.getConnectionProviderContext().getExecutor());
+            result.setResult(requestHandler);
         }
         return IoUtils.nullCancellable();
     }
 
-    public RequestHandlerConnector createConnector(final RequestHandler localHandler) {
-        return new RequestHandlerConnector() {
-            public Cancellable createRequestHandler(final Result<RequestHandler> result) throws SecurityException {
-                result.setResult(localHandler);
-                return IoUtils.nullCancellable();
-            }
-        };
+    public RequestHandlerConnector createConnector(final LocalRequestHandler localHandler) {
+        return new LocalRequestHandlerConnector(localHandler, connectionHandlerContext.getConnectionProviderContext().getExecutor());
     }
 
     public void close() throws IOException {

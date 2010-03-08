@@ -22,18 +22,18 @@
 
 package org.jboss.remoting3.compat;
 
-import org.jboss.remoting3.spi.ReplyHandler;
+import org.jboss.remoting3.spi.RemoteReplyHandler;
 import org.jboss.remoting3.RemoteExecutionException;
 import java.io.IOException;
 
 /**
  * A reply handler which unwraps a Remoting 2-style invocation response to a Remoting 3-style plain object.
  */
-public final class UnwrappingReplyHandler implements ReplyHandler {
+public final class UnwrappingReplyHandler implements RemoteReplyHandler {
 
-    private final ReplyHandler replyHandler;
+    private final RemoteReplyHandler replyHandler;
 
-    public UnwrappingReplyHandler(final ReplyHandler replyHandler) {
+    public UnwrappingReplyHandler(final RemoteReplyHandler replyHandler) {
         this.replyHandler = replyHandler;
     }
 

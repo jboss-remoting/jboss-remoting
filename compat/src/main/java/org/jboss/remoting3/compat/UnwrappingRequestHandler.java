@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3.compat;
 
-import org.jboss.remoting3.spi.RequestHandler;
-import org.jboss.remoting3.spi.ReplyHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
+import org.jboss.remoting3.spi.RemoteReplyHandler;
 import org.jboss.remoting3.RemoteRequestException;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
@@ -36,11 +36,11 @@ import java.io.IOException;
  * A request handler which unwraps a Remoting 2-style invocation request to a Remoting 3-style plain object
  * or {@link org.jboss.remoting3.compat.Request} instance.
  */
-public final class UnwrappingRequestHandler extends AbstractAutoCloseable<RequestHandler> implements RequestHandler {
+public final class UnwrappingRequestHandler extends AbstractAutoCloseable<RemoteRequestHandler> implements RemoteRequestHandler {
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.compat");
 
-    private final RequestHandler next;
+    private final RemoteRequestHandler next;
 
     /**
      * Basic constructor.
@@ -48,12 +48,12 @@ public final class UnwrappingRequestHandler extends AbstractAutoCloseable<Reques
      * @param executor the executor used to execute the close notification handlers
      * @param next
      */
-    protected UnwrappingRequestHandler(final Executor executor, final RequestHandler next) {
+    protected UnwrappingRequestHandler(final Executor executor, final RemoteRequestHandler next) {
         super(executor);
         this.next = next;
     }
 
-    public Cancellable receiveRequest(final Object request, final ReplyHandler replyHandler) {
+    public Cancellable receiveRequest(final Object request, final RemoteReplyHandler replyHandler) {
         if (request instanceof CompatabilityInvocationRequest) {
             final CompatabilityInvocationRequest invocationRequest = (CompatabilityInvocationRequest) request;
             final Map<Object,Object> map = invocationRequest.getRequestPayload();

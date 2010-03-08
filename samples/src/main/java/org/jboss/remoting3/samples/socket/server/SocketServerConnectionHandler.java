@@ -35,9 +35,11 @@ import org.jboss.remoting3.samples.socket.SocketHandleableCloseable;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalRequestHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.xnio.Cancellable;
+import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Result;
 import org.jboss.xnio.log.Logger;
 
@@ -105,12 +107,12 @@ public class SocketServerConnectionHandler<I, O> extends AbstractHandleableClose
    }
 
    @Override
-   public RequestHandlerConnector createConnector(RequestHandler localHandler) {
+   public RequestHandlerConnector createConnector(LocalRequestHandler localHandler) {
       return null;
    }
 
    @Override
-   public Cancellable open(final String serviceType, final String groupName, Result<RequestHandler> result) {
+   public Cancellable open(final String serviceType, final String groupName, Result<RemoteRequestHandler> result, final ClassLoader classLoader, final OptionMap optionMap) {
       return null;
    }
 

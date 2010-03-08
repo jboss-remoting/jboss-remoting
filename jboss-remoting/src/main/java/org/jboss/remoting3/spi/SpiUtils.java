@@ -22,10 +22,12 @@
 
 package org.jboss.remoting3.spi;
 
+import java.io.Closeable;
 import java.io.IOException;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.RequestCancelHandler;
 import org.jboss.remoting3.RequestContext;
+import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.log.Logger;
 
 /**
@@ -41,9 +43,23 @@ public final class SpiUtils {
      * Safely notify a reply handler of an exception.
      *
      * @param replyHandler the reply handler
-     * @param exception
+     * @param exception the exception
      */
-    public static void safeHandleException(final ReplyHandler replyHandler, final IOException exception) {
+    public static void safeHandleException(final RemoteReplyHandler replyHandler, final IOException exception) {
+        try {
+            if (replyHandler != null) replyHandler.handleException(exception);
+        } catch (Throwable t) {
+            heLog.debug(t, "Failed to properly handle exception");
+        }
+    }
+
+    /**
+     * Safely notify a reply handler of an exception.
+     *
+     * @param replyHandler the reply handler
+     * @param exception the exception
+     */
+    public static void safeHandleException(final LocalReplyHandler replyHandler, final IOException exception) {
         try {
             if (replyHandler != null) replyHandler.handleException(exception);
         } catch (Throwable t) {
@@ -58,7 +74,22 @@ public final class SpiUtils {
      * @param replyHandler the reply handler
      * @param reply the reply
      */
-    public static <O> void safeHandleReply(final ReplyHandler replyHandler, final O reply) {
+    public static <O> void safeHandleReply(final RemoteReplyHandler replyHandler, final O reply) {
+        try {
+            if (replyHandler != null) replyHandler.handleReply(reply);
+        } catch (Throwable t) {
+            heLog.debug(t, "Failed to properly handle reply");
+        }
+    }
+
+    /**
+     * Safely notify a reply handler of a reply.
+     *
+     * @param <O> the reply type
+     * @param replyHandler the reply handler
+     * @param reply the reply
+     */
+    public static <O> void safeHandleReply(final LocalReplyHandler replyHandler, final O reply) {
         try {
             if (replyHandler != null) replyHandler.handleReply(reply);
         } catch (Throwable t) {
@@ -71,7 +102,20 @@ public final class SpiUtils {
      *
      * @param replyHandler the reply handler
      */
-    public static void safeHandleCancellation(final ReplyHandler replyHandler) {
+    public static void safeHandleCancellation(final RemoteReplyHandler replyHandler) {
+        try {
+            if (replyHandler != null) replyHandler.handleCancellation();
+        } catch (Throwable t) {
+            heLog.debug(t, "Failed to properly handle cancellation");
+        }
+    }
+
+    /**
+     * Safely notify a reply handler of a cancellation.
+     *
+     * @param replyHandler the reply handler
+     */
+    public static void safeHandleCancellation(final LocalReplyHandler replyHandler) {
         try {
             if (replyHandler != null) replyHandler.handleCancellation();
         } catch (Throwable t) {
@@ -108,5 +152,18 @@ public final class SpiUtils {
             heLog.error(t, "Close handler threw an exception");
         }
     }
-}
 
+    /**
+     * A close handler which closes another resource.
+     *
+     * @param c the resource to close
+     * @return the close handler
+     */
+    public static CloseHandler<Object> closingCloseHandler(final Closeable c) {
+        return new CloseHandler<Object>() {
+            public void handleClose(final Object closed) {
+                IoUtils.safeClose(c);
+            }
+        };
+    }
+}

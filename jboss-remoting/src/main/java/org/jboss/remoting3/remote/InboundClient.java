@@ -22,28 +22,25 @@
 
 package org.jboss.remoting3.remote;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.jboss.remoting3.CloseHandler;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalRequestHandler;
+import org.jboss.remoting3.spi.SpiUtils;
 
-final class InboundClient {
-    private final RequestHandler handler;
+final class InboundClient implements Closeable {
+    private final LocalRequestHandler handler;
     private final RemoteConnectionHandler remoteConnectionHandler;
     private final int id;
 
-    InboundClient(final RemoteConnectionHandler remoteConnectionHandler, final RequestHandler handler, final int id) {
+    InboundClient(final RemoteConnectionHandler remoteConnectionHandler, final LocalRequestHandler handler, final int id) {
         this.remoteConnectionHandler = remoteConnectionHandler;
         this.handler = handler;
         this.id = id;
-        handler.addCloseHandler(new CloseHandler<RequestHandler>() {
-            public void handleClose(final RequestHandler closed) {
-                close();
-            }
-        });
+        handler.addCloseHandler(SpiUtils.closingCloseHandler(this));
     }
 
-    RequestHandler getHandler() {
+    LocalRequestHandler getHandler() {
         return handler;
     }
 
@@ -51,7 +48,7 @@ final class InboundClient {
         return remoteConnectionHandler;
     }
 
-    void close() {
+    public void close() {
         final RemoteConnection remoteConnection = remoteConnectionHandler.getRemoteConnection();
         final ByteBuffer buffer = remoteConnection.allocate();
         try {

@@ -24,19 +24,19 @@ package org.jboss.remoting3.remote;
 
 import java.util.concurrent.Semaphore;
 import org.jboss.marshalling.NioByteInput;
-import org.jboss.remoting3.spi.ReplyHandler;
+import org.jboss.remoting3.spi.LocalReplyHandler;
 import org.jboss.xnio.Cancellable;
 
 final class OutboundRequest implements Cancellable {
     private final int cid;
-    private final ReplyHandler inboundReplyHandler;
+    private final LocalReplyHandler inboundReplyHandler;
     private final Semaphore flowSemaphore = new Semaphore(5); // todo receive window size
 
     private State state = State.SENDING;
     private NioByteInput byteInput;
     private RemoteConnectionHandler remoteConnectionHandler;
 
-    OutboundRequest(final RemoteConnectionHandler remoteConnectionHandler, final ReplyHandler inboundReplyHandler, final int cid) {
+    OutboundRequest(final RemoteConnectionHandler remoteConnectionHandler, final LocalReplyHandler inboundReplyHandler, final int cid) {
         this.remoteConnectionHandler = remoteConnectionHandler;
         this.inboundReplyHandler = inboundReplyHandler;
         this.cid = cid;
@@ -105,7 +105,7 @@ final class OutboundRequest implements Cancellable {
         CLOSED,
     }
 
-    ReplyHandler getInboundReplyHandler() {
+    LocalReplyHandler getInboundReplyHandler() {
         return inboundReplyHandler;
     }
 

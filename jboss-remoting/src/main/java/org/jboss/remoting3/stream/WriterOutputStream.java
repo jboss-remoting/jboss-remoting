@@ -33,8 +33,12 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
+import org.jboss.marshalling.ByteOutput;
 
-public final class WriterOutputStream extends OutputStream {
+/**
+ * An output stream which decodes bytes into a character writer.
+ */
+public final class WriterOutputStream extends OutputStream implements ByteOutput {
 
     private final Writer writer;
     private final CharsetDecoder decoder;
@@ -42,14 +46,32 @@ public final class WriterOutputStream extends OutputStream {
     private final char[] chars;
     private volatile boolean closed;
 
+    /**
+     * Construct a new instance.
+     *
+     * @param writer the writer to decode into
+     */
     public WriterOutputStream(final Writer writer) {
         this(writer, Charset.defaultCharset());
     }
 
+    /**
+     * Construct a new instance.
+     *
+     * @param writer the writer to decode into
+     * @param decoder the charset decoder to use
+     */
     public WriterOutputStream(final Writer writer, final CharsetDecoder decoder) {
         this(writer, decoder, 1024);
     }
 
+    /**
+     * Construct a new instance.
+     *
+     * @param writer the writer to decode into
+     * @param decoder the charset decoder to use
+     * @param bufferSize the buffer size to use
+     */
     public WriterOutputStream(final Writer writer, final CharsetDecoder decoder, int bufferSize) {
         this.writer = writer;
         this.decoder = decoder;
@@ -57,10 +79,23 @@ public final class WriterOutputStream extends OutputStream {
         chars = new char[(int) ((float)bufferSize * decoder.maxCharsPerByte() + 0.5f)];
     }
 
+    /**
+     * Construct a new instance.
+     *
+     * @param writer the writer to decode into
+     * @param charset the character set to use
+     */
     public WriterOutputStream(final Writer writer, final Charset charset) {
         this(writer, getDecoder(charset));
     }
 
+    /**
+     * Construct a new instance.
+     *
+     * @param writer the writer to decode into
+     * @param charsetName the character set name to use
+     * @throws UnsupportedEncodingException if the character set name is unknown
+     */
     public WriterOutputStream(final Writer writer, final String charsetName) throws UnsupportedEncodingException {
         this(writer, Streams.getCharset(charsetName));
     }
@@ -73,6 +108,7 @@ public final class WriterOutputStream extends OutputStream {
         return decoder;
     }
 
+    /** {@inheritDoc} */
     public void write(final int b) throws IOException {
         if (closed) throw new IOException("Stream closed");
         final ByteBuffer byteBuffer = this.byteBuffer;
@@ -82,6 +118,7 @@ public final class WriterOutputStream extends OutputStream {
         byteBuffer.put((byte) b);
     }
 
+    /** {@inheritDoc} */
     public void write(final byte[] b, int off, int len) throws IOException {
         if (closed) throw new IOException("Stream closed");
         final ByteBuffer byteBuffer = this.byteBuffer;
@@ -134,11 +171,13 @@ public final class WriterOutputStream extends OutputStream {
         }
     }
 
+    /** {@inheritDoc} */
     public void flush() throws IOException {
         if (closed) throw new IOException("Stream closed");
         writer.flush();
     }
 
+    /** {@inheritDoc} */
     public void close() throws IOException {
         closed = true;
         doFlush(true);
@@ -146,6 +185,11 @@ public final class WriterOutputStream extends OutputStream {
         writer.close();
     }
 
+    /**
+     * Get the string representation of this object.
+     *
+     * @return the string
+     */
     public String toString() {
         return "Output stream writing to " + writer;
     }

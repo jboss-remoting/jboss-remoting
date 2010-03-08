@@ -26,8 +26,8 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
-import org.jboss.remoting3.spi.ReplyHandler;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalRequestHandler;
+import org.jboss.remoting3.spi.RemoteReplyHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.IoUtils;
@@ -36,7 +36,7 @@ import org.jboss.xnio.log.Logger;
 /**
  *
  */
-final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<RequestHandler> implements RequestHandler {
+final class TerminatingLocalRequestHandler<I, O> extends AbstractHandleableCloseable<LocalRequestHandler> implements LocalRequestHandler {
 
     private final RequestListener<I, O> requestListener;
     private final ClientContextImpl clientContext;
@@ -47,7 +47,7 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
     private static final Logger log = Logger.getLogger("org.jboss.remoting.listener");
 
     @SuppressWarnings({ "unchecked" })
-    LocalRequestHandler(final Executor executor, final RequestListener<? super I, ? extends O> requestListener, final ClientContextImpl clientContext, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader serviceClassLoader) {
+    TerminatingLocalRequestHandler(final Executor executor, final RequestListener<? super I, ? extends O> requestListener, final ClientContextImpl clientContext, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader serviceClassLoader) {
         super(executor);
         this.serviceClassLoader = serviceClassLoader;
         this.requestListener = (RequestListener<I, O>) requestListener;
@@ -56,7 +56,7 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
         this.replyClass = replyClass;
     }
 
-    public Cancellable receiveRequest(final Object request, final ReplyHandler replyHandler) {
+    public Cancellable receiveRequest(final Object request, final RemoteReplyHandler replyHandler) {
         final RequestContextImpl<O> context = new RequestContextImpl<O>(replyHandler, clientContext, replyClass, serviceClassLoader);
         try {
             final I castRequest;
@@ -87,6 +87,10 @@ final class LocalRequestHandler<I, O> extends AbstractHandleableCloseable<Reques
                 return this;
             }
         };
+    }
+
+    public ClassLoader getClassLoader() {
+        return serviceClassLoader;
     }
 
     protected void closeAction() throws IOException {

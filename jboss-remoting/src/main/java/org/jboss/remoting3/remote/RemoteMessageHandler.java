@@ -30,8 +30,8 @@ import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.ReplyException;
 import org.jboss.remoting3.ServiceNotFoundException;
 import org.jboss.remoting3.ServiceURI;
-import org.jboss.remoting3.spi.ReplyHandler;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalReplyHandler;
+import org.jboss.remoting3.spi.LocalRequestHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.Buffers;
 import org.jboss.xnio.IoUtils;
@@ -60,7 +60,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                 final int id = buffer.getInt();
                 final String serviceType = Buffers.getModifiedUtf8Z(buffer);
                 final String groupName = Buffers.getModifiedUtf8Z(buffer);
-                final RequestHandler handler;
+                final LocalRequestHandler handler;
                 handler = connectionHandler.getConnectionContext().openService(serviceType, groupName, OptionMap.EMPTY);
                 final Pool<ByteBuffer> bufferPool = connectionHandler.getBufferPool();
                 final ByteBuffer outBuf = bufferPool.allocate();
@@ -310,7 +310,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                     return;
                 }
                 final NioByteInput byteInput;
-                final ReplyHandler replyHandler;
+                final LocalReplyHandler replyHandler;
                 synchronized (outboundRequest) {
                     byteInput = outboundRequest.getByteInput();
                     replyHandler = outboundRequest.getInboundReplyHandler();

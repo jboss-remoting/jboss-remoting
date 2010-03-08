@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Set;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
-import org.jboss.remoting3.spi.RequestHandler;
 import org.jboss.remoting3.spi.ProtocolServiceType;
 import org.jboss.xnio.IoFuture;
 import org.jboss.xnio.OptionMap;
@@ -178,35 +177,29 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
     Registration addServiceRegistrationListener(ServiceRegistrationListener listener, Set<ListenerFlag> flags);
 
     /**
-     * Create a request handler that can be used to receive incoming requests on this endpoint.  The client may be passed to a
-     * remote endpoint as part of a request or a reply, or it may be used locally.
-     * <p/>
-     * You must have the {@link org.jboss.remoting3.security.RemotingPermission createRequestHandler EndpointPermission} to invoke this method.
+     * Create a local client for a client listener.
      *
-     * @param requestListener the request listener
-     * @param requestClass the class of requests sent to this request listener
-     * @param replyClass the class of replies received back from this request listener
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return the request handler
+     * @param clientListener the client listener
+     * @param requestClass the request class
+     * @param replyClass the reply class
+     * @param clientClassLoader the class loader to use for replies
+     * @param optionMap the options
+     * @return a new client
      * @throws IOException if an error occurs
      */
-    <I, O> RequestHandler createLocalRequestHandler(RequestListener<? super I, ? extends O> requestListener, Class<I> requestClass, Class<O> replyClass) throws IOException;
+    <I, O> Client<I, O> createLocalClient(ClientListener<I, O> clientListener, Class<I> requestClass, Class<O> replyClass, ClassLoader clientClassLoader, OptionMap optionMap) throws IOException;
 
     /**
-     * Create a client that uses the given request handler to handle its requests.
-     * <p/>
-     * You must have the {@link org.jboss.remoting3.security.RemotingPermission createClient EndpointPermission} to invoke this method.
+     * Create a local client for a client listener.
      *
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @param handler the request handler
-     * @param requestClass the class of requests sent through this client
-     * @param replyClass the class of replies received back through this client
-     * @return the client
+     * @param clientListener
+     * @param requestClass the request class
+     * @param replyClass the reply class
+     * @param optionMap the options
+     * @return a new client
      * @throws IOException if an error occurs
      */
-    <I, O> Client<I, O> createClient(RequestHandler handler, Class<I> requestClass, Class<O> replyClass) throws IOException;
+    <I, O> Client<I, O> createLocalClient(ClientListener<I, O> clientListener, Class<I> requestClass, Class<O> replyClass, OptionMap optionMap) throws IOException;
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.

@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2008, JBoss Inc., and individual contributors as indicated
+ * Copyright 2010, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -20,31 +20,48 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.compat;
+package org.jboss.remoting3;
 
-import org.jboss.remoting3.spi.RemoteReplyHandler;
 import java.io.IOException;
+import org.jboss.marshalling.cloner.ObjectCloner;
+import org.jboss.remoting3.spi.LocalReplyHandler;
+import org.jboss.remoting3.spi.RemoteReplyHandler;
 
-/**
- * A request handler which wraps a Remoting 3-style reply with a Remoting 2-style invocation response.
- */
-public final class WrappingReplyHandler implements RemoteReplyHandler {
+class LocalRemoteReplyHandler implements RemoteReplyHandler {
 
-    private final RemoteReplyHandler replyHandler;
+    private final LocalReplyHandler replyHandler;
+    private final ObjectCloner replyCloner;
 
-    public WrappingReplyHandler(final RemoteReplyHandler replyHandler) {
+    public LocalRemoteReplyHandler(final LocalReplyHandler replyHandler, final ObjectCloner replyCloner) {
         this.replyHandler = replyHandler;
+        this.replyCloner = replyCloner;
     }
 
     public void handleReply(final Object reply) throws IOException {
-        replyHandler.handleReply(new CompatabilityInvocationResponse(null, reply,  false, null));
+        try {
+            replyHandler.handleReply(replyCloner.clone(reply));
+        } catch (ClassNotFoundException e) {
+            final ReplyException re = new ReplyException("Cannot clone reply", e);
+            replyHandler.handleException(re);
+            throw re;
+        }
     }
 
     public void handleException(final IOException exception) throws IOException {
-        replyHandler.handleReply(new CompatabilityInvocationResponse(null, exception, true, null));
+        try {
+            replyHandler.handleException((IOException) replyCloner.clone(exception));
+        } catch (ClassNotFoundException e) {
+            final ReplyException re = new ReplyException("Cannot clone reply", e);
+            replyHandler.handleException(re);
+            throw re;
+        }
     }
 
     public void handleCancellation() throws IOException {
         replyHandler.handleCancellation();
+    }
+
+    public ClassLoader getClassLoader() {
+        return replyHandler.getClassLoader();
     }
 }

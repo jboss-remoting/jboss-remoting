@@ -26,23 +26,23 @@ import org.jboss.remoting3.HandleableCloseable;
 import org.jboss.xnio.Cancellable;
 
 /**
- * A request handler.
+ * A request handler which forwards across the JVM boundary.
  * <p>
  * This is an internal Remoting interface, intended to be implemented only by Remoting internals and protocol implementations.
  * It should not be used or implemented by end-users.  Members may be added without notice.  Applications should instead use
  * the {@link org.jboss.remoting3.Client Client} and {@link org.jboss.remoting3.RequestListener RequestListener} interfaces.
  */
-public interface RequestHandler extends HandleableCloseable<RequestHandler> {
+public interface RemoteRequestHandler extends HandleableCloseable<RemoteRequestHandler> {
 
     /**
-     * Receive a request from a remote system.  This method is intended to be called by protocol handlers.  If the
+     * Receive a request bound to a remote system.  This method is intended to be called by protocol handlers.  If the
      * request cannot be accepted for some reason, the
-     * {@link ReplyHandler#handleException(java.io.IOException)}
+     * {@link RemoteReplyHandler#handleException(java.io.IOException)}
      * method is called immediately.
      *
      * @param request the request
      * @param replyHandler a handler for the reply
      * @return a reference which may be used to cancel the request
      */
-    Cancellable receiveRequest(Object request, ReplyHandler replyHandler);
+    Cancellable receiveRequest(Object request, LocalReplyHandler replyHandler);
 }

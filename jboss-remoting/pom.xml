@@ -95,6 +95,8 @@
                             <value>false</value>
                         </property>
                     </systemProperties>
+                    <printSummary>true</printSummary>
+                    <reportFormat>plain</reportFormat>
                 </configuration>
             </plugin>
             <plugin>

@@ -39,7 +39,7 @@ import static org.testng.Assert.assertTrue;
 /**
  *
  */
-@Test
+@Test(suiteName = "utils")
 public final class CloseableTestCase {
 
     private static final Logger log = Logger.getLogger("test");

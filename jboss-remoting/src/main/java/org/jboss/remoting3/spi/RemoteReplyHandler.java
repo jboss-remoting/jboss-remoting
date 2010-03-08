@@ -23,39 +23,30 @@
 package org.jboss.remoting3.spi;
 
 import java.io.IOException;
-import org.jboss.xnio.OptionMap;
 
 /**
- * The context for connection handlers.  Used to inform the endpoint of incoming events on an established connection.
- *
- * @remoting.consume
+ * A handler for replies from a request.  The handler should respect the first invocation made on it, and ignore
+ * any subsequent invocations.
  */
-public interface ConnectionHandlerContext {
+public interface RemoteReplyHandler {
 
     /**
-     * Get the connection provider context associated with this connection handler context.
+     * Handle a successful reply.  If the reply could not be forwarded, an exception is thrown.
      *
-     * @return the connection provider context
+     * @param reply the reply
      */
-    ConnectionProviderContext getConnectionProviderContext();
+    void handleReply(Object reply) throws IOException;
 
     /**
-     * Open a service.  This method should return immediately.
+     * Handle an exception.  If the exception could not be forwarded, a (different) {@code IOException} is thrown.
      *
-     * @remoting.nonblocking
-     *
-     * @param serviceType the service type string
-     * @param groupName the group name, or {@code null} for any group name
-     * @param optionMap the options to pass to the service
-     * @return the new request handler
-     * @throws IOException if an error occurs
+     * @param exception an exception which describes the problem
      */
-    LocalRequestHandler openService(String serviceType, String groupName, OptionMap optionMap);
+    void handleException(IOException exception) throws IOException;
 
     /**
-     * Indicate that the remote side has terminated the connection, so the local side should be closed as well.
-     *
-     * @remoting.nonblocking
+     * Handle a cancellation acknowledgement.  If the cancellation acknowledgement could not be forwarded, an
+     * exception is thrown.
      */
-    void remoteClosed();
+    void handleCancellation() throws IOException;
 }

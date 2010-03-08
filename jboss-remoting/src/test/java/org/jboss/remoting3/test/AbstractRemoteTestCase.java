@@ -28,16 +28,15 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
-import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.jboss.remoting3.spi.ProtocolServiceType;
+import org.jboss.remoting3.spi.SpiUtils;
 import org.jboss.xnio.AcceptingServer;
 import org.jboss.xnio.ChannelListener;
 import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Options;
 import org.jboss.xnio.Xnio;
@@ -53,9 +52,9 @@ public abstract class AbstractRemoteTestCase extends InvocationTestBase {
 
     @BeforeTest
     public void setUp() throws IOException {
+        super.setUp();
         enter();
         try {
-            super.setUp();
             final SimpleServerAuthenticationProvider authenticationProvider = new SimpleServerAuthenticationProvider();
             authenticationProvider.addUser("user", "endpoint", "password".toCharArray());
             endpoint.addProtocolService(ProtocolServiceType.SERVER_AUTHENTICATION_PROVIDER, "test", authenticationProvider);
@@ -78,11 +77,7 @@ public abstract class AbstractRemoteTestCase extends InvocationTestBase {
         final InetSocketAddress localAddress = future.get().getLocalAddress();
         final OptionMap clientOptions = OptionMap.EMPTY;
         final Connection connection = endpoint.connect(new URI(getScheme(), null, localAddress.getAddress().getHostAddress(), localAddress.getPort(), null, null, null), clientOptions, "user", null, "password".toCharArray()).get();
-        connection.addCloseHandler(new CloseHandler<Connection>() {
-            public void handleClose(final Connection closed) {
-                IoUtils.safeClose(server);
-            }
-        });
+        connection.addCloseHandler(SpiUtils.closingCloseHandler(server));
         return connection;
     }
 

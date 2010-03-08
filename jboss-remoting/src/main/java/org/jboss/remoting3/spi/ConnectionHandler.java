@@ -24,6 +24,7 @@ package org.jboss.remoting3.spi;
 
 import java.io.Closeable;
 import org.jboss.xnio.Cancellable;
+import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Result;
 
 /**
@@ -36,9 +37,12 @@ public interface ConnectionHandler extends Closeable {
      *
      * @param serviceType the service type string
      * @param groupName the group name string
-     * @param result the result for the connected request handler  @return a handle which may be used to cancel the pending operation
+     * @param result the result for the connected request handler
+     * @param classLoader the class loader to use for replies
+     * @param optionMap the options for this service
+     * @return a handle which may be used to cancel the pending operation
      */
-    Cancellable open(String serviceType, String groupName, Result<RequestHandler> result);
+    Cancellable open(String serviceType, String groupName, Result<RemoteRequestHandler> result, ClassLoader classLoader, OptionMap optionMap);
 
     /**
      * Create a connector which may be used to communicate with the given local RequestHandler.  The connector
@@ -47,5 +51,5 @@ public interface ConnectionHandler extends Closeable {
      * @param localHandler the local handler
      * @return the connector
      */
-    RequestHandlerConnector createConnector(RequestHandler localHandler);
+    RequestHandlerConnector createConnector(LocalRequestHandler localHandler);
 }

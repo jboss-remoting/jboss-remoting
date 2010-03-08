@@ -37,8 +37,10 @@ import org.jboss.remoting3.ServiceURI;
 import org.jboss.remoting3.samples.socket.RequestHandlerFuture;
 import org.jboss.remoting3.samples.socket.SocketProtocol;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
-import org.jboss.remoting3.spi.ReplyHandler;
-import org.jboss.remoting3.spi.RequestHandler;
+import org.jboss.remoting3.spi.LocalReplyHandler;
+import org.jboss.remoting3.spi.LocalRequestHandler;
+import org.jboss.remoting3.spi.RemoteReplyHandler;
+import org.jboss.remoting3.spi.RemoteRequestHandler;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.log.Logger;
@@ -50,13 +52,13 @@ import org.jboss.xnio.log.Logger;
  * Copyright Oct 14, 2009
  * </p>
  */
-public class SocketServerRequestHandler extends Thread implements RequestHandler {
+public class SocketServerRequestHandler extends Thread implements RemoteRequestHandler {
    private static final Logger log = Logger.getLogger(SocketServerRequestHandler.class);
    private Socket socket;
    private Marshaller marshaller;
    private Unmarshaller unmarshaller;
-   private RequestHandler requestHandler;
-   private ReplyHandler replyHandler;
+   private LocalRequestHandler requestHandler;
+   private RemoteReplyHandler replyHandler;
    private boolean running;
 
    /**
@@ -76,22 +78,14 @@ public class SocketServerRequestHandler extends Thread implements RequestHandler
          final String serviceType = unmarshaller.readUTF();
          final String groupName = unmarshaller.readUTF();
          final RequestHandlerFuture requestHandlerFuture = new RequestHandlerFuture();
-
-         ConnectionHandlerContext.ServiceResult serviceResult = new ConnectionHandlerContext.ServiceResult() {
-            public void opened(final RequestHandler requestHandler, final OptionMap optionMap) {
-               requestHandlerFuture.setResult(requestHandler);
-            }
-            public void notFound() {
-               requestHandlerFuture.setException(new ServiceOpenException("No such service located"));
-            }
-         };
-         final RequestHandler requestHandler = connectionHandlerContext.openService(serviceType, groupName, OptionMap.EMPTY);
+         final LocalRequestHandler requestHandler = connectionHandlerContext.openService(serviceType, groupName, OptionMap.EMPTY);
          if (requestHandler == null) {
              requestHandlerFuture.setException(new ServiceNotFoundException(ServiceURI.create(serviceType, groupName, null)));
          } else {
-             requestHandlerFuture.setResult(requestHandler);
+//             requestHandlerFuture.setResult(requestHandler);
+             requestHandlerFuture.setResult(null);
          }
-         this.requestHandler = requestHandlerFuture.get();
+//         this.requestHandler = requestHandlerFuture.get();
          if (this.requestHandler == null) {
             throw requestHandlerFuture.getException();
          }
@@ -102,7 +96,7 @@ public class SocketServerRequestHandler extends Thread implements RequestHandler
    }
 
 
-   public <I, O> SocketServerRequestHandler(RequestHandler localRequestHandler, Socket socket) {
+   public <I, O> SocketServerRequestHandler(LocalRequestHandler localRequestHandler, Socket socket) {
       try {
          this.requestHandler = localRequestHandler;
          this.socket = socket;
@@ -129,7 +123,8 @@ public class SocketServerRequestHandler extends Thread implements RequestHandler
             log.info(SocketServerRequestHandler.this + " waiting for next request");
             request = unmarshaller.readObject();
             log.info(SocketServerRequestHandler.this + " got request: " + request);
-            requestHandler.receiveRequest(request, replyHandler);
+//            requestHandler.receiveRequest(request, replyHandler);
+            requestHandler.receiveRequest(null, null);
          } catch (ClassNotFoundException e) {
             e.printStackTrace();
          } catch (IOException e) {
@@ -147,13 +142,13 @@ public class SocketServerRequestHandler extends Thread implements RequestHandler
 
 
    @Override
-   public Cancellable receiveRequest(Object request, ReplyHandler replyHandler) {
+   public Cancellable receiveRequest(Object request, LocalReplyHandler replyHandler) {
       return null;
    }
 
 
    @Override
-   public org.jboss.remoting3.HandleableCloseable.Key addCloseHandler( CloseHandler<? super RequestHandler> handler) {
+   public org.jboss.remoting3.HandleableCloseable.Key addCloseHandler( CloseHandler<? super RemoteRequestHandler> handler) {
       return null;
    }
 
