@@ -25,7 +25,8 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicBoolean;
+import org.jboss.marshalling.ByteOutput;
+import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Marshalling;
 import org.jboss.marshalling.MarshallingConfiguration;
@@ -67,8 +68,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
     private final IntKeyMap<OutboundStream> outboundStreams = new IntKeyMap<OutboundStream>();
     private final IntKeyMap<InboundStream> inboundStreams = new IntKeyMap<InboundStream>();
 
-    private final AtomicBoolean closed = new AtomicBoolean();
-
     RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final MarshallerFactory marshallerFactory) {
         super(connectionContext.getConnectionProviderContext().getExecutor());
         this.connectionContext = connectionContext;
@@ -101,8 +100,17 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
             buffer.put((byte) 0);
             Buffers.putModifiedUtf8(buffer, groupName);
             buffer.put((byte) 0);
-            buffer.flip();
-            remoteConnection.sendBlocking(buffer, true);
+            final ByteOutput output = Marshalling.createByteOutput(buffer);
+            final Marshaller marshaller = marshallerFactory.createMarshaller(marshallingConfiguration);
+            try {
+                marshaller.start(output);
+                marshaller.writeObject(optionMap);
+                marshaller.finish();
+                buffer.flip();
+                remoteConnection.sendBlocking(buffer, true);
+            } finally {
+                IoUtils.safeClose(marshaller);
+            }
         } catch (IOException e) {
             result.setException(e);
         } catch (Throwable e) {

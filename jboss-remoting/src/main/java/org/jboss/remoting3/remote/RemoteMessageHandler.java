@@ -25,10 +25,14 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+import org.jboss.marshalling.ByteInput;
+import org.jboss.marshalling.Marshalling;
 import org.jboss.marshalling.NioByteInput;
+import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.ReplyException;
 import org.jboss.remoting3.ServiceNotFoundException;
+import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3.ServiceURI;
 import org.jboss.remoting3.spi.LocalReplyHandler;
 import org.jboss.remoting3.spi.LocalRequestHandler;
@@ -60,11 +64,36 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                 final int id = buffer.getInt();
                 final String serviceType = Buffers.getModifiedUtf8Z(buffer);
                 final String groupName = Buffers.getModifiedUtf8Z(buffer);
-                final LocalRequestHandler handler;
-                handler = connectionHandler.getConnectionContext().openService(serviceType, groupName, OptionMap.EMPTY);
                 final Pool<ByteBuffer> bufferPool = connectionHandler.getBufferPool();
+                final ByteInput input = Marshalling.createByteInput(buffer);
+                final OptionMap optionMap;
                 final ByteBuffer outBuf = bufferPool.allocate();
                 try {
+                    try {
+                        final Unmarshaller unmarshaller = remoteConnectionHandler.getMarshallerFactory().createUnmarshaller(remoteConnectionHandler.getMarshallingConfiguration());
+                        try {
+                            unmarshaller.start(input);
+                            optionMap = (OptionMap) unmarshaller.readObject();
+                            unmarshaller.finish();
+                        } finally {
+                            IoUtils.safeClose(unmarshaller);
+                        }
+                    } catch (Exception e) {
+                        log.error("Failed to unmarshall service request option map: %s", e);
+                        outBuf.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
+                        outBuf.put(RemoteProtocol.SERVICE_ERROR);
+                        outBuf.putInt(id);
+                        outBuf.flip();
+                        try {
+                            connection.sendBlocking(outBuf, true);
+                        } catch (IOException e1) {
+                            // the channel has suddenly failed
+                            log.trace("Send failed: %s", e);
+                        }
+                        return;
+                    }
+                    final LocalRequestHandler handler;
+                    handler = connectionHandler.getConnectionContext().openService(serviceType, groupName, optionMap);
                     outBuf.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
                     if (handler == null) {
                         // no matching service found
@@ -106,6 +135,24 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                 synchronized (client) {
                     // todo assert client state == waiting
                     client.getResult().setException(new ServiceNotFoundException(ServiceURI.create(client.getServiceType(), client.getGroupName(), null)));
+                    client.setState(OutboundClient.State.CLOSED);
+                }
+                return;
+            }
+            case RemoteProtocol.SERVICE_ERROR: {
+                final int id = buffer.getInt();
+                final OutboundClient client;
+                final IntKeyMap<OutboundClient> outboundClients = connectionHandler.getOutboundClients();
+                synchronized (outboundClients) {
+                    client = outboundClients.remove(id);
+                }
+                if (client == null) {
+                    log.trace("Received service-error for unknown client %d", Integer.valueOf(id));
+                    return;
+                }
+                synchronized (client) {
+                    // todo assert client state == waiting
+                    client.getResult().setException(new ServiceOpenException("Remote side failed to open service"));
                     client.setState(OutboundClient.State.CLOSED);
                 }
                 return;

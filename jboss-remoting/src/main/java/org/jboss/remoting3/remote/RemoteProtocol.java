@@ -57,8 +57,9 @@ public final class RemoteProtocol {
     static final byte SERVICE_REQUEST = 16;
     static final byte SERVICE_NOT_FOUND = 17;
     static final byte SERVICE_CLIENT_OPENED = 18;
-    static final byte CLIENT_CLOSE = 19;
-    static final byte CLIENT_ASYNC_CLOSE = 20; // close from the server side
+    static final byte SERVICE_ERROR = 19;
+    static final byte CLIENT_CLOSE = 20;
+    static final byte CLIENT_ASYNC_CLOSE = 21; // close from the server side
 
     static final byte STREAM_DATA = 32; // from source -> sink side
     static final byte STREAM_EXCEPTION = 33; // from source -> sink side

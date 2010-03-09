@@ -23,6 +23,7 @@
 package org.jboss.remoting3.test;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jboss.remoting3.Client;
 import org.jboss.remoting3.ClientConnector;
 import org.jboss.remoting3.ClientContext;
@@ -38,6 +39,7 @@ import org.jboss.remoting3.RequestListener;
 import org.jboss.remoting3.ServiceNotFoundException;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
+import org.jboss.xnio.Options;
 import org.jboss.xnio.Xnio;
 import org.jboss.xnio.log.Logger;
 import org.testng.SkipException;
@@ -45,8 +47,7 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.fail;
+import static org.testng.Assert.*;
 
 @Test
 public abstract class InvocationTestBase {
@@ -260,6 +261,55 @@ public abstract class InvocationTestBase {
                 IoUtils.safeClose(connection);
             }
             fail("Expected exception");
+        } finally {
+            exit();
+        }
+    }
+
+    public void testOptions() throws Throwable {
+        enter();
+        try {
+            final OptionMap optionMap = OptionMap.builder().set(Options.BROADCAST, true).getMap();
+            final AtomicReference<OptionMap> receivedOptions = new AtomicReference<OptionMap>();
+            final Registration registration = endpoint.serviceBuilder().setGroupName("foo").setServiceType("test1").setRequestType(InvocationTestObject.class).
+                    setReplyType(InvocationTestObject.class).setClientListener(new ClientListener<InvocationTestObject, InvocationTestObject>() {
+                public RequestListener<InvocationTestObject, InvocationTestObject> handleClientOpen(final ClientContext clientContext, final OptionMap optionMap) {
+                    receivedOptions.set(optionMap);
+                    clientContext.addCloseHandler(new CloseHandler<ClientContext>() {
+                        public void handleClose(final ClientContext closed) {
+                            log.info("Client closed");
+                        }
+                    });
+                    return new RequestListener<InvocationTestObject, InvocationTestObject>() {
+                        public void handleRequest(final RequestContext<InvocationTestObject> objectRequestContext, final InvocationTestObject request) throws RemoteExecutionException {
+                            // not invoked
+                        }
+                    };
+                }
+            }).register();
+            try {
+                final Connection connection = getConnection();
+                try {
+                    final Client<InvocationTestObject, InvocationTestObject> client = connection.openClient("test1", "*", InvocationTestObject.class, InvocationTestObject.class, getClass().getClassLoader(), optionMap).get();
+                    try {
+                        assertTrue(optionMap.contains(Options.BROADCAST), "Option disappeared from original map");
+                        assertTrue(optionMap.get(Options.BROADCAST).booleanValue(), "Option changed value from original map");
+                        final OptionMap map2 = receivedOptions.get();
+                        assertNotNull(map2, "Option map was not received");
+                        assertTrue(map2.contains(Options.BROADCAST), "Option does not appear in destination map");
+                        assertTrue(map2.get(Options.BROADCAST).booleanValue(), "Option changed value in destination map");
+                    } finally {
+                        IoUtils.safeClose(client);
+                        client.awaitClosedUninterruptibly();
+                    }
+                } finally {
+                    IoUtils.safeClose(connection);
+                    connection.awaitClosedUninterruptibly();
+                }
+            } finally {
+                IoUtils.safeClose(registration);
+                registration.awaitClosedUninterruptibly();
+            }
         } finally {
             exit();
         }
