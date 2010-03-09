@@ -95,13 +95,8 @@ final class RemoteConnectionProvider implements ConnectionProvider {
     }
 
     private class ProviderInterface implements NetworkServerProvider {
-        public ChannelListener<ConnectedStreamChannel<InetSocketAddress>> getServerListener(final OptionMap optionMap) {
-            final String providerName = optionMap.get(RemotingOptions.AUTHENTICATION_PROVIDER);
-            final ServerAuthenticationProvider authenticationProvider = connectionProviderContext.getProtocolServiceProvider(ProtocolServiceType.SERVER_AUTHENTICATION_PROVIDER, providerName == null ? "default" : providerName);
-            if (authenticationProvider == null) {
-                throw new IllegalArgumentException("Missing authentication provider: " + (providerName == null ? "default" : providerName));
-            }
-            return new ServerOpenListener(optionMap, connectionProviderContext, providerDescriptor);
+        public ChannelListener<ConnectedStreamChannel<InetSocketAddress>> getServerListener(final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) {
+            return new ServerOpenListener(optionMap, connectionProviderContext, providerDescriptor, authenticationProvider);
         }
     }
 }

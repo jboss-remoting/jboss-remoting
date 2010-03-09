@@ -140,11 +140,6 @@ public final class RemotingOptions {
     public static final Option<Boolean> CALL_BY_VALUE = Option.simple(RemotingOptions.class, "CALL_BY_VALUE", Boolean.class);
 
     /**
-     * Specify the name of a preregistered server authentication provider to use.
-     */
-    public static final Option<String> AUTHENTICATION_PROVIDER = Option.simple(RemotingOptions.class, "AUTHENTICATION_PROVIDER", String.class);
-
-    /**
      * Specify the number of times a client is allowed to retry authentication before closing the connection.
      */
     public static final Option<Integer> AUTHENTICATION_RETRIES = Option.simple(RemotingOptions.class, "AUTHENTICATION_RETRIES", Integer.class);

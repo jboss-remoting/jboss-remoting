@@ -663,9 +663,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(ADD_PROTOCOL_SERVICE_PERM);
         }
-        if ("default".equals(name)) {
-            throw new IllegalArgumentException("'default' is not an allowed name");
-        }
         if (map.putIfAbsent(name, provider) != null) {
             throw new DuplicateRegistrationException(type.getDescription() + " '" + name + "' is already registered");
         }

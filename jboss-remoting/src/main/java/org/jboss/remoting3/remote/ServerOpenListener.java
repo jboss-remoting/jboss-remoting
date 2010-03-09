@@ -32,10 +32,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.jboss.marshalling.ProviderDescriptor;
-import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.jboss.remoting3.spi.ProtocolServiceType;
 import org.jboss.xnio.ChannelListener;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
@@ -55,12 +53,14 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
     private final OptionMap optionMap;
     private final ConnectionProviderContext connectionProviderContext;
     private final ProviderDescriptor providerDescriptor;
+    private final ServerAuthenticationProvider authenticationProvider;
     private static final Logger log = Loggers.serverSasl;
 
-    ServerOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final ProviderDescriptor providerDescriptor) {
+    ServerOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final ProviderDescriptor providerDescriptor, final ServerAuthenticationProvider authenticationProvider) {
         this.optionMap = optionMap;
         this.connectionProviderContext = connectionProviderContext;
         this.providerDescriptor = providerDescriptor;
+        this.authenticationProvider = authenticationProvider;
     }
 
     public void handleEvent(final ConnectedStreamChannel<InetSocketAddress> channel) {
@@ -70,20 +70,6 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
             // ignore
         }
         final RemoteConnection connection = new RemoteConnection(connectionProviderContext.getExecutor(), channel, optionMap, providerDescriptor);
-
-        // Get the server authentication provider
-        final String authProvider = optionMap.get(RemotingOptions.AUTHENTICATION_PROVIDER);
-        if (authProvider == null) {
-            log.warn("No authentication provider available");
-            IoUtils.safeClose(connection);
-            return;
-        }
-        final ServerAuthenticationProvider provider = connectionProviderContext.getProtocolServiceProvider(ProtocolServiceType.SERVER_AUTHENTICATION_PROVIDER, authProvider);
-        if (provider == null) {
-            log.warn("No authentication provider available");
-            IoUtils.safeClose(connection);
-            return;
-        }
 
         // Calculate available server mechanisms
         final Sequence<String> mechs = optionMap.get(Options.SASL_MECHANISMS);
@@ -176,7 +162,7 @@ final class ServerOpenListener implements ChannelListener<ConnectedStreamChannel
                 }
             }
         });
-        connection.setMessageHandler(new ServerGreetingHandler(connection, connectionProviderContext, saslServerFactories, provider, propertyMap));
+        connection.setMessageHandler(new ServerGreetingHandler(connection, connectionProviderContext, saslServerFactories, authenticationProvider, propertyMap));
         // and send the greeting
         channel.resumeWrites();
     }

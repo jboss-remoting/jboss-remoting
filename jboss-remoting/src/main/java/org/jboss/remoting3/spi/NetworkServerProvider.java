@@ -23,6 +23,7 @@
 package org.jboss.remoting3.spi;
 
 import java.net.InetSocketAddress;
+import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.xnio.ChannelListener;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.channels.ConnectedStreamChannel;
@@ -36,7 +37,8 @@ public interface NetworkServerProvider {
      * Get the channel open listener for servers of this connection provider type.
      *
      * @param optionMap options which may be used to configure the returned server
+     * @param authenticationProvider the server authentication provider
      * @return the channel listener
      */
-    ChannelListener<ConnectedStreamChannel<InetSocketAddress>> getServerListener(OptionMap optionMap);
+    ChannelListener<ConnectedStreamChannel<InetSocketAddress>> getServerListener(OptionMap optionMap, ServerAuthenticationProvider authenticationProvider);
 }
