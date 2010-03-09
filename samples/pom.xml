@@ -26,8 +26,8 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <name>JBoss Remoting Samples</name>
-    <description>JBoss Remoting Samples</description>
+    <name>JBoss Remoting 3 Samples</name>
+    <description>JBoss Remoting 3 Samples</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

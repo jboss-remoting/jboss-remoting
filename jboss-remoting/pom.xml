@@ -27,7 +27,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <name>JBoss Remoting</name>
-    <description>JBoss Remoting</description>
+    <description>JBoss Remoting 3</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

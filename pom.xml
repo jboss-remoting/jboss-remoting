@@ -26,8 +26,8 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <name>JBoss Remoting Parent</name>
-    <description>JBoss Remoting Parent POM</description>
+    <name>JBoss Remoting 3 Parent</name>
+    <description>JBoss Remoting 3 Parent POM</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
