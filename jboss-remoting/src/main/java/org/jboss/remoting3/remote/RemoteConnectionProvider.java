@@ -29,7 +29,6 @@ import java.net.UnknownHostException;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import org.jboss.marshalling.ProviderDescriptor;
-import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;

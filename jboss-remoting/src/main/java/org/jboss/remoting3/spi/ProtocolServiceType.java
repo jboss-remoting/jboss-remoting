@@ -29,7 +29,6 @@ import org.jboss.marshalling.ClassTable;
 import org.jboss.marshalling.ObjectResolver;
 import org.jboss.marshalling.ObjectTable;
 import org.jboss.marshalling.ProviderDescriptor;
-import org.jboss.remoting3.security.ServerAuthenticationProvider;
 
 public final class ProtocolServiceType<T> implements Serializable {
 
