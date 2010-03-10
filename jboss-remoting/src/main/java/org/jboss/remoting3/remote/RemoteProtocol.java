@@ -87,17 +87,6 @@ public final class RemoteProtocol {
     static final byte GREETING_ENDPOINT_NAME = 2; // sent by client & server
     static final byte GREETING_MARSHALLER_VERSION = 3; // sent by client & server
 
-    // Object table types
-
-    static final byte OBJ_ENDPOINT = 0;
-    static final byte OBJ_CLIENT_CONNECTOR = 1;
-    static final byte OBJ_INPUT_STREAM = 2;
-    static final byte OBJ_OUTPUT_STREAM = 3;
-    static final byte OBJ_READER = 4;
-    static final byte OBJ_WRITER = 5;
-    static final byte OBJ_OBJECT_SOURCE = 6;
-    static final byte OBJ_OBJECT_SINK = 7;
-
     // Object sink stream commands
 
     static final int OSINK_OBJECT = 0;
@@ -110,6 +99,7 @@ public final class RemoteProtocol {
     static final int OSOURCE_CLOSE = 1;
 
     static final Charset UTF_8 = Charset.forName("UTF8");
+
 
     /**
      * Create an instance of the connection provider for the "remote" protocol.

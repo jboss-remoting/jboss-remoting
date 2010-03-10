@@ -23,25 +23,63 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.util.NoSuchElementException;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.stream.ObjectSource;
 
 final class UnmarshallerObjectSource<T> implements ObjectSource<T> {
     private final Unmarshaller unmarshaller;
+    private State state;
+
+    enum State {
+        NEW,
+        READY,
+        DONE,
+    }
 
     UnmarshallerObjectSource(final Unmarshaller unmarshaller) {
         this.unmarshaller = unmarshaller;
     }
 
     public boolean hasNext() throws IOException {
-        return false;
+        synchronized (this) {
+            if (state == State.NEW) {
+                final int cmd = unmarshaller.readUnsignedByte();
+                if (cmd == RemoteProtocol.OSOURCE_OBJECT) {
+                    state = State.READY;
+                } else {
+                    state = State.DONE;
+                    unmarshaller.close();
+                    return false;
+                }
+            }
+            return state == State.READY;
+        }
     }
 
+    @SuppressWarnings({ "unchecked" })
     public T next() throws NoSuchElementException, IOException {
-        return null;
+        synchronized (this) {
+            if (hasNext()) {
+                try {
+                    final T obj = (T) unmarshaller.readObject();
+                    state = State.NEW;
+                    return obj;
+                } catch (ClassNotFoundException e) {
+                    state = State.NEW;
+                    throw new InvalidObjectException("Class not found: " + e);
+                }
+            } else {
+                throw new NoSuchElementException();
+            }
+        }
     }
 
     public void close() throws IOException {
+        synchronized (this) {
+            state = State.DONE;
+            unmarshaller.close();
+        }
     }
 }

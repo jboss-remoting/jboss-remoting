@@ -23,11 +23,17 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InvalidClassException;
 import java.io.InvalidObjectException;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import org.jboss.marshalling.ByteInput;
+import org.jboss.marshalling.ByteOutput;
 import org.jboss.marshalling.Pair;
 import org.jboss.marshalling.cloner.ClassCloner;
 import org.jboss.marshalling.cloner.ClassLoaderClassCloner;
@@ -108,6 +114,18 @@ class LocalRemoteRequestHandler extends AbstractHandleableCloseable<RemoteReques
                 return new CloningObjectSource((ObjectSource) original, outboundCloner);
             } else if (original instanceof ObjectSink) {
                 return new CloningObjectSink(inboundCloner, (ObjectSink) original);
+            } else if (original instanceof InputStream) {
+                return original;
+            } else if (original instanceof OutputStream) {
+                return original;
+            } else if (original instanceof Reader) {
+                return original;
+            } else if (original instanceof Writer) {
+                return original;
+            } else if (original instanceof ByteInput) {
+                return original;
+            } else if (original instanceof ByteOutput) {
+                return original;
             } else if (original instanceof LocalRequestHandlerConnector) {
                 return original;
             } else if (original instanceof EndpointImpl) {

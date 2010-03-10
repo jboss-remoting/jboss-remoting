@@ -74,8 +74,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
         this.remoteConnection = remoteConnection;
         this.marshallerFactory = marshallerFactory;
         final MarshallingConfiguration config = new MarshallingConfiguration();
-        config.setClassExternalizerFactory(PrimaryExternalizerFactory.INSTANCE);
-        config.setObjectTable(new PrimaryObjectTable(connectionContext.getConnectionProviderContext().getEndpoint(), this));
+        final PrimaryExternalizerFactory externalizerFactory = new PrimaryExternalizerFactory(this);
+        final PrimaryObjectTable objectTable = new PrimaryObjectTable(connectionContext.getConnectionProviderContext().getEndpoint(), externalizerFactory);
+        config.setClassTable(PrimaryClassTable.INSTANCE);
+        config.setClassExternalizerFactory(externalizerFactory);
+        config.setObjectTable(objectTable);
         config.setStreamHeader(Marshalling.nullStreamHeader());
         // fixed for now (v0)
         config.setVersion(2);

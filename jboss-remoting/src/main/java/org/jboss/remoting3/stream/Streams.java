@@ -24,6 +24,8 @@ package org.jboss.remoting3.stream;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.UnsupportedCharsetException;
@@ -33,6 +35,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Executor;
+import org.jboss.marshalling.ByteInput;
+import org.jboss.marshalling.ByteOutput;
 import org.jboss.marshalling.Pair;
 import org.jboss.xnio.Cancellable;
 import org.jboss.xnio.FutureResult;
@@ -275,6 +279,116 @@ public final class Streams {
      */
     public static <T> ObjectSource<T> getEnumerationObjectSource(Enumeration<T> enumeration) {
         return new EnumerationObjectSource<T>(enumeration);
+    }
+
+    /**
+     * Copy from one stream to another.
+     *
+     * @param input the source stream
+     * @param output the destination stream
+     * @param close {@code true} if the input and output streams should be closed
+     * @param bufferSize the buffer size
+     * @throws IOException if an I/O error occurs
+     */
+    public static void copyStream(InputStream input, OutputStream output, boolean close, int bufferSize) throws IOException {
+        final byte[] buffer = new byte[bufferSize];
+        int res;
+        try {
+            for (;;) {
+                res = input.read(buffer);
+                if (res == -1) {
+                    if (close) {
+                        input.close();
+                        output.close();
+                    }
+                    return;
+                }
+                output.write(buffer, 0, res);
+            }
+        } finally {
+            if (close) {
+                IoUtils.safeClose(input);
+                IoUtils.safeClose(output);
+            }
+        }
+    }
+
+    /**
+     * Copy from one stream to another.  A default buffer size is assumed.
+     *
+     * @param input the source stream
+     * @param output the destination stream
+     * @param close {@code true} if the input and output streams should be closed
+     * @throws IOException if an I/O error occurs
+     */
+    public static void copyStream(InputStream input, OutputStream output, boolean close) throws IOException {
+        copyStream(input, output, close, 8192);
+    }
+
+    /**
+     * Copy from one stream to another.  A default buffer size is assumed, and both streams are closed on completion.
+     *
+     * @param input the source stream
+     * @param output the destination stream
+     * @throws IOException if an I/O error occurs
+     */
+    public static void copyStream(InputStream input, OutputStream output) throws IOException {
+        copyStream(input, output, true, 8192);
+    }
+
+    /**
+     * Copy from one stream to another.
+     *
+     * @param input the source stream
+     * @param output the destination stream
+     * @param close {@code true} if the input and output streams should be closed
+     * @param bufferSize the buffer size
+     * @throws IOException if an I/O error occurs
+     */
+    public static void copyStream(ByteInput input, ByteOutput output, boolean close, int bufferSize) throws IOException {
+        final byte[] buffer = new byte[bufferSize];
+        int res;
+        try {
+            for (;;) {
+                res = input.read(buffer);
+                if (res == -1) {
+                    if (close) {
+                        input.close();
+                        output.close();
+                    }
+                    return;
+                }
+                output.write(buffer, 0, res);
+            }
+        } finally {
+            if (close) {
+                IoUtils.safeClose(input);
+                IoUtils.safeClose(output);
+            }
+        }
+    }
+
+    /**
+     * Copy from one stream to another.  A default buffer size is assumed.
+     *
+     * @param input the source stream
+     * @param output the destination stream
+     * @param close {@code true} if the input and output streams should be closed
+     * @throws IOException if an I/O error occurs
+     */
+    public static void copyStream(ByteInput input, ByteOutput output, boolean close) throws IOException {
+        copyStream(input, output, close, 8192);
+    }
+
+    /**
+     * Copy from one stream to another.  A default buffer size is assumed, and both streams are closed on completion.
+     *
+     * @param input the source stream
+     * @param output the destination stream
+     * @throws IOException if an I/O error occurs
+     */
+    public static void copyStream(ByteInput input, ByteOutput output) throws IOException {
+        copyStream(input, output, true, 8192);
     }
 
     static Charset getCharset(final String charsetName) throws UnsupportedEncodingException {

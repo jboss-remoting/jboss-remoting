@@ -34,14 +34,17 @@ final class MarshallerObjectSink<T> implements ObjectSink<T> {
     }
 
     public void accept(final T instance) throws IOException {
+        marshaller.writeByte(RemoteProtocol.OSINK_OBJECT);
         marshaller.writeObject(instance);
     }
 
     public void flush() throws IOException {
+        marshaller.writeByte(RemoteProtocol.OSINK_FLUSH);
         marshaller.flush();
     }
 
     public void close() throws IOException {
+        marshaller.writeByte(RemoteProtocol.OSINK_CLOSE);
         marshaller.close();
     }
 }

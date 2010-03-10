@@ -194,7 +194,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
-    <I, O> LocalRequestHandler createLocalRequestHandler(final RequestListener<? super I, ? extends O> requestListener, final ClientContextImpl clientContext, final Class<I> requestClass, final Class<O> replyClass, final OptionMap optionMap) throws IOException {
+    <I, O> LocalRequestHandler createLocalRequestHandler(final RequestListener<? super I, ? extends O> requestListener, final ClientContextImpl clientContext, final Class<I> requestClass, final Class<O> replyClass) throws IOException {
         if (requestListener == null) {
             throw new IllegalArgumentException("requestListener is null");
         }
@@ -234,7 +234,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     private final class ServiceBuilderImpl<I, O> implements ServiceBuilder<I, O> {
-        private String groupName;
+        private String groupName = "default";
         private String serviceType;
         private Class<I> requestType;
         private Class<O> replyType;
@@ -255,7 +255,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         @SuppressWarnings({ "unchecked" })
         public <N> ServiceBuilder<N, O> setRequestType(final Class<N> newRequestType) {
             if (newRequestType == null) {
-                throw new NullPointerException("newRequestType is null");
+                throw new IllegalArgumentException("newRequestType is null");
             }
             clientListener = null;
             ServiceBuilderImpl<N, O> castBuilder = (ServiceBuilderImpl<N, O>) this;
@@ -266,7 +266,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         @SuppressWarnings({ "unchecked" })
         public <N> ServiceBuilder<I, N> setReplyType(final Class<N> newReplyType) {
             if (newReplyType == null) {
-                throw new NullPointerException("newReplyType is null");
+                throw new IllegalArgumentException ("newReplyType is null");
             }
             clientListener = null;
             ServiceBuilderImpl<I, N> castBuilder = (ServiceBuilderImpl<I, N>) this;
@@ -289,7 +289,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public ServiceBuilder<I, O> setOptionMap(final OptionMap optionMap) {
             if (optionMap == null) {
-                throw new NullPointerException("optionMap is null");
+                throw new IllegalArgumentException ("optionMap is null");
             }
             this.optionMap = optionMap;
             return this;
@@ -301,19 +301,19 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 sm.checkPermission(REGISTER_SERVICE_PERM);
             }
             if (groupName == null) {
-                throw new NullPointerException("groupName is null");
+                throw new IllegalArgumentException("groupName is null");
             }
             if (serviceType == null) {
-                throw new NullPointerException("serviceType is null");
+                throw new IllegalArgumentException("serviceType is null");
             }
             if (requestType == null) {
-                throw new NullPointerException("requestType is null");
+                throw new IllegalArgumentException("requestType is null");
             }
             if (replyType == null) {
-                throw new NullPointerException("replyType is null");
+                throw new IllegalArgumentException("replyType is null");
             }
             if (clientListener == null) {
-                throw new NullPointerException("clientListener is null");
+                throw new IllegalArgumentException("clientListener is null");
             }
             final Integer metric = optionMap.get(RemotingOptions.METRIC);
             if (metric != null && metric.intValue() < 0) {
@@ -430,13 +430,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             sm.checkPermission(CREATE_CLIENT_PERM);
         }
         if (requestHandler == null) {
-            throw new NullPointerException("requestHandler is null");
+            throw new IllegalArgumentException("requestHandler is null");
         }
         if (requestType == null) {
-            throw new NullPointerException("requestType is null");
+            throw new IllegalArgumentException("requestType is null");
         }
         if (replyType == null) {
-            throw new NullPointerException("replyType is null");
+            throw new IllegalArgumentException("replyType is null");
         }
         checkOpen();
         final ClientImpl<I, O> client = ClientImpl.create(requestHandler, executor, requestType, replyType, clientClassLoader);
@@ -534,7 +534,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     public <I, O> Client<I, O> createLocalClient(final ClientListener<I, O> clientListener, final Class<I> requestClass, final Class<O> replyClass, final ClassLoader clientClassLoader, final OptionMap optionMap) throws IOException {
         final ClientContextImpl context = new ClientContextImpl(executor, null);
         final RequestListener<I, O> requestListener = clientListener.handleClientOpen(context, optionMap);
-        final LocalRequestHandler localRequestHandler = createLocalRequestHandler(requestListener, context, requestClass, replyClass, optionMap);
+        final LocalRequestHandler localRequestHandler = createLocalRequestHandler(requestListener, context, requestClass, replyClass);
         final LocalRemoteRequestHandler remoteRequestHandler = new LocalRemoteRequestHandler(localRequestHandler, clientClassLoader, optionMap, this.optionMap, executor);
         return ClientImpl.create(remoteRequestHandler, executor, requestClass, replyClass, clientClassLoader);
     }

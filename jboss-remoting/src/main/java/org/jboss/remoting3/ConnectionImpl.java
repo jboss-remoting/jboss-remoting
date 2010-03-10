@@ -88,7 +88,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
 
     public <I, O> ClientConnector<I, O> createClientConnector(final RequestListener<I, O> listener, final Class<I> requestClass, final Class<O> replyClass, final OptionMap optionMap) throws IOException {
         final ClientContextImpl context = new ClientContextImpl(getExecutor(), this);
-        final LocalRequestHandler localRequestHandler = endpoint.createLocalRequestHandler(listener, context, requestClass, replyClass, optionMap);
+        final LocalRequestHandler localRequestHandler = endpoint.createLocalRequestHandler(listener, context, requestClass, replyClass);
         final RequestHandlerConnector connector = connectionHandler.createConnector(localRequestHandler);
         context.addCloseHandler(SpiUtils.closingCloseHandler(localRequestHandler));
         return new ClientConnectorImpl<I, O>(connector, endpoint, requestClass, replyClass, context);

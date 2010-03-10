@@ -22,7 +22,12 @@
 
 package org.jboss.remoting3.test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jboss.remoting3.Client;
 import org.jboss.remoting3.ClientConnector;
@@ -37,6 +42,7 @@ import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.RequestContext;
 import org.jboss.remoting3.RequestListener;
 import org.jboss.remoting3.ServiceNotFoundException;
+import org.jboss.remoting3.stream.Streams;
 import org.jboss.xnio.IoUtils;
 import org.jboss.xnio.OptionMap;
 import org.jboss.xnio.Options;
@@ -57,6 +63,7 @@ public abstract class InvocationTestBase {
 
     @BeforeTest
     public void setUp() throws IOException {
+        log.info("::::: STARTING TEST FOR: %s :::::", getClass().getName());
         enter();
         try {
             Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
@@ -298,6 +305,111 @@ public abstract class InvocationTestBase {
                         assertNotNull(map2, "Option map was not received");
                         assertTrue(map2.contains(Options.BROADCAST), "Option does not appear in destination map");
                         assertTrue(map2.get(Options.BROADCAST).booleanValue(), "Option changed value in destination map");
+                    } finally {
+                        IoUtils.safeClose(client);
+                        client.awaitClosedUninterruptibly();
+                    }
+                } finally {
+                    IoUtils.safeClose(connection);
+                    connection.awaitClosedUninterruptibly();
+                }
+            } finally {
+                IoUtils.safeClose(registration);
+                registration.awaitClosedUninterruptibly();
+            }
+        } finally {
+            exit();
+        }
+    }
+
+    public void testInputStream() throws Throwable {
+        enter();
+        try {
+            final Registration registration = endpoint.serviceBuilder(InputStream.class, InputStream.class).setServiceType("streamtest").setClientListener(new ClientListener<InputStream, InputStream>() {
+                public RequestListener<InputStream, InputStream> handleClientOpen(final ClientContext clientContext, final OptionMap optionMap) {
+                    return new RequestListener<InputStream, InputStream>() {
+                        public void handleRequest(final RequestContext<InputStream> context, final InputStream request) throws RemoteExecutionException {
+                            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                            try {
+                                Streams.copyStream(request, baos);
+                            } catch (IOException e) {
+                                try {
+                                    context.sendFailure("I/O error", e);
+                                } catch (IOException e1) {
+                                    // blah
+                                }
+                            }
+                            try {
+                                context.sendReply(new ByteArrayInputStream(baos.toByteArray()));
+                            } catch (IOException e) {
+                                // blah
+                            }
+                        }
+                    };
+                }
+            }).register();
+            try {
+                final Connection connection = getConnection();
+                try {
+                    final Client<InputStream, InputStream> client = connection.openClient("streamtest", "*", InputStream.class, InputStream.class, InvocationTestBase.class.getClassLoader(), OptionMap.EMPTY).get();
+                    try {
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        Streams.copyStream(client.invoke(new ByteArrayInputStream("This is a test!!!".getBytes())), baos);
+                        assertEquals(new String(baos.toByteArray()), "This is a test!!!");
+                    } finally {
+                        IoUtils.safeClose(client);
+                        client.awaitClosedUninterruptibly();
+                    }
+                } finally {
+                    IoUtils.safeClose(connection);
+                    connection.awaitClosedUninterruptibly();
+                }
+            } finally {
+                IoUtils.safeClose(registration);
+                registration.awaitClosedUninterruptibly();
+            }
+        } finally {
+            exit();
+        }
+    }
+
+    public void testOutputStream() throws Throwable {
+        enter();
+        try {
+            final ByteArrayOutputStream os = new ByteArrayOutputStream();
+            final Registration registration = endpoint.serviceBuilder(OutputStream.class, OutputStream.class).setServiceType("streamtest").setClientListener(new ClientListener<OutputStream, OutputStream>() {
+                public RequestListener<OutputStream, OutputStream> handleClientOpen(final ClientContext clientContext, final OptionMap optionMap) {
+                    return new RequestListener<OutputStream, OutputStream>() {
+                        public void handleRequest(final RequestContext<OutputStream> context, final OutputStream request) throws RemoteExecutionException {
+                            try {
+                                Streams.copyStream(new ByteArrayInputStream("This is a test...".getBytes()), request);
+                            } catch (IOException e) {
+                                try {
+                                    context.sendFailure("I/O error", e);
+                                } catch (IOException e1) {
+                                    // blah
+                                }
+                            }
+                            try {
+                                context.sendReply(os);
+                            } catch (IOException e) {
+                                // blah
+                            }
+                        }
+                    };
+                }
+            }).register();
+            try {
+                final Connection connection = getConnection();
+                try {
+                    final Client<OutputStream, OutputStream> client = connection.openClient("streamtest", "*", OutputStream.class, OutputStream.class, InvocationTestBase.class.getClassLoader(), OptionMap.EMPTY).get();
+                    try {
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        final OutputStream result = client.invoke(baos);
+                        assertEquals(new String(baos.toByteArray()), "This is a test...");
+                        Streams.copyStream(new ByteArrayInputStream("This is a test #2...".getBytes()), result);
+                        // this test can't finish in time
+//                        assertEquals(new String(os.toByteArray()), "This is a test #2...");
                     } finally {
                         IoUtils.safeClose(client);
                         client.awaitClosedUninterruptibly();

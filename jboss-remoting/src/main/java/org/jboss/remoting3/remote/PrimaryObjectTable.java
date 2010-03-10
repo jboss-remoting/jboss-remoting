@@ -23,40 +23,65 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.io.StreamCorruptedException;
-import java.util.Random;
-import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
+import java.util.Arrays;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 import org.jboss.marshalling.Marshaller;
-import org.jboss.marshalling.NioByteInput;
 import org.jboss.marshalling.ObjectTable;
 import org.jboss.marshalling.Unmarshaller;
-import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.stream.ObjectSink;
-import org.jboss.remoting3.stream.ObjectSource;
-import org.jboss.remoting3.stream.ReaderInputStream;
-import org.jboss.remoting3.stream.WriterOutputStream;
 import org.jboss.xnio.log.Logger;
 
 final class PrimaryObjectTable implements ObjectTable {
 
-    private final Endpoint endpoint;
-    private final RemoteConnectionHandler connectionHandler;
-    private final Executor executor;
     private static final Logger log = Loggers.main;
 
-    PrimaryObjectTable(final Endpoint endpoint, final RemoteConnectionHandler connectionHandler) {
-        this.endpoint = endpoint;
-        this.connectionHandler = connectionHandler;
-        executor = this.connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor();
+    private final Map<Object, Writer> writerMap;
+    private final List<Object> readerList;
+
+    // Object table types
+
+    static final byte OBJ_ENDPOINT = 0;
+    static final byte OBJ_CLIENT_CONNECTOR = 1;
+    static final byte OBJ_INPUT_STREAM = 2;
+    static final byte OBJ_OUTPUT_STREAM = 3;
+    static final byte OBJ_READER = 4;
+    static final byte OBJ_WRITER = 5;
+    static final byte OBJ_OBJECT_SOURCE = 6;
+    static final byte OBJ_OBJECT_SINK = 7;
+
+    PrimaryObjectTable(final Endpoint endpoint, final PrimaryExternalizerFactory externalizerFactory) {
+        final Map<Object, Writer> map = new IdentityHashMap<Object, Writer>();
+        final List<Object> list = Arrays.asList(new Object[8]);
+        add(map, list, 0, endpoint);
+        add(map, list, 1, PrimaryExternalizerFactory.RequestHandlerConnectorExternalizer.INSTANCE);
+        add(map, list, 2, externalizerFactory.inputStream);
+        add(map, list, 3, externalizerFactory.outputStream);
+        add(map, list, 4, externalizerFactory.reader);
+        add(map, list, 5, externalizerFactory.writer);
+        add(map, list, 6, externalizerFactory.objectSource);
+        add(map, list, 7, externalizerFactory.objectSink);
+        readerList = list;
+        writerMap = map;
     }
 
-    private static final Writer ZERO_WRITER = new ByteWriter(RemoteProtocol.OBJ_ENDPOINT);
-    private static final Writer ONE_WRITER = new ByteWriter(RemoteProtocol.OBJ_CLIENT_CONNECTOR);
+    private static void add(final Map<Object, Writer> map, final List<Object> list, final int idx, final Object instance) {
+        final ByteWriter writer = CACHED_WRITERS[idx];
+        map.put(instance, writer);
+        list.set(idx, instance);
+    }
+
+    private static final ByteWriter[] CACHED_WRITERS = {
+            new ByteWriter(0),
+            new ByteWriter(1),
+            new ByteWriter(2),
+            new ByteWriter(3),
+            new ByteWriter(4),
+            new ByteWriter(5),
+            new ByteWriter(6),
+            new ByteWriter(7),
+    };
 
     private static final class ByteWriter implements Writer {
         private final byte b;
@@ -68,140 +93,18 @@ final class PrimaryObjectTable implements ObjectTable {
         public void writeObject(final Marshaller marshaller, final Object object) throws IOException {
             marshaller.writeByte(b);
         }
+
+        public int getByte() {
+            return b & 0xff;
+        }
     }
 
     public Writer getObjectWriter(final Object object) throws IOException {
-        if (object == endpoint) {
-            return ZERO_WRITER;
-        } else if (object == PrimaryExternalizerFactory.RequestHandlerConnectorExternalizer.INSTANCE) {
-            return ONE_WRITER;
-        } else if (object instanceof InputStream) {
-            return new Writer() {
-                public void writeObject(final Marshaller marshaller, final Object object) throws IOException {
-                    writeOutboundStream(marshaller, RemoteProtocol.OBJ_INPUT_STREAM, (InputStream) object);
-                }
-            };
-        } else if (object instanceof OutputStream) {
-            return new Writer() {
-                public void writeObject(final Marshaller marshaller, final Object object) throws IOException {
-                    writeInboundStream(marshaller, RemoteProtocol.OBJ_OUTPUT_STREAM, (OutputStream) object);
-                }
-            };
-        } else if (object instanceof Reader) {
-            return new Writer() {
-                public void writeObject(final Marshaller marshaller, final Object object) throws IOException {
-                    writeOutboundStream(marshaller, RemoteProtocol.OBJ_READER, new ReaderInputStream((Reader)object, RemoteProtocol.UTF_8));
-                }
-            };
-        } else if (object instanceof java.io.Writer) {
-            return new Writer() {
-                public void writeObject(final Marshaller marshaller, final Object object) throws IOException {
-                    writeInboundStream(marshaller, RemoteProtocol.OBJ_WRITER, new WriterOutputStream((java.io.Writer)object, RemoteProtocol.UTF_8));
-                }
-            };
-        } else if (object instanceof ObjectSource) {
-            return new Writer() {
-                public void writeObject(final Marshaller marshaller, final Object object) throws IOException {
-                    writeOutboundStream(marshaller, RemoteProtocol.OBJ_OBJECT_SOURCE, (ObjectSource) object);
-                }
-            };
-        } else if (object instanceof ObjectSink) {
-            return new Writer() {
-                public void writeObject(final Marshaller marshaller, final Object object) throws IOException {
-                    writeInboundStream(marshaller, RemoteProtocol.OBJ_OBJECT_SINK, (ObjectSink) object);
-                }
-            };
-        } else {
-            return null;
-        }
-    }
-
-    private void writeInboundStream(final Marshaller marshaller, final byte code, final ObjectSink objectSink) throws IOException {
-        marshaller.writeByte(code);
-        final IntKeyMap<InboundStream> inboundStreams = connectionHandler.getInboundStreams();
-        final Random random = connectionHandler.getRandom();
-        int id;
-        synchronized (inboundStreams) {
-            while (inboundStreams.containsKey(id = random.nextInt() & ~1));
-            inboundStreams.put(id, new InboundStream(id, connectionHandler.getRemoteConnection(), new InboundStream.ByteInputResult() {
-                public void accept(final NioByteInput nioByteInput, final InboundStream inboundStream) {
-                    try {
-                        executor.execute(new InboundObjectSinkReceiveTask(nioByteInput, inboundStream, connectionHandler, objectSink));
-                    } catch (RejectedExecutionException e) {
-                        log.warn("Unable to start task for forwarded stream: %s", e);
-                        inboundStream.sendAsyncException();
-                    }
-                }
-            }));
-        }
-        marshaller.writeInt(id);
-    }
-
-    private void writeOutboundStream(final Marshaller marshaller, final byte code, final ObjectSource objectSource) throws IOException {
-        marshaller.writeByte(code);
-        final IntKeyMap<OutboundStream> outboundStreams = connectionHandler.getOutboundStreams();
-        final Random random = connectionHandler.getRandom();
-        int id;
-        final OutboundStream outboundStream;
-        synchronized (outboundStreams) {
-            while (outboundStreams.containsKey(id = random.nextInt() | 1));
-            outboundStreams.put(id, outboundStream = new OutboundStream(id, connectionHandler.getRemoteConnection()));
-        }
-        marshaller.writeInt(id);
-        try {
-            executor.execute(new OutboundObjectSourceTransmitTask(objectSource, outboundStream, connectionHandler));
-        } catch (RejectedExecutionException e) {
-            log.warn("Unable to start task for forwarded stream: %s", e);
-            outboundStream.sendException();
-        }
-    }
-
-    /**
-     * This looks backwards but it really isn't.  When we write an OutputStream, we want the remote side to send us inbound
-     * to feed it.
-     *
-     * @param marshaller the marshaller
-     * @param code the code
-     * @param outputStream the output stream
-     * @throws IOException if an I/O error occurs
-     */
-    private void writeInboundStream(final Marshaller marshaller, final byte code, final OutputStream outputStream) throws IOException {
-        marshaller.writeByte(code);
-        final IntKeyMap<InboundStream> inboundStreams = connectionHandler.getInboundStreams();
-        final Random random = connectionHandler.getRandom();
-        int id;
-        synchronized (inboundStreams) {
-            while (inboundStreams.containsKey(id = random.nextInt() & ~1));
-            inboundStreams.put(id, new InboundStream(id, connectionHandler.getRemoteConnection(), outputStream));
-        }
-        marshaller.writeInt(id);
-    }
-
-    private void writeOutboundStream(final Marshaller marshaller, final byte code, final InputStream inputStream) throws IOException {
-        marshaller.writeByte(code);
-        final IntKeyMap<OutboundStream> outboundStreams = connectionHandler.getOutboundStreams();
-        final Random random = connectionHandler.getRandom();
-        int id;
-        final OutboundStream outboundStream;
-        synchronized (outboundStreams) {
-            while (outboundStreams.containsKey(id = random.nextInt() | 1));
-            outboundStreams.put(id, outboundStream = new OutboundStream(id, connectionHandler.getRemoteConnection()));
-        }
-        marshaller.writeInt(id);
-        try {
-            executor.execute(new OutboundInputStreamTransmitTask(inputStream, outboundStream));
-        } catch (RejectedExecutionException e) {
-            log.warn("Unable to start task for forwarded stream: %s", e);
-            outboundStream.sendException();
-        }
+        return writerMap.get(object);
     }
 
     public Object readObject(final Unmarshaller unmarshaller) throws IOException, ClassNotFoundException {
         final int id = unmarshaller.readUnsignedByte();
-        switch (id) {
-            case RemoteProtocol.OBJ_ENDPOINT: return endpoint;
-            case RemoteProtocol.OBJ_CLIENT_CONNECTOR: return PrimaryExternalizerFactory.RequestHandlerConnectorExternalizer.INSTANCE;
-            default: throw new StreamCorruptedException("Unknown object table ID byte " + id);
-        }
+        return readerList.get(id);
     }
 }

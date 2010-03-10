@@ -34,7 +34,7 @@ final class InboundStream {
     private final RemoteConnection remoteConnection;
     private final Receiver receiver;
 
-    private State state;
+    private State state = State.WAITING_FIRST;
     private static final Logger log = Loggers.main;
 
     InboundStream(final int id, final RemoteConnection remoteConnection, final Receiver receiver) {
@@ -49,7 +49,7 @@ final class InboundStream {
         final NioByteInput byteInput = new NioByteInput(
                 new NioByteInputHandler()
         );
-        receiver = new NioByteInputReceiver(byteInput);
+        receiver = new NioByteInputReceiver(byteInput, remoteConnection);
         byteInputResult.accept(byteInput, this);
     }
 
@@ -152,7 +152,9 @@ final class InboundStream {
     }
 
     void sendAsyncStart() {
-        doSend(RemoteProtocol.STREAM_ASYNC_START);
+        synchronized (this) {
+            doSend(RemoteProtocol.STREAM_ASYNC_START);
+        }
     }
 
     void sendAck() {
@@ -185,11 +187,13 @@ final class InboundStream {
         }
     }
 
-    private final class NioByteInputReceiver implements Receiver, NioByteInput.BufferReturn {
+    private static final class NioByteInputReceiver implements Receiver, NioByteInput.BufferReturn {
         private final NioByteInput nioByteInput;
+        private final RemoteConnection remoteConnection;
 
-        NioByteInputReceiver(final NioByteInput nioByteInput) {
+        NioByteInputReceiver(final NioByteInput nioByteInput, final RemoteConnection remoteConnection) {
             this.nioByteInput = nioByteInput;
+            this.remoteConnection = remoteConnection;
         }
 
         public void push(final ByteBuffer buffer) {
