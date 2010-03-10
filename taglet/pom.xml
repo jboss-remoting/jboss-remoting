@@ -35,7 +35,7 @@
     <name>JBoss Remoting 3 Taglet</name>
     <description>JBoss Remoting 3 Documentation Taglet</description>
     <packaging>jar</packaging>
-    <version>3.1.0.Beta2-SNAPSHOT</version>
+    <version>3.1.0.Beta2</version>
 
     <dependencies>
         <dependency>
