@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.net.URI;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.RemotingOptions;
-import org.jboss.xnio.OptionMap;
+import org.xnio.OptionMap;
 import org.testng.annotations.Test;
 
 @Test(suiteName = "local")

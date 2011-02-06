@@ -23,11 +23,9 @@
 package org.jboss.remoting3.remote;
 
 import org.jboss.marshalling.util.IntKeyMap;
-import org.jboss.remoting3.spi.RemoteRequestHandler;
-import org.jboss.remoting3.spi.RequestHandlerConnector;
-import org.jboss.xnio.Cancellable;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.Result;
+import org.xnio.Cancellable;
+import org.xnio.IoUtils;
+import org.xnio.Result;
 
 final class ReceivedRequestHandlerConnector implements RequestHandlerConnector {
     private final RemoteConnectionHandler connectionHandler;

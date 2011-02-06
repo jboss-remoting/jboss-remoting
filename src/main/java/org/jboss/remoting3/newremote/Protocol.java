@@ -1,0 +1,174 @@
+/*
+ * JBoss, Home of Professional Open Source
+ * Copyright 2011, JBoss Inc., and individual contributors as indicated
+ * by the @authors tag. See the copyright.txt in the distribution for a
+ * full listing of individual contributors.
+ *
+ * This is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this software; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ */
+
+package org.jboss.remoting3.newremote;
+
+import java.nio.charset.Charset;
+
+/**
+ * The "remote" protocol.  Use this class to create an instance of the connection provider for the "remote" protocol.
+ */
+final class Protocol {
+
+    /**
+     * The highest-supported version of the remote protocol supported by this implementation.
+     */
+    static final byte VERSION = 0;
+
+    // Message types
+
+    /**
+     * byte 0: GREETING
+     * byte 1..n: greeting message body
+     */
+    static final byte GREETING = 0;
+
+    /**
+     * byte 0: AUTH_REQUEST
+     * byte 1..n: request body
+     */
+    static final byte AUTH_REQUEST = 1;
+    /**
+     * byte 0: AUTH_CHALLENGE
+     * byte 1..n: request body
+     */
+    static final byte AUTH_CHALLENGE = 2;
+    /**
+     * byte 0: AUTH_RESPONSE
+     * byte 1..n: request body
+     */
+    static final byte AUTH_RESPONSE = 3;
+    /**
+     * byte 0: AUTH_COMPLETE
+     */
+    static final byte AUTH_COMPLETE = 4;
+    /**
+     * byte 0: AUTH_REJECTED
+     * byte 1..n: UTF-8 reason string
+     */
+    static final byte AUTH_REJECTED = 5;
+
+    // Messages for opening channels
+
+    // Channel are bidirectional thus each side's ID namespace is intermingled
+    // if local in origin, read 0 MSb, write 1 MSb
+    // if remote in origin, read 1 MSb, write 0 MSb
+
+    /**
+     * byte 0: CHANNEL_OPEN_REQUEST
+     * byte 1..4: new channel ID (MSb = 1)
+     * byte n+1..m: requested parameters
+     *    00 = end of parameters
+     *    01 = service type (arg = UTF8) (required)
+     *    80 = max outbound (requester->responder) message window size (arg = uint8)
+     *    81 = max inbound (responder->requester) message window size (arg = uint8)
+     */
+    static final byte CHANNEL_OPEN_REQUEST = 0x10;
+    /**
+     * byte 0: CHANNEL_OPEN_ACK
+     * byte 1..4: channel ID (MSb = 0)
+     * byte 5..n: agreed parameters
+     *    00 = end of parameters
+     *    80 = max outbound (requester->responder) message window size (arg = uint8)
+     *    81 = max inbound (responder->requester) message window size (arg = uint8)
+     */
+    static final byte CHANNEL_OPEN_ACK = 0x11;
+    /**
+     * byte 0: SERVICE_NOT_FOUND
+     * byte 1..4: channel ID (MSb = 0)
+     */
+    static final byte SERVICE_NOT_FOUND = 0x12;
+    /**
+     * byte 0: SERVICE_ERROR
+     * byte 1..4: channel ID (MSb = 0)
+     * byte 5..n: reason UTF8
+     */
+    static final byte SERVICE_ERROR = 0x13;
+
+    // Messages for managing channels
+
+    /**
+     * byte 0: CHANNEL_CLOSE_WRITE
+     * byte 1..4: channel ID
+     *
+     * Sent when channel writes are shut down.
+     */
+    static final byte CHANNEL_CLOSE_WRITE = 0x20;
+    /**
+     * byte 0: CHANNEL_CLOSE_READ
+     * byte 1..4: channel ID
+     *
+     * Sent when a channel is closed without necessarily consuming all of its incoming messages.  Tell the sending side
+     * to drop and close all in-progress messages, and refuse new ones.
+     */
+    static final byte CHANNEL_CLOSE_READ = 0x21;
+
+    // Messages for handling channel messages
+    // Messages are unidirectional thus each side's ID namespace is distinct
+
+    /**
+     * byte 0: MESSAGE_DATA
+     * byte 1..4: channel ID
+     * byte 5..6: message ID
+     * byte 7: flags: - - - - - - - E  E = EOF
+     * byte 8..n: message content
+     *
+     * Always flows from message sender to message recipient.
+     */
+    static final byte MESSAGE_DATA = 0x30;
+    /**
+     * byte 0: MESSAGE_WINDOW_OPEN
+     * byte 1..4: channel ID
+     * byte 5..6: message ID
+     * byte 7: window open amount
+     *
+     * Always flows from message recipient to message sender.
+     */
+    static final byte MESSAGE_WINDOW_OPEN = 0x31;
+    /**
+     * byte 0: MESSAGE_ASYNC_CLOSE
+     * byte 1..4: channel ID
+     * byte 5..6: message ID
+     *
+     * Always flows from message recipient to message sender.
+     */
+    static final byte MESSAGE_ASYNC_CLOSE = 0x32;
+
+    // Messages for handling connection status
+
+    /**
+     * byte 0: CONNECTION_ALIVE
+     */
+    static final byte CONNECTION_ALIVE = (byte) 0xF0;
+
+    // Greeting types
+
+    static final byte GREETING_VERSION = 0;   // sent by client & server
+    static final byte GREETING_SASL_MECH = 1; // sent by server
+    static final byte GREETING_ENDPOINT_NAME = 2; // sent by client & server
+    static final byte GREETING_WINDOW_SIZE = 3; // send by client & server - incoming max window size
+
+    static final Charset UTF_8 = Charset.forName("UTF8");
+
+    private Protocol() {
+    }
+}

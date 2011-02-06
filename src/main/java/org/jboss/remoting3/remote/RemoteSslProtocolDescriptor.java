@@ -28,11 +28,10 @@ import java.util.Properties;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
-import org.jboss.remoting3.spi.RemotingServiceDescriptor;
-import org.jboss.xnio.Connector;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Xnio;
-import org.jboss.xnio.channels.TcpChannel;
+import org.xnio.Connector;
+import org.xnio.OptionMap;
+import org.xnio.Xnio;
+import org.xnio.channels.TcpChannel;
 
 /**
  * The protocol descriptor for the "remote+ssl" connection protocol.  This class is used to auto-detect the "remote+ssl" protocol

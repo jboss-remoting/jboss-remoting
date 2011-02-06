@@ -25,7 +25,7 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import org.jboss.xnio.IoUtils;
+import org.xnio.IoUtils;
 
 final class OutboundInputStreamTransmitTask implements Runnable {
     private final InputStream inputStream;

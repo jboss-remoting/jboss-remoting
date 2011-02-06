@@ -23,9 +23,9 @@
 package org.jboss.remoting3.spi;
 
 import java.net.URI;
-import org.jboss.xnio.Cancellable;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Result;
+import org.xnio.Cancellable;
+import org.xnio.OptionMap;
+import org.xnio.Result;
 
 import javax.security.auth.callback.CallbackHandler;
 

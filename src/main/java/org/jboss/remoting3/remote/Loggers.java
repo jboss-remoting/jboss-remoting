@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3.remote;
 
-import org.jboss.xnio.log.Logger;
+import org.jboss.logging.Logger;
 
 final class Loggers {
 

@@ -26,8 +26,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import org.jboss.marshalling.NioByteInput;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.log.Logger;
+import org.xnio.IoUtils;
+import org.jboss.logging.Logger;
 
 final class InboundStream {
     private final int id;

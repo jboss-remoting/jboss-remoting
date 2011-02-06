@@ -29,14 +29,11 @@ import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.jboss.remoting3.spi.LocalRequestHandler;
-import org.jboss.remoting3.spi.RemoteRequestHandler;
-import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.remoting3.spi.SpiUtils;
-import org.jboss.xnio.FutureResult;
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.TranslatingResult;
+import org.xnio.FutureResult;
+import org.xnio.IoFuture;
+import org.xnio.OptionMap;
+import org.xnio.TranslatingResult;
 
 class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements Connection {
 

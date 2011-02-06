@@ -28,21 +28,20 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.security.AccessControlContext;
 import java.security.AccessController;
-import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.NetworkServerProvider;
-import org.jboss.remoting3.spi.ProtocolServiceType;
-import org.jboss.xnio.Cancellable;
-import org.jboss.xnio.ChannelListener;
-import org.jboss.xnio.Connector;
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Result;
-import org.jboss.xnio.channels.ConnectedStreamChannel;
+import org.xnio.Cancellable;
+import org.xnio.ChannelListener;
+import org.xnio.Connector;
+import org.xnio.IoFuture;
+import org.xnio.IoUtils;
+import org.xnio.OptionMap;
+import org.xnio.Result;
+import org.xnio.channels.AcceptingChannel;
+import org.xnio.channels.ConnectedStreamChannel;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -52,18 +51,12 @@ import javax.security.auth.callback.CallbackHandler;
 final class RemoteConnectionProvider implements ConnectionProvider {
 
     private final ConnectionProviderContext connectionProviderContext;
-    private final Connector<InetSocketAddress, ? extends ConnectedStreamChannel<InetSocketAddress>> connector;
+    private final Connector<ConnectedStreamChannel> connector;
     private final ProviderInterface providerInterface = new ProviderInterface();
-    private final ProviderDescriptor providerDescriptor;
 
-    RemoteConnectionProvider(final ConnectionProviderContext connectionProviderContext, final Connector<InetSocketAddress, ? extends ConnectedStreamChannel<InetSocketAddress>> connector) {
+    RemoteConnectionProvider(final ConnectionProviderContext connectionProviderContext, final Connector<ConnectedStreamChannel> connector) {
         this.connectionProviderContext = connectionProviderContext;
         this.connector = connector;
-        final ProviderDescriptor providerDescriptor = connectionProviderContext.getProtocolServiceProvider(ProtocolServiceType.MARSHALLER_PROVIDER_DESCRIPTOR, "river");
-        if (providerDescriptor == null) {
-            throw new IllegalArgumentException("River marshalling protocol is not installed");
-        }
-        this.providerDescriptor = providerDescriptor;
     }
 
     public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
@@ -79,9 +72,9 @@ final class RemoteConnectionProvider implements ConnectionProvider {
         // Get the caller context so that GSSAPI can work
         final AccessControlContext acc = AccessController.getContext();
         // Open a client channel
-        final IoFuture<? extends ConnectedStreamChannel<InetSocketAddress>> futureChannel;
+        final IoFuture<ConnectedStreamChannel> futureChannel;
         try {
-            futureChannel = connector.connectTo(new InetSocketAddress(InetAddress.getByName(host), port), new ClientOpenListener(connectOptions, connectionProviderContext, result, callbackHandler, providerDescriptor, acc), null);
+            futureChannel = connector.connectTo(new InetSocketAddress(InetAddress.getByName(host), port), new ClientOpenListener(connectOptions, connectionProviderContext, result, callbackHandler, acc), null);
         } catch (UnknownHostException e) {
             result.setException(e);
             return IoUtils.nullCancellable();
@@ -94,8 +87,8 @@ final class RemoteConnectionProvider implements ConnectionProvider {
     }
 
     private class ProviderInterface implements NetworkServerProvider {
-        public ChannelListener<ConnectedStreamChannel<InetSocketAddress>> getServerListener(final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) {
-            return new ServerOpenListener(optionMap, connectionProviderContext, providerDescriptor, authenticationProvider);
+        public ChannelListener<AcceptingChannel<ConnectedStreamChannel>> getServerListener(final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) {
+            return new ServerOpenListener(optionMap, connectionProviderContext, authenticationProvider);
         }
     }
 }

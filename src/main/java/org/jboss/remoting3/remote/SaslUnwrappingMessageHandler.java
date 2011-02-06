@@ -24,7 +24,7 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.jboss.xnio.channels.MessageHandler;
+import org.xnio.channels.MessageHandler;
 
 import javax.security.sasl.SaslException;
 

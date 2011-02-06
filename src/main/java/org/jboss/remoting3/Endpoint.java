@@ -24,11 +24,10 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Set;
+import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
-import org.jboss.remoting3.spi.ProtocolServiceType;
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.OptionMap;
+import org.xnio.IoFuture;
+import org.xnio.OptionMap;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -51,161 +50,29 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
     String getName();
 
     /**
-     * Get a new service builder which can be used to register a service.
+     * Register a new service.
      *
-     * @return a new service builder
+     * @param serviceType the service type
+     * @param channelListener the channel listener
+     * @param optionMap the option map
+     * @return the service registration which may be closed to remove the service
      */
-    ServiceBuilder<?, ?> serviceBuilder();
+    Registration registerService(String serviceType, OpenListener channelListener, OptionMap optionMap) throws ServiceRegistrationException;
 
     /**
-     * Get a new service builder which can be used to register a service.
+     * Create a channel which connects directly to the given channel listener.
      *
-     * @param requestClass the request class
-     * @param replyClass the reply class
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return a new service builder
+     * @param channelListener the channel listener
+     * @param optionMap the option map
+     * @return the channel
      */
-    <I, O> ServiceBuilder<I, O> serviceBuilder(Class<I> requestClass, Class<O> replyClass);
-
-    /**
-     * A service builder for new service registration.
-     *
-     * @param <I> the request type
-     * @param <O> the reply type
-     */
-    interface ServiceBuilder<I, O> {
-
-        /**
-         * Set the group name.
-         * @param groupName the group name
-         * @return this builder
-         */
-        ServiceBuilder<I, O> setGroupName(String groupName);
-
-        /**
-         * Set the service type string, which should follow the convention for package names (reversed domain names).
-         *
-         * @param serviceType the service type
-         * @return this builder
-         */
-        ServiceBuilder<I, O> setServiceType(String serviceType);
-
-        /**
-         * Clear the configured client listener and set a new request type.
-         *
-         * @param newRequestType the new request type's class
-         * @param <N> the new request type
-         * @return this builder, cast to include the new request type
-         */
-        <N> ServiceBuilder<N, O> setRequestType(Class<N> newRequestType);
-
-        /**
-         * Clear the configured client listener and set a new reply type.
-         *
-         * @param newReplyType the new reply type's class
-         * @param <N> the new reply type
-         * @return this builder, cast to include the new reply type
-         */
-        <N> ServiceBuilder<I, N> setReplyType(Class<N> newReplyType);
-
-        /**
-         * Set the request listener.  The given listener may be configured to accept a superclass of the given
-         * request type, or a subclass of the given reply type, since they are compatible.
-         *
-         * @param clientListener the request listener
-         * @return this builder
-         */
-        ServiceBuilder<I, O> setClientListener(ClientListener<? super I, ? extends O> clientListener);
-
-        /**
-         * Set the service class loader.  This class loader will be used to unmarshall incoming requests.
-         *
-         * @param classLoader the service class loader
-         * @return this builder
-         */
-        ServiceBuilder<I, O> setClassLoader(final ClassLoader classLoader);
-
-        /**
-         * Set the option map for the service.  The options may include, but are not limited to:
-         * <ul>
-         * <li>{@link RemotingOptions#BUFFER_SIZE} - the recommended buffer size for marshallers to use for this service</li>
-         * <li>{@link RemotingOptions#CLASS_COUNT} - the recommended class count for marshallers to use for this service</li>
-         * <li>{@link RemotingOptions#INSTANCE_COUNT} - the recommended instance count for marshallers to use for this service</li>
-         * <li>{@link RemotingOptions#METRIC} - the relative desirability or "distance" of this service</li>
-         * <li>{@link RemotingOptions#MARSHALLING_PROTOCOLS} - the marshalling protocols which are allowed for this service,
-         *          in order of decreasing preference; if none is given, all registered protocols will
-         *          be made available</li>
-         * <li>{@link RemotingOptions#MARSHALLING_CLASS_RESOLVERS} - the class resolvers which are allowed for this service,
-         *          in order of decreasing preference; if none is given, the default class resolver is used</li>
-         * <li>{@link RemotingOptions#MARSHALLING_CLASS_TABLES} - the class tables which are allowed for this service, in order
-         *          of decreasing preference</li>
-         * <li>{@link RemotingOptions#MARSHALLING_EXTERNALIZER_FACTORIES} - the class externalizer factories which are allowed
-         *          for this service, in order of decreasing preference</li>
-         * <li>{@link RemotingOptions#REMOTELY_VISIBLE} - {@code true} if this service should be remotely accessible,
-         *          {@code false} otherwise (defaults to {@code true})</li>
-         * <li>{@link RemotingOptions#REQUIRE_SECURE} - {@code true} if this service may only be accessed over a secure/encrypted
-         *          channel; defaults to {@code false}, however this should be set to {@code true} if sensitive data (e.g.
-         *          passwords) may be transmitted as part of a payload</li>
-         * </ul>
-         *
-         * @param optionMap the option map
-         * @return this builder
-         */
-        ServiceBuilder<I, O> setOptionMap(OptionMap optionMap);
-
-        /**
-         * Register the service.
-         * <p/>
-         * You must have the {@link org.jboss.remoting3.security.RemotingPermission registerService EndpointPermission} to invoke this method.
-         *
-         * @return a registration handle
-         * @throws IOException if a problem occurs with registration
-         */
-        Registration register() throws IOException;
-    }
-
-    /**
-     * Add a service registration listener which is called whenever a local service is registered.
-     * <p/>
-     * You must have the {@link org.jboss.remoting3.security.RemotingPermission addServiceListener EndpointPermission} to invoke this method.
-     *
-     * @param listener the listener
-     * @param flags the flags to apply to the listener
-     * @return a handle which may be used to remove the listener registration
-     */
-    Registration addServiceRegistrationListener(ServiceRegistrationListener listener, Set<ListenerFlag> flags);
-
-    /**
-     * Create a local client for a client listener.
-     *
-     * @param clientListener the client listener
-     * @param requestClass the request class
-     * @param replyClass the reply class
-     * @param clientClassLoader the class loader to use for replies
-     * @param optionMap the options
-     * @return a new client
-     * @throws IOException if an error occurs
-     */
-    <I, O> Client<I, O> createLocalClient(ClientListener<I, O> clientListener, Class<I> requestClass, Class<O> replyClass, ClassLoader clientClassLoader, OptionMap optionMap) throws IOException;
-
-    /**
-     * Create a local client for a client listener.
-     *
-     * @param clientListener
-     * @param requestClass the request class
-     * @param replyClass the reply class
-     * @param optionMap the options
-     * @return a new client
-     * @throws IOException if an error occurs
-     */
-    <I, O> Client<I, O> createLocalClient(ClientListener<I, O> clientListener, Class<I> requestClass, Class<O> replyClass, OptionMap optionMap) throws IOException;
+    Channel createLocalChannel(OpenListener channelListener, OptionMap optionMap);
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @return the future connection
@@ -217,7 +84,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -231,7 +98,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -246,7 +113,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given user name and password is used as local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -262,7 +129,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can
      * be used to accept new connections or terminate the registration.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.security.RemotingPermission addConnectionProvider EndpointPermission} to invoke this method.
+     * You must have the {@link RemotingPermission addConnectionProvider EndpointPermission} to invoke this method.
      *
      * @param uriScheme the URI scheme
      * @param providerFactory the provider factory
@@ -274,7 +141,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
     /**
      * Get the interface for a connection provider.
      * <p/>
-     * You must have the {@link org.jboss.remoting3.security.RemotingPermission getConnectionProviderInterface EndpointPermission} to invoke this method.
+     * You must have the {@link RemotingPermission getConnectionProviderInterface EndpointPermission} to invoke this method.
      *
      * @param uriScheme the URI scheme of the registered connection provider
      * @param expectedType the expected type of the interface
@@ -284,18 +151,6 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @throws ClassCastException if the interface type does not match the expected type
      */
     <T> T getConnectionProviderInterface(String uriScheme, Class<T> expectedType) throws UnknownURISchemeException, ClassCastException;
-
-    /**
-     * Register a protocol service.
-     *
-     * @param type the type of service being registered
-     * @param name the name of the protocol provider
-     * @param provider the provider instance
-     * @param <T> the provider type
-     * @return a handle which may be used to remove the registration
-     * @throws DuplicateRegistrationException if there is already a protocol registered to that name
-     */
-    <T> Registration addProtocolService(ProtocolServiceType<T> type, String name, T provider) throws DuplicateRegistrationException;
 
     /**
      * Flags which can be passed in to listener registration methods.

@@ -28,9 +28,9 @@ import java.util.Map;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.jboss.xnio.Buffers;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.log.Logger;
+import org.xnio.Buffers;
+import org.xnio.IoUtils;
+import org.jboss.logging.Logger;
 
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
@@ -64,9 +64,10 @@ final class ServerInitialAuthenticationHandler extends AbstractMessageHandler {
                     final String name = Buffers.getModifiedUtf8(buffer);
                     final SaslServerFactory serverFactory = allowedMechs.get(name);
                     if (serverFactory != null) {
-                        log.trace("Selected SASL mechanism %s", name);
+                        log.tracef("Selected SASL mechanism %s", name);
                         final String realm = connectionProviderContext.getEndpoint().getName();
-                        final SaslServer server = serverFactory.createSaslServer(name, "remote", realm, saslPropertyMap, authenticationProvider.getCallbackHandler());
+                        final SaslServer server = serverFactory.createSaslServer(name, "remote", realm, saslPropertyMap, authenticationProvider.getCallbackHandler(name));
+
                         remoteConnection.setMessageHandler(new ServerAuthenticationHandler(remoteConnection, server, connectionProviderContext, this));
                         log.trace("Sending initial challenge");
                         final byte[] resp;

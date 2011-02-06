@@ -26,8 +26,8 @@ import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.jboss.xnio.Connector;
-import org.jboss.xnio.channels.ConnectedStreamChannel;
+import org.xnio.Connector;
+import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * The "remote" protocol.  Use this class to create an instance of the connection provider for the "remote" protocol.
@@ -58,7 +58,7 @@ public final class RemoteProtocol {
     static final byte SERVICE_NOT_FOUND = 17;
     static final byte SERVICE_CLIENT_OPENED = 18;
     static final byte SERVICE_ERROR = 19;
-    static final byte CLIENT_CLOSE = 20;
+    static final byte CHANNEL_CLOSE = 20;
     static final byte CLIENT_ASYNC_CLOSE = 21; // close from the server side
 
     static final byte STREAM_DATA = 32; // from source -> sink side
@@ -85,7 +85,6 @@ public final class RemoteProtocol {
     static final byte GREETING_VERSION = 0;   // sent by client & server
     static final byte GREETING_SASL_MECH = 1; // sent by server
     static final byte GREETING_ENDPOINT_NAME = 2; // sent by client & server
-    static final byte GREETING_MARSHALLER_VERSION = 3; // sent by client & server
 
     // Object sink stream commands
 

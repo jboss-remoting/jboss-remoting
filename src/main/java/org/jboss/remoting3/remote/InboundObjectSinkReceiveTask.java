@@ -27,7 +27,7 @@ import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.NioByteInput;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.stream.ObjectSink;
-import org.jboss.xnio.IoUtils;
+import org.xnio.IoUtils;
 
 final class InboundObjectSinkReceiveTask implements Runnable {
 

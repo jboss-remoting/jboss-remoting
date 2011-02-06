@@ -25,8 +25,8 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.jboss.marshalling.NioByteInput;
-import org.jboss.xnio.Pool;
-import org.jboss.xnio.log.Logger;
+import org.xnio.Pool;
+import org.jboss.logging.Logger;
 
 final class InboundRequestInputHandler implements NioByteInput.InputHandler {
     private final int rid;

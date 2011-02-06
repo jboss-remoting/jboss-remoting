@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3;
 
-import org.jboss.xnio.Option;
-import org.jboss.xnio.Sequence;
+import org.xnio.Option;
+import org.xnio.Sequence;
 
 /**
  * Common options for Remoting configuration.
@@ -125,9 +125,10 @@ public final class RemotingOptions {
     public static final Option<Integer> MAX_INBOUND_CHANNELS = Option.simple(RemotingOptions.class, "MAX_INBOUND_CHANNELS", Integer.class);
 
     /**
-     * The authentication user name to use if no authentication {@code CallbackHandler} is specified.
+     * The SASL authorization ID.  Used as authentication user name to use if no authentication {@code CallbackHandler} is specified
+     * and the selected SASL mechanism demands a user name.
      */
-    public static final Option<String> AUTH_USER_NAME = Option.simple(RemotingOptions.class, "AUTH_USER_NAME", String.class);
+    public static final Option<String> AUTHORIZE_ID = Option.simple(RemotingOptions.class, "AUTH_USER_NAME", String.class);
 
     /**
      * The authentication realm to use if no authentication {@code CallbackHandler} is specified.

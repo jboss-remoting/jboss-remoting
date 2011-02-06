@@ -27,8 +27,8 @@ import org.jboss.marshalling.Unmarshaller;
 import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.RemoteRequestException;
 import org.jboss.remoting3.spi.SpiUtils;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.log.Logger;
+import org.xnio.IoUtils;
+import org.jboss.logging.Logger;
 
 final class InboundRequestTask implements Runnable {
 

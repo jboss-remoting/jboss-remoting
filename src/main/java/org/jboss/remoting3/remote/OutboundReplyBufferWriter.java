@@ -27,8 +27,8 @@ import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.marshalling.NioByteOutput;
-import org.jboss.xnio.Pool;
-import org.jboss.xnio.log.Logger;
+import org.xnio.Pool;
+import org.jboss.logging.Logger;
 
 final class OutboundReplyBufferWriter implements NioByteOutput.BufferWriter {
 

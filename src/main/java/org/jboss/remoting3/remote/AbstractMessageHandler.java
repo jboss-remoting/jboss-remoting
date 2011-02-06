@@ -24,8 +24,8 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.channels.MessageHandler;
+import org.xnio.IoUtils;
+import org.xnio.channels.MessageHandler;
 
 abstract class AbstractMessageHandler implements MessageHandler {
     protected final RemoteConnection remoteConnection;

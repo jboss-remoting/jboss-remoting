@@ -24,8 +24,8 @@ package org.jboss.remoting3;
 
 import java.util.LinkedList;
 import java.util.Queue;
-import org.jboss.xnio.CloseableExecutor;
-import org.jboss.xnio.log.Logger;
+import org.xnio.CloseableExecutor;
+import org.jboss.logging.Logger;
 
 /**
  * An executor designed to run all submitted tasks in the current thread.  The queue is run continuously
@@ -34,7 +34,7 @@ import org.jboss.xnio.log.Logger;
  * shut down.
  */
 final class QueueExecutor implements CloseableExecutor {
-    private static final Logger log = org.jboss.xnio.log.Logger.getLogger(QueueExecutor.class);
+    private static final Logger log = org.jboss.logging.Logger.getLogger(QueueExecutor.class);
 
     private final Queue<Runnable> queue = new LinkedList<Runnable>();
 

@@ -25,12 +25,12 @@ package org.jboss.remoting3.test;
 import java.net.InetSocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
-import org.jboss.xnio.ChannelListener;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Options;
-import org.jboss.xnio.SslTcpServer;
-import org.jboss.xnio.Xnio;
-import org.jboss.xnio.channels.ConnectedStreamChannel;
+import org.xnio.ChannelListener;
+import org.xnio.OptionMap;
+import org.xnio.Options;
+import org.xnio.SslTcpServer;
+import org.xnio.Xnio;
+import org.xnio.channels.ConnectedStreamChannel;
 import org.testng.SkipException;
 import org.testng.annotations.Test;
 

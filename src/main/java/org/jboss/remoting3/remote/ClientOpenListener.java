@@ -23,73 +23,69 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.security.AccessControlContext;
-import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.jboss.xnio.ChannelListener;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Options;
-import org.jboss.xnio.Result;
-import org.jboss.xnio.channels.ConnectedStreamChannel;
-import org.jboss.xnio.log.Logger;
+import org.xnio.ChannelListener;
+import org.xnio.IoUtils;
+import org.xnio.OptionMap;
+import org.xnio.Options;
+import org.xnio.Pooled;
+import org.xnio.Result;
+import org.xnio.channels.ConnectedStreamChannel;
+import org.jboss.logging.Logger;
 
 import javax.security.auth.callback.CallbackHandler;
 
-final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel<InetSocketAddress>> {
+final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel> {
 
     private final OptionMap optionMap;
     private final ConnectionProviderContext connectionProviderContext;
     private final Result<ConnectionHandlerFactory> factoryResult;
     private final CallbackHandler callbackHandler;
-    private final ProviderDescriptor providerDescriptor;
     private final AccessControlContext accessControlContext;
 
     private static final Logger log = Loggers.client;
 
-    ClientOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler, final ProviderDescriptor providerDescriptor, final AccessControlContext accessControlContext) {
+    ClientOpenListener(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Result<ConnectionHandlerFactory> factoryResult, final CallbackHandler callbackHandler, final AccessControlContext accessControlContext) {
         this.optionMap = optionMap;
         this.connectionProviderContext = connectionProviderContext;
         this.factoryResult = factoryResult;
         this.callbackHandler = callbackHandler;
-        this.providerDescriptor = providerDescriptor;
         this.accessControlContext = accessControlContext;
     }
 
-    public void handleEvent(final ConnectedStreamChannel<InetSocketAddress> channel) {
+    public void handleEvent(final ConnectedStreamChannel channel) {
         try {
             channel.setOption(Options.TCP_NODELAY, Boolean.TRUE);
         } catch (IOException e) {
             // ignore
         }
-        final RemoteConnection connection = new RemoteConnection(connectionProviderContext.getExecutor(), channel, optionMap, providerDescriptor);
+        final RemoteConnection connection = new RemoteConnection(connectionProviderContext.getExecutor(), channel, optionMap);
         // Send client greeting packet...
-        final ByteBuffer buffer = connection.allocate();
+        final Pooled<ByteBuffer> pooled = connection.allocate();
+        try {
+
+        }
+        final ByteBuffer buffer = pooled.getResource();
         // length placeholder
         buffer.putInt(0);
         buffer.put(RemoteProtocol.GREETING);
-        // marshaller versions
-        final int[] versions = providerDescriptor.getSupportedVersions();
-        for (int version : versions) {
-            GreetingUtils.writeInt(buffer, RemoteProtocol.GREETING_MARSHALLER_VERSION, version);
-        }
         // version ID
         GreetingUtils.writeByte(buffer, RemoteProtocol.GREETING_VERSION, RemoteProtocol.VERSION);
         // that's it!
         buffer.flip();
         buffer.putInt(0, buffer.remaining() - 4);
-        channel.getWriteSetter().set(new ChannelListener<ConnectedStreamChannel<InetSocketAddress>>() {
-            public void handleEvent(final ConnectedStreamChannel<InetSocketAddress> channel) {
+        channel.getWriteSetter().set(new ChannelListener<ConnectedStreamChannel>() {
+            public void handleEvent(final ConnectedStreamChannel channel) {
                 for (;;) {
                     while (buffer.hasRemaining()) {
                         final int res;
                         try {
                             res = channel.write(buffer);
                         } catch (IOException e1) {
-                            log.trace(e1, "Failed to send client greeting message");
+                            log.trace("Failed to send client greeting message", e1);
                             factoryResult.setException(e1);
                             IoUtils.safeClose(connection);
                             connection.free(buffer);
@@ -104,7 +100,7 @@ final class ClientOpenListener implements ChannelListener<ConnectedStreamChannel
                     try {
                         while (! channel.flush());
                     } catch (IOException e) {
-                        log.trace(e, "Failed to flush client greeting message");
+                        log.trace("Failed to flush client greeting message", e);
                         factoryResult.setException(e);
                         IoUtils.safeClose(connection);
                         return;

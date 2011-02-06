@@ -30,9 +30,9 @@ import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.SpiUtils;
-import org.jboss.xnio.Buffers;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.log.Logger;
+import org.xnio.Buffers;
+import org.xnio.IoUtils;
+import org.jboss.logging.Logger;
 
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;

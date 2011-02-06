@@ -24,7 +24,7 @@ package org.jboss.remoting3.remote;
 
 import java.util.concurrent.Semaphore;
 import org.jboss.marshalling.NioByteInput;
-import org.jboss.xnio.Cancellable;
+import org.xnio.Cancellable;
 
 final class InboundRequest {
 

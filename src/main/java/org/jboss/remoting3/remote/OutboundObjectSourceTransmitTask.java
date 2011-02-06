@@ -29,7 +29,7 @@ import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.NioByteOutput;
 import org.jboss.remoting3.stream.ObjectSource;
-import org.jboss.xnio.IoUtils;
+import org.xnio.IoUtils;
 
 final class OutboundObjectSourceTransmitTask implements Runnable {
 

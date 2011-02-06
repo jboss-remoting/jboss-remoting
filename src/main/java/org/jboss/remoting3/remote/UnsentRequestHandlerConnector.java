@@ -24,10 +24,8 @@ package org.jboss.remoting3.remote;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.jboss.marshalling.util.IntKeyMap;
-import org.jboss.remoting3.spi.RemoteRequestHandler;
-import org.jboss.remoting3.spi.RequestHandlerConnector;
-import org.jboss.xnio.Cancellable;
-import org.jboss.xnio.Result;
+import org.xnio.Cancellable;
+import org.xnio.Result;
 
 final class UnsentRequestHandlerConnector implements RequestHandlerConnector {
 

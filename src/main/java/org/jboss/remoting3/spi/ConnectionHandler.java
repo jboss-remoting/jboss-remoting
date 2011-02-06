@@ -23,9 +23,10 @@
 package org.jboss.remoting3.spi;
 
 import java.io.Closeable;
-import org.jboss.xnio.Cancellable;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Result;
+import org.jboss.remoting3.Channel;
+import org.xnio.Cancellable;
+import org.xnio.OptionMap;
+import org.xnio.Result;
 
 /**
  * A connection to a foreign endpoint.  This interface is implemented by the protocol implementation.
@@ -37,19 +38,10 @@ public interface ConnectionHandler extends Closeable {
      *
      * @param serviceType the service type string
      * @param groupName the group name string
-     * @param result the result for the connected request handler
+     * @param result the result for the connected channel
      * @param classLoader the class loader to use for replies
      * @param optionMap the options for this service
      * @return a handle which may be used to cancel the pending operation
      */
-    Cancellable open(String serviceType, String groupName, Result<RemoteRequestHandler> result, ClassLoader classLoader, OptionMap optionMap);
-
-    /**
-     * Create a connector which may be used to communicate with the given local RequestHandler.  The connector
-     * should only produce a result once it has passed to the remote side of this connection.
-     *
-     * @param localHandler the local handler
-     * @return the connector
-     */
-    RequestHandlerConnector createConnector(LocalRequestHandler localHandler);
+    Cancellable open(String serviceType, String groupName, Result<Channel> result, ClassLoader classLoader, OptionMap optionMap);
 }

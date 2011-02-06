@@ -25,10 +25,9 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.RemoteRequestException;
-import org.jboss.remoting3.spi.LocalReplyHandler;
 import org.jboss.remoting3.spi.SpiUtils;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.log.Logger;
+import org.xnio.IoUtils;
+import org.jboss.logging.Logger;
 
 final class InboundReplyTask implements Runnable {
 

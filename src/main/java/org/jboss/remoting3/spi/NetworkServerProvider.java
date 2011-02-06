@@ -22,11 +22,11 @@
 
 package org.jboss.remoting3.spi;
 
-import java.net.InetSocketAddress;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
-import org.jboss.xnio.ChannelListener;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.channels.ConnectedStreamChannel;
+import org.xnio.ChannelListener;
+import org.xnio.OptionMap;
+import org.xnio.channels.AcceptingChannel;
+import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * A provider interface implemented by connection providers which can be connected to across the network.
@@ -40,5 +40,5 @@ public interface NetworkServerProvider {
      * @param authenticationProvider the server authentication provider
      * @return the channel listener
      */
-    ChannelListener<ConnectedStreamChannel<InetSocketAddress>> getServerListener(OptionMap optionMap, ServerAuthenticationProvider authenticationProvider);
+    ChannelListener<AcceptingChannel<ConnectedStreamChannel>> getServerListener(OptionMap optionMap, ServerAuthenticationProvider authenticationProvider);
 }

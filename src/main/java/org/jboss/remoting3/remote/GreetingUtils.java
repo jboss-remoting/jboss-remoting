@@ -23,7 +23,7 @@
 package org.jboss.remoting3.remote;
 
 import java.nio.ByteBuffer;
-import org.jboss.xnio.Buffers;
+import org.xnio.Buffers;
 
 final class GreetingUtils {
 

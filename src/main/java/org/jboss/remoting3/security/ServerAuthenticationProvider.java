@@ -23,10 +23,19 @@
 package org.jboss.remoting3.security;
 
 import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.SaslException;
 
 /**
  *
  */
 public interface ServerAuthenticationProvider {
-    CallbackHandler getCallbackHandler();
+
+    /**
+     * Get a callback handler for the given mechanism name.
+     *
+     * @param mechanismName the SASL mechanism to get a callback handler for
+     * @return the callback handler
+     * @throws SaslException if the mechanism is not supported
+     */
+    CallbackHandler getCallbackHandler(String mechanismName) throws SaslException;
 }

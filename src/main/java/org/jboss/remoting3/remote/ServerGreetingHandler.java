@@ -26,9 +26,9 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.jboss.xnio.Buffers;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.log.Logger;
+import org.xnio.Buffers;
+import org.xnio.IoUtils;
+import org.jboss.logging.Logger;
 
 import javax.security.sasl.SaslServerFactory;
 

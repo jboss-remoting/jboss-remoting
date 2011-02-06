@@ -25,7 +25,7 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
-import org.jboss.xnio.Result;
+import org.xnio.Result;
 
 abstract class AbstractClientMessageHandler extends AbstractMessageHandler {
     private final Result<ConnectionHandlerFactory> result;

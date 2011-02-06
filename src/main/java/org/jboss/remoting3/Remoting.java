@@ -48,12 +48,10 @@ import org.jboss.marshalling.ObjectTable;
 import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
-import org.jboss.remoting3.spi.ProtocolServiceType;
-import org.jboss.remoting3.spi.RemotingServiceDescriptor;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.Option;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.log.Logger;
+import org.xnio.IoUtils;
+import org.xnio.Option;
+import org.xnio.OptionMap;
+import org.jboss.logging.Logger;
 
 /**
  * The standalone interface into Remoting.  This class contains static methods that are useful to standalone programs

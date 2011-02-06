@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3.spi;
 
-import java.util.Map;
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.Endpoint;
 
@@ -47,26 +46,6 @@ public interface ConnectionProviderContext {
      * @param connectionHandlerFactory the connection handler factory
      */
     void accept(ConnectionHandlerFactory connectionHandlerFactory);
-
-    /**
-     * Get the currently-registered protocol service providers of the given type.
-     *
-     * @param serviceType the service type
-     * @param <T> the type of the provider interface
-     * @return the currently-registered providers
-     */
-    <T> Iterable<Map.Entry<String, T>> getProtocolServiceProviders(ProtocolServiceType<T> serviceType);
-
-    /**
-     * Get one registered protocol service provider of the given type and name.  Returns the provider,
-     * or {@code null} if none was registered for that name.
-     *
-     * @param serviceType the service type
-     * @param name the provider name
-     * @param <T> the type of the provider interface
-     * @return the provider, or {@code null} if none was matched
-     */
-    <T> T getProtocolServiceProvider(ProtocolServiceType<T> serviceType, String name);
 
     /**
      * Get the endpoint.

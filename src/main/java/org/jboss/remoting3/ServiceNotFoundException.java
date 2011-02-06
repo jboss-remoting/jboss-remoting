@@ -22,8 +22,6 @@
 
 package org.jboss.remoting3;
 
-import java.net.URI;
-
 /**
  * Service not found.  This exception is thrown when a service is looked up which is not registered anywhere.
  */
@@ -31,71 +29,41 @@ public class ServiceNotFoundException extends ServiceOpenException {
 
     private static final long serialVersionUID = -998858276817298658L;
 
-    private final URI serviceUri;
-
     /**
-     * Constructs a <tt>ServiceNotFoundException</tt> with no detail message. The cause is not initialized, and may
+     * Constructs a {@code ServiceNotFoundException} with no detail message. The cause is not initialized, and may
      * subsequently be initialized by a call to {@link #initCause(Throwable) initCause}.
-     *
-     * @param uri the service URI that could not be found
      */
-    public ServiceNotFoundException(final URI uri) {
-        serviceUri = uri;
+    public ServiceNotFoundException() {
     }
 
     /**
-     * Constructs a <tt>ServiceNotFoundException</tt> with the specified detail message. The cause is not initialized, and
-     * may subsequently be initialized by a call to {@link #initCause(Throwable) initCause}.
+     * Constructs a {@code ServiceNotFoundException} with the specified detail message. The cause is not initialized,
+     * and may subsequently be initialized by a call to {@link #initCause(Throwable) initCause}.
      *
-     * @param uri the service URI that could not be found
      * @param msg the detail message
      */
-    public ServiceNotFoundException(final URI uri, final String msg) {
+    public ServiceNotFoundException(final String msg) {
         super(msg);
-        serviceUri = uri;
     }
 
     /**
-     * Constructs a <tt>ServiceNotFoundException</tt> with the specified cause. The detail message is set to:
-     * <pre>
-     *  (cause == null ? null : cause.toString())</pre>
-     * (which typically contains the class and detail message of <tt>cause</tt>).
+     * Constructs a {@code ServiceNotFoundException} with the specified cause. The detail message is set to:
+     * <pre>(cause == null ? null : cause.toString())</pre>
+     * (which typically contains the class and detail message of {@code cause}).
      *
-     * @param uri the service URI that could not be found
      * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
      */
-    public ServiceNotFoundException(final URI uri, final Throwable cause) {
+    public ServiceNotFoundException(final Throwable cause) {
         super(cause);
-        serviceUri = uri;
     }
 
     /**
-     * Constructs a <tt>ServiceNotFoundException</tt> with the specified detail message and cause.
+     * Constructs a {@code ServiceNotFoundException} with the specified detail message and cause.
      *
-     * @param uri the service URI that could not be found
      * @param msg the detail message
      * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
      */
-    public ServiceNotFoundException(final URI uri, final String msg, final Throwable cause) {
+    public ServiceNotFoundException(final String msg, final Throwable cause) {
         super(msg, cause);
-        serviceUri = uri;
-    }
-
-    /**
-     * Get the service URI which could not be found.
-     *
-     * @return the service URI
-     */
-    public URI getServiceUri() {
-        return serviceUri;
-    }
-
-    /**
-     * Returns the detail message string of this throwable.
-     *
-     * @return the detail message string of this throwable
-     */
-    public String getMessage() {
-        return super.getMessage() + ": " + serviceUri;
     }
 }

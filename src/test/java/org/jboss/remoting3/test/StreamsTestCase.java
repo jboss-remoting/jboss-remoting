@@ -29,7 +29,7 @@ import java.util.Iterator;
 import java.util.Vector;
 import org.jboss.remoting3.stream.ObjectSink;
 import org.jboss.remoting3.stream.ObjectSource;
-import org.jboss.remoting3.stream.Streams;
+import org.jboss.remoting3.stream.ObjectStreams;
 import org.testng.annotations.Test;
 
 import static org.testng.Assert.assertEquals;
@@ -45,7 +45,7 @@ public final class StreamsTestCase {
 
     public void testCollectionObjectSink() throws Throwable {
         final ArrayList<String> strings = new ArrayList<String>();
-        final ObjectSink<String> sink = Streams.getCollectionObjectSink(strings);
+        final ObjectSink<String> sink = ObjectStreams.getCollectionObjectSink(strings);
         sink.accept("Instance 1");
         sink.accept("Instance 2");
         sink.accept("Instance 3");
@@ -62,7 +62,7 @@ public final class StreamsTestCase {
     }
 
     public void testIteratorObjectSource() throws Throwable {
-        final ObjectSource<String> source = Streams.getIteratorObjectSource(Arrays.asList("One", "Two", "Three", "Four", "Five").iterator());
+        final ObjectSource<String> source = ObjectStreams.getIteratorObjectSource(Arrays.asList("One", "Two", "Three", "Four", "Five").iterator());
         assertTrue(source.hasNext());
         assertEquals(source.next(), "One");
         assertTrue(source.hasNext());
@@ -88,7 +88,7 @@ public final class StreamsTestCase {
     }
 
     public void testEnumerationObjectSource() throws Throwable {
-        final ObjectSource<String> source = Streams.getEnumerationObjectSource(new Vector<String>(Arrays.asList("One", "Two", "Three", "Four", "Five")).elements());
+        final ObjectSource<String> source = ObjectStreams.getEnumerationObjectSource(new Vector<String>(Arrays.asList("One", "Two", "Three", "Four", "Five")).elements());
         assertTrue(source.hasNext());
         assertEquals(source.next(), "One");
         assertTrue(source.hasNext());

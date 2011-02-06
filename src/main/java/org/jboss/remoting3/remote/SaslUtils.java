@@ -28,12 +28,12 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import org.jboss.xnio.Buffers;
-import org.jboss.xnio.Option;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Options;
-import org.jboss.xnio.SaslQop;
-import org.jboss.xnio.Sequence;
+import org.xnio.Buffers;
+import org.xnio.Option;
+import org.xnio.OptionMap;
+import org.xnio.Options;
+import org.xnio.sasl.SaslQop;
+import org.xnio.Sequence;
 
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
@@ -44,7 +44,7 @@ final class SaslUtils {
     private SaslUtils() {
     }
 
-    static final byte[] EMPTY = new byte[0];
+    private static final byte[] EMPTY = new byte[0];
 
     static Map<String, Object> createPropertyMap(OptionMap optionMap) {
         final Map<String,Object> propertyMap = new HashMap<String, Object>();

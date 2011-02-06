@@ -36,22 +36,21 @@ import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
-import org.jboss.remoting3.spi.LocalRequestHandler;
-import org.jboss.remoting3.spi.RemoteRequestHandler;
-import org.jboss.remoting3.spi.RequestHandlerConnector;
 import org.jboss.remoting3.spi.SpiUtils;
-import org.jboss.xnio.Buffers;
-import org.jboss.xnio.Cancellable;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Pool;
-import org.jboss.xnio.Result;
+import org.xnio.BufferAllocator;
+import org.xnio.Buffers;
+import org.xnio.ByteBufferSlicePool;
+import org.xnio.Cancellable;
+import org.xnio.IoUtils;
+import org.xnio.OptionMap;
+import org.xnio.Pool;
+import org.xnio.Result;
 
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteConnectionHandler> implements ConnectionHandler {
 
     static final int LENGTH_PLACEHOLDER = 0;
 
-    private final Pool<ByteBuffer> bufferPool = Buffers.createHeapByteBufferAllocator(4096);
+    private final Pool<ByteBuffer> bufferPool = new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, 4096, 2097152);
     private final MarshallerFactory marshallerFactory;
     private final MarshallingConfiguration marshallingConfiguration;
 

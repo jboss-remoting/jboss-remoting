@@ -25,7 +25,6 @@ package org.jboss.remoting3.remote;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.jboss.remoting3.spi.LocalRequestHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 
 final class InboundClient implements Closeable {

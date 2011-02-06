@@ -34,16 +34,14 @@ import org.jboss.remoting3.ReplyException;
 import org.jboss.remoting3.ServiceNotFoundException;
 import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3.ServiceURI;
-import org.jboss.remoting3.spi.LocalReplyHandler;
-import org.jboss.remoting3.spi.LocalRequestHandler;
 import org.jboss.remoting3.spi.SpiUtils;
-import org.jboss.xnio.Buffers;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Pool;
-import org.jboss.xnio.log.Logger;
+import org.xnio.Buffers;
+import org.xnio.IoUtils;
+import org.xnio.OptionMap;
+import org.xnio.Pool;
+import org.jboss.logging.Logger;
 
-final class RemoteMessageHandler extends AbstractMessageHandler implements org.jboss.xnio.channels.MessageHandler {
+final class RemoteMessageHandler extends AbstractMessageHandler implements org.xnio.channels.MessageHandler {
 
     private final RemoteConnection connection;
     private final RemoteConnectionHandler remoteConnectionHandler;
@@ -93,7 +91,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                         return;
                     }
                     final LocalRequestHandler handler;
-                    handler = connectionHandler.getConnectionContext().openService(serviceType, groupName, optionMap);
+                    handler = connectionHandler.getConnectionContext().openService(serviceType, groupName);
                     outBuf.putInt(RemoteConnectionHandler.LENGTH_PLACEHOLDER);
                     if (handler == null) {
                         // no matching service found
@@ -175,7 +173,7 @@ final class RemoteMessageHandler extends AbstractMessageHandler implements org.j
                 }
                 return;
             }
-            case RemoteProtocol.CLIENT_CLOSE: {
+            case RemoteProtocol.CHANNEL_CLOSE: {
                 final int id = buffer.getInt();
 
                 final InboundClient client;

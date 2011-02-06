@@ -28,29 +28,24 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicReference;
-import org.jboss.remoting3.Client;
-import org.jboss.remoting3.ClientConnector;
-import org.jboss.remoting3.ClientContext;
-import org.jboss.remoting3.ClientListener;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.RemoteExecutionException;
 import org.jboss.remoting3.Remoting;
-import org.jboss.remoting3.RequestContext;
-import org.jboss.remoting3.RequestListener;
 import org.jboss.remoting3.ServiceNotFoundException;
-import org.jboss.remoting3.stream.Streams;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Options;
-import org.jboss.xnio.Xnio;
-import org.jboss.xnio.log.Logger;
+import org.jboss.remoting3.stream.ObjectStreams;
+import org.xnio.IoUtils;
+import org.xnio.OptionMap;
+import org.xnio.Options;
+import org.xnio.Xnio;
+import org.jboss.logging.Logger;
 import org.testng.SkipException;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
+import org.xnio.streams.Streams;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
@@ -356,7 +351,7 @@ public abstract class InvocationTestBase {
                     final Client<InputStream, InputStream> client = connection.openClient("streamtest", "*", InputStream.class, InputStream.class, InvocationTestBase.class.getClassLoader(), OptionMap.EMPTY).get();
                     try {
                         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        Streams.copyStream(client.invoke(new ByteArrayInputStream("This is a test!!!".getBytes())), baos);
+                        ObjectStreams.copyStream(client.invoke(new ByteArrayInputStream("This is a test!!!".getBytes())), baos);
                         assertEquals(new String(baos.toByteArray()), "This is a test!!!");
                     } finally {
                         IoUtils.safeClose(client);

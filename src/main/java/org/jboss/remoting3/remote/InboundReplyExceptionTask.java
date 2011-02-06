@@ -27,7 +27,6 @@ import org.jboss.marshalling.NioByteInput;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.RemoteReplyException;
 import org.jboss.remoting3.RemoteRequestException;
-import org.jboss.remoting3.spi.LocalReplyHandler;
 import org.jboss.remoting3.spi.SpiUtils;
 
 final class InboundReplyExceptionTask implements Runnable {

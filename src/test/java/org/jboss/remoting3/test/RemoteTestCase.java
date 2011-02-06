@@ -23,11 +23,11 @@
 package org.jboss.remoting3.test;
 
 import java.net.InetSocketAddress;
-import org.jboss.xnio.ChannelListener;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.TcpServer;
-import org.jboss.xnio.Xnio;
-import org.jboss.xnio.channels.ConnectedStreamChannel;
+import org.xnio.ChannelListener;
+import org.xnio.OptionMap;
+import org.xnio.TcpServer;
+import org.xnio.Xnio;
+import org.xnio.channels.ConnectedStreamChannel;
 import org.testng.annotations.Test;
 
 @Test(suiteName = "remote")

@@ -25,34 +25,33 @@ package org.jboss.remoting3.remote;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
-import org.jboss.xnio.Buffers;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Pool;
-import org.jboss.xnio.channels.Channels;
-import org.jboss.xnio.channels.ConnectedStreamChannel;
-import org.jboss.xnio.channels.MessageHandler;
-import org.jboss.xnio.log.Logger;
+import org.xnio.BufferAllocator;
+import org.xnio.Buffers;
+import org.xnio.ByteBufferSlicePool;
+import org.xnio.IoUtils;
+import org.xnio.OptionMap;
+import org.xnio.Pool;
+import org.xnio.Pooled;
+import org.xnio.channels.Channels;
+import org.xnio.channels.ConnectedStreamChannel;
+import org.jboss.logging.Logger;
 
 final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnection> implements Closeable {
-    private final ConnectedStreamChannel<InetSocketAddress> channel;
+    private final ConnectedStreamChannel channel;
     private final ProviderDescriptor providerDescriptor;
-    private final Pool<ByteBuffer> bufferPool = Buffers.createHeapByteBufferAllocator(4096);
-    private final MessageHandler.Setter messageHandlerSetter;
+    private final Pool<ByteBuffer> bufferPool = new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, 4096, 2097152);
     private final OptionMap optionMap;
     private final Object writeLock = new Object();
     private static final Logger log = Loggers.main;
 
-    RemoteConnection(final Executor executor, final ConnectedStreamChannel<InetSocketAddress> channel, final OptionMap optionMap, final ProviderDescriptor providerDescriptor) {
+    RemoteConnection(final Executor executor, final ConnectedStreamChannel channel, final OptionMap optionMap, final ProviderDescriptor providerDescriptor) {
         super(executor);
         this.channel = channel;
         this.providerDescriptor = providerDescriptor;
-        messageHandlerSetter = Channels.createMessageReader(channel, optionMap);
         this.optionMap = optionMap;
     }
 
@@ -71,130 +70,51 @@ final class RemoteConnection extends AbstractHandleableCloseable<RemoteConnectio
         return optionMap;
     }
 
-    ConnectedStreamChannel<InetSocketAddress> getChannel() {
+    ConnectedStreamChannel getChannel() {
         return channel;
     }
 
-    ByteBuffer allocate() {
-        return bufferPool.allocate();
-    }
-
-    void free(ByteBuffer buffer) {
-        bufferPool.free(buffer);
-    }
-
-    void setMessageHandler(MessageHandler handler) {
-        messageHandlerSetter.set(handler);
-    }
-
-    void sendBlocking(final ByteBuffer buffer, boolean flush) throws IOException {
-        try {
-            synchronized (writeLock) {
-                buffer.putInt(0, buffer.remaining() - 4);
-                boolean intr = false;
-                try {
-                    while (buffer.hasRemaining()) {
-                        if (channel.write(buffer) == 0) {
-                            try {
-                                channel.awaitWritable();
-                            } catch (InterruptedIOException e) {
-                                intr = Thread.interrupted();
-                            }
-                        }
-                    }
-                    if (flush) while (! channel.flush()) {
-                        try {
-                            channel.awaitWritable();
-                        } catch (InterruptedIOException e) {
-                            intr = Thread.interrupted();
-                        }
-                    }
-                } finally {
-                    if (intr) Thread.currentThread().interrupt();
-                }
-            }
-        } catch (IOException e) {
-            log.trace(e, "Closing channel due to failure to send");
-            IoUtils.safeClose(channel);
-            throw e;
-        } catch (RuntimeException e) {
-            log.trace(e, "Closing channel due to failure to send");
-            IoUtils.safeClose(channel);
-            throw e;
-        } catch (Error e) {
-            log.trace(e, "Closing channel due to failure to send");
-            IoUtils.safeClose(channel);
-            throw e;
-        }
-    }
-
-    void flushBlocking() throws IOException {
-        synchronized (writeLock) {
-            try {
-                while (! channel.flush()) {
-                    channel.awaitWritable();
-                }
-            } catch (IOException e) {
-                log.trace(e, "Closing channel due to failure to flush");
-                IoUtils.safeClose(channel);
-                throw e;
-            } catch (RuntimeException e) {
-                log.trace(e, "Closing channel due to failure to flush");
-                IoUtils.safeClose(channel);
-                throw e;
-            } catch (Error e) {
-                log.trace(e, "Closing channel due to failure to flush");
-                IoUtils.safeClose(channel);
-                throw e;
-            }
-        }
-    }
-
-    void shutdownWritesBlocking() throws IOException {
-        synchronized (writeLock) {
-            try {
-                while (! channel.shutdownWrites()) {
-                    channel.awaitWritable();
-                }
-            } catch (IOException e) {
-                log.trace(e, "Closing channel due to failure to shutdown writes");
-                IoUtils.safeClose(channel);
-                throw e;
-            } catch (RuntimeException e) {
-                log.trace(e, "Closing channel due to failure to shutdown writes");
-                IoUtils.safeClose(channel);
-                throw e;
-            } catch (Error e) {
-                log.trace(e, "Closing channel due to failure to shutdown writes");
-                IoUtils.safeClose(channel);
-                throw e;
-            }
-        }
+    Pooled<ByteBuffer> allocate() {
+        final Pooled<ByteBuffer> pooled = bufferPool.allocate();
+        // Leave room for the "size" header
+        pooled.getResource().position(2);
+        return pooled;
     }
 
     void sendAuthReject(final String msg) throws IOException {
-        final ByteBuffer buf = allocate();
+        final Pooled<ByteBuffer> pooled = allocate();
         try {
-            buf.putInt(0);
+            final ByteBuffer buf = pooled.getResource();
             buf.put(RemoteProtocol.AUTH_REJECTED);
             Buffers.putModifiedUtf8(buf, msg);
             buf.flip();
             sendBlocking(buf, true);
+            Channels.writeBlocking(channel, buf);
+            Channels.flushBlocking(channel);
         } finally {
-            free(buf);
+            pooled.free();
+        }
+    }
+
+    void sendBlocking(final ByteBuffer buf, final boolean flush) throws IOException {
+        buf.putShort(0, (short) buf.remaining());
+        final ConnectedStreamChannel channel = this.channel;
+        Channels.writeBlocking(channel, buf);
+        if (flush) {
+            Channels.flushBlocking(channel);
         }
     }
 
     void sendAuthMessage(final byte msgType, final byte[] message) throws IOException {
-        final ByteBuffer buf = allocate();
+        final Pooled<ByteBuffer> pooled = allocate();
         try {
-            buf.putInt(0);
+            final ByteBuffer buf = pooled.getResource();
             buf.put(msgType);
             if (message != null) buf.put(message);
             buf.flip();
-            sendBlocking(buf, true);
+            sendBlocking(pooled, true);
         } finally {
-            free(buf);
+            pooled.free();
         }
     }
 

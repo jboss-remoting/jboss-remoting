@@ -34,11 +34,11 @@ import java.util.Set;
 import org.jboss.remoting3.ProtocolException;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
-import org.jboss.xnio.Buffers;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Result;
-import org.jboss.xnio.log.Logger;
+import org.xnio.Buffers;
+import org.xnio.IoUtils;
+import org.xnio.OptionMap;
+import org.xnio.Result;
+import org.jboss.logging.Logger;
 
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.Sasl;
@@ -121,7 +121,7 @@ final class ClientGreetingHandler extends AbstractClientMessageHandler {
                 }
                 // OK now send our authentication request
                 final OptionMap optionMap = connection.getOptionMap();
-                final String userName = optionMap.get(RemotingOptions.AUTH_USER_NAME);
+                final String userName = optionMap.get(RemotingOptions.AUTHORIZE_ID);
                 final Map<String, ?> propertyMap = SaslUtils.createPropertyMap(optionMap);
                 final SaslClient saslClient;
                 try {

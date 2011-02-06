@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3.spi;
 
-import java.io.IOException;
-import org.jboss.xnio.OptionMap;
+import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.ServiceNotFoundException;
 
 /**
  * The context for connection handlers.  Used to inform the endpoint of incoming events on an established connection.
@@ -44,13 +44,11 @@ public interface ConnectionHandlerContext {
      *
      * @remoting.nonblocking
      *
+     * @param newChannel the new incoming channel
      * @param serviceType the service type string
-     * @param groupName the group name, or {@code null} for any group name
-     * @param optionMap the options to pass to the service
-     * @return the new request handler
-     * @throws IOException if an error occurs
+     * @throws ServiceNotFoundException if the service is not found
      */
-    LocalRequestHandler openService(String serviceType, String groupName, OptionMap optionMap);
+    void openService(Channel newChannel, String serviceType) throws ServiceNotFoundException;
 
     /**
      * Indicate that the remote side has terminated the connection, so the local side should be closed as well.

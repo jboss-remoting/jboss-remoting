@@ -23,6 +23,7 @@
 package org.jboss.remoting3.security;
 
 import java.io.IOException;
+import java.security.KeyPair;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -44,8 +45,9 @@ public final class SimpleServerAuthenticationProvider implements ServerAuthentic
 
     private final Map<String, Map<String, Entry>> map = new HashMap<String, Map<String, Entry>>();
 
-    /** {@inheritDoc} */
-    public CallbackHandler getCallbackHandler() {
+    /** {@inheritDoc}
+     * @param mechanismName*/
+    public CallbackHandler getCallbackHandler(final String mechanismName) {
         return new CallbackHandler() {
             public void handle(final Callback[] callbacks) throws IOException, UnsupportedCallbackException {
                 String userName = null;
@@ -106,8 +108,9 @@ public final class SimpleServerAuthenticationProvider implements ServerAuthentic
      * @param userName the user name
      * @param userRealm the user realm
      * @param password the password
+     * @param keyPairs the key pairs for this identity
      */
-    public void addUser(String userName, String userRealm, char[] password) {
+    public void addUser(String userName, String userRealm, char[] password, KeyPair... keyPairs) {
         if (userName == null) {
             throw new IllegalArgumentException("userName is null");
         }
@@ -116,6 +119,9 @@ public final class SimpleServerAuthenticationProvider implements ServerAuthentic
         }
         if (password == null) {
             throw new IllegalArgumentException("password is null");
+        }
+        if (keyPairs == null) {
+            throw new IllegalArgumentException("keyPairs is null");
         }
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
@@ -129,7 +135,7 @@ public final class SimpleServerAuthenticationProvider implements ServerAuthentic
                 realmMap = new HashMap<String, Entry>();
                 map.put(canonUserRealm, realmMap);
             }
-            realmMap.put(canonUserName, new Entry(canonUserName, canonUserRealm, password));
+            realmMap.put(canonUserName, new Entry(canonUserName, canonUserRealm, password, keyPairs));
         }
     }
 
@@ -137,11 +143,13 @@ public final class SimpleServerAuthenticationProvider implements ServerAuthentic
         private final String userName;
         private final String userRealm;
         private final char[] password;
+        private final KeyPair[] keyPairs;
 
-        private Entry(final String userName, final String userRealm, final char[] password) {
+        private Entry(final String userName, final String userRealm, final char[] password, final KeyPair[] keyPairs) {
             this.userName = userName;
             this.userRealm = userRealm;
             this.password = password;
+            this.keyPairs = keyPairs;
         }
 
         String getUserName() {
@@ -154,6 +162,10 @@ public final class SimpleServerAuthenticationProvider implements ServerAuthentic
 
         char[] getPassword() {
             return password;
+        }
+
+        KeyPair[] getKeyPairs() {
+            return keyPairs;
         }
     }
 }

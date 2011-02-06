@@ -22,9 +22,8 @@
 
 package org.jboss.remoting3.remote;
 
-import org.jboss.remoting3.spi.RemoteRequestHandler;
-import org.jboss.xnio.Cancellable;
-import org.jboss.xnio.Result;
+import org.xnio.Cancellable;
+import org.xnio.Result;
 
 final class OutboundClient implements Cancellable {
 

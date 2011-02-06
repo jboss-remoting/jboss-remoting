@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2010, JBoss Inc., and individual contributors as indicated
+ * Copyright 2011, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -23,71 +23,28 @@
 package org.jboss.remoting3;
 
 import java.net.URI;
-import org.jboss.remoting3.spi.ConnectionHandler;
-import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.jboss.xnio.Cancellable;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.OptionMap;
-import org.jboss.xnio.Result;
+import org.xnio.Cancellable;
+import org.xnio.OptionMap;
+import org.xnio.Result;
 
 import javax.security.auth.callback.CallbackHandler;
 
 final class LocalConnectionProvider implements ConnectionProvider {
-    private final ConnectionProviderContext providerContext;
 
-    public LocalConnectionProvider(final ConnectionProviderContext providerContext) {
-        this.providerContext = providerContext;
+    private final ConnectionProviderContext context;
+
+    LocalConnectionProvider(final ConnectionProviderContext context) {
+        this.context = context;
     }
 
     public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
-        result.setResult(new ConnectionHandlerFactory() {
-            public ConnectionHandler createInstance(final ConnectionHandlerContext outboundContext) {
-                final Holder h = new Holder();
-                providerContext.accept(new ConnectionHandlerFactory() {
-                    public ConnectionHandler createInstance(final ConnectionHandlerContext inboundContext) {
-                        final LocalConnectionHandler inboundHandler = new LocalConnectionHandler(inboundContext, connectOptions);
-                        h.set(inboundHandler);
-                        return new LocalConnectionHandler(outboundContext, connectOptions);
-                    }
-                });
-                return h.get(); // outbound connection handler
-            }
-        });
-        return IoUtils.nullCancellable();
-    }
-
-    public Void getProviderInterface() {
         return null;
     }
 
-    private static final class Holder {
-        private ConnectionHandler handler;
-
-        ConnectionHandler get() {
-            boolean intr = false;
-            try {
-                synchronized (this) {
-                    ConnectionHandler handler;
-                    while ((handler = this.handler) == null) try {
-                        wait();
-                    } catch (InterruptedException e) {
-                        intr = true;
-                    }
-                    return handler;
-                }
-            } finally {
-                if (intr) Thread.currentThread().interrupt();
-            }
-        }
-
-        void set(ConnectionHandler handler) {
-            synchronized (this) {
-                this.handler = handler;
-                notifyAll();
-            }
-        }
+    public Object getProviderInterface() {
+        return null;
     }
 }

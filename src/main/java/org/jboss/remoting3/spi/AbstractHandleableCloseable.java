@@ -33,12 +33,14 @@ import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.HandleableCloseable;
 import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.RemotingException;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.log.Logger;
+import org.xnio.IoUtils;
+import org.jboss.logging.Logger;
 
 /**
  * A basic implementation of a closeable resource.  Use as a convenient base class for your closeable resources.
  * Ensures that the {@code close()} method is idempotent; implements the registry of close handlers.
+ *
+ * @param <T> the type of the closeable resource
  */
 public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<T>> implements HandleableCloseable<T> {
 
@@ -135,7 +137,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             }
         }
         if (closeHandlers != null) {
-            log.trace("Closed %s", this);
+            log.tracef("Closed %s", this);
             if (closeHandlers != null) {
                 for (final CloseHandler<? super T> handler : closeHandlers.values()) {
                     runCloseTask(executor, new CloseHandlerTask(handler));
@@ -256,9 +258,9 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                 if (LEAK_DEBUGGING) {
                     final Throwable t = new LeakThrowable();
                     t.setStackTrace(backtrace);
-                    log.warn(t, "Leaked a %s instance: %s", getClass().getName(), this);
+                    log.warnf(t, "Leaked a %s instance: %s", getClass().getName(), this);
                 } else {
-                    log.trace("Leaked a %s instance: %s", getClass().getName(), this);
+                    log.tracef("Leaked a %s instance: %s", getClass().getName(), this);
                 }
                 IoUtils.safeClose(this);
             }
@@ -268,7 +270,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     /**
      * Check if open, throwing an exception if it is not.
      *
-     * @throws org.jboss.remoting3.NotOpenException if not open
+     * @throws NotOpenException if not open
      */
     protected void checkOpen() throws NotOpenException {
         synchronized (closeLock) {

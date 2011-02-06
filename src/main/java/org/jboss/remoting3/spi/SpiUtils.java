@@ -25,10 +25,8 @@ package org.jboss.remoting3.spi;
 import java.io.Closeable;
 import java.io.IOException;
 import org.jboss.remoting3.CloseHandler;
-import org.jboss.remoting3.RequestCancelHandler;
-import org.jboss.remoting3.RequestContext;
-import org.jboss.xnio.IoUtils;
-import org.jboss.xnio.log.Logger;
+import org.xnio.IoUtils;
+import org.jboss.logging.Logger;
 
 /**
  * Utility methods for Remoting service providers.

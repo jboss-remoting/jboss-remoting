@@ -27,8 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.NioByteOutput;
-import org.jboss.remoting3.spi.RemoteReplyHandler;
-import org.jboss.xnio.Pool;
+import org.xnio.Pool;
 
 final class OutboundReplyHandler implements RemoteReplyHandler {
 

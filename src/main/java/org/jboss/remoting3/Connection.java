@@ -22,9 +22,8 @@
 
 package org.jboss.remoting3;
 
-import java.io.IOException;
-import org.jboss.xnio.IoFuture;
-import org.jboss.xnio.OptionMap;
+import org.xnio.IoFuture;
+import org.xnio.OptionMap;
 
 /**
  * A connection to a remote peer.
@@ -34,71 +33,12 @@ import org.jboss.xnio.OptionMap;
 public interface Connection extends HandleableCloseable<Connection>, Attachable {
 
     /**
-     * Locate and open a client on the remote side of this connection.
+     * Open a channel to a remote service on this connection.
      *
      * @param serviceType the service type
      * @param groupName the group name
-     * @param requestClass the request class
-     * @param replyClass the reply class
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return the future client
-     */
-    <I, O> IoFuture<? extends Client<I, O>> openClient(String serviceType, String groupName, Class<I> requestClass, Class<O> replyClass);
-
-    /**
-     * Locate and open a client on the remote side of this connection.
-     *
-     * @param serviceType the service type
-     * @param groupName the group name
-     * @param requestClass the request class
-     * @param replyClass the reply class
      * @param optionMap the option map
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return the future client
+     * @return the future channel
      */
-    <I, O> IoFuture<? extends Client<I, O>> openClient(String serviceType, String groupName, Class<I> requestClass, Class<O> replyClass, OptionMap optionMap);
-
-    /**
-     * Locate and open a client on the remote side of this connection.
-     *
-     * @param serviceType the service type
-     * @param groupName the group name
-     * @param requestClass the request class
-     * @param replyClass the reply class
-     * @param classLoader the class loader to use to unmarshall incoming messages
-     * @param optionMap the option map
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return the future client
-     */
-    <I, O> IoFuture<? extends Client<I, O>> openClient(String serviceType, String groupName, Class<I> requestClass, Class<O> replyClass, ClassLoader classLoader, OptionMap optionMap);
-
-    /**
-     * Create a client connector which may <b>only</b> transmitted to the remote side of this connection, allowing
-     * it to use the included service.
-     *
-     * @param listener the local listener
-     * @param requestClass the request class
-     * @param replyClass the reply class
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return a connector which may be sent to the connection peer
-     */
-    <I, O> ClientConnector<I, O> createClientConnector(RequestListener<I, O> listener, Class<I> requestClass, Class<O> replyClass) throws IOException;
-
-    /**
-     * Create a client connector which may <b>only</b> transmitted to the remote side of this connection, allowing
-     * it to use the included service.
-     *
-     * @param listener the local listener
-     * @param requestClass the request class
-     * @param replyClass the reply class
-     * @param optionMap the option map
-     * @param <I> the request type
-     * @param <O> the reply type
-     * @return a connector which may be sent to the connection peer
-     */
-    <I, O> ClientConnector<I, O> createClientConnector(RequestListener<I, O> listener, Class<I> requestClass, Class<O> replyClass, OptionMap optionMap) throws IOException;
+    IoFuture<Channel> openChannel(String serviceType, String groupName, OptionMap optionMap);
 }
