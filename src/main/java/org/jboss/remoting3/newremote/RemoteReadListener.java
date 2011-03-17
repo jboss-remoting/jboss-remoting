@@ -22,15 +22,17 @@
 
 package org.jboss.remoting3.newremote;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.xnio.ChannelListener;
+import org.xnio.IoUtils;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public final class RemoteReadListener implements ChannelListener<ConnectedMessageChannel> {
+final class RemoteReadListener implements ChannelListener<ConnectedMessageChannel> {
 
     private final RemoteConnectionHandler handler;
     private final RemoteConnection connection;
@@ -44,19 +46,27 @@ public final class RemoteReadListener implements ChannelListener<ConnectedMessag
         final Pooled<ByteBuffer> pooled = connection.allocate();
         final ByteBuffer buffer = pooled.getResource();
         int res;
-        while ((res = channel.receive(buffer)) > 0) {
-            byte protoId = buffer.get();
-            switch (protoId) {
-                case Protocol.CONNECTION_ALIVE: {
-                    break;
-                }
-                case Protocol.CHANNEL_OPEN_REQUEST: {
-                    int channelId = buffer.getInt();
+        try {
+            while ((res = channel.receive(buffer)) > 0) {
+                byte protoId = buffer.get();
+                switch (protoId) {
+                    case Protocol.CONNECTION_ALIVE: {
+                        break;
+                    }
+                    case Protocol.CHANNEL_OPEN_REQUEST: {
+                        int channelId = buffer.getInt();
 
+                    }
+                    case Protocol.MESSAGE_DATA: {
+
+                    }
                 }
             }
+        } catch (IOException e) {
+            connection.handleException(e);
         }
         if (res == -1) {
+            IoUtils.safeShutdownReads(channel);
         }
     }
 }

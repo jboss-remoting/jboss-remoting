@@ -59,7 +59,7 @@ final class ClientConnectionOpenStreamListener implements ChannelListener<Connec
         } catch (IOException e) {
             // ignore
         }
-        final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, channelBufferPool.allocate(), channelBufferPool.allocate());
+        final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, channelBufferPool.allocate(), channelBufferPool.allocate(), FramedMessageChannel.FramingType.B16);
         final RemoteConnection connection = new RemoteConnection(messageBufferPool, messageChannel, optionMap);
         final ClientConnectionOpenListener listener = new ClientConnectionOpenListener(connection, callbackHandler, accessControlContext);
         listener.handleEvent(messageChannel);
