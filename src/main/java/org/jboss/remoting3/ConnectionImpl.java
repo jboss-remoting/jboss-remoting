@@ -37,7 +37,7 @@ import org.xnio.TranslatingResult;
 
 class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements Connection {
 
-    private final Attachments attachments = new AttachmentsImpl();
+    private final Attachments attachments = new BasicAttachments();
 
     private final EndpointImpl endpoint;
     private final ConnectionHandler connectionHandler;

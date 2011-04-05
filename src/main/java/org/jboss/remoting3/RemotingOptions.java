@@ -144,4 +144,9 @@ public final class RemotingOptions {
      * Specify the number of times a client is allowed to retry authentication before closing the connection.
      */
     public static final Option<Integer> AUTHENTICATION_RETRIES = Option.simple(RemotingOptions.class, "AUTHENTICATION_RETRIES", Integer.class);
+
+    /**
+     * The maximum amount of time (in milliseconds) to delay sending small messages, to reduce packet traffic.
+     */
+    public static final Option<Integer> COALESCE_INTERVAL = Option.simple(RemotingOptions.class, "COALESCE_INTERVAL", Integer.class);
 }

@@ -24,8 +24,8 @@ package org.jboss.remoting3.newremote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Random;
 import org.xnio.ChannelListener;
-import org.xnio.IoUtils;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
 
@@ -48,25 +48,53 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
         int res;
         try {
             while ((res = channel.receive(buffer)) > 0) {
-                byte protoId = buffer.get();
+                final int protoId = buffer.get() & 0xff;
                 switch (protoId) {
                     case Protocol.CONNECTION_ALIVE: {
                         break;
                     }
                     case Protocol.CHANNEL_OPEN_REQUEST: {
                         int channelId = buffer.getInt();
+                        int inboundWindow = 0x10000;
+                        int outboundWindow = 0x10000;
+                        // parse out request
 
+                        // construct the channel
+                        RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler.getConnectionContext().getConnectionProviderContext().getExecutor(), connection, channelId, new Random(), outboundWindow, inboundWindow);
+                        handler.addChannel(connectionChannel);
+                        break;
                     }
                     case Protocol.MESSAGE_DATA: {
-
+                        int channelId = buffer.getInt();
+                        RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
+                        if (connectionChannel == null) {
+                            connection.handleException(new IOException("Message data for non-existent channel"));
+                            break;
+                        }
+                        connectionChannel.handleMessageData(pooled);
+                        break;
                     }
+                    case Protocol.MESSAGE_WINDOW_OPEN: {
+                        int channelId = buffer.getInt() ^ 0x80000000;
+                        RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
+                        if (connectionChannel == null) {
+                            connection.handleException(new IOException("Window open for non-existent channel"));
+                            break;
+                        }
+                        connectionChannel.handleWindowOpen(pooled);
+                        break;
+                    }
+                }
+            }
+            if (res == -1) {
+                try {
+                    channel.shutdownReads();
+                } catch (IOException e) {
+                    RemoteLogger.log.debugf("Failed to shut down reads on %s: %s", connection, e);
                 }
             }
         } catch (IOException e) {
             connection.handleException(e);
-        }
-        if (res == -1) {
-            IoUtils.safeShutdownReads(channel);
         }
     }
 }

@@ -79,8 +79,8 @@ final class Protocol {
      * byte n+1..m: requested parameters
      *    00 = end of parameters
      *    01 = service type (arg = UTF8) (required)
-     *    80 = max outbound (requester->responder) message window size (arg = uint8)
-     *    81 = max inbound (responder->requester) message window size (arg = uint8)
+     *    80 = max inbound (responder->requester) message window size (arg = uint31)
+     *    81 = max inbound (responder->requester) message count (arg = uint16)
      */
     static final byte CHANNEL_OPEN_REQUEST = 0x10;
     /**
@@ -88,8 +88,8 @@ final class Protocol {
      * byte 1..4: channel ID (MSb = 0)
      * byte 5..n: agreed parameters
      *    00 = end of parameters
-     *    80 = max outbound (requester->responder) message window size (arg = uint8)
-     *    81 = max inbound (responder->requester) message window size (arg = uint8)
+     *    80 = max outbound (requester->responder) message window size (arg = uint31)
+     *    81 = max outbound (requester->responder) message count (arg = uint16)
      */
     static final byte CHANNEL_OPEN_ACK = 0x11;
     /**
@@ -129,7 +129,7 @@ final class Protocol {
      * byte 0: MESSAGE_DATA
      * byte 1..4: channel ID
      * byte 5..6: message ID
-     * byte 7: flags: - - - - - - - E  E = EOF
+     * byte 7: flags: - - - - - - N E  N = New E = EOF
      * byte 8..n: message content
      *
      * Always flows from message sender to message recipient.
@@ -139,7 +139,7 @@ final class Protocol {
      * byte 0: MESSAGE_WINDOW_OPEN
      * byte 1..4: channel ID
      * byte 5..6: message ID
-     * byte 7: window open amount
+     * byte 7..10: window open amount
      *
      * Always flows from message recipient to message sender.
      */
@@ -165,9 +165,12 @@ final class Protocol {
     static final byte GREETING_VERSION = 0;   // sent by client & server
     static final byte GREETING_SASL_MECH = 1; // sent by server
     static final byte GREETING_ENDPOINT_NAME = 2; // sent by client & server
-    static final byte GREETING_WINDOW_SIZE = 3; // send by client & server - incoming max window size
+    static final byte GREETING_CHANNEL_LIMIT = 3; // sent by client & server - max # of concurrent incoming channels
 
     static final Charset UTF_8 = Charset.forName("UTF8");
+
+    static final int MSG_FLAG_EOF = 0x01;
+    static final int MSG_FLAG_NEW = 0x02;
 
     private Protocol() {
     }

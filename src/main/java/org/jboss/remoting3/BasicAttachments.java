@@ -25,7 +25,7 @@ package org.jboss.remoting3;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
-final class AttachmentsImpl implements Attachments {
+public final class BasicAttachments implements Attachments {
     private final Map<Key<?>, Object> map = new IdentityHashMap<Key<?>, Object>();
 
     public <T> T attach(final Key<T> key, final T value) {

@@ -23,17 +23,16 @@
 package org.jboss.remoting3.newremote;
 
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.util.Random;
-import org.jboss.marshalling.util.IntKeyMap;
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
 
-final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteConnectionHandler> implements ConnectionHandler {
+final class RemoteConnectionHandler implements ConnectionHandler {
 
     static final int LENGTH_PLACEHOLDER = 0;
 
@@ -42,16 +41,13 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
     private final Random random = new Random();
 
     /**
-     * Channels initiated locally.  Local channel IDs are read with a "0" MSB and written with a "1" MSB.
+     * Channels.  Remote channel IDs are read with a "1" MSB and written with a "0" MSB.
+     * Local channel IDs are read with a "0" MSB and written with a "1" MSB.  Channel IDs here
+     * are stored from the "read" perspective.  Remote channels "1", Local channels "0" MSB.
      */
-    private final IntKeyMap<RemoteChannel> localChannels = new IntKeyMap<RemoteChannel>();
-    /**
-     * Channels initiated remotely.  Remote channel IDs are read with a "1" MSB and written with a "0" MSB.
-     */
-    private final IntKeyMap<RemoteChannel> remoteChannels = new IntKeyMap<RemoteChannel>();
+    private final UnlockedReadIntIndexHashMap<RemoteConnectionChannel> channels = new UnlockedReadIntIndexHashMap<RemoteConnectionChannel>(RemoteConnectionChannel.INDEXER);
 
     RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection) {
-        super(connectionContext.getConnectionProviderContext().getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
     }
@@ -60,11 +56,8 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
         return null;
     }
 
-    protected void closeAction() throws IOException {
-        try {
-            remoteConnection.close();
-        } finally {
-        }
+    public void close() throws IOException {
+        remoteConnection.handleException(new ClosedChannelException());
     }
 
     ConnectionHandlerContext getConnectionContext() {
@@ -74,7 +67,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
     Random getRandom() {
         return random;
     }
-
 
     RemoteConnection getRemoteConnection() {
         return remoteConnection;
@@ -93,5 +85,17 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<RemoteCo
         } finally {
             current.set(newCurrent);
         }
+    }
+
+    void addChannel(final RemoteConnectionChannel channel) {
+        RemoteConnectionChannel existing = channels.putIfAbsent(channel.getChannelId(), channel);
+        if (existing != null) {
+            // should not be possible...
+            channel.getConnection().handleException(new IOException("Attempted to add an already-existing channel"));
+        }
+    }
+
+    public RemoteConnectionChannel getChannel(final int id) {
+        return channels.get(id);
     }
 }

@@ -37,7 +37,7 @@ import java.io.OutputStream;
 public interface Channel extends Attachable, HandleableCloseable<Channel> {
 
     /**
-     * Write a new message on to this channel.
+     * Write a new message on to this channel, blocking if necessary.
      *
      * @return the output stream for the message
      * @throws IOException if a new message cannot be written

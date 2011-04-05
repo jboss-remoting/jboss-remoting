@@ -33,27 +33,38 @@ import org.xnio.streams.BufferPipeInputStream;
  */
 final class InboundMessage {
     final short messageId;
-    final RemoteChannel channel;
+    final RemoteConnectionChannel channel;
     int inboundWindow;
     boolean closed;
 
-    InboundMessage(final short messageId, final RemoteChannel channel) {
+    static final IntIndexer<InboundMessage> INDEXER = new IntIndexer<InboundMessage>() {
+        public int indexOf(final InboundMessage argument) {
+            return argument.messageId & 0xffff;
+        }
+
+        public boolean equals(final InboundMessage argument, final int index) {
+            return (argument.messageId & 0xffff) == index;
+        }
+    };
+
+    InboundMessage(final short messageId, final RemoteConnectionChannel channel) {
         this.messageId = messageId;
         this.channel = channel;
     }
 
     BufferPipeInputStream inputStream = new BufferPipeInputStream(new BufferPipeInputStream.InputHandler() {
-        public void acknowledgeMessage() throws IOException {
+        public void acknowledge(final Pooled<ByteBuffer> acked) throws IOException {
+            int consumed = acked.getResource().position();
+            openInboundWindow(consumed);
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_WINDOW_OPEN);
             try {
                 ByteBuffer buffer = pooled.getResource();
-                buffer.put((byte) 1); // Open window by one
+                buffer.putInt(consumed); // Open window by buffer size
                 buffer.flip();
                 Channels.sendBlocking(channel.getConnection().getChannel(), buffer);
             } finally {
                 pooled.free();
             }
-            openInboundWindow();
         }
 
         public void close() throws IOException {
@@ -79,15 +90,17 @@ final class InboundMessage {
         return pooled;
     }
 
-    void openInboundWindow() {
+    void openInboundWindow(int consumed) {
         synchronized (this) {
-            inboundWindow++;
+            inboundWindow += consumed;
         }
     }
 
-    void closeInboundWindow() {
+    void closeInboundWindow(int produced) {
         synchronized (this) {
-            inboundWindow--;
+            if ((inboundWindow -= produced) < 0) {
+                channel.getConnection().handleException(new IOException("Input overrun"));
+            }
         }
     }
 
@@ -109,9 +122,10 @@ final class InboundMessage {
                 return;
             }
             ByteBuffer buffer = pooledBuffer.getResource();
+            closeInboundWindow(buffer.remaining() - 8);
             byte flags = buffer.get();
             inputStream.push(pooledBuffer);
-            if ((flags & 0x01) != 0) {
+            if ((flags & Protocol.MSG_FLAG_EOF) != 0) {
                 inputStream.pushEof();
                 closed = true;
                 channel.freeInboundMessage(messageId);
