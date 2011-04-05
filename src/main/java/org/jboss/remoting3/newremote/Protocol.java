@@ -157,6 +157,7 @@ final class Protocol {
 
     /**
      * byte 0: CONNECTION_ALIVE
+     * byte 1..n: random padding (optional)
      */
     static final byte CONNECTION_ALIVE = (byte) 0xF0;
 
