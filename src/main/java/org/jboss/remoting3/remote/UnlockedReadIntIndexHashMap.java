@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.newremote;
+package org.jboss.remoting3.remote;
 
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReferenceArray;

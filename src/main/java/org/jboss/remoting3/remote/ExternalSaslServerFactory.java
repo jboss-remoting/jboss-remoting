@@ -20,32 +20,31 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.newremote;
+package org.jboss.remoting3.remote;
 
-import java.io.IOException;
-import org.jboss.logging.BasicLogger;
-import org.jboss.logging.Cause;
-import org.jboss.logging.LogMessage;
-import org.jboss.logging.Logger;
-import org.jboss.logging.Message;
-import org.jboss.logging.MessageLogger;
+import java.security.Principal;
+import java.util.Map;
 
-/**
- * "Remote" protocol logger.  Message codes from 200-299.
- *
- * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
- */
-@MessageLogger(projectCode = "JBREM")
-interface RemoteLogger extends BasicLogger {
-    RemoteLogger log = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote");
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslServer;
+import javax.security.sasl.SaslServerFactory;
 
-    @Message(id = 200, value = "Remote connection failed")
-    @LogMessage(level = Logger.Level.ERROR)
-    void connectionError(@Cause IOException cause);
+final class ExternalSaslServerFactory implements SaslServerFactory {
 
-    @Message(id = 201, value = "Received invalid message on %s")
-    IOException invalidMessage(RemoteConnection connection);
+    private static final String[] NAMES = new String[] { "EXTERNAL" };
 
-    @Message(id = 202, value = "Abrupt close on %s")
-    IOException abruptClose(RemoteConnection connection);
+    private final Principal peerPrincipal;
+
+    ExternalSaslServerFactory(final Principal peerPrincipal) {
+        this.peerPrincipal = peerPrincipal;
+    }
+
+    public SaslServer createSaslServer(final String mechanism, final String protocol, final String serverName, final Map<String, ?> props, final CallbackHandler cbh) throws SaslException {
+        return new ExternalSaslServer(cbh, peerPrincipal);
+    }
+
+    public String[] getMechanismNames(final Map<String, ?> props) {
+        return NAMES;
+    }
 }
