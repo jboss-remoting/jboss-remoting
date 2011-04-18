@@ -23,7 +23,6 @@
 package org.jboss.remoting3.spi;
 
 import java.io.Closeable;
-import java.io.IOException;
 import org.jboss.remoting3.CloseHandler;
 import org.xnio.IoUtils;
 import org.jboss.logging.Logger;
@@ -38,105 +37,6 @@ public final class SpiUtils {
     private static final Logger heLog = Logger.getLogger("org.jboss.remoting.handler-errors");
 
     /**
-     * Safely notify a reply handler of an exception.
-     *
-     * @param replyHandler the reply handler
-     * @param exception the exception
-     */
-    public static void safeHandleException(final RemoteReplyHandler replyHandler, final IOException exception) {
-        try {
-            if (replyHandler != null) replyHandler.handleException(exception);
-        } catch (Throwable t) {
-            heLog.debug(t, "Failed to properly handle exception");
-        }
-    }
-
-    /**
-     * Safely notify a reply handler of an exception.
-     *
-     * @param replyHandler the reply handler
-     * @param exception the exception
-     */
-    public static void safeHandleException(final LocalReplyHandler replyHandler, final IOException exception) {
-        try {
-            if (replyHandler != null) replyHandler.handleException(exception);
-        } catch (Throwable t) {
-            heLog.debug(t, "Failed to properly handle exception");
-        }
-    }
-
-    /**
-     * Safely notify a reply handler of a reply.
-     *
-     * @param <O> the reply type
-     * @param replyHandler the reply handler
-     * @param reply the reply
-     */
-    public static <O> void safeHandleReply(final RemoteReplyHandler replyHandler, final O reply) {
-        try {
-            if (replyHandler != null) replyHandler.handleReply(reply);
-        } catch (Throwable t) {
-            heLog.debug(t, "Failed to properly handle reply");
-        }
-    }
-
-    /**
-     * Safely notify a reply handler of a reply.
-     *
-     * @param <O> the reply type
-     * @param replyHandler the reply handler
-     * @param reply the reply
-     */
-    public static <O> void safeHandleReply(final LocalReplyHandler replyHandler, final O reply) {
-        try {
-            if (replyHandler != null) replyHandler.handleReply(reply);
-        } catch (Throwable t) {
-            heLog.debug(t, "Failed to properly handle reply");
-        }
-    }
-
-    /**
-     * Safely notify a reply handler of a cancellation.
-     *
-     * @param replyHandler the reply handler
-     */
-    public static void safeHandleCancellation(final RemoteReplyHandler replyHandler) {
-        try {
-            if (replyHandler != null) replyHandler.handleCancellation();
-        } catch (Throwable t) {
-            heLog.debug(t, "Failed to properly handle cancellation");
-        }
-    }
-
-    /**
-     * Safely notify a reply handler of a cancellation.
-     *
-     * @param replyHandler the reply handler
-     */
-    public static void safeHandleCancellation(final LocalReplyHandler replyHandler) {
-        try {
-            if (replyHandler != null) replyHandler.handleCancellation();
-        } catch (Throwable t) {
-            heLog.debug(t, "Failed to properly handle cancellation");
-        }
-    }
-
-    /**
-     * Safely notify a request listener's cancel handler of cancellation.
-     *
-     * @param <O> the reply type
-     * @param handler the request cancel handler
-     * @param requestContext the request context
-     */
-    public static <O> void safeNotifyCancellation(final RequestCancelHandler<O> handler, final RequestContext<O> requestContext) {
-        try {
-            if (handler != null && requestContext != null) handler.notifyCancel(requestContext);
-        } catch (Throwable t) {
-            heLog.error(t, "Request cancel handler threw an exception");
-        }
-    }
-
-    /**
      * Safely handle a close notification.
      *
      * @param <T> the type of the closable resource
@@ -147,7 +47,7 @@ public final class SpiUtils {
         try {
             if (handler != null && closed != null) handler.handleClose(closed);
         } catch (Throwable t) {
-            heLog.error(t, "Close handler threw an exception");
+            heLog.error("Close handler threw an exception", t);
         }
     }
 

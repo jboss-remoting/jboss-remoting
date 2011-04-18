@@ -31,6 +31,7 @@ import org.xnio.OptionMap;
 import org.xnio.Pool;
 import org.xnio.Pooled;
 import org.xnio.Result;
+import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.SuspendableWriteChannel;
 
@@ -129,7 +130,7 @@ final class RemoteConnection {
         public void handleEvent(final T channel) {
             try {
                 if (channel.flush()) {
-                    channel.getWriteSetter().set(listener);
+                    Channels.setWriteListener(channel, listener);
                 }
             } catch (IOException e) {
                 handleException(e);

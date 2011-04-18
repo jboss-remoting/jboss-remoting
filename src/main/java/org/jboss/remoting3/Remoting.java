@@ -25,13 +25,8 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -40,14 +35,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import org.jboss.marshalling.ClassExternalizerFactory;
-import org.jboss.marshalling.ClassResolver;
-import org.jboss.marshalling.ClassTable;
-import org.jboss.marshalling.ObjectResolver;
-import org.jboss.marshalling.ObjectTable;
-import org.jboss.marshalling.ProviderDescriptor;
 import org.jboss.remoting3.security.RemotingPermission;
-import org.jboss.remoting3.spi.ConnectionProviderFactory;
+import org.jboss.remoting3.spi.ConnectionProviderDescriptor;
 import org.xnio.IoUtils;
 import org.xnio.Option;
 import org.xnio.OptionMap;
@@ -82,7 +71,7 @@ public final class Remoting {
             thread.setDaemon(true);
             thread.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
                 public void uncaughtException(final Thread t, final Throwable e) {
-                    log.error(e, "Uncaught exception in thread %s", t);
+                    log.error("Uncaught exception in thread %s", t, e);
                 }
             });
             return thread;
@@ -109,7 +98,7 @@ public final class Remoting {
                 public Endpoint run() {
                     boolean ok = false;
                     final String fileName = System.getProperty(PROPERTY_FILE_PROPNAME, PROPERTIES);
-                    log.trace("Searching for properties file named '%s'", fileName);
+                    log.tracef("Searching for properties file named '%s'", fileName);
                     final Properties props = new Properties();
                     try {
                         final InputStream stream = getClass().getClassLoader().getResourceAsStream(fileName);
@@ -146,71 +135,15 @@ public final class Remoting {
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
-                        log.trace("Created %s from configuration", endpoint);
+                        log.tracef("Created %s from configuration", endpoint);
                         try {
                             endpoint.addCloseHandler(new CloseHandler<Endpoint>() {
                                 public void handleClose(final Endpoint closed) {
                                     executor.shutdown();
                                 }
                             });
-                            addServices(endpoint, ProtocolServiceType.CLASS_TABLE, props);
-                            addServices(endpoint, ProtocolServiceType.OBJECT_TABLE, props);
-                            addServices(endpoint, ProtocolServiceType.CLASS_RESOLVER, props);
-                            addServices(endpoint, ProtocolServiceType.OBJECT_RESOLVER, props);
-                            addServices(endpoint, ProtocolServiceType.CLASS_EXTERNALIZER_FACTORY, props);
-                            final List<RemotingServiceDescriptor<?>> connectionProviders = new ArrayList<RemotingServiceDescriptor<?>>();
-                            for (RemotingServiceDescriptor<?> descriptor : ServiceLoader.load(RemotingServiceDescriptor.class)) {
-                                final String name = descriptor.getName();
-                                final Class<?> serviceType = descriptor.getType();
-                                final Object service;
-                                try {
-                                    service = descriptor.getService(props);
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                }
-                                try {
-                                    if (serviceType == ConnectionProviderFactory.class) {
-                                        connectionProviders.add(descriptor);
-                                    } else if (serviceType == ClassTable.class) {
-                                        endpoint.addProtocolService(ProtocolServiceType.CLASS_TABLE, name, (ClassTable) service);
-                                    } else if (serviceType == ObjectTable.class) {
-                                        endpoint.addProtocolService(ProtocolServiceType.OBJECT_TABLE, name, (ObjectTable) service);
-                                    } else if (serviceType == ClassResolver.class) {
-                                        endpoint.addProtocolService(ProtocolServiceType.CLASS_RESOLVER, name, (ClassResolver) service);
-                                    } else if (serviceType == ObjectResolver.class) {
-                                        endpoint.addProtocolService(ProtocolServiceType.OBJECT_RESOLVER, name, (ObjectResolver) service);
-                                    } else if (serviceType == ClassExternalizerFactory.class) {
-                                        endpoint.addProtocolService(ProtocolServiceType.CLASS_EXTERNALIZER_FACTORY, name, (ClassExternalizerFactory) service);
-                                    }
-                                } catch (DuplicateRegistrationException e) {
-                                    log.warn("Duplicate registration for %s '%s'", serviceType, name);
-                                }
-                            }
-                            final Map<String, ProviderDescriptor> found = new HashMap<String, ProviderDescriptor>();
-                            for (ProviderDescriptor descriptor : ServiceLoader.load(ProviderDescriptor.class)) {
-                                final String name = descriptor.getName();
-                                // find the best one
-                                if (! found.containsKey(name) || found.get(name).getSupportedVersions()[0] < descriptor.getSupportedVersions()[0]) {
-                                    found.put(name, descriptor);
-                                }
-                            }
-                            for (String name : found.keySet()) {
-                                try {
-                                    endpoint.addProtocolService(ProtocolServiceType.MARSHALLER_PROVIDER_DESCRIPTOR, name, found.get(name));
-                                } catch (DuplicateRegistrationException e) {
-                                    log.warn("Duplicate registration for marshaller factory '%s'", name);
-                                }
-                            }
-                            // last but not least, install all the protocol service providers which may depend on prior items
-                            for (RemotingServiceDescriptor<?> descriptor : connectionProviders) {
-                                final String name = descriptor.getName();
-                                try {
-                                    endpoint.addConnectionProvider(name, (ConnectionProviderFactory) descriptor.getService(props));
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                } catch (DuplicateRegistrationException e) {
-                                    log.warn("Duplicate registration for connection provider '%s'", name);
-                                }
+                            for (ConnectionProviderDescriptor descriptor : ServiceLoader.load(ConnectionProviderDescriptor.class, Remoting.class.getClassLoader())) {
+                                endpoint.addConnectionProvider(descriptor.getProtocolType(), descriptor.getProviderFactory());
                             }
                             ok = true;
                             return endpoint;
@@ -237,30 +170,6 @@ public final class Remoting {
                 throw (IOException) c;
             }
             throw e;
-        }
-    }
-
-    private static <T> void addServices(final Endpoint endpoint, final ProtocolServiceType<T> serviceType, final Properties props) {
-        final String basePropName = serviceType.getName().toLowerCase();
-        final String instances = props.getProperty(endpoint.getName() + "." + basePropName + "_list");
-        final Class<T> valueClass = serviceType.getValueClass();
-        if (instances != null) {
-            for (String name : instances.split(",")) {
-                final String trimmed = name.trim();
-                final String className = props.getProperty(name + "." + basePropName + "." + trimmed + ".class");
-                if (className != null) {
-                    try {
-                        final Class<? extends T> instanceType = Class.forName(className).asSubclass(valueClass);
-                        final T instance = instanceType.getConstructor().newInstance();
-                        log.trace("Adding protocol service '%s' of type '%s'", name, serviceType);
-                        endpoint.addProtocolService(serviceType, name, instance);
-                    } catch (InvocationTargetException e) {
-                        log.warn(e.getCause(), "Unable to create %s instance '%s'", serviceType, name);
-                    } catch (Exception e) {
-                        log.warn("Unable to register %s '%s': %s", serviceType, name, e);
-                    }
-                }
-            }
         }
     }
 

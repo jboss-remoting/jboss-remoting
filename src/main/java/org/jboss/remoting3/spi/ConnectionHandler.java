@@ -39,9 +39,8 @@ public interface ConnectionHandler extends Closeable {
      * @param serviceType the service type string
      * @param groupName the group name string
      * @param result the result for the connected channel
-     * @param classLoader the class loader to use for replies
      * @param optionMap the options for this service
      * @return a handle which may be used to cancel the pending operation
      */
-    Cancellable open(String serviceType, String groupName, Result<Channel> result, ClassLoader classLoader, OptionMap optionMap);
+    Cancellable open(String serviceType, String groupName, Result<Channel> result, OptionMap optionMap);
 }

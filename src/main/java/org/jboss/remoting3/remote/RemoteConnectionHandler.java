@@ -52,7 +52,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
         this.remoteConnection = remoteConnection;
     }
 
-    public Cancellable open(final String serviceType, final String groupName, final Result<Channel> result, final ClassLoader classLoader, final OptionMap optionMap) {
+    public Cancellable open(final String serviceType, final String groupName, final Result<Channel> result, final OptionMap optionMap) {
         return null;
     }
 

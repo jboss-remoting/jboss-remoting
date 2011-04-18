@@ -1,8 +1,8 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, JBoss Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * JBoss, Home of Professional Open Source.
+ * Copyright 2011, Red Hat, Inc., and individual contributors
+ * as indicated by the @author tags. See the copyright.txt file in the
+ * distribution for a full listing of individual contributors.
  *
  * This is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as
@@ -20,23 +20,26 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.rpc;
+package org.jboss.remoting3.spi;
 
 /**
- * An RPC server.  Handles request objects and sends back replies.
- *
- * @param <I> the request type of this server
+ * A service descriptor for connection protocol providers.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public interface RPCServer<I> {
+public interface ConnectionProviderDescriptor {
 
     /**
-     * Handle a request.
+     * The protocol type.
      *
-     * @param context the request context
-     * @param request the request
-     * @param <O> the reply type
+     * @return the protocol type
      */
-    <O> void handleRequest(RPCContext<O> context, RPCRequest<I, O> request);
+    String getProtocolType();
+
+    /**
+     * The provider factory.
+     *
+     * @return the provider factory
+     */
+    ConnectionProviderFactory getProviderFactory();
 }

@@ -175,7 +175,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
         final FutureResult<Connection> futureResult = new FutureResult<Connection>(executor);
         // Mark the stack because otherwise debugging connect problems can be incredibly tough
-        final Throwable mark = new Throwable();
+        final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
         futureResult.addCancelHandler(connectionProvider.connect(destination, connectOptions, new Result<ConnectionHandlerFactory>() {
             public boolean setResult(final ConnectionHandlerFactory result) {
                 return futureResult.setResult(new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext, destination.toString()));
@@ -193,9 +193,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return futureResult.getIoFuture();
     }
 
-    static void glueStackTraces(final Throwable exception, final Throwable markerThrowable, final int trimCount, final String msg) {
+    static void glueStackTraces(final Throwable exception, final StackTraceElement[] ust, final int trimCount, final String msg) {
         final StackTraceElement[] est = exception.getStackTrace();
-        final StackTraceElement[] ust = markerThrowable.getStackTrace();
         final StackTraceElement[] fst = Arrays.copyOf(est, est.length + ust.length);
         fst[est.length] = new StackTraceElement("..." + msg + "..", "", null, -1);
         System.arraycopy(ust, trimCount, fst, est.length + 1, ust.length - trimCount);
