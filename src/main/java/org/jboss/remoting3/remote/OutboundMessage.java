@@ -24,8 +24,8 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.jboss.remoting3.MessageOutputStream;
 import org.xnio.IoUtils;
 import org.xnio.Pooled;
 import org.xnio.channels.Channels;
@@ -56,7 +56,7 @@ final class OutboundMessage {
         this.channel = channel;
         this.window = maximumWindow = window;
         try {
-            outputStream = new BufferPipeOutputStream(new BufferPipeOutputStream.BufferWriter() {
+            outputStream = new OutputStream(new BufferPipeOutputStream(new BufferPipeOutputStream.BufferWriter() {
                 public Pooled<ByteBuffer> getBuffer() throws IOException {
                     Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
                     ByteBuffer buffer = pooled.getResource();
@@ -102,14 +102,14 @@ final class OutboundMessage {
                 public void flush() throws IOException {
                     Channels.flushBlocking(channel.getConnection().getChannel());
                 }
-            });
+            }));
         } catch (IOException e) {
             // not possible
             throw new IllegalStateException(e);
         }
     }
 
-    final BufferPipeOutputStream outputStream;
+    final MessageOutputStream outputStream;
 
     Pooled<ByteBuffer> allocate(byte protoId) {
         Pooled<ByteBuffer> pooled = channel.allocate(protoId);
@@ -134,7 +134,40 @@ final class OutboundMessage {
         }
     }
 
-    public OutputStream getOutputStream() {
+    public MessageOutputStream getOutputStream() {
         return outputStream;
+    }
+
+    final class OutputStream extends MessageOutputStream {
+        private final BufferPipeOutputStream outputStream;
+
+        OutputStream(final BufferPipeOutputStream stream) {
+            outputStream = stream;
+        }
+
+        public void write(final int b) throws IOException {
+            outputStream.write(b);
+        }
+
+        public void write(final byte[] b) throws IOException {
+            outputStream.write(b);
+        }
+
+        public void write(final byte[] b, final int off, final int len) throws IOException {
+            outputStream.write(b, off, len);
+        }
+
+        public void flush() throws IOException {
+            outputStream.flush();
+        }
+
+        public void close() throws IOException {
+            outputStream.close();
+        }
+
+        public MessageOutputStream cancel() {
+            // todo - implement!
+            return this;
+        }
     }
 }

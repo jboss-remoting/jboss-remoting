@@ -109,19 +109,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return name;
     }
 
-    public Channel createLocalChannel(final OpenListener openListener, final OptionMap optionMap) {
+    public ChannelPair createChannelPair() {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CREATE_CHANNEL_PERM);
         }
-        final Executor executor = this.executor;
         final LoopbackChannel channel = new LoopbackChannel(executor);
-        executor.execute(new Runnable() {
-            public void run() {
-                openListener.channelOpened(channel);
-            }
-        });
-        return channel;
+        return new ChannelPair(channel, channel.getOtherSide());
     }
 
     public Registration registerService(final String serviceType, final OpenListener openListener, final OptionMap optionMap) throws ServiceRegistrationException {

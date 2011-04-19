@@ -27,8 +27,6 @@ import org.xnio.OptionMap;
 
 /**
  * A connection to a remote peer.
- * <p/>
- * @remoting.consume
  */
 public interface Connection extends HandleableCloseable<Connection>, Attachable {
 

@@ -1,8 +1,8 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, JBoss Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * JBoss, Home of Professional Open Source.
+ * Copyright 2011, Red Hat, Inc., and individual contributors
+ * as indicated by the @author tags. See the copyright.txt file in the
+ * distribution for a full listing of individual contributors.
  *
  * This is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as
@@ -22,17 +22,12 @@
 
 package org.jboss.remoting3;
 
+import java.io.InputStream;
+
 /**
+ * An input stream for messages.
+ *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public interface ReplyHandler {
-
-    /**
-     * Handle the reply to a request.  The supplied stream must be read fully or closed, though it may
-     * be read or closed from a different thread provided that it is not accessed concurrently (the stream is
-     * not guaranteed to be thread-safe by itself).
-     *
-     * @param reply the reply received from the server
-     */
-    void handleReply(Reply reply);
+public abstract class MessageInputStream extends InputStream {
 }

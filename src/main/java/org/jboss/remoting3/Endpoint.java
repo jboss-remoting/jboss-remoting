@@ -56,17 +56,16 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @param channelListener the channel listener
      * @param optionMap the option map
      * @return the service registration which may be closed to remove the service
+     * @throws ServiceRegistrationException if the service could not be registered
      */
     Registration registerService(String serviceType, OpenListener channelListener, OptionMap optionMap) throws ServiceRegistrationException;
 
     /**
-     * Create a channel which connects directly to the given channel listener.
+     * Create a channel pair which are connected to one another.
      *
-     * @param channelListener the channel listener
-     * @param optionMap the option map
-     * @return the channel
+     * @return the channel pair
      */
-    Channel createLocalChannel(OpenListener channelListener, OptionMap optionMap);
+    ChannelPair createChannelPair();
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.

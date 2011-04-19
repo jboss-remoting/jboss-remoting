@@ -24,7 +24,6 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.concurrent.Executor;
@@ -32,6 +31,7 @@ import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.BasicAttachments;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.ChannelBusyException;
+import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.xnio.Pooled;
 
@@ -58,7 +58,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private final int outboundWindow;
     private final int inboundWindow;
     private final Attachments attachments = new BasicAttachments();
-    private MessageHandler nextMessageHandler;
+    private Receiver nextMessageHandler;
     private int messageCount;
 
     RemoteConnectionChannel(final Executor executor, final RemoteConnection connection, final int channelId, final Random random, final int outboundWindow, final int inboundWindow) {
@@ -70,7 +70,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         this.inboundWindow = inboundWindow;
     }
 
-    public OutputStream writeMessage() throws IOException {
+    public MessageOutputStream writeMessage() throws IOException {
         int tries = 50;
         UnlockedReadIntIndexHashMap<OutboundMessage> outboundMessages = this.outboundMessages;
         synchronized (this) {
@@ -101,7 +101,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     public void writeShutdown() throws IOException {
     }
 
-    public void receiveMessage(final MessageHandler handler) {
+    public void receiveMessage(final Receiver handler) {
         synchronized (this) {
             if (nextMessageHandler != null) {
                 throw new IllegalStateException("Message handler already queued");

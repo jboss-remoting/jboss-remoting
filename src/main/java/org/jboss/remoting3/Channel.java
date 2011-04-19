@@ -23,8 +23,6 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 
 /**
  * The most basic level of communications in a Remoting connection.  A channel simply sends and receives
@@ -39,10 +37,10 @@ public interface Channel extends Attachable, HandleableCloseable<Channel> {
     /**
      * Write a new message on to this channel, blocking if necessary.
      *
-     * @return the output stream for the message
+     * @return the outbound message to send
      * @throws IOException if a new message cannot be written
      */
-    OutputStream writeMessage() throws IOException;
+    MessageOutputStream writeMessage() throws IOException;
 
     /**
      * Send an end-of-messages signal to the remote side.  No more messages may be written after this
@@ -58,7 +56,7 @@ public interface Channel extends Attachable, HandleableCloseable<Channel> {
      *
      * @param handler the handler for the next incoming message
      */
-    void receiveMessage(MessageHandler handler);
+    void receiveMessage(Receiver handler);
 
     /**
      * Close this channel.  No more messages may be sent or received after this method is called.
@@ -70,7 +68,7 @@ public interface Channel extends Attachable, HandleableCloseable<Channel> {
     /**
      * A handler for an incoming message.
      */
-    interface MessageHandler {
+    interface Receiver {
 
         /**
          * Handle an error condition on the channel.  The channel will no longer be readable.
@@ -88,12 +86,12 @@ public interface Channel extends Attachable, HandleableCloseable<Channel> {
         void handleEnd(Channel channel);
 
         /**
-         * Handle an incoming message.  To receive further messages, the {@link Channel#receiveMessage(MessageHandler)}
+         * Handle an incoming message.  To receive further messages, the {@link Channel#receiveMessage(Receiver)}
          * method must be called again.
          *
          * @param channel the channel
          * @param message the message
          */
-        void handleMessage(Channel channel, InputStream message);
+        void handleMessage(Channel channel, MessageInputStream message);
     }
 }

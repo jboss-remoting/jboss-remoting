@@ -1,8 +1,8 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2010, JBoss Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * JBoss, Home of Professional Open Source.
+ * Copyright 2011, Red Hat, Inc., and individual contributors
+ * as indicated by the @author tags. See the copyright.txt file in the
+ * distribution for a full listing of individual contributors.
  *
  * This is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as
@@ -23,48 +23,50 @@
 package org.jboss.remoting3;
 
 /**
- * An exception that is thrown when an operation terminates in such a way that the outcome cannot be known.
+ * An exception indicating that the sending side cancelled the message before completing it; the receiving side
+ * should act accordingly.
+ *
+ * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public class IndeterminateOutcomeException extends RemotingException {
+public class MessageCancelledException extends RemotingException {
 
-    private static final long serialVersionUID = 6304843915977033800L;
+    private static final long serialVersionUID = 8133970540852054266L;
 
     /**
-     * Constructs a <tt>IndeterminateOutcomeException</tt> with no detail message. The cause is not initialized, and may
+     * Constructs a {@code MessageCancelledException} with no detail message. The cause is not initialized, and may
      * subsequently be initialized by a call to {@link #initCause(Throwable) initCause}.
      */
-    public IndeterminateOutcomeException() {
+    public MessageCancelledException() {
     }
 
     /**
-     * Constructs a <tt>IndeterminateOutcomeException</tt> with the specified detail message. The cause is not initialized,
+     * Constructs a {@code MessageCancelledException} with the specified detail message. The cause is not initialized,
      * and may subsequently be initialized by a call to {@link #initCause(Throwable) initCause}.
      *
      * @param msg the detail message
      */
-    public IndeterminateOutcomeException(String msg) {
+    public MessageCancelledException(final String msg) {
         super(msg);
     }
 
     /**
-     * Constructs a <tt>IndeterminateOutcomeException</tt> with the specified cause. The detail message is set to:
-     * <pre>
-     *  (cause == null ? null : cause.toString())</pre>
-     * (which typically contains the class and detail message of <tt>cause</tt>).
+     * Constructs a {@code MessageCancelledException} with the specified cause. The detail message is set to:
+     * <pre>(cause == null ? null : cause.toString())</pre>
+     * (which typically contains the class and detail message of {@code cause}).
      *
      * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
      */
-    public IndeterminateOutcomeException(Throwable cause) {
+    public MessageCancelledException(final Throwable cause) {
         super(cause);
     }
 
     /**
-     * Constructs a <tt>IndeterminateOutcomeException</tt> with the specified detail message and cause.
+     * Constructs a {@code MessageCancelledException} with the specified detail message and cause.
      *
      * @param msg the detail message
      * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
      */
-    public IndeterminateOutcomeException(String msg, Throwable cause) {
+    public MessageCancelledException(final String msg, final Throwable cause) {
         super(msg, cause);
     }
 }

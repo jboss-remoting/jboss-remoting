@@ -23,12 +23,14 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
+import org.xnio.IoUtils;
 import org.xnio.streams.Pipe;
 
 /**
@@ -37,12 +39,12 @@ import org.xnio.streams.Pipe;
 final class LoopbackChannel extends AbstractHandleableCloseable<Channel> implements Channel {
     private final Attachments attachments = new BasicAttachments();
     private final LoopbackChannel otherSide;
-    private final Queue<Pipe> messageQueue;
+    private final Queue<In> messageQueue;
     private final Object lock = new Object();
     private final int queueLength;
     private final int bufferSize;
 
-    private MessageHandler messageHandler;
+    private Receiver messageHandler;
 
     private boolean closed;
 
@@ -50,7 +52,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
         super(executor);
         this.otherSide = otherSide;
         queueLength = 8;
-        messageQueue = new ArrayDeque<Pipe>(queueLength);
+        messageQueue = new ArrayDeque<In>(queueLength);
         bufferSize = 8192;
     }
 
@@ -58,13 +60,13 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
         super(executor);
         otherSide = new LoopbackChannel(executor, this);
         queueLength = 8;
-        messageQueue = new ArrayDeque<Pipe>(queueLength);
+        messageQueue = new ArrayDeque<In>(queueLength);
         bufferSize = 8192;
     }
 
-    public OutputStream writeMessage() throws IOException {
+    public MessageOutputStream writeMessage() throws IOException {
         final LoopbackChannel otherSide = this.otherSide;
-        final Queue<Pipe> otherSideQueue = otherSide.messageQueue;
+        final Queue<In> otherSideQueue = otherSide.messageQueue;
         synchronized (otherSide.lock) {
             for (;;) {
                 if (otherSide.closed) {
@@ -80,18 +82,19 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
                     }
                 } else {
                     final Pipe pipe = new Pipe(bufferSize);
+                    In in = new In(pipe.getIn());
                     if (size == 0) {
-                        final MessageHandler handler = otherSide.messageHandler;
+                        final Receiver handler = otherSide.messageHandler;
                         if (handler != null) {
                             otherSide.messageHandler = null;
                             otherSide.notify();
-                            executeMessageTask(pipe, handler);
-                            return pipe.getOut();
+                            executeMessageTask(handler, in);
+                            return new Out(pipe.getOut(), in);
                         }
                     }
-                    otherSideQueue.add(pipe);
+                    otherSideQueue.add(in);
                     otherSide.notify();
-                    return pipe.getOut();
+                    return new Out(pipe.getOut(), in);
                 }
             }
         }
@@ -102,7 +105,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
         synchronized (otherSide.lock) {
             if (! otherSide.closed) {
                 otherSide.closed = true;
-                final MessageHandler messageHandler = otherSide.messageHandler;
+                final Receiver messageHandler = otherSide.messageHandler;
                 if (messageHandler != null && otherSide.messageQueue.isEmpty()) {
                     executeEndTask(messageHandler);
                 } else {
@@ -112,7 +115,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
         }
     }
 
-    public void receiveMessage(final MessageHandler handler) {
+    public void receiveMessage(final Receiver handler) {
         final Object lock = this.lock;
         synchronized (lock) {
             if (messageHandler != null) {
@@ -121,9 +124,9 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
             if (closed) {
                 executeEndTask(handler);
             } else {
-                final Pipe pipe = messageQueue.poll();
-                if (pipe != null) {
-                    executeMessageTask(pipe, handler);
+                final In in = messageQueue.poll();
+                if (in != null) {
+                    executeMessageTask(handler, in);
                 } else {
                     messageHandler = handler;
                     lock.notify();
@@ -132,7 +135,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
         }
     }
 
-    private void executeEndTask(final MessageHandler handler) {
+    private void executeEndTask(final Receiver handler) {
         getExecutor().execute(new Runnable() {
             public void run() {
                 handler.handleEnd(LoopbackChannel.this);
@@ -140,10 +143,10 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
         });
     }
 
-    private void executeMessageTask(final Pipe pipe, final MessageHandler handler) {
+    private void executeMessageTask(final Receiver handler, final In in) {
         getExecutor().execute(new Runnable() {
             public void run() {
-                handler.handleMessage(otherSide, pipe.getIn());
+                handler.handleMessage(otherSide, in);
             }
         });
     }
@@ -156,6 +159,116 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
         synchronized (lock) {
             closed = true;
             lock.notifyAll();
+        }
+    }
+
+    LoopbackChannel getOtherSide() {
+        return otherSide;
+    }
+
+    static final class Out extends MessageOutputStream {
+        private final OutputStream outputStream;
+        private final In in;
+
+        Out(final OutputStream outputStream, final In in) {
+            this.outputStream = outputStream;
+            this.in = in;
+        }
+
+        public void flush() throws IOException {
+            outputStream.flush();
+        }
+
+        public void close() throws IOException {
+            outputStream.close();
+        }
+
+        public void write(final int b) throws IOException {
+            outputStream.write(b);
+        }
+
+        public void write(final byte[] b) throws IOException {
+            outputStream.write(b);
+        }
+
+        public void write(final byte[] b, final int off, final int len) throws IOException {
+            outputStream.write(b, off, len);
+        }
+
+        public Out cancel() {
+            in.doCancel();
+            IoUtils.safeClose(outputStream);
+            return this;
+        }
+    }
+
+    static final class In extends MessageInputStream {
+        private final InputStream inputStream;
+        private volatile boolean cancelled;
+
+        In(final InputStream inputStream) {
+            this.inputStream = inputStream;
+        }
+
+        public InputStream getInputStream() throws IOException {
+            return inputStream;
+        }
+
+        void doCancel() {
+            cancelled = true;
+        }
+
+        public boolean wasCancelled() {
+            return cancelled;
+        }
+
+        public int read() throws IOException {
+            checkCancel();
+            return inputStream.read();
+        }
+
+        private void checkCancel() throws MessageCancelledException {
+            if (cancelled) {
+                throw new MessageCancelledException();
+            }
+        }
+
+        public int read(final byte[] b) throws IOException {
+            checkCancel();
+            return inputStream.read(b);
+        }
+
+        public int read(final byte[] b, final int off, final int len) throws IOException {
+            checkCancel();
+            return inputStream.read(b, off, len);
+        }
+
+        public long skip(final long n) throws IOException {
+            checkCancel();
+            return inputStream.skip(n);
+        }
+
+        public int available() throws IOException {
+            checkCancel();
+            return inputStream.available();
+        }
+
+        public void close() throws IOException {
+            checkCancel();
+            inputStream.close();
+        }
+
+        public void mark(final int readlimit) {
+            inputStream.mark(readlimit);
+        }
+
+        public void reset() throws IOException {
+            checkCancel();
+            inputStream.reset();
+        }
+
+        public boolean markSupported() {
+            return inputStream.markSupported();
         }
     }
 }

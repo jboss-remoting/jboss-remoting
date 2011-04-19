@@ -25,7 +25,7 @@ package org.jboss.remoting3;
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public final class ChannelBusyException extends RemotingException {
+public class ChannelBusyException extends RemotingException {
 
     private static final long serialVersionUID = -2267642012592894285L;
 
