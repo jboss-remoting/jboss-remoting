@@ -22,69 +22,43 @@
 
 package org.jboss.remoting3;
 
-import java.util.IdentityHashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
+/**
+ * A basic implementation of the {@link Attachments} interface.
+ */
 public final class BasicAttachments implements Attachments {
-    private final Map<Key<?>, Object> map = new IdentityHashMap<Key<?>, Object>();
+    private final ConcurrentMap<Key<?>, Object> map = new UnlockedReadHashMap<Key<?>, Object>();
 
+    /** {@inheritDoc} */
     public <T> T attach(final Key<T> key, final T value) {
-        final Map<Key<?>, Object> map = this.map;
-        synchronized (map) {
-            final Class<T> type = key.getType();
-            return type.cast(map.put(key, type.cast(value)));
-        }
+        final Class<T> type = key.getType();
+        return type.cast(map.put(key, type.cast(value)));
     }
 
+    /** {@inheritDoc} */
     public <T> T attachIfAbsent(final Key<T> key, final T value) {
-        final Map<Key<?>, Object> map = this.map;
-        synchronized (map) {
-            final Object old = map.get(key);
-            if (old != null) {
-                return key.getType().cast(old);
-            } else {
-                map.put(key, key.getType().cast(value));
-                return null;
-            }
-        }
+        final Class<T> type = key.getType();
+        return type.cast(map.putIfAbsent(key, type.cast(value)));
     }
 
+    /** {@inheritDoc} */
     public <T> boolean replaceAttachment(final Key<T> key, final T expect, final T replacement) {
-        final Map<Key<?>, Object> map = this.map;
-        synchronized (map) {
-            final Object old = map.get(key);
-            if (expect == old || expect != null && expect.equals(old)) {
-                map.put(key, key.getType().cast(replacement));
-                return true;
-            } else {
-                return false;
-            }
-        }
+        return map.replace(key, expect, key.getType().cast(replacement));
     }
 
+    /** {@inheritDoc} */
     public <T> T removeAttachment(final Key<T> key) {
-        final Map<Key<?>, Object> map = this.map;
-        synchronized (map) {
-            return key.getType().cast(map.remove(key));
-        }
+        return key.getType().cast(map.remove(key));
     }
 
+    /** {@inheritDoc} */
     public <T> boolean removeAttachment(final Key<T> key, final T value) {
-        final Map<Key<?>, Object> map = this.map;
-        synchronized (map) {
-            final Object old = map.get(key);
-            if (value == old || value != null && value.equals(old)) {
-                map.remove(key);
-                return false;
-            }
-            return true;
-        }
+        return map.remove(key, value);
     }
 
+    /** {@inheritDoc} */
     public <T> T getAttachment(final Key<T> key) {
-        final Map<Key<?>, Object> map = this.map;
-        synchronized (map) {
-            return key.getType().cast(map.get(key));
-        }
+        return key.getType().cast(map.get(key));
     }
 }

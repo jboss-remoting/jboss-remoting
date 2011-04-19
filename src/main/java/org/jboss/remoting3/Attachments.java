@@ -23,7 +23,7 @@
 package org.jboss.remoting3;
 
 /**
- *
+ * Attachments on an entity.
  */
 public interface Attachments {
 
@@ -32,28 +32,82 @@ public interface Attachments {
      *
      * @param key the attachment key
      * @param value the attachment value
-     * @param <T> the type of the attachment
-     * @returns the old value, if any
+     * @param <T> the attachment value type
+     * @return the old value, if any
      */
     <T> T attach(Key<T> key, T value);
 
+    /**
+     * Attach a value to this object if one was not previously attached.
+     *
+     * @param key the attachment key
+     * @param value the attachment value
+     * @param <T> the attachment value type
+     * @return the existing value, or {@code null} if the attachment succeeded
+     */
     <T> T attachIfAbsent(Key<T> key, T value);
 
+    /**
+     * Replace an old attachment with a new one.
+     *
+     * @param key the attachment key
+     * @param expect the expected attachment
+     * @param replacement the replacement attachment
+     * @param <T> the attachment value type
+     * @return {@code true} if the attachment was replaced, {@code false} if the expected value was not found
+     */
     <T> boolean replaceAttachment(Key<T> key, T expect, T replacement);
 
+    /**
+     * Remove an attachment.
+     *
+     * @param key the attachment key
+     * @param <T> the attachment value type
+     * @return the old value or {@code null} if there was none
+     */
     <T> T removeAttachment(Key<T> key);
 
+    /**
+     * Remove an attachment with an expected value.
+     *
+     * @param key the attachment key
+     * @param value the expected attachment value
+     * @param <T> the attachment value type
+     * @return {@code true} if the attachment was removed, {@code false} if the expected value was not found
+     */
     <T> boolean removeAttachment(Key<T> key, T value);
 
+    /**
+     * Get an attachment value.
+     *
+     * @param key the attachment key
+     * @param <T> the attachment value type
+     * @return the attachment value
+     */
     <T> T getAttachment(Key<T> key);
 
+    /**
+     * An attachment key.
+     *
+     * @param <T> the attachment value type
+     */
     final class Key<T> {
         private final Class<T> type;
 
+        /**
+         * Construct a new instance.
+         *
+         * @param type the key type class.
+         */
         public Key(final Class<T> type) {
             this.type = type;
         }
 
+        /**
+         * Get the attachment type class.
+         *
+         * @return the attachment type class
+         */
         public Class<T> getType() {
             return type;
         }

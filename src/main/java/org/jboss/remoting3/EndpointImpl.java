@@ -76,7 +76,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
      * The name of this endpoint.
      */
     private final String name;
-    @SuppressWarnings( { "unused" })
+    @SuppressWarnings("unused")
     private final OptionMap optionMap;
     private final ConnectionProviderContext connectionProviderContext;
 
@@ -86,16 +86,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         this.name = name;
         connectionProviderContext = new ConnectionProviderContextImpl();
         // add default connection providers
-        connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext));
+        connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, executor));
         // add default services
         this.optionMap = optionMap;
     }
 
     private final Executor executor;
-
-    protected Executor getOrderedExecutor() {
-        return new OrderedExecutor(executor);
-    }
 
     protected Executor getExecutor() {
         return executor;

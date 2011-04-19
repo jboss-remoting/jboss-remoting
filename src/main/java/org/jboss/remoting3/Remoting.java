@@ -25,7 +25,6 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.security.RemotingPermission;
-import org.xnio.Option;
 import org.xnio.OptionMap;
 
 /**
@@ -37,8 +36,6 @@ import org.xnio.OptionMap;
 public final class Remoting {
 
     private static final RemotingPermission CREATE_ENDPOINT_PERM = new RemotingPermission("createEndpoint");
-
-    static final Option<Boolean> UNCLOSEABLE = Option.simple(Remoting.class, "UNCLOSEABLE", Boolean.class);
 
     /**
      * Create an endpoint configured with the given option map.  The following options are supported:

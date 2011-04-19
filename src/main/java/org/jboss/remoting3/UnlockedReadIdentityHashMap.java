@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2010, Red Hat, Inc., and individual contributors
+ * Copyright 2011, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -31,7 +31,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
+import static java.lang.System.identityHashCode;
+
+final class UnlockedReadIdentityHashMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
 
     private static final int DEFAULT_INITIAL_CAPACITY = 512;
     private static final int MAXIMUM_CAPACITY = 1 << 30;
@@ -49,7 +51,7 @@ final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements Concu
     // Raw fields (reads and writes protected by {@link #writeLock}
     private int threshold;
 
-    UnlockedReadHashMap(int initialCapacity, final float loadFactor) {
+    UnlockedReadIdentityHashMap(int initialCapacity, final float loadFactor) {
         if (initialCapacity < 0) {
             throw new IllegalArgumentException("Initial capacity must be > 0");
         }
@@ -73,15 +75,15 @@ final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements Concu
         }
     }
 
-    UnlockedReadHashMap(final float loadFactor) {
+    UnlockedReadIdentityHashMap(final float loadFactor) {
         this(DEFAULT_INITIAL_CAPACITY, loadFactor);
     }
 
-    UnlockedReadHashMap(final int initialCapacity) {
+    UnlockedReadIdentityHashMap(final int initialCapacity) {
         this(initialCapacity, DEFAULT_LOAD_FACTOR);
     }
 
-    UnlockedReadHashMap() {
+    UnlockedReadIdentityHashMap() {
         this(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR);
     }
 
@@ -102,7 +104,7 @@ final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements Concu
                 final int length = items.length;
                 for (int j = 0; j < length; j++) {
                     Item<K, V> item = items[j];
-                    final int hc = item.hashCode() & (newCapacity - 1);
+                    final int hc = identityHashCode(item) & (newCapacity - 1);
                     final Item<K, V>[] old = newTable.get(hc);
                     if (old == null) {
                         newTable.lazySet(hc, new Item[] { item });
@@ -130,7 +132,7 @@ final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements Concu
     }
 
     private static <K, V> int getIndex(final AtomicReferenceArray<Item<K, V>[]> table, final Object key) {
-        return key.hashCode() & (table.length() - 1);
+        return identityHashCode(key) & (table.length() - 1);
     }
 
     private static <K, V> Item<K, V>[] doGetRow(final AtomicReferenceArray<Item<K, V>[]> table, final int hc) {
@@ -139,7 +141,7 @@ final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements Concu
 
     private static <K, V> Item<K, V> doGet(Item<K, V>[] row, Object key) {
         for (Item<K, V> item : row) {
-            if (item.key.equals(key)) {
+            if (key == item.key) {
                 return item;
             }
         }
@@ -240,7 +242,7 @@ final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements Concu
             final int rowLen = row.length;
             for (int i = 0; i < rowLen; i++) {
                 final Item<K, V> item = row[i];
-                if (item.key.equals(key)) {
+                if (key == item.key) {
                     table.set(hc, remove(row, i));
                     size --;
                     return item.value;
@@ -279,7 +281,7 @@ final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements Concu
             final int rowLen = row.length;
             for (int i = 0; i < rowLen; i++) {
                 final Item<K, V> item = row[i];
-                if (item.key.equals(key) && (value == null ? item.value == null : value.equals(item.value))) {
+                if (key == item.key && (value == null ? item.value == null : value.equals(item.value))) {
                     table.set(hc, remove(row, i));
                     size --;
                     return true;
@@ -327,12 +329,12 @@ final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements Concu
         }
 
         public int size() {
-            return UnlockedReadHashMap.this.size();
+            return UnlockedReadIdentityHashMap.this.size();
         }
     }
 
     private final class EntryIterator implements Iterator<Entry<K, V>> {
-        private final AtomicReferenceArray<Item<K,V>[]> table = UnlockedReadHashMap.this.table;
+        private final AtomicReferenceArray<Item<K,V>[]> table = UnlockedReadIdentityHashMap.this.table;
         private int tableIdx;
         private int itemIdx;
         private Item<K, V> next;
@@ -396,7 +398,7 @@ final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements Concu
         }
 
         public int hashCode() {
-            return key.hashCode();
+            return identityHashCode(key);
         }
 
         public boolean equals(final Object obj) {
@@ -404,7 +406,7 @@ final class UnlockedReadHashMap<K, V> extends AbstractMap<K, V> implements Concu
         }
 
         public boolean equals(final Item<?, ?> obj) {
-            return obj != null && obj.key.equals(key);
+            return obj != null && obj.key == key;
         }
     }
 }

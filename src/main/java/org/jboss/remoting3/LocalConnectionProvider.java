@@ -22,7 +22,11 @@
 
 package org.jboss.remoting3;
 
+import java.io.IOException;
 import java.net.URI;
+import java.util.concurrent.Executor;
+import org.jboss.remoting3.spi.ConnectionHandler;
+import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
@@ -32,19 +36,53 @@ import org.xnio.Result;
 
 import javax.security.auth.callback.CallbackHandler;
 
+import static org.xnio.IoUtils.nullCancellable;
+
 final class LocalConnectionProvider implements ConnectionProvider {
 
+    private final Executor executor;
     private final ConnectionProviderContext context;
 
-    LocalConnectionProvider(final ConnectionProviderContext context) {
+    LocalConnectionProvider(final ConnectionProviderContext context, final Executor executor) {
         this.context = context;
+        this.executor = executor;
     }
 
     public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
-        return null;
+        context.accept(new ConnectionHandlerFactory() {
+            public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
+                return new LoopbackConnectionHandler(connectionContext);
+            }
+        });
+        return nullCancellable();
     }
 
     public Object getProviderInterface() {
+        // N/A
         return null;
+    }
+
+    private class LoopbackConnectionHandler implements ConnectionHandler {
+
+        private final ConnectionHandlerContext context;
+
+        LoopbackConnectionHandler(final ConnectionHandlerContext context) {
+            this.context = context;
+        }
+
+        public Cancellable open(final String serviceType, final String groupName, final Result<Channel> result, final OptionMap optionMap) {
+            LoopbackChannel channel = new LoopbackChannel(executor);
+            try {
+                context.openService(channel.getOtherSide(), serviceType);
+            } catch (ServiceNotFoundException e) {
+                result.setException(e);
+                return nullCancellable();
+            }
+            result.setResult(channel);
+            return nullCancellable();
+        }
+
+        public void close() throws IOException {
+        }
     }
 }
