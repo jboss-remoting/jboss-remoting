@@ -65,7 +65,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private static final RemotingPermission ADD_CONNECTION_PROVIDER_PERM = new RemotingPermission("addConnectionProvider");
     private static final RemotingPermission GET_CONNECTION_PROVIDER_INTERFACE_PERM = new RemotingPermission("getConnectionProviderInterface");
 
-    private final Attachments attachments = new BasicAttachments();
+    private final Attachments attachments = new Attachments();
 
     private final ConcurrentMap<String, ConnectionProvider> connectionProviders = new UnlockedReadHashMap<String, ConnectionProvider>();
     private final ConcurrentMap<String, OpenListener> registeredServices = new UnlockedReadHashMap<String, OpenListener>();

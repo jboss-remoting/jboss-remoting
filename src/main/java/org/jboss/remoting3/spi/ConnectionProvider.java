@@ -32,8 +32,6 @@ import javax.security.auth.callback.CallbackHandler;
 /**
  * A connection provider.  Used to establish connections with remote systems.  There is typically one instance
  * of this interface per connection provider factory per endpoint.
- *
- * @remoting.implement
  */
 public interface ConnectionProvider {
 
@@ -51,9 +49,11 @@ public interface ConnectionProvider {
     Cancellable connect(URI uri, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, CallbackHandler callbackHandler) throws IllegalArgumentException;
 
     /**
-     * Get the user data associated with this connection provider.
+     * Get the user data associated with this connection provider.  This object should implement all of the
+     * provider interfaces which are supported by this provider.
      *
      * @return the user data
+     * @see NetworkServerProvider
      */
     Object getProviderInterface();
 }

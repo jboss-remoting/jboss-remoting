@@ -28,7 +28,6 @@ import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.Attachments;
-import org.jboss.remoting3.BasicAttachments;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.ChannelBusyException;
 import org.jboss.remoting3.MessageOutputStream;
@@ -57,7 +56,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private final Random random;
     private final int outboundWindow;
     private final int inboundWindow;
-    private final Attachments attachments = new BasicAttachments();
+    private final Attachments attachments = new Attachments();
     private Receiver nextMessageHandler;
     private int messageCount;
 

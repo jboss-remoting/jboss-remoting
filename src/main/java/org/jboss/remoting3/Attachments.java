@@ -22,76 +22,52 @@
 
 package org.jboss.remoting3;
 
+import java.util.concurrent.ConcurrentMap;
+
 /**
- * Attachments on an entity.
+ * A set of attachments for an entity.
  */
-public interface Attachments {
+public final class Attachments {
+    private final ConcurrentMap<Key<?>, Object> map = new UnlockedReadHashMap<Key<?>, Object>();
 
-    /**
-     * Attach a value to this object.
-     *
-     * @param key the attachment key
-     * @param value the attachment value
-     * @param <T> the attachment value type
-     * @return the old value, if any
-     */
-    <T> T attach(Key<T> key, T value);
+    /** {@inheritDoc} */
+    public <T> T attach(final Key<T> key, final T value) {
+        final Class<T> type = key.getType();
+        return type.cast(map.put(key, type.cast(value)));
+    }
 
-    /**
-     * Attach a value to this object if one was not previously attached.
-     *
-     * @param key the attachment key
-     * @param value the attachment value
-     * @param <T> the attachment value type
-     * @return the existing value, or {@code null} if the attachment succeeded
-     */
-    <T> T attachIfAbsent(Key<T> key, T value);
+    /** {@inheritDoc} */
+    public <T> T attachIfAbsent(final Key<T> key, final T value) {
+        final Class<T> type = key.getType();
+        return type.cast(map.putIfAbsent(key, type.cast(value)));
+    }
 
-    /**
-     * Replace an old attachment with a new one.
-     *
-     * @param key the attachment key
-     * @param expect the expected attachment
-     * @param replacement the replacement attachment
-     * @param <T> the attachment value type
-     * @return {@code true} if the attachment was replaced, {@code false} if the expected value was not found
-     */
-    <T> boolean replaceAttachment(Key<T> key, T expect, T replacement);
+    /** {@inheritDoc} */
+    public <T> boolean replaceAttachment(final Key<T> key, final T expect, final T replacement) {
+        return map.replace(key, expect, key.getType().cast(replacement));
+    }
 
-    /**
-     * Remove an attachment.
-     *
-     * @param key the attachment key
-     * @param <T> the attachment value type
-     * @return the old value or {@code null} if there was none
-     */
-    <T> T removeAttachment(Key<T> key);
+    /** {@inheritDoc} */
+    public <T> T removeAttachment(final Key<T> key) {
+        return key.getType().cast(map.remove(key));
+    }
 
-    /**
-     * Remove an attachment with an expected value.
-     *
-     * @param key the attachment key
-     * @param value the expected attachment value
-     * @param <T> the attachment value type
-     * @return {@code true} if the attachment was removed, {@code false} if the expected value was not found
-     */
-    <T> boolean removeAttachment(Key<T> key, T value);
+    /** {@inheritDoc} */
+    public <T> boolean removeAttachment(final Key<T> key, final T value) {
+        return map.remove(key, value);
+    }
 
-    /**
-     * Get an attachment value.
-     *
-     * @param key the attachment key
-     * @param <T> the attachment value type
-     * @return the attachment value
-     */
-    <T> T getAttachment(Key<T> key);
+    /** {@inheritDoc} */
+    public <T> T getAttachment(final Key<T> key) {
+        return key.getType().cast(map.get(key));
+    }
 
     /**
      * An attachment key.
      *
      * @param <T> the attachment value type
      */
-    final class Key<T> {
+    public static final class Key<T> {
         private final Class<T> type;
 
         /**

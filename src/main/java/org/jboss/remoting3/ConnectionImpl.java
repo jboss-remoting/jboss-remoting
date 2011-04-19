@@ -33,7 +33,7 @@ import org.xnio.OptionMap;
 
 class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements Connection {
 
-    private final Attachments attachments = new BasicAttachments();
+    private final Attachments attachments = new Attachments();
 
     private final ConnectionHandler connectionHandler;
     private final String name;

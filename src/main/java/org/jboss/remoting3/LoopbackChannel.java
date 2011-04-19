@@ -37,7 +37,7 @@ import org.xnio.streams.Pipe;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class LoopbackChannel extends AbstractHandleableCloseable<Channel> implements Channel {
-    private final Attachments attachments = new BasicAttachments();
+    private final Attachments attachments = new Attachments();
     private final LoopbackChannel otherSide;
     private final Queue<In> messageQueue;
     private final Object lock = new Object();
