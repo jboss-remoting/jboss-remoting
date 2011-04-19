@@ -129,7 +129,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return new MapRegistration<OpenListener>(registeredServices, serviceType, openListener);
     }
 
-    public IoFuture<? extends Connection> connect(final URI destination) throws IOException {
+    public IoFuture<Connection> connect(final URI destination) throws IOException {
         final Pair<String, String> userRealm = getUserAndRealm(destination);
         final String uriUserName = userRealm.getA();
         final String uriUserRealm = userRealm.getB();
@@ -141,7 +141,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return doConnect(destination, finalMap, new PasswordClientCallbackHandler(finalMap.get(RemotingOptions.AUTHORIZE_ID), finalMap.get(RemotingOptions.AUTH_REALM), null));
     }
 
-    public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
+    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
         final Pair<String, String> userRealm = getUserAndRealm(destination);
         final String uriUserName = userRealm.getA();
         final String uriUserRealm = userRealm.getB();
@@ -153,7 +153,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return doConnect(destination, finalMap, new PasswordClientCallbackHandler(finalMap.get(RemotingOptions.AUTHORIZE_ID), finalMap.get(RemotingOptions.AUTH_REALM), null));
     }
 
-    private IoFuture<? extends Connection> doConnect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
+    private IoFuture<Connection> doConnect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CONNECT_PERM);
@@ -191,7 +191,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         exception.setStackTrace(fst);
     }
 
-    public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
+    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
         final Pair<String, String> userRealm = getUserAndRealm(destination);
         final String uriUserName = userRealm.getA();
         final String uriUserRealm = userRealm.getB();
@@ -203,7 +203,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return doConnect(destination, finalMap, callbackHandler);
     }
 
-    public IoFuture<? extends Connection> connect(final URI destination, final OptionMap connectOptions, final String userName, final String realmName, final char[] password) throws IOException {
+    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final String userName, final String realmName, final char[] password) throws IOException {
         final Pair<String, String> userRealm = getUserAndRealm(destination);
         final String uriUserName = userRealm.getA();
         final String uriUserRealm = userRealm.getB();

@@ -53,12 +53,12 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * Register a new service.
      *
      * @param serviceType the service type
-     * @param channelListener the channel listener
+     * @param openListener the channel open listener
      * @param optionMap the option map
      * @return the service registration which may be closed to remove the service
      * @throws ServiceRegistrationException if the service could not be registered
      */
-    Registration registerService(String serviceType, OpenListener channelListener, OptionMap optionMap) throws ServiceRegistrationException;
+    Registration registerService(String serviceType, OpenListener openListener, OptionMap optionMap) throws ServiceRegistrationException;
 
     /**
      * Create a channel pair which are connected to one another.
@@ -77,7 +77,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @return the future connection
      * @throws IOException if an error occurs while starting the connect attempt
      */
-    IoFuture<? extends Connection> connect(URI destination) throws IOException;
+    IoFuture<Connection> connect(URI destination) throws IOException;
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
@@ -90,7 +90,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @return the future connection
      * @throws IOException if an error occurs while starting the connect attempt
      */
-    IoFuture<? extends Connection> connect(URI destination, OptionMap connectOptions) throws IOException;
+    IoFuture<Connection> connect(URI destination, OptionMap connectOptions) throws IOException;
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
@@ -105,7 +105,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @return the future connection
      * @throws IOException if an error occurs while starting the connect attempt
      */
-    IoFuture<? extends Connection> connect(URI destination, OptionMap connectOptions, CallbackHandler callbackHandler) throws IOException;
+    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, CallbackHandler callbackHandler) throws IOException;
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
@@ -122,7 +122,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @return the future connection
      * @throws IOException if an error occurs while starting the connect attempt
      */
-    IoFuture<? extends Connection> connect(URI destination, OptionMap connectOptions, String userName, String realmName, char[] password) throws IOException;
+    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, String userName, String realmName, char[] password) throws IOException;
 
     /**
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can

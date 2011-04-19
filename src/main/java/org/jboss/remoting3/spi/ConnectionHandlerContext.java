@@ -27,8 +27,6 @@ import org.jboss.remoting3.ServiceNotFoundException;
 
 /**
  * The context for connection handlers.  Used to inform the endpoint of incoming events on an established connection.
- *
- * @remoting.consume
  */
 public interface ConnectionHandlerContext {
 
@@ -42,8 +40,6 @@ public interface ConnectionHandlerContext {
     /**
      * Open a service.  This method should return immediately.
      *
-     * @remoting.nonblocking
-     *
      * @param newChannel the new incoming channel
      * @param serviceType the service type string
      * @throws ServiceNotFoundException if the service is not found
@@ -52,8 +48,6 @@ public interface ConnectionHandlerContext {
 
     /**
      * Indicate that the remote side has terminated the connection, so the local side should be closed as well.
-     *
-     * @remoting.nonblocking
      */
     void remoteClosed();
 }

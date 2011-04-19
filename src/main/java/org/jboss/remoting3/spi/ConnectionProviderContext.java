@@ -28,8 +28,6 @@ import org.jboss.remoting3.Endpoint;
 /**
  * A context for a connection provider.  This provides additional endpoint methods to connection providers which are not
  * accessible otherwise.
- *
- * @remoting.consume
  */
 public interface ConnectionProviderContext {
 

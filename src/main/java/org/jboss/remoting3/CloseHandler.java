@@ -30,7 +30,6 @@ import java.util.EventListener;
  * @param <T> the type of resource
  *
  * @apiviz.exclude
- * @remoting.implement
  */
 public interface CloseHandler<T> extends EventListener {
 
