@@ -112,7 +112,7 @@ public class PasswordClientCallbackHandler implements CallbackHandler {
                     default: kind = "UNKNOWN"; break;
                 }
                 log.debugf("Authentication layer produced a %s message: %s", kind, textOutputCallback.getMessage());
-            } else if (callback instanceof PasswordCallback && password != null) {
+            } else if (callback instanceof PasswordCallback) {
                 final PasswordCallback passwordCallback = (PasswordCallback) callback;
                 passwordCallback.setPassword(password);
             } else {

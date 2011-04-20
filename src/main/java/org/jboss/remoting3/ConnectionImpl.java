@@ -48,9 +48,9 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
         connectionHandler.close();
     }
 
-    public IoFuture<Channel> openChannel(final String serviceType, final String groupName, final OptionMap optionMap) {
+    public IoFuture<Channel> openChannel(final String serviceType, final OptionMap optionMap) {
         FutureResult<Channel> result = new FutureResult<Channel>(getExecutor());
-        result.addCancelHandler(connectionHandler.open(serviceType, groupName, result, optionMap));
+        result.addCancelHandler(connectionHandler.open(serviceType, result, optionMap));
         return result.getIoFuture();
     }
 

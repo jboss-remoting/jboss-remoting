@@ -34,9 +34,8 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * Open a channel to a remote service on this connection.
      *
      * @param serviceType the service type
-     * @param groupName the group name
      * @param optionMap the option map
      * @return the future channel
      */
-    IoFuture<Channel> openChannel(String serviceType, String groupName, OptionMap optionMap);
+    IoFuture<Channel> openChannel(String serviceType, OptionMap optionMap);
 }

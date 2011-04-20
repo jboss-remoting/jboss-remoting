@@ -70,7 +70,7 @@ final class LocalConnectionProvider implements ConnectionProvider {
             this.context = context;
         }
 
-        public Cancellable open(final String serviceType, final String groupName, final Result<Channel> result, final OptionMap optionMap) {
+        public Cancellable open(final String serviceType, final Result<Channel> result, final OptionMap optionMap) {
             LoopbackChannel channel = new LoopbackChannel(executor);
             try {
                 context.openService(channel.getOtherSide(), serviceType);

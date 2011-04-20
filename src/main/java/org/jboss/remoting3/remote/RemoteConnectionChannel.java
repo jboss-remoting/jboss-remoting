@@ -27,6 +27,7 @@ import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Semaphore;
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.ChannelBusyException;
@@ -82,14 +83,14 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                     throw new InterruptedIOException("Interrupted while waiting to write message");
                 }
             }
-            this.messageCount = messageCount - 1;
             final Random random = this.random;
             while (tries > 0) {
                 final int id = random.nextInt() & 0xfffe;
                 if (! outboundMessages.containsKey(id)) {
                     OutboundMessage message = new OutboundMessage((short) id, this, outboundWindow);
                     outboundMessages.put(id, message);
-                    return message.getOutputStream();
+                    this.messageCount = messageCount - 1;
+                    return message;
                 }
                 tries --;
             }
@@ -98,6 +99,12 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     public void writeShutdown() throws IOException {
+    }
+
+    void handleReadShutdown() {
+    }
+
+    void handleWriteShutdown() {
     }
 
     public void receiveMessage(final Receiver handler) {
@@ -139,6 +146,17 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             return;
         }
         outboundMessage.acknowledge(buffer.getInt() & 0x7FFFFFFF);
+    }
+
+    void handleAsyncClose(final Pooled<ByteBuffer> pooled) {
+        ByteBuffer buffer = pooled.getResource();
+        int id = buffer.getShort() & 0xffff;
+        final OutboundMessage outboundMessage = outboundMessages.get(id);
+        if (outboundMessage == null) {
+            // ignore; probably harmless...?
+            return;
+        }
+        outboundMessage.asyncClose();
     }
 
     public Attachments getAttachments() {

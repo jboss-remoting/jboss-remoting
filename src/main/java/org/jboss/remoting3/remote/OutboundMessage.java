@@ -34,12 +34,60 @@ import org.xnio.streams.BufferPipeOutputStream;
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-final class OutboundMessage {
+final class OutboundMessage extends MessageOutputStream {
     final short messageId;
     final RemoteConnectionChannel channel;
+    final BufferPipeOutputStream pipeOutputStream;
     final int maximumWindow;
     int window;
     boolean closed;
+    final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
+        public Pooled<ByteBuffer> getBuffer() throws IOException {
+            Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
+            ByteBuffer buffer = pooled.getResource();
+
+            buffer.putShort(messageId);
+            buffer.put((byte) 0); // flags
+            // header size plus window size
+            int windowPlusHeader = maximumWindow + 8;
+            if (buffer.remaining() > windowPlusHeader) {
+                // never try to write more than the maximum window size
+                buffer.limit(windowPlusHeader);
+            }
+            return pooled;
+        }
+
+        public void accept(final Pooled<ByteBuffer> pooledBuffer, final boolean eof) throws IOException {
+            try {
+                final ByteBuffer buffer = pooledBuffer.getResource();
+                if (eof) {
+                    // EOF flag (sync close)
+                    buffer.put(7, (byte) 0x01);
+                }
+                synchronized (this) {
+                    int msgSize = buffer.remaining();
+                    while (window < msgSize) {
+                        try {
+                            wait();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new InterruptedIOException("Interrupted on write");
+                        }
+                    }
+                }
+                Channels.sendBlocking(channel.getConnection().getChannel(), buffer);
+            } finally {
+                pooledBuffer.free();
+                if (eof) {
+                    channel.freeOutboundMessage(messageId);
+                }
+            }
+        }
+
+        public void flush() throws IOException {
+            Channels.flushBlocking(channel.getConnection().getChannel());
+        }
+    };
 
     static final IntIndexer<OutboundMessage> INDEXER = new IntIndexer<OutboundMessage>() {
         public int indexOf(final OutboundMessage argument) {
@@ -56,60 +104,12 @@ final class OutboundMessage {
         this.channel = channel;
         this.window = maximumWindow = window;
         try {
-            outputStream = new OutputStream(new BufferPipeOutputStream(new BufferPipeOutputStream.BufferWriter() {
-                public Pooled<ByteBuffer> getBuffer() throws IOException {
-                    Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
-                    ByteBuffer buffer = pooled.getResource();
-
-                    buffer.putShort(messageId);
-                    buffer.put((byte) 0); // flags
-                    // header size plus window size
-                    int windowPlusHeader = maximumWindow + 8;
-                    if (buffer.remaining() > windowPlusHeader) {
-                        // never try to write more than the maximum window size
-                        buffer.limit(windowPlusHeader);
-                    }
-                    return pooled;
-                }
-
-                public void accept(final Pooled<ByteBuffer> pooledBuffer, final boolean eof) throws IOException {
-                    try {
-                        final ByteBuffer buffer = pooledBuffer.getResource();
-                        if (eof) {
-                            // EOF flag (sync close)
-                            buffer.put(7, (byte) 0x01);
-                        }
-                        synchronized (this) {
-                            int msgSize = buffer.remaining();
-                            while (window < msgSize) {
-                                try {
-                                    wait();
-                                } catch (InterruptedException e) {
-                                    Thread.currentThread().interrupt();
-                                    throw new InterruptedIOException("Interrupted on write");
-                                }
-                            }
-                        }
-                        Channels.sendBlocking(channel.getConnection().getChannel(), buffer);
-                    } finally {
-                        pooledBuffer.free();
-                        if (eof) {
-                            channel.freeOutboundMessage(messageId);
-                        }
-                    }
-                }
-
-                public void flush() throws IOException {
-                    Channels.flushBlocking(channel.getConnection().getChannel());
-                }
-            }));
+            pipeOutputStream = new BufferPipeOutputStream(bufferWriter);
         } catch (IOException e) {
             // not possible
             throw new IllegalStateException(e);
         }
     }
-
-    final MessageOutputStream outputStream;
 
     Pooled<ByteBuffer> allocate(byte protoId) {
         Pooled<ByteBuffer> pooled = channel.allocate(protoId);
@@ -126,7 +126,7 @@ final class OutboundMessage {
     }
 
     void asyncClose() {
-        IoUtils.safeClose(outputStream);
+        IoUtils.safeClose(pipeOutputStream);
         synchronized (this) {
             closed = true;
             // wake up waiters
@@ -134,40 +134,28 @@ final class OutboundMessage {
         }
     }
 
-    public MessageOutputStream getOutputStream() {
-        return outputStream;
+    public void write(final int b) throws IOException {
+        pipeOutputStream.write(b);
     }
 
-    final class OutputStream extends MessageOutputStream {
-        private final BufferPipeOutputStream outputStream;
+    public void write(final byte[] b) throws IOException {
+        pipeOutputStream.write(b);
+    }
 
-        OutputStream(final BufferPipeOutputStream stream) {
-            outputStream = stream;
-        }
+    public void write(final byte[] b, final int off, final int len) throws IOException {
+        pipeOutputStream.write(b, off, len);
+    }
 
-        public void write(final int b) throws IOException {
-            outputStream.write(b);
-        }
+    public void flush() throws IOException {
+        pipeOutputStream.flush();
+    }
 
-        public void write(final byte[] b) throws IOException {
-            outputStream.write(b);
-        }
+    public void close() throws IOException {
+        pipeOutputStream.close();
+    }
 
-        public void write(final byte[] b, final int off, final int len) throws IOException {
-            outputStream.write(b, off, len);
-        }
-
-        public void flush() throws IOException {
-            outputStream.flush();
-        }
-
-        public void close() throws IOException {
-            outputStream.close();
-        }
-
-        public MessageOutputStream cancel() {
-            // todo - implement!
-            return this;
-        }
+    public MessageOutputStream cancel() {
+        // todo
+        return this;
     }
 }

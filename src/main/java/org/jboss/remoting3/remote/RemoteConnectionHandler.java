@@ -46,13 +46,14 @@ final class RemoteConnectionHandler implements ConnectionHandler {
      * are stored from the "read" perspective.  Remote channels "1", Local channels "0" MSB.
      */
     private final UnlockedReadIntIndexHashMap<RemoteConnectionChannel> channels = new UnlockedReadIntIndexHashMap<RemoteConnectionChannel>(RemoteConnectionChannel.INDEXER);
+    private final UnlockedReadIntIndexHashMap<PendingChannel> pendingChannels = new UnlockedReadIntIndexHashMap<PendingChannel>(PendingChannel.INDEXER);
 
     RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection) {
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
     }
 
-    public Cancellable open(final String serviceType, final String groupName, final Result<Channel> result, final OptionMap optionMap) {
+    public Cancellable open(final String serviceType, final Result<Channel> result, final OptionMap optionMap) {
         return null;
     }
 
@@ -95,7 +96,11 @@ final class RemoteConnectionHandler implements ConnectionHandler {
         }
     }
 
-    public RemoteConnectionChannel getChannel(final int id) {
+    RemoteConnectionChannel getChannel(final int id) {
         return channels.get(id);
+    }
+
+    PendingChannel getPendingChannel(final int id) {
+        return pendingChannels.get(id);
     }
 }
