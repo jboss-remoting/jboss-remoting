@@ -42,6 +42,7 @@ final class LocalConnectionProvider implements ConnectionProvider {
 
     private final Executor executor;
     private final ConnectionProviderContext context;
+    private static final Object providerInterface = new Object();
 
     LocalConnectionProvider(final ConnectionProviderContext context, final Executor executor) {
         this.context = context;
@@ -58,8 +59,7 @@ final class LocalConnectionProvider implements ConnectionProvider {
     }
 
     public Object getProviderInterface() {
-        // N/A
-        return null;
+        return providerInterface;
     }
 
     private class LoopbackConnectionHandler implements ConnectionHandler {

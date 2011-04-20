@@ -42,7 +42,7 @@
     </parent>
 
     <properties>
-        <xnio.version>3.0.0.Beta1-SNAPSHOT</xnio.version>
+        <xnio.version>3.0.0.Beta1</xnio.version>
         <jbmar.version>1.3.0.CR8</jbmar.version>
         <logging.version>3.0.0.Beta5</logging.version>
         <logging-tools.version>1.0.0.Beta5</logging-tools.version>

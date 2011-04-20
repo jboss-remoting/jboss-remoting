@@ -50,9 +50,9 @@ public interface ConnectionProvider {
 
     /**
      * Get the user data associated with this connection provider.  This object should implement all of the
-     * provider interfaces which are supported by this provider.
+     * provider interfaces which are supported by this provider.  Must not return {@code null}.
      *
-     * @return the user data
+     * @return the user data (not {@code null})
      * @see NetworkServerProvider
      */
     Object getProviderInterface();
