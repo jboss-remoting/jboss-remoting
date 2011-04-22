@@ -144,16 +144,16 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 connectionChannel.handleAsyncClose(pooled);
                                 break;
                             }
-                            case Protocol.CHANNEL_CLOSE_READ: {
+                            case Protocol.CHANNEL_CLOSED: {
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
                                 if (connectionChannel == null) {
                                     break;
                                 }
-                                connectionChannel.handleReadShutdown();
+                                connectionChannel.handleRemoteClose();
                                 break;
                             }
-                            case Protocol.CHANNEL_CLOSE_WRITE: {
+                            case Protocol.CHANNEL_SHUTDOWN_WRITE: {
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
                                 if (connectionChannel == null) {

@@ -112,7 +112,7 @@ final class Protocol {
      *
      * Sent when channel writes are shut down.
      */
-    static final byte CHANNEL_CLOSE_WRITE = 0x20;
+    static final byte CHANNEL_SHUTDOWN_WRITE = 0x20;
     /**
      * byte 0: CHANNEL_CLOSE_READ
      * byte 1..4: channel ID
@@ -120,7 +120,7 @@ final class Protocol {
      * Sent when a channel is closed without necessarily consuming all of its incoming messages.  Tell the sending side
      * to drop and close all in-progress messages, and refuse new ones.
      */
-    static final byte CHANNEL_CLOSE_READ = 0x21;
+    static final byte CHANNEL_CLOSED = 0x21;
 
     // Messages for handling channel messages
     // Messages are unidirectional thus each side's ID namespace is distinct

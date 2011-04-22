@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
+import java.util.concurrent.Executor;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.xnio.ChannelListener;
 import org.xnio.IoUtils;
@@ -33,9 +34,7 @@ import org.xnio.OptionMap;
 import org.xnio.Pool;
 import org.xnio.Pooled;
 import org.xnio.Result;
-import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
-import org.xnio.channels.SuspendableWriteChannel;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -44,13 +43,15 @@ final class RemoteConnection {
     private final Pool<ByteBuffer> messageBufferPool;
     private final ConnectedMessageChannel channel;
     private final OptionMap optionMap;
+    private final RemoteWriteListener writeListener = new RemoteWriteListener();
+    private final Executor executor;
     private volatile Result<ConnectionHandlerFactory> result;
-    private final RemoteWriteListener listener = new RemoteWriteListener();
 
-    RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedMessageChannel channel, final OptionMap map) {
+    RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedMessageChannel channel, final OptionMap optionMap, final Executor executor) {
         this.messageBufferPool = messageBufferPool;
         this.channel = channel;
-        optionMap = map;
+        this.optionMap = optionMap;
+        this.executor = executor;
     }
 
     Pooled<ByteBuffer> allocate() {
@@ -90,7 +91,7 @@ final class RemoteConnection {
     }
 
     void send(final Pooled<ByteBuffer> pooled) {
-        listener.send(pooled);
+        writeListener.send(pooled);
     }
 
     OptionMap getOptionMap() {
@@ -99,6 +100,14 @@ final class RemoteConnection {
 
     ConnectedMessageChannel getChannel() {
         return channel;
+    }
+
+    ChannelListener<ConnectedMessageChannel> getWriteListener() {
+        return writeListener;
+    }
+
+    public Executor getExecutor() {
+        return executor;
     }
 
     final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {

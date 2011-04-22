@@ -23,16 +23,18 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.ChannelBusyException;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.xnio.Pooled;
+import org.xnio.channels.Channels;
+import org.xnio.channels.ConnectedMessageChannel;
+
+import static org.jboss.remoting3.remote.RemoteLogger.log;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -57,8 +59,9 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private final int outboundWindow;
     private final int inboundWindow;
     private final Attachments attachments = new Attachments();
-    private Receiver nextMessageHandler;
+    private Receiver nextReceiver;
     private int outboundMessageCount;
+    private boolean writeClosed;
 
     RemoteConnectionChannel(final Executor executor, final RemoteConnection connection, final int channelId, final Random random, final int outboundWindow, final int inboundWindow, final int outboundMessageCount, final int inboundMessageCount) {
         super(executor);
@@ -74,13 +77,16 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         int tries = 50;
         UnlockedReadIntIndexHashMap<OutboundMessage> outboundMessages = this.outboundMessages;
         synchronized (this) {
+            if (writeClosed) {
+                throw log.channelNotOpen();
+            }
             int messageCount;
             while ((messageCount = outboundMessageCount) == 0) {
                 try {
                     wait();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    throw new InterruptedIOException("Interrupted while waiting to write message");
+                    throw log.writeInterrupted();
                 }
             }
             final Random random = this.random;
@@ -94,25 +100,61 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 }
                 tries --;
             }
-            throw new ChannelBusyException("Failed to send a message (channel is busy)");
+            throw log.channelBusy();
         }
     }
 
-    public void writeShutdown() throws IOException {
+    public synchronized void writeShutdown() throws IOException {
+        if (writeClosed) {
+            return;
+        }
+        writeClosed = true;
+        Pooled<ByteBuffer> pooled = connection.allocate();
+        try {
+            ByteBuffer byteBuffer = pooled.getResource();
+            byteBuffer.put(Protocol.CHANNEL_SHUTDOWN_WRITE);
+            byteBuffer.putInt(channelId);
+            byteBuffer.flip();
+            ConnectedMessageChannel channel = connection.getChannel();
+            Channels.sendBlocking(channel, byteBuffer);
+            Channels.flushBlocking(channel);
+        } finally {
+            pooled.free();
+        }
     }
 
-    void handleReadShutdown() {
+    synchronized void handleRemoteClose() {
+
     }
 
     void handleWriteShutdown() {
+        final Receiver receiver = nextReceiver;
+        final Runnable runnable;
+        synchronized (this) {
+            if (receiver != null) {
+                runnable = new Runnable() {
+                    public void run() {
+                        try {
+                            receiver.handleEnd(RemoteConnectionChannel.this);
+                        } catch (Throwable t) {
+                            log.exceptionInUserHandler(t);
+                        }
+                    }
+                };
+            } else {
+                return;
+            }
+        }
+        Executor executor = connection.getExecutor();
+        executor.execute(runnable);
     }
 
     public void receiveMessage(final Receiver handler) {
         synchronized (this) {
-            if (nextMessageHandler != null) {
+            if (nextReceiver != null) {
                 throw new IllegalStateException("Message handler already queued");
             }
-            nextMessageHandler = handler;
+            nextReceiver = handler;
         }
     }
 

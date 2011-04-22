@@ -34,6 +34,7 @@ import java.security.NoSuchProviderException;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
+import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.xnio.Cancellable;
 import org.xnio.ChannelListener;
@@ -53,25 +54,28 @@ import org.xnio.channels.FramedMessageChannel;
 
 import javax.security.auth.callback.CallbackHandler;
 
+import static org.jboss.remoting3.remote.RemoteLogger.log;
+
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public final class RemoteConnectionProvider implements ConnectionProvider {
+final class RemoteConnectionProvider implements ConnectionProvider {
 
     private final ProviderInterface providerInterface = new ProviderInterface();
-    private final RemoteConnectionProvider.AcceptListener acceptListener = new RemoteConnectionProvider.AcceptListener();
     private final Xnio xnio;
     private final ChannelThreadPool<ReadChannelThread> readThreadPool;
     private final ChannelThreadPool<WriteChannelThread> writeThreadPool;
     private final ChannelThreadPool<ConnectionChannelThread> connectThreadPool;
+    private final ConnectionProviderContext connectionProviderContext;
     private final Pool<ByteBuffer> bufferPool;
 
-    public RemoteConnectionProvider(final Xnio xnio, final ChannelThreadPool<ReadChannelThread> readThreadPool, final ChannelThreadPool<WriteChannelThread> writeThreadPool, final Pool<ByteBuffer> pool, final ChannelThreadPool<ConnectionChannelThread> threadPool) {
+    RemoteConnectionProvider(final Xnio xnio, final Pool<ByteBuffer> bufferPool, final ChannelThreadPool<ReadChannelThread> readThreadPool, final ChannelThreadPool<WriteChannelThread> writeThreadPool, final ChannelThreadPool<ConnectionChannelThread> connectThreadPool, final ConnectionProviderContext connectionProviderContext) {
         this.xnio = xnio;
         this.readThreadPool = readThreadPool;
         this.writeThreadPool = writeThreadPool;
-        bufferPool = pool;
-        connectThreadPool = threadPool;
+        this.bufferPool = bufferPool;
+        this.connectThreadPool = connectThreadPool;
+        this.connectionProviderContext = connectionProviderContext;
     }
 
     public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
@@ -85,8 +89,15 @@ public final class RemoteConnectionProvider implements ConnectionProvider {
         }
         ChannelListener<ConnectedStreamChannel> openListener = new ChannelListener<ConnectedStreamChannel>() {
             public void handleEvent(final ConnectedStreamChannel channel) {
+                try {
+                    channel.setOption(Options.TCP_NODELAY, Boolean.TRUE);
+                } catch (IOException e) {
+                    // ignore
+                }
                 final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, bufferPool.allocate(), bufferPool.allocate());
-                final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(new RemoteConnection(bufferPool, messageChannel, connectOptions), callbackHandler, AccessController.getContext());
+                final RemoteConnection remoteConnection = new RemoteConnection(bufferPool, messageChannel, connectOptions, connectionProviderContext.getExecutor());
+                messageChannel.getWriteSetter().set(remoteConnection.getWriteListener());
+                final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, callbackHandler, AccessController.getContext());
                 openListener.handleEvent(messageChannel);
             }
         };
@@ -112,23 +123,34 @@ public final class RemoteConnectionProvider implements ConnectionProvider {
     private final class ProviderInterface implements NetworkServerProvider {
 
         public ChannelListener<AcceptingChannel<ConnectedStreamChannel>> getServerListener(final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) {
-            return acceptListener;
+            return new AcceptListener(optionMap, authenticationProvider);
         }
     }
 
     private final class AcceptListener implements ChannelListener<AcceptingChannel<ConnectedStreamChannel>> {
 
+        private final OptionMap serverOptionMap;
+        private final ServerAuthenticationProvider serverAuthenticationProvider;
+
+        AcceptListener(final OptionMap serverOptionMap, final ServerAuthenticationProvider serverAuthenticationProvider) {
+            this.serverOptionMap = serverOptionMap;
+            this.serverAuthenticationProvider = serverAuthenticationProvider;
+        }
+
         public void handleEvent(final AcceptingChannel<ConnectedStreamChannel> channel) {
             ConnectedStreamChannel accepted = null;
             try {
                 accepted = channel.accept(readThreadPool.getThread(), writeThreadPool.getThread());
+                if (accepted == null) {
+                    return;
+                }
             } catch (IOException e) {
-                // todo log the exception
+                log.failedToAccept(e);
             }
-            if (accepted == null) {
-                channel.resumeAccepts();
-                return;
-            }
+
+            final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, bufferPool.allocate(), bufferPool.allocate());
+            RemoteConnection connection = new RemoteConnection(bufferPool, messageChannel, serverOptionMap, connectionProviderContext.getExecutor());
+            messageChannel.getWriteSetter().set(connection.getWriteListener());
             // todo send server greeting
 //            accepted.getReadSetter().set(new ServerConnectionGreetingListener());
             accepted.resumeReads();

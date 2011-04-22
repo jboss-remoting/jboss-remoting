@@ -23,12 +23,15 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import org.jboss.logging.BasicLogger;
 import org.jboss.logging.Cause;
 import org.jboss.logging.LogMessage;
 import org.jboss.logging.Logger;
 import org.jboss.logging.Message;
 import org.jboss.logging.MessageLogger;
+import org.jboss.remoting3.ChannelBusyException;
+import org.jboss.remoting3.NotOpenException;
 
 import static org.jboss.logging.Logger.Level.*;
 
@@ -58,6 +61,23 @@ interface RemoteLogger extends BasicLogger {
     @LogMessage(level = WARN)
     @Message(id = 204, value = "Buffer underflow parsing message with protocol ID %02x")
     void bufferUnderflow(int id);
+
+    @LogMessage(level = WARN)
+    @Message(id = 205, value = "Failed to accept a connection: %s")
+    void failedToAccept(/* ! @Cause */ IOException e);
+
+    @Message(id = 206, value = "Channel is not open")
+    NotOpenException channelNotOpen();
+
+    @Message(id = 207, value = "Failed to send a message (channel is busy)")
+    ChannelBusyException channelBusy();
+
+    @Message(id = 208, value = "Write operation interrupted")
+    InterruptedIOException writeInterrupted();
+
+    @LogMessage(level = ERROR)
+    @Message(id = 209, value = "An exception occurred in a message handler")
+    void exceptionInUserHandler(@Cause Throwable throwable);
 
     // non i18n
     @LogMessage(level = TRACE)
