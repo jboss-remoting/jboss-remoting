@@ -22,17 +22,54 @@
 
 package org.jboss.remoting3.remote;
 
+import org.jboss.remoting3.Channel;
+import org.xnio.Result;
+
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class PendingChannel {
     private final int id;
+    private final int outboundWindowSize;
+    private final int inboundWindowSize;
+    private final int outboundMessageCount;
+    private final int inboundMessageCount;
+    private final Result<Channel> result;
 
-    PendingChannel(final int id) {
+    PendingChannel(final int id, final int outboundWindowSize, final int inboundWindowSize, final int outboundMessageCount, final int inboundMessageCount, final Result<Channel> result) {
         this.id = id;
+        this.outboundWindowSize = outboundWindowSize;
+        this.inboundWindowSize = inboundWindowSize;
+        this.outboundMessageCount = outboundMessageCount;
+        this.inboundMessageCount = inboundMessageCount;
+        this.result = result;
     }
 
-    public static final IntIndexer<PendingChannel> INDEXER = new IntIndexer<PendingChannel>() {
+    int getId() {
+        return id;
+    }
+
+    int getOutboundWindowSize() {
+        return outboundWindowSize;
+    }
+
+    int getInboundWindowSize() {
+        return inboundWindowSize;
+    }
+
+    int getOutboundMessageCount() {
+        return outboundMessageCount;
+    }
+
+    int getInboundMessageCount() {
+        return inboundMessageCount;
+    }
+
+    Result<Channel> getResult() {
+        return result;
+    }
+
+    static final IntIndexer<PendingChannel> INDEXER = new IntIndexer<PendingChannel>() {
         public int indexOf(final PendingChannel argument) {
             return argument.id;
         }

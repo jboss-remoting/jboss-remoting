@@ -129,16 +129,11 @@ final class ClientConnectionGreetingListener implements ChannelListener<Connecte
                     // Prepare the request message body
                     final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
                     final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
-                    try {
-                        sendBuffer.putInt(0);
-                        sendBuffer.put(Protocol.AUTH_REQUEST);
-                        Buffers.putModifiedUtf8(sendBuffer, mechanismName);
-                        sendBuffer.flip();
-                        connection.send(pooledSendBuffer, null);
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
-                    }
+                    sendBuffer.putInt(0);
+                    sendBuffer.put(Protocol.AUTH_REQUEST);
+                    Buffers.putModifiedUtf8(sendBuffer, mechanismName);
+                    sendBuffer.flip();
+                    connection.send(pooledSendBuffer);
                     connection.setReadListener(new ClientConnectionAuthenticationHandler(connection, saslClient));
                     return;
                 }

@@ -27,7 +27,6 @@ import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Semaphore;
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.ChannelBusyException;
@@ -59,15 +58,16 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private final int inboundWindow;
     private final Attachments attachments = new Attachments();
     private Receiver nextMessageHandler;
-    private int messageCount;
+    private int outboundMessageCount;
 
-    RemoteConnectionChannel(final Executor executor, final RemoteConnection connection, final int channelId, final Random random, final int outboundWindow, final int inboundWindow) {
+    RemoteConnectionChannel(final Executor executor, final RemoteConnection connection, final int channelId, final Random random, final int outboundWindow, final int inboundWindow, final int outboundMessageCount, final int inboundMessageCount) {
         super(executor);
         this.connection = connection;
         this.channelId = channelId;
         this.random = random;
         this.outboundWindow = outboundWindow;
         this.inboundWindow = inboundWindow;
+        this.outboundMessageCount = outboundMessageCount;
     }
 
     public MessageOutputStream writeMessage() throws IOException {
@@ -75,7 +75,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         UnlockedReadIntIndexHashMap<OutboundMessage> outboundMessages = this.outboundMessages;
         synchronized (this) {
             int messageCount;
-            while ((messageCount = this.messageCount) == 0) {
+            while ((messageCount = outboundMessageCount) == 0) {
                 try {
                     wait();
                 } catch (InterruptedException e) {
@@ -88,8 +88,8 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 final int id = random.nextInt() & 0xfffe;
                 if (! outboundMessages.containsKey(id)) {
                     OutboundMessage message = new OutboundMessage((short) id, this, outboundWindow);
-                    outboundMessages.put(id, message);
-                    this.messageCount = messageCount - 1;
+                    outboundMessages.put(message);
+                    outboundMessageCount = messageCount - 1;
                     return message;
                 }
                 tries --;

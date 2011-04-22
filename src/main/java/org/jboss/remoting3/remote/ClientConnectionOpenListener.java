@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3.remote;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.AccessControlContext;
 import org.xnio.ChannelListener;
@@ -48,16 +47,10 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
         // Build initial greeting message
         buffer.put(Protocol.GREETING);
         // version ID
-        GreetingUtils.writeByte(buffer, Protocol.GREETING_VERSION, Protocol.VERSION);
+        ProtocolUtils.writeByte(buffer, Protocol.GREETING_VERSION, Protocol.VERSION);
         // that's it!
         buffer.flip();
-        try {
-            connection.send(pooled, null);
-        } catch (IOException e) {
-            connection.handleException(e);
-            pooled.free();
-            return;
-        }
+        connection.send(pooled);
         connection.setReadListener(new ClientConnectionGreetingListener(connection, callbackHandler, accessControlContext));
     }
 }

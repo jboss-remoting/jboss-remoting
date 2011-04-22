@@ -56,4 +56,9 @@ public interface ConnectionProvider {
      * @see NetworkServerProvider
      */
     Object getProviderInterface();
+
+    /**
+     * The object to use when a connection provider has no provider interfaces.
+     */
+    Object NO_PROVIDER_INTERFACES = new Object();
 }

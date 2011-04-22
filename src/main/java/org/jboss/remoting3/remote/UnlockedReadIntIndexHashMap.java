@@ -219,9 +219,9 @@ final class UnlockedReadIntIndexHashMap<V> {
         return null;
     }
 
-    public V put(final int key, final V value) {
+    public V put(final V value) {
         synchronized (writeLock) {
-            return doPut(table, key, value, false);
+            return doPut(table, indexer.indexOf(value), value, false);
         }
     }
 

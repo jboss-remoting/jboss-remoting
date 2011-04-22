@@ -80,17 +80,12 @@ final class ClientConnectionAuthenticationHandler implements ChannelListener<Con
                         connection.handleException(e);
                         return;
                     }
-                    try {
-                        final Pooled<ByteBuffer> pooled = connection.allocate();
-                        final ByteBuffer sendBuffer = pooled.getResource();
-                        sendBuffer.put(Protocol.AUTH_RESPONSE);
-                        sendBuffer.put(response);
-                        sendBuffer.flip();
-                        connection.send(pooled, null);
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
-                    }
+                    final Pooled<ByteBuffer> pooled = connection.allocate();
+                    final ByteBuffer sendBuffer = pooled.getResource();
+                    sendBuffer.put(Protocol.AUTH_RESPONSE);
+                    sendBuffer.put(response);
+                    sendBuffer.flip();
+                    connection.send(pooled);
                     return;
                 }
                 case Protocol.AUTH_COMPLETE: {

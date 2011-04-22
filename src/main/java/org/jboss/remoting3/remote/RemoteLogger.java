@@ -30,6 +30,8 @@ import org.jboss.logging.Logger;
 import org.jboss.logging.Message;
 import org.jboss.logging.MessageLogger;
 
+import static org.jboss.logging.Logger.Level.*;
+
 /**
  * "Remote" protocol logger.  Message codes from 200-299.
  *
@@ -40,7 +42,7 @@ interface RemoteLogger extends BasicLogger {
     RemoteLogger log = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote");
 
     @Message(id = 200, value = "Remote connection failed")
-    @LogMessage(level = Logger.Level.ERROR)
+    @LogMessage(level = ERROR)
     void connectionError(@Cause IOException cause);
 
     @Message(id = 201, value = "Received invalid message on %s")
@@ -48,4 +50,17 @@ interface RemoteLogger extends BasicLogger {
 
     @Message(id = 202, value = "Abrupt close on %s")
     IOException abruptClose(RemoteConnection connection);
+
+    @LogMessage(level = WARN)
+    @Message(id = 203, value = "Message missing protocol byte")
+    void bufferUnderflowRaw();
+
+    @LogMessage(level = WARN)
+    @Message(id = 204, value = "Buffer underflow parsing message with protocol ID %02x")
+    void bufferUnderflow(int id);
+
+    // non i18n
+    @LogMessage(level = TRACE)
+    @Message(value = "Message with unknown protocol ID %d received")
+    void unknownProtocolId(int id);
 }

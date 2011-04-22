@@ -82,4 +82,14 @@ public final class RemotingOptions {
      * The maximum amount of time (in milliseconds) to delay sending small messages, to reduce packet traffic.
      */
     public static final Option<Integer> COALESCE_INTERVAL = Option.simple(RemotingOptions.class, "COALESCE_INTERVAL", Integer.class);
+
+    /**
+     * The maximum number of consecutive outbound messages on a channel.
+     */
+    public static final Option<Integer> MAX_OUTBOUND_MESSAGES = Option.simple(RemotingOptions.class, "MAX_OUTBOUND_MESSAGES", Integer.class);
+
+    /**
+     * The maximum number of consecutive inbound messages on a channel.
+     */
+    public static final Option<Integer> MAX_INBOUND_MESSAGES = Option.simple(RemotingOptions.class, "MAX_INBOUND_MESSAGES", Integer.class);
 }

@@ -24,6 +24,8 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
+import java.util.Queue;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.xnio.ChannelListener;
 import org.xnio.IoUtils;
@@ -43,6 +45,7 @@ final class RemoteConnection {
     private final ConnectedMessageChannel channel;
     private final OptionMap optionMap;
     private volatile Result<ConnectionHandlerFactory> result;
+    private final RemoteWriteListener listener = new RemoteWriteListener();
 
     RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedMessageChannel channel, final OptionMap map) {
         this.messageBufferPool = messageBufferPool;
@@ -86,29 +89,8 @@ final class RemoteConnection {
         }
     }
 
-    void send(final Pooled<ByteBuffer> pooled, final ChannelListener<? super ConnectedMessageChannel> nextListener) throws IOException {
-        boolean ok = false;
-        try {
-            final ByteBuffer buffer = pooled.getResource();
-            if (channel.send(buffer)) {
-                if (channel.flush()) {
-                    if (nextListener == null) {
-                        channel.suspendWrites();
-                    } else {
-                        setWriteListener(nextListener);
-                    }
-                } else {
-                    setWriteListener(new FlushListener<ConnectedMessageChannel>(nextListener));
-                }
-            } else {
-                setWriteListener(new WriteListener<ConnectedMessageChannel>(nextListener, pooled));
-            }
-            ok = true;
-        } finally {
-            if (! ok) {
-                pooled.free();
-            }
-        }
+    void send(final Pooled<ByteBuffer> pooled) {
+        listener.send(pooled);
     }
 
     OptionMap getOptionMap() {
@@ -119,40 +101,67 @@ final class RemoteConnection {
         return channel;
     }
 
-    private class FlushListener<T extends SuspendableWriteChannel> implements ChannelListener<T> {
+    final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {
 
-        private final ChannelListener<? super T> listener;
+        private final Queue<Pooled<ByteBuffer>> queue = new ArrayDeque<Pooled<ByteBuffer>>();
 
-        FlushListener(final ChannelListener<? super T> listener) {
-            this.listener = listener;
+        RemoteWriteListener() {
         }
 
-        public void handleEvent(final T channel) {
+        public synchronized void handleEvent(final ConnectedMessageChannel channel) {
+            assert channel == getChannel();
+            Pooled<ByteBuffer> pooled;
+            final Queue<Pooled<ByteBuffer>> queue = this.queue;
             try {
+                while ((pooled = queue.peek()) != null) {
+                    if (channel.send(pooled.getResource())) {
+                        queue.poll().free();
+                    } else {
+                        // try again later
+                        return;
+                    }
+                }
                 if (channel.flush()) {
-                    Channels.setWriteListener(channel, listener);
+                    channel.suspendWrites();
                 }
             } catch (IOException e) {
                 handleException(e);
+                while ((pooled = queue.poll()) != null) {
+                    pooled.free();
+                }
             }
-        }
-    }
-
-    private class WriteListener<T extends ConnectedMessageChannel> implements ChannelListener<T> {
-
-        private final ChannelListener<? super ConnectedMessageChannel> listener;
-        private final Pooled<ByteBuffer> pooled;
-
-        WriteListener(final ChannelListener<? super ConnectedMessageChannel> listener, final Pooled<ByteBuffer> pooled) {
-            this.listener = listener;
-            this.pooled = pooled;
+            // else try again later
         }
 
-        public void handleEvent(final T channel) {
+        public synchronized void send(final Pooled<ByteBuffer> pooled) {
+            final ConnectedMessageChannel channel = getChannel();
+            boolean free = true;
             try {
-                send(pooled, listener);
+                if (queue.isEmpty()) {
+                    if (! channel.send(pooled.getResource())) {
+                        queue.add(pooled);
+                        free = false;
+                        channel.resumeWrites();
+                        return;
+                    }
+                    if (! channel.flush()) {
+                        channel.resumeWrites();
+                        return;
+                    }
+                } else {
+                    queue.add(pooled);
+                    free = false;
+                }
             } catch (IOException e) {
                 handleException(e);
+                Pooled<ByteBuffer> unqueued;
+                while ((unqueued = queue.poll()) != null) {
+                    unqueued.free();
+                }
+            } finally {
+                if (free) {
+                    pooled.free();
+                }
             }
         }
     }

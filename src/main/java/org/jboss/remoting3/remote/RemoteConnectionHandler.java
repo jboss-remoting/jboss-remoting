@@ -23,14 +23,22 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.util.Random;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.xnio.Cancellable;
+import org.xnio.IoUtils;
 import org.xnio.OptionMap;
+import org.xnio.Pooled;
 import org.xnio.Result;
+import org.xnio.channels.Channels;
+import org.xnio.channels.ConnectedMessageChannel;
 
 final class RemoteConnectionHandler implements ConnectionHandler {
 
@@ -43,10 +51,16 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     /**
      * Channels.  Remote channel IDs are read with a "1" MSB and written with a "0" MSB.
      * Local channel IDs are read with a "0" MSB and written with a "1" MSB.  Channel IDs here
-     * are stored from the "read" perspective.  Remote channels "1", Local channels "0" MSB.
+     * are stored from the "write" perspective.  Remote channels "0", Local channels "1" MSB.
      */
     private final UnlockedReadIntIndexHashMap<RemoteConnectionChannel> channels = new UnlockedReadIntIndexHashMap<RemoteConnectionChannel>(RemoteConnectionChannel.INDEXER);
+    /**
+     * Pending channels.  All have a "1" MSB.  Replies are read with a "0" MSB.
+     */
     private final UnlockedReadIntIndexHashMap<PendingChannel> pendingChannels = new UnlockedReadIntIndexHashMap<PendingChannel>(PendingChannel.INDEXER);
+
+    // todo limit or whatever
+    private int channelCount = 50;
 
     RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection) {
         this.connectionContext = connectionContext;
@@ -54,7 +68,66 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     }
 
     public Cancellable open(final String serviceType, final Result<Channel> result, final OptionMap optionMap) {
-        return null;
+        byte[] serviceTypeBytes = serviceType.getBytes(Protocol.UTF_8);
+        final int serviceTypeLength = serviceTypeBytes.length;
+        if (serviceTypeLength > 255) {
+            result.setException(new ServiceOpenException("Service type name is too long"));
+            return IoUtils.nullCancellable();
+        }
+
+        int id;
+        final OptionMap connectionOptionMap = remoteConnection.getOptionMap();
+
+        final int outboundWindowSize = optionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, connectionOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
+        final int inboundWindowSize = optionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, connectionOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
+        final int outboundMessageCount = optionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
+        final int inboundMessageCount = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
+        UnlockedReadIntIndexHashMap<PendingChannel> pendingChannels = this.pendingChannels;
+        synchronized (this) {
+            int channelCount;
+            while ((channelCount = this.channelCount) == 0) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    result.setException(new InterruptedIOException("Interrupted while waiting to write message"));
+                    return IoUtils.nullCancellable();
+                }
+            }
+            final Random random = this.random;
+            for (;;) {
+                id = random.nextInt() | 0x80000000;
+                if (! pendingChannels.containsKey(id)) {
+                    PendingChannel pendingChannel = new PendingChannel(id, outboundWindowSize, inboundWindowSize, outboundMessageCount, inboundMessageCount, result);
+                    pendingChannels.put(pendingChannel);
+                    this.channelCount = channelCount - 1;
+                    // TODO send
+                    Pooled<ByteBuffer> pooled = remoteConnection.allocate();
+                    try {
+                        ByteBuffer buffer = pooled.getResource();
+                        ConnectedMessageChannel channel = remoteConnection.getChannel();
+                        buffer.put(Protocol.CHANNEL_OPEN_REQUEST);
+                        buffer.putInt(id);
+                        ProtocolUtils.writeBytes(buffer, 1, serviceTypeBytes);
+                        ProtocolUtils.writeInt(buffer, 0x80, inboundWindowSize);
+                        ProtocolUtils.writeShort(buffer, 0x81, inboundMessageCount);
+                        buffer.put((byte) 0);
+                        buffer.flip();
+                        try {
+                            Channels.sendBlocking(channel, buffer);
+                        } catch (IOException e) {
+                            result.setException(e);
+                            pendingChannels.remove(id);
+                            return IoUtils.nullCancellable();
+                        }
+                        // TODO: allow cancel
+                        return IoUtils.nullCancellable();
+                    } finally {
+                        pooled.free();
+                    }
+                }
+            }
+        }
     }
 
     public void close() throws IOException {
@@ -100,7 +173,11 @@ final class RemoteConnectionHandler implements ConnectionHandler {
         return channels.get(id);
     }
 
-    PendingChannel getPendingChannel(final int id) {
-        return pendingChannels.get(id);
+    PendingChannel removePendingChannel(final int id) {
+        return pendingChannels.remove(id);
+    }
+
+    void putChannel(final RemoteConnectionChannel channel) {
+        channels.put(channel);
     }
 }
