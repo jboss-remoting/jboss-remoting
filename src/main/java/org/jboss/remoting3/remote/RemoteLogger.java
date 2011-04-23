@@ -36,7 +36,7 @@ import org.jboss.remoting3.NotOpenException;
 import static org.jboss.logging.Logger.Level.*;
 
 /**
- * "Remote" protocol logger.  Message codes from 200-299.
+ * "Remote" protocol logger.  Message codes from 200-269.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */

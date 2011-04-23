@@ -162,7 +162,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     }
 
     void addChannel(final RemoteConnectionChannel channel) {
-        RemoteConnectionChannel existing = channels.putIfAbsent(channel.getChannelId(), channel);
+        RemoteConnectionChannel existing = channels.putIfAbsent(channel);
         if (existing != null) {
             // should not be possible...
             channel.getConnection().handleException(new IOException("Attempted to add an already-existing channel"));

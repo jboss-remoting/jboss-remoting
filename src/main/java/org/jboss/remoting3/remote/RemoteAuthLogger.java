@@ -22,15 +22,25 @@
 
 package org.jboss.remoting3.remote;
 
+import org.jboss.logging.LogMessage;
+import org.jboss.logging.Logger;
+import org.jboss.logging.Message;
+import org.jboss.logging.MessageLogger;
+
+import static org.jboss.logging.Logger.Level.*;
+
 /**
- * An integer indexer for a hash table.  Used for integer-keyed hash tables
- * whose values are associated with a unique integer.
+ * "Remote" protocol authentication logger.  Message codes from 270-299.
  *
- * @param <T> the value type
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-interface IntIndexer<T> {
-    int indexOf(T argument);
+@MessageLogger(projectCode = "JBREM")
+interface RemoteAuthLogger {
+    RemoteAuthLogger authLog = Logger.getMessageLogger(RemoteAuthLogger.class, "org.jboss.remoting.auth");
 
-    boolean equals(T argument, int index);
+    // non-i18n
+
+    @LogMessage(level = TRACE)
+    @Message(value = "Rejected invalid SASL mechanism %s")
+    void rejectedInvalidMechanism(String name);
 }

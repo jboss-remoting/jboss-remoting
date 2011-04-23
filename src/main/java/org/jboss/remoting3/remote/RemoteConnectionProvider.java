@@ -31,6 +31,12 @@ import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
@@ -44,15 +50,21 @@ import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pool;
+import org.xnio.Pooled;
 import org.xnio.ReadChannelThread;
 import org.xnio.Result;
+import org.xnio.Sequence;
 import org.xnio.WriteChannelThread;
 import org.xnio.Xnio;
 import org.xnio.channels.AcceptingChannel;
+import org.xnio.channels.ConnectedSslStreamChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
+import org.xnio.sasl.SaslUtils;
 
 import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslServerFactory;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
 
@@ -151,9 +163,51 @@ final class RemoteConnectionProvider implements ConnectionProvider {
             final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, bufferPool.allocate(), bufferPool.allocate());
             RemoteConnection connection = new RemoteConnection(bufferPool, messageChannel, serverOptionMap, connectionProviderContext.getExecutor());
             messageChannel.getWriteSetter().set(connection.getWriteListener());
-            // todo send server greeting
-//            accepted.getReadSetter().set(new ServerConnectionGreetingListener());
-            accepted.resumeReads();
+            final Map<String, SaslServerFactory> allowedMechanisms;
+            boolean ok = false;
+            final Map<String, ?> propertyMap;
+            final Pooled<ByteBuffer> pooled = bufferPool.allocate();
+            try {
+                ByteBuffer buffer = pooled.getResource();
+                buffer.put(Protocol.GREETING);
+                ProtocolUtils.writeByte(buffer, Protocol.GREETING_VERSION, 0);
+                propertyMap = SaslUtils.createPropertyMap(serverOptionMap);
+                final Sequence<String> saslMechs = serverOptionMap.get(Options.SASL_MECHANISMS);
+                final Set<String> restrictions = saslMechs == null ? null : new HashSet<String>(saslMechs);
+                final Enumeration<SaslServerFactory> factories = Sasl.getSaslServerFactories();
+                allowedMechanisms = new LinkedHashMap<String, SaslServerFactory>();
+                try {
+                    if (channel instanceof ConnectedSslStreamChannel) {
+                        ConnectedSslStreamChannel sslStreamChannel = (ConnectedSslStreamChannel) channel;
+                        allowedMechanisms.put("EXTERNAL", new ExternalSaslServerFactory(sslStreamChannel.getSslSession().getPeerPrincipal()));
+                    }
+                } catch (IOException e) {
+                    // ignore
+                }
+                while (factories.hasMoreElements()) {
+                    SaslServerFactory factory = factories.nextElement();
+                    for (String mechName : factory.getMechanismNames(propertyMap)) {
+                        if ((restrictions == null || restrictions.contains(mechName)) && ! allowedMechanisms.containsKey(mechName)) {
+                            allowedMechanisms.put(mechName, factory);
+                        }
+                    }
+                }
+                if (saslMechs != null) for (String name : saslMechs) {
+                    ProtocolUtils.writeString(buffer, Protocol.GREETING_SASL_MECH, name);
+                }
+                ProtocolUtils.writeString(buffer, Protocol.GREETING_ENDPOINT_NAME, connectionProviderContext.getEndpoint().getName());
+                ProtocolUtils.writeShort(buffer, Protocol.GREETING_CHANNEL_LIMIT, serverOptionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, Protocol.DEFAULT_CHANNEL_COUNT));
+                buffer.flip();
+                connection.send(pooled);
+                ok = true;
+            } finally {
+                if (! ok) {
+                    pooled.free();
+                }
+            }
+
+            messageChannel.getReadSetter().set(new ServerConnectionGreetingListener(connection, allowedMechanisms, serverAuthenticationProvider, serverOptionMap, connectionProviderContext, propertyMap));
+            messageChannel.resumeReads();
         }
     }
 }

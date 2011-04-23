@@ -124,7 +124,10 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     synchronized void handleRemoteClose() {
-
+        writeClosed = true;
+        for (OutboundMessage message : outboundMessages) {
+            message.asyncClose();
+        }
     }
 
     void handleWriteShutdown() {
@@ -165,7 +168,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         final InboundMessage inboundMessage;
         if ((flags & Protocol.MSG_FLAG_NEW) != 0) {
             inboundMessage = new InboundMessage((short) id, this);
-            if (inboundMessages.putIfAbsent(id, inboundMessage) != null) {
+            if (inboundMessages.putIfAbsent(inboundMessage) != null) {
                 connection.handleException(new IOException("Protocol error: incoming message with duplicate ID received"));
                 return;
             }

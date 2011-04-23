@@ -23,12 +23,17 @@
 package org.jboss.remoting3.remote;
 
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 /**
+ * A concurrent int->Object map.
+ *
+ * @param <V> the value type
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-final class UnlockedReadIntIndexHashMap<V> {
+final class UnlockedReadIntIndexHashMap<V> implements Iterable<V> {
 
     private static final int DEFAULT_INITIAL_CAPACITY = 512;
     private static final int MAXIMUM_CAPACITY = 1 << 30;
@@ -46,7 +51,14 @@ final class UnlockedReadIntIndexHashMap<V> {
     // Raw fields (reads and writes protected by {@link #writeLock}
     private int threshold;
 
-    public UnlockedReadIntIndexHashMap(int initialCapacity, final float loadFactor, final IntIndexer<? super V> indexer) {
+    /**
+     * Construct a new instance.
+     *
+     * @param initialCapacity the initial capacity
+     * @param loadFactor the initial load factor
+     * @param indexer the integer indexer to use
+     */
+    UnlockedReadIntIndexHashMap(int initialCapacity, final float loadFactor, final IntIndexer<? super V> indexer) {
         this.indexer = indexer;
         if (initialCapacity < 0) {
             throw new IllegalArgumentException("Initial capacity must be > 0");
@@ -71,15 +83,32 @@ final class UnlockedReadIntIndexHashMap<V> {
         }
     }
 
-    public UnlockedReadIntIndexHashMap(final float loadFactor, final IntIndexer<? super V> indexer) {
+    /**
+     * Construct a new instance.
+     *
+     * @param loadFactor the initial load factor
+     * @param indexer the integer indexer to use
+     */
+    UnlockedReadIntIndexHashMap(final float loadFactor, final IntIndexer<? super V> indexer) {
         this(DEFAULT_INITIAL_CAPACITY, loadFactor, indexer);
     }
 
-    public UnlockedReadIntIndexHashMap(final int initialCapacity, final IntIndexer<? super V> indexer) {
+    /**
+     * Construct a new instance.
+     *
+     * @param initialCapacity the initial capacity
+     * @param indexer the integer indexer to use
+     */
+    UnlockedReadIntIndexHashMap(final int initialCapacity, final IntIndexer<? super V> indexer) {
         this(initialCapacity, DEFAULT_LOAD_FACTOR, indexer);
     }
 
-    public UnlockedReadIntIndexHashMap(final IntIndexer<? super V> indexer) {
+    /**
+     * Construct a new instance.
+     *
+     * @param indexer the integer indexer to use
+     */
+    UnlockedReadIntIndexHashMap(final IntIndexer<? super V> indexer) {
         this(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR, indexer);
     }
 
@@ -119,8 +148,10 @@ final class UnlockedReadIntIndexHashMap<V> {
         threshold = newThreshold;
     }
 
-    private V doPut(AtomicReferenceArray<V[]> table, int key, V value, boolean ifAbsent) {
+    private V doPut(AtomicReferenceArray<V[]> table, V value, boolean ifAbsent) {
         assert Thread.holdsLock(writeLock);
+        final IntIndexer<? super V> indexer = this.indexer;
+        final int key = indexer.indexOf(value);
         final int hc = key & table.length() - 1;
         final V[] old = table.get(hc);
         if (old == null) {
@@ -134,7 +165,6 @@ final class UnlockedReadIntIndexHashMap<V> {
         } else {
             final int oldLen = old.length;
             V existing;
-            final IntIndexer<? super V> indexer = this.indexer;
             for (int i = 0; i < oldLen; i++) {
                 existing = old[i];
                 if (indexer.equals(existing, key)) {
@@ -181,10 +211,6 @@ final class UnlockedReadIntIndexHashMap<V> {
         return newRow;
     }
 
-    public int size() {
-        return size;
-    }
-
     public boolean containsKey(final int key) {
         final AtomicReferenceArray<V[]> table = this.table;
         final int hc = key & table.length() - 1;
@@ -221,11 +247,18 @@ final class UnlockedReadIntIndexHashMap<V> {
 
     public V put(final V value) {
         synchronized (writeLock) {
-            return doPut(table, indexer.indexOf(value), value, false);
+            return doPut(table, value, false);
+        }
+    }
+
+    public V putIfAbsent(final V value) {
+        synchronized (writeLock) {
+            return doPut(table, value, true);
         }
     }
 
     public V remove(final int key) {
+        final IntIndexer<? super V> indexer = this.indexer;
         synchronized (writeLock) {
             final AtomicReferenceArray<V[]> table = this.table;
             final int hc = key & table.length() - 1;
@@ -233,7 +266,6 @@ final class UnlockedReadIntIndexHashMap<V> {
             if (row == null) {
                 return null;
             }
-            final IntIndexer<? super V> indexer = this.indexer;
             final int rowLen = row.length;
             for (int i = 0; i < rowLen; i++) {
                 final V item = row[i];
@@ -247,20 +279,9 @@ final class UnlockedReadIntIndexHashMap<V> {
         }
     }
 
-    public void clear() {
-        synchronized (writeLock) {
-            table = new AtomicReferenceArray<V[]>(table.length());
-            size = 0;
-        }
-    }
-
-    public V putIfAbsent(final int key, final V value) {
-        synchronized (writeLock) {
-            return doPut(table, key, value, true);
-        }
-    }
-
-    public boolean remove(final int key, final V value) {
+    public boolean remove(final V value) {
+        final IntIndexer<? super V> indexer = this.indexer;
+        final int key = indexer.indexOf(value);
         synchronized (writeLock) {
             final AtomicReferenceArray<V[]> table = this.table;
             final int hc = key & table.length() - 1;
@@ -268,7 +289,6 @@ final class UnlockedReadIntIndexHashMap<V> {
             if (row == null) {
                 return false;
             }
-            final IntIndexer<? super V> indexer = this.indexer;
             final int rowLen = row.length;
             for (int i = 0; i < rowLen; i++) {
                 final V item = row[i];
@@ -282,7 +302,12 @@ final class UnlockedReadIntIndexHashMap<V> {
         }
     }
 
-    public boolean replace(final int key, final V oldValue, final V newValue) {
+    public boolean replace(final V oldValue, final V newValue) {
+        final IntIndexer<? super V> indexer = this.indexer;
+        final int key = indexer.indexOf(oldValue);
+        if (indexer.indexOf(newValue) != key) {
+            return false;
+        }
         synchronized (writeLock) {
             final AtomicReferenceArray<V[]> table = this.table;
             final int hc = key & table.length() - 1;
@@ -292,7 +317,6 @@ final class UnlockedReadIntIndexHashMap<V> {
             }
             final int rowLen = row.length;
             V existing;
-            final IntIndexer<? super V> indexer = this.indexer;
             for (int i = 0; i < rowLen; i++) {
                 existing = row[i];
                 if (indexer.equals(existing, key)) {
@@ -310,7 +334,9 @@ final class UnlockedReadIntIndexHashMap<V> {
         }
     }
 
-    public V replace(final int key, final V value) {
+    public V replace(final V value) {
+        final IntIndexer<? super V> indexer = this.indexer;
+        final int key = indexer.indexOf(value);
         synchronized (writeLock) {
             final AtomicReferenceArray<V[]> table = this.table;
             final int hc = key & table.length() - 1;
@@ -320,7 +346,6 @@ final class UnlockedReadIntIndexHashMap<V> {
             }
             final int rowLen = row.length;
             V existing;
-            final IntIndexer<? super V> indexer = this.indexer;
             for (int i = 0; i < rowLen; i++) {
                 existing = row[i];
                 if (indexer.equals(existing, key)) {
@@ -333,5 +358,77 @@ final class UnlockedReadIntIndexHashMap<V> {
             }
             return null;
         }
+    }
+
+    public void clear() {
+        synchronized (writeLock) {
+            table = new AtomicReferenceArray<V[]>(table.length());
+            size = 0;
+        }
+    }
+
+    public int size() {
+        return size;
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    public Iterator<V> iterator() {
+        return new Iterator<V>() {
+            private final AtomicReferenceArray<V[]> table = UnlockedReadIntIndexHashMap.this.table;
+            private int x;
+            private int y;
+            private V[] row = table.get(0);
+            private V next;
+            public boolean hasNext() {
+                if (next != null) {
+                    return true;
+                }
+                final int tableLength = table.length();
+                if (x == tableLength) {
+                    return false;
+                }
+                V[] row = this.row;
+                if (row == null || y == row.length) {
+                    x++;
+                    y = 0;
+                    if (x == tableLength) {
+                        return false;
+                    }
+                    row = table.get(x);
+                    for (;;) {
+                        if (row == null || y == row.length) {
+                            x++;
+                            if (x == tableLength) {
+                                return false;
+                            }
+                            row = table.get(x);
+                        } else {
+                            this.row = row;
+                            break;
+                        }
+                    }
+                }
+                next = row[y++];
+                return true;
+            }
+
+            public V next() {
+                if (! hasNext()) {
+                    throw new NoSuchElementException();
+                }
+                try {
+                    return next;
+                } finally {
+                    next = null;
+                }
+            }
+
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 }
