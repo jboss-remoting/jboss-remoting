@@ -75,7 +75,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
                 final int size = otherSideQueue.size();
                 if (size == queueLength) {
                     try {
-                        otherSide.wait();
+                        otherSide.lock.wait();
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         throw new InterruptedIOException();
@@ -87,13 +87,13 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
                         final Receiver handler = otherSide.messageHandler;
                         if (handler != null) {
                             otherSide.messageHandler = null;
-                            otherSide.notify();
+                            otherSide.lock.notify();
                             executeMessageTask(handler, in);
                             return new Out(pipe.getOut(), in);
                         }
                     }
                     otherSideQueue.add(in);
-                    otherSide.notify();
+                    otherSide.lock.notify();
                     return new Out(pipe.getOut(), in);
                 }
             }
@@ -109,7 +109,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
                 if (messageHandler != null && otherSide.messageQueue.isEmpty()) {
                     executeEndTask(messageHandler);
                 } else {
-                    otherSide.notify();
+                    otherSide.lock.notify();
                 }
             }
         }
