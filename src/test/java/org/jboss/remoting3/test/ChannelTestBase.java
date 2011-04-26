@@ -110,6 +110,7 @@ public abstract class ChannelTestBase {
         } finally {
             IoUtils.safeClose(stream);
         }
+
         recvChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
                 error.printStackTrace();
@@ -128,13 +129,14 @@ public abstract class ChannelTestBase {
                     final byte[] received = new byte[TEST_FILE_LENGTH];
                     int c = 0;
                     do {
-                        int r = message.read(received);
+                        int r = message.read(received, c, TEST_FILE_LENGTH - c);
                         if (r == -1) {
                             break;
                         }
                         c += r;
                     } while (c < TEST_FILE_LENGTH);
                     message.close();
+
                     assertEquals(data, received);
                     wasOk.set(true);
                 } catch (IOException e) {
