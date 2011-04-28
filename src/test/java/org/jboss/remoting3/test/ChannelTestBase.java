@@ -24,6 +24,7 @@ package org.jboss.remoting3.test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -226,4 +227,53 @@ public abstract class ChannelTestBase {
         }
         assertTrue(wasOk.get());
     }
+    
+    @Test
+    public void testSimpleWriteMethod() throws Exception {
+        Byte[] bytes = new Byte[] {1, 2, 3};
+        MessageOutputStream out = sendChannel.writeMessage();
+        for (int i = 0 ; i < bytes.length ; i++) {
+            out.write(bytes[i]);
+        }
+        out.close();
+        
+        final CountDownLatch latch = new CountDownLatch(1);
+        final ArrayList<Byte> result = new ArrayList<Byte>();
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();        
+        recvChannel.receiveMessage(new Channel.Receiver() {
+            public void handleError(final Channel channel, final IOException error) {
+                error.printStackTrace();
+                latch.countDown();
+            }
+
+            public void handleEnd(final Channel channel) {
+                System.out.println("End of channel");
+                latch.countDown();
+            }
+
+            public void handleMessage(final Channel channel, final MessageInputStream message) {
+                System.out.println("Message received");
+                try {
+                    int i = message.read();
+                    while (i != -1) {
+                        result.add((byte)i);
+                        i = message.read();
+                    }
+                    message.close();
+                } catch (IOException e) {
+                    exRef.set(e);
+                } finally {
+                    IoUtils.safeClose(message);
+                    latch.countDown();
+                }
+            }
+        });
+        
+        latch.await();
+        assertNull(exRef.get());
+        Byte[] resultBytes = result.toArray(new Byte[result.size()]);
+        assertEquals(bytes, resultBytes);
+    }
+    
+
 }
