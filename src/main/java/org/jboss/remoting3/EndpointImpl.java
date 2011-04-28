@@ -355,7 +355,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory) {
-            connectionHandlerFactory.createInstance(new LocalConnectionContext(connectionProviderContext, new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, "client")));
+            new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, "client");
         }
 
         public Endpoint getEndpoint() {

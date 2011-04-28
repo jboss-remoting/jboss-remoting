@@ -23,6 +23,8 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.security.AccessControlContext;
 import java.security.AccessController;
@@ -142,6 +144,12 @@ final class ClientConnectionGreetingListener implements ChannelListener<Connecte
                     return;
                 }
             }
+        } catch (BufferUnderflowException e) {
+            connection.handleException(RemoteLogger.log.invalidMessage(connection));
+            return;
+        } catch (BufferOverflowException e) {
+            connection.handleException(RemoteLogger.log.invalidMessage(connection));
+            return;
         } finally {
             pooledReceiveBuffer.free();
         }
