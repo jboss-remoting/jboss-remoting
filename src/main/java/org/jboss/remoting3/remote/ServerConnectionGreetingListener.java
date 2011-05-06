@@ -78,6 +78,7 @@ final class ServerConnectionGreetingListener implements ChannelListener<Connecte
             if (res == 0) {
                 return;
             }
+            receiveBuffer.flip();
             String remoteEndpointName = "endpoint";
             final byte msgType = receiveBuffer.get();
             switch (msgType) {

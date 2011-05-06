@@ -79,6 +79,7 @@ final class ClientConnectionGreetingListener implements ChannelListener<Connecte
             if (res == 0) {
                 return;
             }
+            receiveBuffer.flip();
             final Set<String> saslMechs = new LinkedHashSet<String>();
             String remoteEndpointName = "endpoint";
             switch (receiveBuffer.get()) {
