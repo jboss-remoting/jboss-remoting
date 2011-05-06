@@ -177,9 +177,11 @@ final class RemoteConnectionProvider implements ConnectionProvider {
                 final Enumeration<SaslServerFactory> factories = Sasl.getSaslServerFactories();
                 allowedMechanisms = new LinkedHashMap<String, SaslServerFactory>();
                 try {
-                    if (channel instanceof ConnectedSslStreamChannel) {
-                        ConnectedSslStreamChannel sslStreamChannel = (ConnectedSslStreamChannel) channel;
-                        allowedMechanisms.put("EXTERNAL", new ExternalSaslServerFactory(sslStreamChannel.getSslSession().getPeerPrincipal()));
+                    if (restrictions == null || restrictions.contains("EXTERNAL")) {
+                        if (channel instanceof ConnectedSslStreamChannel) {
+                            ConnectedSslStreamChannel sslStreamChannel = (ConnectedSslStreamChannel) channel;
+                            allowedMechanisms.put("EXTERNAL", new ExternalSaslServerFactory(sslStreamChannel.getSslSession().getPeerPrincipal()));
+                        }
                     }
                 } catch (IOException e) {
                     // ignore
@@ -192,7 +194,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
                         }
                     }
                 }
-                if (saslMechs != null) for (String name : saslMechs) {
+                for (String name : allowedMechanisms.keySet()) {
                     ProtocolUtils.writeString(buffer, Protocol.GREETING_SASL_MECH, name);
                 }
                 ProtocolUtils.writeString(buffer, Protocol.GREETING_ENDPOINT_NAME, connectionProviderContext.getEndpoint().getName());

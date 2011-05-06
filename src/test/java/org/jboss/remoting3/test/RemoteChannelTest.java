@@ -57,8 +57,10 @@ import org.xnio.ConnectionChannelThread;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
+import org.xnio.Options;
 import org.xnio.Pool;
 import org.xnio.ReadChannelThread;
+import org.xnio.Sequence;
 import org.xnio.WriteChannelThread;
 import org.xnio.Xnio;
 import org.xnio.channels.AcceptingChannel;
@@ -95,7 +97,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
-        ChannelListener<AcceptingChannel<ConnectedStreamChannel>> serverListener = networkServerProvider.getServerListener(OptionMap.EMPTY, provider);
+        ChannelListener<AcceptingChannel<ConnectedStreamChannel>> serverListener = networkServerProvider.getServerListener(OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("DIGEST-MD5")), provider);
         streamServer = xnio.createStreamServer(new InetSocketAddress("::1", 30123), connectionChannelThread, serverListener, OptionMap.EMPTY);
         endpoint.registerService("org.jboss.test", new OpenListener() {
             public void channelOpened(final Channel channel) {
