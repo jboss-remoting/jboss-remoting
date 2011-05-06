@@ -120,8 +120,6 @@ final class ServerConnectionInitialAuthenticationHandler implements ChannelListe
                             int p = sendBuffer.position();
                             sendBuffer.put(Protocol.AUTH_COMPLETE);
                             if (SaslUtils.evaluateResponse(saslServer, sendBuffer, buffer)) {
-                                sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
-                            } else {
                                 connectionProviderContext.accept(new ConnectionHandlerFactory() {
                                     public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                         final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection);
@@ -129,6 +127,8 @@ final class ServerConnectionInitialAuthenticationHandler implements ChannelListe
                                         return connectionHandler;
                                     }
                                 });
+                            } else {
+                                sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
                             }
                         } catch (SaslException e) {
                             connection.handleException(e);
