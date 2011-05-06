@@ -91,7 +91,11 @@ final class RemoteConnection {
     }
 
     void send(final Pooled<ByteBuffer> pooled) {
-        writeListener.send(pooled);
+        writeListener.send(pooled, false);
+    }
+
+    void send(final Pooled<ByteBuffer> pooled, boolean close) {
+        writeListener.send(pooled, close);
     }
 
     OptionMap getOptionMap() {
@@ -113,6 +117,7 @@ final class RemoteConnection {
     final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {
 
         private final Queue<Pooled<ByteBuffer>> queue = new ArrayDeque<Pooled<ByteBuffer>>();
+        private boolean closed;
 
         RemoteWriteListener() {
         }
@@ -131,6 +136,12 @@ final class RemoteConnection {
                     }
                 }
                 if (channel.flush()) {
+                    if (closed) {
+                        // either this is successful and no more notifications will come, or not and it will be retried
+                        channel.shutdownWrites();
+                        // either way we're done here
+                        return;
+                    }
                     channel.suspendWrites();
                 }
             } catch (IOException e) {
@@ -142,7 +153,9 @@ final class RemoteConnection {
             // else try again later
         }
 
-        public synchronized void send(final Pooled<ByteBuffer> pooled) {
+        public synchronized void send(final Pooled<ByteBuffer> pooled, final boolean close) {
+            if (closed) { pooled.free(); return; }
+            if (close) { closed = true; }
             final ConnectedMessageChannel channel = getChannel();
             boolean free = true;
             try {

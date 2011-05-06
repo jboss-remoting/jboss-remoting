@@ -108,6 +108,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
                 }
                 final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, bufferPool.allocate(), bufferPool.allocate());
                 final RemoteConnection remoteConnection = new RemoteConnection(bufferPool, messageChannel, connectOptions, connectionProviderContext.getExecutor());
+                remoteConnection.setResult(result);
                 messageChannel.getWriteSetter().set(remoteConnection.getWriteListener());
                 final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, callbackHandler, AccessController.getContext());
                 openListener.handleEvent(messageChannel);

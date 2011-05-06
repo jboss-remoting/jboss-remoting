@@ -24,50 +24,41 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.OptionMap;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.sasl.SaslUtils;
 
-import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
-import javax.security.sasl.SaslServerFactory;
 
-import static org.jboss.remoting3.remote.RemoteAuthLogger.authLog;
 import static org.jboss.remoting3.remote.RemoteLogger.log;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-final class ServerConnectionInitialAuthenticationHandler implements ChannelListener<ConnectedMessageChannel> {
+public final class ServerConnectionAuthenticationResponseHandler implements ChannelListener<ConnectedMessageChannel> {
 
     private final RemoteConnection connection;
-    private final Map<String, SaslServerFactory> allowedMechanisms;
-    private final ServerAuthenticationProvider serverAuthenticationProvider;
-    private final String remoteEndpointName;
+    private final ServerConnectionInitialAuthenticationHandler initialAuthenticationHandler;
+    private final String endpointName;
     private final OptionMap optionMap;
     private final ConnectionProviderContext connectionProviderContext;
-    private final Map<String,?> propertyMap;
-    private final AtomicInteger retryCount = new AtomicInteger(5);
+    private final SaslServer saslServer;
 
-    ServerConnectionInitialAuthenticationHandler(final RemoteConnection connection, final Map<String, SaslServerFactory> allowedMechanisms, final ServerAuthenticationProvider serverAuthenticationProvider, final String remoteEndpointName, final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final Map<String, ?> propertyMap) {
+    ServerConnectionAuthenticationResponseHandler(final RemoteConnection connection, final ServerConnectionInitialAuthenticationHandler initialAuthenticationHandler, final String endpointName, final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final SaslServer saslServer) {
         this.connection = connection;
-        this.allowedMechanisms = allowedMechanisms;
-        this.serverAuthenticationProvider = serverAuthenticationProvider;
-        this.remoteEndpointName = remoteEndpointName;
+        this.initialAuthenticationHandler = initialAuthenticationHandler;
+        this.endpointName = endpointName;
         this.optionMap = optionMap;
         this.connectionProviderContext = connectionProviderContext;
-        this.propertyMap = propertyMap;
+        this.saslServer = saslServer;
     }
 
     public void handleEvent(final ConnectedMessageChannel channel) {
@@ -87,28 +78,7 @@ final class ServerConnectionInitialAuthenticationHandler implements ChannelListe
             buffer.flip();
             final byte msgType = buffer.get();
             switch (msgType) {
-                case Protocol.AUTH_REQUEST: {
-                    final String mechName = Buffers.getModifiedUtf8(buffer);
-                    final SaslServerFactory saslServerFactory = allowedMechanisms.get(mechName);
-                    final CallbackHandler callbackHandler = serverAuthenticationProvider.getCallbackHandler(mechName);
-                    if (saslServerFactory == null || callbackHandler == null) {
-                        // reject
-                        authLog.rejectedInvalidMechanism(mechName);
-                        final Pooled<ByteBuffer> pooled = connection.allocate();
-                        final ByteBuffer sendBuffer = pooled.getResource();
-                        sendBuffer.put(Protocol.AUTH_REJECTED);
-                        Buffers.putModifiedUtf8(sendBuffer, "Unsupported mechanism");
-                        sendBuffer.flip();
-                        connection.send(pooled);
-                        return;
-                    }
-                    final SaslServer saslServer;
-                    try {
-                        saslServer = saslServerFactory.createSaslServer(mechName, "remote", connectionProviderContext.getEndpoint().getName(), propertyMap, callbackHandler);
-                    } catch (SaslException e) {
-                        connection.handleException(e);
-                        return;
-                    }
+                case Protocol.AUTH_RESPONSE: {
                     boolean ok = false;
                     boolean close = false;
                     final Pooled<ByteBuffer> pooled = connection.allocate();
@@ -117,7 +87,7 @@ final class ServerConnectionInitialAuthenticationHandler implements ChannelListe
                         int p = sendBuffer.position();
                         try {
                             sendBuffer.put(Protocol.AUTH_COMPLETE);
-                            if (SaslUtils.evaluateResponse(saslServer, sendBuffer, buffer)) {
+                            if (SaslUtils.evaluateResponse(saslServer, sendBuffer, buffer) || /* todo temporary workaround */ saslServer.isComplete()) {
                                 connectionProviderContext.accept(new ConnectionHandlerFactory() {
                                     public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                         final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection);
@@ -127,12 +97,14 @@ final class ServerConnectionInitialAuthenticationHandler implements ChannelListe
                                 });
                             } else {
                                 sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
-                                connection.setReadListener(new ServerConnectionAuthenticationResponseHandler(connection, this, remoteEndpointName, optionMap, connectionProviderContext, saslServer));
                             }
                         } catch (SaslException e) {
                             sendBuffer.put(p, Protocol.AUTH_REJECTED);
+                            AtomicInteger retryCount = initialAuthenticationHandler.getRetryCount();
                             if (retryCount.decrementAndGet() <= 0) {
                                 close = true;
+                            } else {
+                                connection.setReadListener(initialAuthenticationHandler);
                             }
                         }
                         sendBuffer.flip();
@@ -153,9 +125,5 @@ final class ServerConnectionInitialAuthenticationHandler implements ChannelListe
         } finally {
             pooledBuffer.free();
         }
-    }
-
-    AtomicInteger getRetryCount() {
-        return retryCount;
     }
 }
