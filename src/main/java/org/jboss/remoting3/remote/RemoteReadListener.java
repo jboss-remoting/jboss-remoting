@@ -64,6 +64,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                     } else if (res == 0) {
                         return;
                     }
+                    buffer.flip();
                     final int protoId = buffer.get() & 0xff;
                     try {
                         switch (protoId) {
