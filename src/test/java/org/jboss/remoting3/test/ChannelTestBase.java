@@ -171,7 +171,7 @@ public abstract class ChannelTestBase {
             data = new byte[TEST_FILE_LENGTH];
             int c = 0;
             do {
-                int r = stream.read(data);
+                int r = stream.read(data, c, TEST_FILE_LENGTH - c);
                 if (r == -1) {
                     break;
                 }
@@ -195,11 +195,11 @@ public abstract class ChannelTestBase {
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {
                 final byte[] received = new byte[TEST_FILE_LENGTH];
+                int c = 0;
                 try {
                     System.out.println("Message received");
-                    int c = 0;
                     do {
-                        int r = message.read(received);
+                        int r = message.read(received, c, TEST_FILE_LENGTH - c);
                         if (r == -1) {
                             break;
                         }
@@ -207,7 +207,15 @@ public abstract class ChannelTestBase {
                     } while (c < TEST_FILE_LENGTH);
                     message.close();
                 } catch (MessageCancelledException e) {
-                    wasOk.set(Arrays.equals(data, received));
+                    System.out.println("Value of c at message cancelled is " + c);
+                    int i = 0;
+                    while (i < c) {
+                        if (data[i] != received[i]) {
+                            break;
+                        }
+                        i++;
+                    }
+                    wasOk.set(i == c);
                 } catch (IOException e) {
                     exRef.set(e);
                 } finally {
