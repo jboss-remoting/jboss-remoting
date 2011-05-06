@@ -54,6 +54,7 @@ import org.xnio.ChannelListener;
 import org.xnio.ChannelThreadPool;
 import org.xnio.ChannelThreadPools;
 import org.xnio.ConnectionChannelThread;
+import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
@@ -78,7 +79,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
     private WriteChannelThread writeChannelThread;
     private ConnectionChannelThread connectionChannelThread;
     private AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
-    private final AtomicReference<Channel> passer = new AtomicReference<Channel>();
+    private final FutureResult<Channel> passer = new FutureResult<Channel>();
     private Connection connection;
 
     @BeforeClass
@@ -101,7 +102,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
         streamServer = xnio.createStreamServer(new InetSocketAddress("::1", 30123), connectionChannelThread, serverListener, OptionMap.EMPTY);
         endpoint.registerService("org.jboss.test", new OpenListener() {
             public void channelOpened(final Channel channel) {
-                passer.set(channel);
+                passer.setResult(channel);
             }
 
             public void registrationTerminated() {
@@ -115,7 +116,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
         connection = futureConnection.get();
         IoFuture<Channel> futureChannel = connection.openChannel("org.jboss.test", OptionMap.EMPTY);
         sendChannel = futureChannel.get();
-        recvChannel = passer.get();
+        recvChannel = passer.getIoFuture().get();
         assertNotNull(recvChannel);
     }
 
@@ -124,7 +125,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
         IoUtils.safeClose(sendChannel);
         IoUtils.safeClose(recvChannel);
         IoUtils.safeClose(connection);
-        passer.set(null);
+        passer.setResult(null);
     }
 
     @AfterClass
