@@ -179,7 +179,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         int flags = buffer.get() & 0xff;
         final InboundMessage inboundMessage;
         if ((flags & Protocol.MSG_FLAG_NEW) != 0) {
-            inboundMessage = new InboundMessage((short) id, this);
+            inboundMessage = new InboundMessage((short) id, this, inboundWindow);
             if (inboundMessages.putIfAbsent(inboundMessage) != null) {
                 connection.handleException(new IOException("Protocol error: incoming message with duplicate ID received"));
                 return;

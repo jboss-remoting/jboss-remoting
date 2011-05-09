@@ -48,9 +48,10 @@ final class InboundMessage {
         }
     };
 
-    InboundMessage(final short messageId, final RemoteConnectionChannel channel) {
+    InboundMessage(final short messageId, final RemoteConnectionChannel channel, int inboundWindow) {
         this.messageId = messageId;
         this.channel = channel;
+        this.inboundWindow = inboundWindow;
     }
 
     BufferPipeInputStream inputStream = new BufferPipeInputStream(new BufferPipeInputStream.InputHandler() {
@@ -146,6 +147,7 @@ final class InboundMessage {
             }
             ByteBuffer buffer = pooledBuffer.getResource();
             closeInboundWindow(buffer.remaining() - 8);
+            buffer.position(buffer.position() - 1);
             byte flags = buffer.get();
             inputStream.push(pooledBuffer);
             if ((flags & Protocol.MSG_FLAG_EOF) != 0) {
