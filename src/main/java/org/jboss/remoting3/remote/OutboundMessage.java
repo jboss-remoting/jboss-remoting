@@ -46,8 +46,7 @@ final class OutboundMessage extends MessageOutputStream {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
             ByteBuffer buffer = pooled.getResource();
 
-            buffer.putShort(messageId);
-            buffer.put((byte) 0); // flags
+            buffer.put((byte)Protocol.MSG_FLAG_NEW); // flags
             // header size plus window size
             int windowPlusHeader = maximumWindow + 8;
             if (buffer.remaining() > windowPlusHeader) {

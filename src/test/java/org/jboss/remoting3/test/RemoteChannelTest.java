@@ -141,6 +141,11 @@ public final class RemoteChannelTest extends ChannelTestBase {
     }
 
     @Test
+    public void testSimpleWriteMethod() throws Exception {
+        super.testSimpleWriteMethod();
+    }
+
+    @Test
     public void testEmptyMessage() throws IOException, InterruptedException {
         super.testEmptyMessage();
     }
