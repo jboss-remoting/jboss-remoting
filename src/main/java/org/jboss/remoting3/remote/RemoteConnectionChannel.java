@@ -22,21 +22,23 @@
 
 package org.jboss.remoting3.remote;
 
+import static org.jboss.remoting3.remote.RemoteLogger.log;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.Executor;
+
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.xnio.Pooled;
 import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
-
-import static org.jboss.remoting3.remote.RemoteLogger.log;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -65,6 +67,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private Receiver nextReceiver;
     private int outboundMessageCount;
     private boolean writeClosed;
+    private Queue<MessageInputStream> messageQueue = new ArrayDeque<MessageInputStream>();
 
     RemoteConnectionChannel(final Executor executor, final RemoteConnection connection, final int channelId, final Random random, final int outboundWindow, final int inboundWindow, final int outboundMessageCount, final int inboundMessageCount) {
         super(executor);
@@ -170,6 +173,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                     }
                 });
             }
+            notify();
         }
     }
 
@@ -203,6 +207,41 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             }
         }
         inboundMessage.handleIncoming(message);
+        
+        messageQueue.add(new MessageInputStream() {
+            
+            @Override
+            public int read() throws IOException {
+                return inboundMessage.inputStream.read();
+            }
+        });
+        executeMessageTask();
+    }
+    
+    private void executeMessageTask () {
+        Runnable runnable = new Runnable() {
+            public void run() {
+                Receiver receiver;
+                synchronized (RemoteConnectionChannel.this) {
+                    if (nextReceiver == null) {
+                        while (!writeClosed) {
+                            try {
+                                RemoteConnectionChannel.this.wait();
+                                break;
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                throw new RuntimeException("Interrupted on read()");                            }
+                        }
+                    }
+                    receiver = nextReceiver;
+                }
+                MessageInputStream in = messageQueue.poll();
+                receiver.handleMessage(RemoteConnectionChannel.this, in);
+            }
+        };
+        Executor executor = connection.getExecutor();
+        executor.execute(runnable);
+        
     }
 
     void handleWindowOpen(final Pooled<ByteBuffer> pooled) {
