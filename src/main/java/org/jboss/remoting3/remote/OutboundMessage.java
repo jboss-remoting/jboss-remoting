@@ -61,7 +61,7 @@ final class OutboundMessage extends MessageOutputStream {
                 final ByteBuffer buffer = pooledBuffer.getResource();
                 if (eof) {
                     // EOF flag (sync close)
-                    buffer.put(7, (byte) 0x01);
+                    buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_EOF));
                 }
                 synchronized (this) {
                     int msgSize = buffer.remaining();
