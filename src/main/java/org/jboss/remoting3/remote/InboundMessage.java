@@ -24,6 +24,7 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.jboss.remoting3.MessageInputStream;
 import org.xnio.Pooled;
 import org.xnio.channels.Channels;
 import org.xnio.streams.BufferPipeInputStream;
@@ -71,6 +72,28 @@ final class InboundMessage {
             sendAsyncClose();
         }
     });
+
+    MessageInputStream messageInputStream = new MessageInputStream() {
+        public int read() throws IOException {
+            return inputStream.read();
+        }
+
+        public int read(final byte[] bytes, final int offs, final int length) throws IOException {
+            return inputStream.read(bytes, offs, length);
+        }
+
+        public long skip(final long l) throws IOException {
+            return inputStream.skip(l);
+        }
+
+        public int available() throws IOException {
+            return inputStream.available();
+        }
+
+        public void close() throws IOException {
+            inputStream.close();
+        }
+    };
 
     void sendAsyncClose() throws IOException {
         Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_ASYNC_CLOSE);

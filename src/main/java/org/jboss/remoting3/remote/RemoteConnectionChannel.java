@@ -24,6 +24,8 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
+import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.Attachments;
@@ -59,6 +61,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private final int outboundWindow;
     private final int inboundWindow;
     private final Attachments attachments = new Attachments();
+    private final Queue<InboundMessage> inboundMessageQueue = new ArrayDeque<InboundMessage>();
     private Receiver nextReceiver;
     private int outboundMessageCount;
     private boolean writeClosed;
@@ -154,10 +157,19 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     public void receiveMessage(final Receiver handler) {
         synchronized (this) {
-            if (nextReceiver != null) {
-                throw new IllegalStateException("Message handler already queued");
+            if (inboundMessageQueue.isEmpty()) {
+                if (nextReceiver != null) {
+                    throw new IllegalStateException("Message handler already queued");
+                }
+                nextReceiver = handler;
+            } else {
+                final InboundMessage message = inboundMessageQueue.remove();
+                getExecutor().execute(new Runnable() {
+                    public void run() {
+                        handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream);
+                    }
+                });
             }
-            nextReceiver = handler;
         }
     }
 
@@ -171,6 +183,17 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             if (inboundMessages.putIfAbsent(inboundMessage) != null) {
                 connection.handleException(new IOException("Protocol error: incoming message with duplicate ID received"));
                 return;
+            }
+            if (nextReceiver != null) {
+                final Receiver receiver = nextReceiver;
+                nextReceiver = null;
+                getExecutor().execute(new Runnable() {
+                    public void run() {
+                        receiver.handleMessage(RemoteConnectionChannel.this, inboundMessage.messageInputStream);
+                    }
+                });
+            } else {
+                inboundMessageQueue.add(inboundMessage);
             }
         } else {
             inboundMessage = inboundMessages.get(id);
