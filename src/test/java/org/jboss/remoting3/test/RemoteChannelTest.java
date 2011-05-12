@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3.test;
 
+import static org.testng.Assert.assertNotNull;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -32,14 +34,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.ChannelPair;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.OpenListener;
+import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.Remoting;
-import org.jboss.remoting3.UnknownURISchemeException;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
@@ -67,8 +68,6 @@ import org.xnio.Xnio;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
-import static org.testng.Assert.assertNotNull;
-
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
@@ -79,8 +78,8 @@ public final class RemoteChannelTest extends ChannelTestBase {
     private WriteChannelThread writeChannelThread;
     private ConnectionChannelThread connectionChannelThread;
     private AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
-    private final FutureResult<Channel> passer = new FutureResult<Channel>();
     private Connection connection;
+    private Registration serviceRegistration;
 
     @BeforeClass
     public void create() throws IOException {
@@ -100,7 +99,12 @@ public final class RemoteChannelTest extends ChannelTestBase {
         provider.addUser("bob", "test", "pass".toCharArray());
         ChannelListener<AcceptingChannel<ConnectedStreamChannel>> serverListener = networkServerProvider.getServerListener(OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("DIGEST-MD5")), provider);
         streamServer = xnio.createStreamServer(new InetSocketAddress("::1", 30123), connectionChannelThread, serverListener, OptionMap.EMPTY);
-        endpoint.registerService("org.jboss.test", new OpenListener() {
+    }
+
+    @BeforeMethod
+    public void testStart() throws IOException, URISyntaxException, InterruptedException {
+        final FutureResult<Channel> passer = new FutureResult<Channel>();
+        serviceRegistration = endpoint.registerService("org.jboss.test", new OpenListener() {
             public void channelOpened(final Channel channel) {
                 passer.setResult(channel);
             }
@@ -108,10 +112,6 @@ public final class RemoteChannelTest extends ChannelTestBase {
             public void registrationTerminated() {
             }
         }, OptionMap.EMPTY);
-    }
-
-    @BeforeMethod
-    public void testStart() throws IOException, URISyntaxException {
         IoFuture<Connection> futureConnection = endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.EMPTY, "bob", "test", "pass".toCharArray());
         connection = futureConnection.get();
         IoFuture<Channel> futureChannel = connection.openChannel("org.jboss.test", OptionMap.EMPTY);
@@ -125,7 +125,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
         IoUtils.safeClose(sendChannel);
         IoUtils.safeClose(recvChannel);
         IoUtils.safeClose(connection);
-        passer.setResult(null);
+        serviceRegistration.close();
     }
 
     @AfterClass

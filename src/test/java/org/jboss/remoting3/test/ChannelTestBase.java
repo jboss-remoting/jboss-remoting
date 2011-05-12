@@ -101,7 +101,7 @@ public abstract class ChannelTestBase {
             data = new byte[TEST_FILE_LENGTH];
             int c = 0;
             do {
-                int r = stream.read(data);
+                int r = stream.read(data, c, TEST_FILE_LENGTH - c);
                 if (r == -1) {
                     break;
                 }
@@ -235,7 +235,7 @@ public abstract class ChannelTestBase {
         }
         assertTrue(wasOk.get());
     }
-    
+
     @Test
     public void testSimpleWriteMethod() throws Exception {
         Byte[] bytes = new Byte[] {1, 2, 3};
