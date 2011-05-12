@@ -42,13 +42,17 @@ final class OutboundMessage extends MessageOutputStream {
     int window;
     boolean closed;
     final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
-        public Pooled<ByteBuffer> getBuffer() throws IOException {
+        public Pooled<ByteBuffer> getBuffer(boolean isNew) throws IOException {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
             ByteBuffer buffer = pooled.getResource();
 
-            buffer.put((byte)Protocol.MSG_FLAG_NEW); // flags
+            //Reserve room for the transmit data which is 4 bytes
+            buffer.limit(buffer.limit() - 4);
+            
+            buffer.put(isNew ? Protocol.MSG_FLAG_NEW : 0); // flags
             // header size plus window size
             int windowPlusHeader = maximumWindow + 8;
+            int i = buffer.remaining();
             if (buffer.remaining() > windowPlusHeader) {
                 // never try to write more than the maximum window size
                 buffer.limit(windowPlusHeader);
@@ -63,17 +67,19 @@ final class OutboundMessage extends MessageOutputStream {
                     // EOF flag (sync close)
                     buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_EOF));
                 }
-                synchronized (this) {
+                synchronized (OutboundMessage.this) {
                     int msgSize = buffer.remaining();
+                    window -= msgSize;
                     while (window < msgSize) {
                         try {
-                            wait();
+                            OutboundMessage.this.wait();
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                             throw new InterruptedIOException("Interrupted on write");
                         }
                     }
                 }
+                
                 Channels.sendBlocking(channel.getConnection().getChannel(), buffer);
             } finally {
                 pooledBuffer.free();
@@ -120,7 +126,7 @@ final class OutboundMessage extends MessageOutputStream {
     void acknowledge(int count) {
         synchronized (this) {
             window += count;
-            notify();
+            notifyAll();
         }
     }
 

@@ -68,7 +68,6 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private int outboundMessageCount;
     private boolean writeClosed;
     private boolean readClosed;
-    private Queue<MessageInputStream> messageQueue = new ArrayDeque<MessageInputStream>();
 
     RemoteConnectionChannel(final Executor executor, final RemoteConnection connection, final int channelId, final Random random, final int outboundWindow, final int inboundWindow, final int outboundMessageCount, final int inboundMessageCount) {
         super(executor);
@@ -212,41 +211,6 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             }
         }
         inboundMessage.handleIncoming(message);
-        
-        messageQueue.add(new MessageInputStream() {
-            
-            @Override
-            public int read() throws IOException {
-                return inboundMessage.inputStream.read();
-            }
-        });
-        executeMessageTask();
-    }
-    
-    private void executeMessageTask () {
-        Runnable runnable = new Runnable() {
-            public void run() {
-                Receiver receiver;
-                synchronized (RemoteConnectionChannel.this) {
-                    if (nextReceiver == null) {
-                        while (!writeClosed) {
-                            try {
-                                RemoteConnectionChannel.this.wait();
-                                break;
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                throw new RuntimeException("Interrupted on read()");                            }
-                        }
-                    }
-                    receiver = nextReceiver;
-                }
-                MessageInputStream in = messageQueue.poll();
-                receiver.handleMessage(RemoteConnectionChannel.this, in);
-            }
-        };
-        Executor executor = connection.getExecutor();
-        executor.execute(runnable);
-        
     }
 
     void handleWindowOpen(final Pooled<ByteBuffer> pooled) {

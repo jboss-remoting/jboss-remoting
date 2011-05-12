@@ -114,6 +114,7 @@ final class InboundMessage {
         return pooled;
     }
 
+    
     void openInboundWindow(int consumed) {
         synchronized (this) {
             inboundWindow += consumed;
@@ -129,6 +130,7 @@ final class InboundMessage {
     }
 
     void handleIncoming(Pooled<ByteBuffer> pooledBuffer) {
+        boolean eof = false;
         synchronized (this) {
             if (closed) {
                 // ignore
@@ -149,12 +151,16 @@ final class InboundMessage {
             closeInboundWindow(buffer.remaining() - 8);
             buffer.position(buffer.position() - 1);
             byte flags = buffer.get();
-            inputStream.push(pooledBuffer);
-            if ((flags & Protocol.MSG_FLAG_EOF) != 0) {
-                inputStream.pushEof();
+            
+            eof = (flags & Protocol.MSG_FLAG_EOF) != 0;
+            if (eof) {
                 closed = true;
                 channel.freeInboundMessage(messageId);
             }
+        }
+        inputStream.push(pooledBuffer);
+        if (eof) {
+            inputStream.pushEof();
         }
     }
 }

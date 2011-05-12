@@ -22,6 +22,7 @@
 
 package org.jboss.remoting3.test;
 
+import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ import static org.testng.Assert.*;
  */
 public abstract class ChannelTestBase {
 
+    private static final int TEST_TWO_BUFFER_LENGTH = 8201;
     private static final int TEST_FILE_LENGTH = 20480;
     protected Channel sendChannel;
     protected Channel recvChannel;
@@ -283,5 +285,54 @@ public abstract class ChannelTestBase {
         assertEquals(bytes, resultBytes);
     }
     
+    @Test
+    public void testSimpleWriteMethodWithWrappedOuputStream() throws Exception {
+        Byte[] bytes = new Byte[] {1, 2, 3};
+        
+        FilterOutputStream out = new FilterOutputStream(sendChannel.writeMessage());
+        for (int i = 0 ; i < bytes.length ; i++) {
+            out.write(bytes[i]);
+        }
+        //The close() method of FilterOutputStream will flush the underlying output stream before closing it,
+        //so we end up with two messages
+        out.close();
+        
+        final CountDownLatch latch = new CountDownLatch(1);
+        final ArrayList<Byte> result = new ArrayList<Byte>();
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();        
+        recvChannel.receiveMessage(new Channel.Receiver() {
+            public void handleError(final Channel channel, final IOException error) {
+                error.printStackTrace();
+                latch.countDown();
+            }
+
+            public void handleEnd(final Channel channel) {
+                System.out.println("End of channel");
+                latch.countDown();
+            }
+
+            public void handleMessage(final Channel channel, final MessageInputStream message) {
+                System.out.println("Message received");
+                try {
+                    int i = message.read();
+                    while (i != -1) {
+                        result.add((byte)i);
+                        i = message.read();
+                    }
+                    message.close();
+                } catch (IOException e) {
+                    exRef.set(e);
+                } finally {
+                    IoUtils.safeClose(message);
+                    latch.countDown();
+                }
+            }
+        });
+        
+        latch.await();
+        assertNull(exRef.get());
+        Byte[] resultBytes = result.toArray(new Byte[result.size()]);
+        assertEquals(bytes, resultBytes);
+    }
 
 }

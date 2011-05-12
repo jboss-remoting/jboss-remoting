@@ -170,8 +170,8 @@ final class Protocol {
 
     static final Charset UTF_8 = Charset.forName("UTF8");
 
-    static final int MSG_FLAG_EOF = 0x01;
-    static final int MSG_FLAG_NEW = 0x02;
+    static final byte MSG_FLAG_EOF = 0x01;
+    static final byte MSG_FLAG_NEW = 0x02;
 
     static final int DEFAULT_WINDOW_SIZE = 0x4000;
     static final int DEFAULT_MESSAGE_COUNT = 4;
