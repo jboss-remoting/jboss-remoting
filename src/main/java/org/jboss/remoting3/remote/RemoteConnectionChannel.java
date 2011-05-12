@@ -67,6 +67,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private Receiver nextReceiver;
     private int outboundMessageCount;
     private boolean writeClosed;
+    private boolean readClosed;
     private Queue<MessageInputStream> messageQueue = new ArrayDeque<MessageInputStream>();
 
     RemoteConnectionChannel(final Executor executor, final RemoteConnection connection, final int channelId, final Random random, final int outboundWindow, final int inboundWindow, final int outboundMessageCount, final int inboundMessageCount) {
@@ -131,6 +132,10 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     synchronized void handleRemoteClose() {
         writeClosed = true;
+        if (readClosed) {
+            return;
+        }
+        readClosed = true;
         for (OutboundMessage message : outboundMessages) {
             message.asyncClose();
         }
@@ -268,6 +273,12 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     public Attachments getAttachments() {
         return attachments;
+    }
+
+    @Override
+    protected void closeAction() throws IOException {
+        writeShutdown();
+        handleRemoteClose();
     }
 
     RemoteConnection getConnection() {
