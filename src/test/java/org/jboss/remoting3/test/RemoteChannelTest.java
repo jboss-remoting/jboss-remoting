@@ -159,4 +159,9 @@ public final class RemoteChannelTest extends ChannelTestBase {
     public void testWriteCancel() throws IOException, InterruptedException {
         super.testWriteCancel();
     }
+    
+    @Test
+    public void testSimpleWriteMethodTwoWay() throws Exception {
+        super.testSimpleWriteMethodTwoWay();
+    }
 }

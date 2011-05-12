@@ -335,4 +335,93 @@ public abstract class ChannelTestBase {
         assertEquals(bytes, resultBytes);
     }
 
+    @Test
+    public void testSimpleWriteMethodTwoWay() throws Exception {
+        Byte[] bytes = new Byte[] {1, 2, 3};
+        MessageOutputStream out = sendChannel.writeMessage();
+        for (int i = 0 ; i < bytes.length ; i++) {
+            out.write(bytes[i]);
+        }
+        out.close();
+        
+        final CountDownLatch latch = new CountDownLatch(2);
+        final ArrayList<Byte> senderResult = new ArrayList<Byte>();
+        final ArrayList<Byte> receiverResult = new ArrayList<Byte>();
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();        
+        recvChannel.receiveMessage(new Channel.Receiver() {
+            public void handleError(final Channel channel, final IOException error) {
+                error.printStackTrace();
+                latch.countDown();
+            }
+
+            public void handleEnd(final Channel channel) {
+                System.out.println("End of channel");
+                latch.countDown();
+            }
+
+            public void handleMessage(final Channel channel, final MessageInputStream message) {
+                System.out.println("Message received on receiver");
+                try {
+                    int i = message.read();
+                    while (i != -1) {
+                        senderResult.add((byte)i);
+                        System.out.println("read " + i);
+                        i = message.read();
+                    }
+                    message.close();
+                    MessageOutputStream out = channel.writeMessage();
+                    try {
+                        for (Byte b : senderResult) {
+                            System.out.println("Sending back " + b);
+                            out.write(b);
+                        }
+                    } finally {
+                        out.close();
+                    }
+                    System.out.println("Done writing");
+                } catch (IOException e) {
+                    exRef.set(e);
+                } finally {
+                    IoUtils.safeClose(message);
+                    latch.countDown();
+                }
+            }
+        });
+        sendChannel.receiveMessage(new Channel.Receiver() {
+            public void handleError(final Channel channel, final IOException error) {
+                error.printStackTrace();
+                latch.countDown();
+            }
+
+            public void handleEnd(final Channel channel) {
+                System.out.println("End of channel");
+                latch.countDown();
+            }
+
+            public void handleMessage(final Channel channel, final MessageInputStream message) {
+                System.out.println("Message received on sender");
+                try {
+                    int i = message.read();
+                    while (i != -1) {
+                        senderResult.add((byte)i);
+                        i = message.read();
+                    }
+                    message.close();
+                } catch (IOException e) {
+                    exRef.set(e);
+                } finally {
+                    IoUtils.safeClose(message);
+                    latch.countDown();
+                }
+            }
+        });
+        
+        latch.await();
+        assertNull(exRef.get());
+        Byte[] receiverBytes = receiverResult.toArray(new Byte[receiverResult.size()]);
+        assertEquals(bytes, receiverBytes);
+        Byte[] senderBytes = senderResult.toArray(new Byte[senderResult.size()]);
+        assertEquals(bytes, senderBytes);
+    }
+
 }

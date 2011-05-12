@@ -72,4 +72,30 @@ public final class LocalChannelTest extends ChannelTestBase {
         executorService.awaitTermination(1L, TimeUnit.DAYS);
         executorService.shutdownNow();
     }
+    
+
+    @Test
+    public void testSimpleWriteMethod() throws Exception {
+        super.testSimpleWriteMethod();
+    }
+
+    @Test
+    public void testEmptyMessage() throws IOException, InterruptedException {
+        super.testEmptyMessage();
+    }
+
+    @Test
+    public void testLotsOfContent() throws IOException, InterruptedException {
+        super.testLotsOfContent();
+    }
+
+    @Test
+    public void testWriteCancel() throws IOException, InterruptedException {
+        super.testWriteCancel();
+    }
+    
+    @Test
+    public void testSimpleWriteMethodTwoWay() throws Exception {
+        super.testSimpleWriteMethodTwoWay();
+    }
 }
