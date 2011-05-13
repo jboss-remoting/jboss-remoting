@@ -235,6 +235,8 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                     }
                 } catch (BufferUnderflowException e) {
                     log.bufferUnderflowRaw();
+                } finally {
+                    buffer.clear();
                 }
             } finally {
                 pooled.free();
