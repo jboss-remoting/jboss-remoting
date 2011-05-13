@@ -387,6 +387,7 @@ public abstract class ChannelTestBase {
 
     @Test
     public void testSimpleWriteMethodTwoWay() throws Exception {
+
         Byte[] bytes = new Byte[] {1, 2, 3};
         Byte[] manipulatedBytes = new Byte[] {2, 4, 6};
         MessageOutputStream out = sendChannel.writeMessage();
@@ -474,7 +475,6 @@ public abstract class ChannelTestBase {
         assertEquals(bytes, receiverBytes);
         Byte[] senderBytes = senderResult.toArray(new Byte[senderResult.size()]);
         assertEquals(manipulatedBytes, senderBytes);
-        System.out.println("--- Done");
     }
 
 }
