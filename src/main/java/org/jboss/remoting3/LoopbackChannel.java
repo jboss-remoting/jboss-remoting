@@ -146,7 +146,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
     private void executeMessageTask(final Receiver handler, final In in) {
         getExecutor().execute(new Runnable() {
             public void run() {
-                handler.handleMessage(otherSide, in);
+                handler.handleMessage(LoopbackChannel.this, in);
             }
         });
     }

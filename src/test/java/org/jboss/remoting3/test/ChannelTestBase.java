@@ -22,22 +22,25 @@
 
 package org.jboss.remoting3.test;
 
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
+
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.testng.annotations.Test;
 import org.xnio.IoUtils;
-
-import static org.testng.Assert.*;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -336,8 +339,56 @@ public abstract class ChannelTestBase {
     }
 
     @Test
+    public void testSimpleWriteMethodFromNonInitiatingSide() throws Exception {
+        Byte[] bytes = new Byte[] {1, 2, 3};
+        MessageOutputStream out = recvChannel.writeMessage();
+        for (int i = 0 ; i < bytes.length ; i++) {
+            out.write(bytes[i]);
+        }
+        out.close();
+        
+        final CountDownLatch latch = new CountDownLatch(1);
+        final ArrayList<Byte> result = new ArrayList<Byte>();
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();        
+        sendChannel.receiveMessage(new Channel.Receiver() {
+            public void handleError(final Channel channel, final IOException error) {
+                error.printStackTrace();
+                latch.countDown();
+            }
+
+            public void handleEnd(final Channel channel) {
+                System.out.println("End of channel");
+                latch.countDown();
+            }
+
+            public void handleMessage(final Channel channel, final MessageInputStream message) {
+                System.out.println("Message received");
+                try {
+                    int i = message.read();
+                    while (i != -1) {
+                        result.add((byte)i);
+                        i = message.read();
+                    }
+                    message.close();
+                } catch (IOException e) {
+                    exRef.set(e);
+                } finally {
+                    IoUtils.safeClose(message);
+                    latch.countDown();
+                }
+            }
+        });
+        
+        latch.await();
+        assertNull(exRef.get());
+        Byte[] resultBytes = result.toArray(new Byte[result.size()]);
+        assertEquals(bytes, resultBytes);
+    }
+
+    @Test
     public void testSimpleWriteMethodTwoWay() throws Exception {
         Byte[] bytes = new Byte[] {1, 2, 3};
+        Byte[] manipulatedBytes = new Byte[] {2, 4, 6};
         MessageOutputStream out = sendChannel.writeMessage();
         for (int i = 0 ; i < bytes.length ; i++) {
             out.write(bytes[i]);
@@ -364,16 +415,17 @@ public abstract class ChannelTestBase {
                 try {
                     int i = message.read();
                     while (i != -1) {
-                        senderResult.add((byte)i);
+                        receiverResult.add((byte)i);
                         System.out.println("read " + i);
                         i = message.read();
                     }
                     message.close();
                     MessageOutputStream out = channel.writeMessage();
                     try {
-                        for (Byte b : senderResult) {
-                            System.out.println("Sending back " + b);
-                            out.write(b);
+                        for (Byte b : receiverResult) {
+                            byte send = (byte)(b * 2);
+                            System.out.println("Sending back " + send);
+                            out.write(send);
                         }
                     } finally {
                         out.close();
@@ -421,7 +473,8 @@ public abstract class ChannelTestBase {
         Byte[] receiverBytes = receiverResult.toArray(new Byte[receiverResult.size()]);
         assertEquals(bytes, receiverBytes);
         Byte[] senderBytes = senderResult.toArray(new Byte[senderResult.size()]);
-        assertEquals(bytes, senderBytes);
+        assertEquals(manipulatedBytes, senderBytes);
+        System.out.println("--- Done");
     }
 
 }

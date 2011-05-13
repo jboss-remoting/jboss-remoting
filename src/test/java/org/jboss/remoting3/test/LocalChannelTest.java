@@ -95,6 +95,11 @@ public final class LocalChannelTest extends ChannelTestBase {
     }
     
     @Test
+    public void testSimpleWriteMethodFromNonInitiatingSide() throws Exception {
+        super.testSimpleWriteMethodFromNonInitiatingSide();
+    }
+    
+    @Test
     public void testSimpleWriteMethodTwoWay() throws Exception {
         super.testSimpleWriteMethodTwoWay();
     }
