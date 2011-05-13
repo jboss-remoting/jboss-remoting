@@ -42,14 +42,14 @@ final class OutboundMessage extends MessageOutputStream {
     int window;
     boolean closed;
     final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
-        public Pooled<ByteBuffer> getBuffer(boolean isNew) throws IOException {
+        public Pooled<ByteBuffer> getBuffer(boolean firstBuffer) throws IOException {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
             ByteBuffer buffer = pooled.getResource();
 
             //Reserve room for the transmit data which is 4 bytes
             buffer.limit(buffer.limit() - 4);
             
-            buffer.put(isNew ? Protocol.MSG_FLAG_NEW : 0); // flags
+            buffer.put(firstBuffer ? Protocol.MSG_FLAG_NEW : 0); // flags
             // header size plus window size
             int windowPlusHeader = maximumWindow + 8;
             int i = buffer.remaining();
