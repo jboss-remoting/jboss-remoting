@@ -25,11 +25,13 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+
 import org.jboss.remoting3.MessageOutputStream;
 import org.xnio.IoUtils;
 import org.xnio.Pooled;
 import org.xnio.channels.Channels;
 import org.xnio.streams.BufferPipeOutputStream;
+
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -41,6 +43,7 @@ final class OutboundMessage extends MessageOutputStream {
     final int maximumWindow;
     int window;
     boolean closed;
+    boolean cancelled;
     final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
         public Pooled<ByteBuffer> getBuffer(boolean firstBuffer) throws IOException {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
@@ -52,7 +55,6 @@ final class OutboundMessage extends MessageOutputStream {
             buffer.put(firstBuffer ? Protocol.MSG_FLAG_NEW : 0); // flags
             // header size plus window size
             int windowPlusHeader = maximumWindow + 8;
-            int i = buffer.remaining();
             if (buffer.remaining() > windowPlusHeader) {
                 // never try to write more than the maximum window size
                 buffer.limit(windowPlusHeader);
@@ -66,6 +68,10 @@ final class OutboundMessage extends MessageOutputStream {
                 if (eof) {
                     // EOF flag (sync close)
                     buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_EOF));
+                }
+                if (cancelled) {
+                    buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
+                    buffer.limit(8); // discard everything in the buffer
                 }
                 synchronized (OutboundMessage.this) {
                     int msgSize = buffer.remaining();
@@ -160,7 +166,8 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     public MessageOutputStream cancel() {
-        // todo
+        cancelled = true;
+        IoUtils.safeClose(pipeOutputStream);
         return this;
     }
 }

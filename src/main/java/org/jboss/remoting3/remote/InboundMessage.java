@@ -24,6 +24,8 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
 import org.xnio.Pooled;
 import org.xnio.channels.Channels;
@@ -37,6 +39,7 @@ final class InboundMessage {
     final RemoteConnectionChannel channel;
     int inboundWindow;
     boolean closed;
+    boolean cancelled;
 
     static final IntIndexer<InboundMessage> INDEXER = new IntIndexer<InboundMessage>() {
         public int indexOf(final InboundMessage argument) {
@@ -92,6 +95,9 @@ final class InboundMessage {
         }
 
         public void close() throws IOException {
+            if (cancelled) {
+                throw new MessageCancelledException();
+            }
             inputStream.close();
         }
     };
@@ -156,6 +162,10 @@ final class InboundMessage {
             if (eof) {
                 closed = true;
                 channel.freeInboundMessage(messageId);
+            }
+            boolean cancelled = (flags & Protocol.MSG_FLAG_CANCELLED) != 0;
+            if (cancelled) {
+                this.cancelled = true;
             }
         }
         inputStream.push(pooledBuffer);
