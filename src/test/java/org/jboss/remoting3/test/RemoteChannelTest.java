@@ -88,7 +88,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
         Xnio xnio = Xnio.getInstance();
         readChannelThread = xnio.createReadChannelThread(Executors.defaultThreadFactory());
         writeChannelThread = xnio.createWriteChannelThread(Executors.defaultThreadFactory());
-        connectionChannelThread = xnio.createConnectionChannelThread(Executors.defaultThreadFactory());
+        connectionChannelThread = xnio.createReadChannelThread(Executors.defaultThreadFactory());
         ChannelThreadPool<ReadChannelThread> readPool = ChannelThreadPools.singleton(readChannelThread);
         ChannelThreadPool<WriteChannelThread> writePool = ChannelThreadPools.singleton(writeChannelThread);
         ChannelThreadPool<ConnectionChannelThread> connectionPool = ChannelThreadPools.singleton(connectionChannelThread);
