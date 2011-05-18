@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.regex.Pattern;
-import org.jboss.marshalling.Pair;
 import org.jboss.remoting3.security.PasswordClientCallbackHandler;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
@@ -130,9 +129,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<Connection> connect(final URI destination) throws IOException {
-        final Pair<String, String> userRealm = getUserAndRealm(destination);
-        final String uriUserName = userRealm.getA();
-        final String uriUserRealm = userRealm.getB();
+        final UserAndRealm userRealm = getUserAndRealm(destination);
+        final String uriUserName = userRealm.getUser();
+        final String uriUserRealm = userRealm.getRealm();
         final OptionMap finalMap;
         final OptionMap.Builder builder = OptionMap.builder();
         if (uriUserName != null) builder.set(RemotingOptions.AUTHORIZE_ID, uriUserName);
@@ -142,9 +141,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
-        final Pair<String, String> userRealm = getUserAndRealm(destination);
-        final String uriUserName = userRealm.getA();
-        final String uriUserRealm = userRealm.getB();
+        final UserAndRealm userRealm = getUserAndRealm(destination);
+        final String uriUserName = userRealm.getUser();
+        final String uriUserRealm = userRealm.getRealm();
         final OptionMap finalMap;
         final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
         if (uriUserName != null) builder.set(RemotingOptions.AUTHORIZE_ID, uriUserName);
@@ -192,9 +191,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
-        final Pair<String, String> userRealm = getUserAndRealm(destination);
-        final String uriUserName = userRealm.getA();
-        final String uriUserRealm = userRealm.getB();
+        final UserAndRealm userRealm = getUserAndRealm(destination);
+        final String uriUserName = userRealm.getUser();
+        final String uriUserRealm = userRealm.getRealm();
         final OptionMap finalMap;
         final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
         if (uriUserName != null) builder.set(RemotingOptions.AUTHORIZE_ID, uriUserName);
@@ -204,9 +203,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final String userName, final String realmName, final char[] password) throws IOException {
-        final Pair<String, String> userRealm = getUserAndRealm(destination);
-        final String uriUserName = userRealm.getA();
-        final String uriUserRealm = userRealm.getB();
+        final UserAndRealm userRealm = getUserAndRealm(destination);
+        final String uriUserName = userRealm.getUser();
+        final String uriUserRealm = userRealm.getRealm();
         final String actualUserName = userName != null ? userName : uriUserName != null ? uriUserName : connectOptions.get(RemotingOptions.AUTHORIZE_ID);
         final String actualUserRealm = realmName != null ? realmName : uriUserRealm != null ? uriUserRealm : connectOptions.get(RemotingOptions.AUTH_REALM);
         final OptionMap.Builder builder = OptionMap.builder().addAll(connectOptions);
@@ -270,18 +269,36 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return new String(buf, 0, c, UTF_8);
     }
 
-    private static final Pair<String, String> EMPTY = Pair.create(null, null);
+    static final class UserAndRealm {
+        private final String user;
+        private final String realm;
 
-    private Pair<String, String> getUserAndRealm(URI uri) {
+        UserAndRealm(final String user, final String realm) {
+            this.user = user;
+            this.realm = realm;
+        }
+
+        public String getUser() {
+            return user;
+        }
+
+        public String getRealm() {
+            return realm;
+        }
+    }
+
+    private static final UserAndRealm EMPTY = new UserAndRealm(null, null);
+
+    private UserAndRealm getUserAndRealm(URI uri) {
         final String userInfo = uri.getRawUserInfo();
         if (userInfo == null) {
             return EMPTY;
         }
         int i = userInfo.indexOf(';');
         if (i == -1) {
-            return Pair.create(uri.getUserInfo(), null);
+            return new UserAndRealm(uri.getUserInfo(), null);
         } else {
-            return Pair.create(uriDecode(userInfo.substring(0, i)), uriDecode(userInfo.substring(i + 1)));
+            return new UserAndRealm(uriDecode(userInfo.substring(0, i)), uriDecode(userInfo.substring(i + 1)));
         }
     }
 
