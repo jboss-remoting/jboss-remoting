@@ -57,6 +57,7 @@ final class ClientConnectionAuthenticationHandler implements ChannelListener<Con
                 return;
             }
             if (res == 0) {
+                channel.resumeReads();
                 return;
             }
             buffer.flip();
@@ -86,6 +87,7 @@ final class ClientConnectionAuthenticationHandler implements ChannelListener<Con
                     sendBuffer.put(response);
                     sendBuffer.flip();
                     connection.send(pooled);
+                    channel.resumeReads();
                     return;
                 }
                 case Protocol.AUTH_COMPLETE: {

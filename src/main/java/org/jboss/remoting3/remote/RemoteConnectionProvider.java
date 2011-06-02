@@ -133,7 +133,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
         return providerInterface;
     }
 
-    private final class ProviderInterface implements NetworkServerProvider {
+    private final class ProviderInterface implements NetworkServerProvider<ConnectedStreamChannel> {
 
         public ChannelListener<AcceptingChannel<ConnectedStreamChannel>> getServerListener(final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) {
             return new AcceptListener(optionMap, authenticationProvider);

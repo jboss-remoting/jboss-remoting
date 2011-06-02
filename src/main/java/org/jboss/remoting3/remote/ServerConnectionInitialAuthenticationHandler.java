@@ -82,6 +82,7 @@ final class ServerConnectionInitialAuthenticationHandler implements ChannelListe
                 return;
             }
             if (res == 0) {
+                channel.resumeReads();
                 return;
             }
             buffer.flip();

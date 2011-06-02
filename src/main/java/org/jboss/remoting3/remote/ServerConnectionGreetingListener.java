@@ -76,6 +76,7 @@ final class ServerConnectionGreetingListener implements ChannelListener<Connecte
                 return;
             }
             if (res == 0) {
+                channel.resumeReads();
                 return;
             }
             receiveBuffer.flip();

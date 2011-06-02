@@ -31,7 +31,7 @@ import org.xnio.channels.ConnectedStreamChannel;
 /**
  * A provider interface implemented by connection providers which can be connected to across the network.
  */
-public interface NetworkServerProvider {
+public interface NetworkServerProvider<T extends ConnectedStreamChannel> {
 
     /**
      * Get the channel open listener for servers of this connection provider type.
@@ -40,5 +40,5 @@ public interface NetworkServerProvider {
      * @param authenticationProvider the server authentication provider
      * @return the channel listener
      */
-    ChannelListener<AcceptingChannel<ConnectedStreamChannel>> getServerListener(OptionMap optionMap, ServerAuthenticationProvider authenticationProvider);
+    ChannelListener<AcceptingChannel<T>> getServerListener(OptionMap optionMap, ServerAuthenticationProvider authenticationProvider);
 }

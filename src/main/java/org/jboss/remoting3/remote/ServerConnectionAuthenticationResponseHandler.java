@@ -73,6 +73,7 @@ public final class ServerConnectionAuthenticationResponseHandler implements Chan
                 return;
             }
             if (res == 0) {
+                channel.resumeReads();
                 return;
             }
             buffer.flip();
