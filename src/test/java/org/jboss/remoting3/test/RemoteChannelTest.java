@@ -169,4 +169,10 @@ public final class RemoteChannelTest extends ChannelTestBase {
     public void testSimpleWriteMethodTwoWay() throws Exception {
         super.testSimpleWriteMethodTwoWay();
     }
+    
+    @Test
+    public void testSeveralWriteMessage() throws Exception {
+        super.testSeveralWriteMessage();
+    }
+
 }

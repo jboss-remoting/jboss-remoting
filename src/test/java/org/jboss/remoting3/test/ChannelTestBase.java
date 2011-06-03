@@ -480,7 +480,7 @@ public abstract class ChannelTestBase {
     }
 
     @Test
-    public void testSeveralWriteMessage() throws IOException, InterruptedException {
+    public void testSeveralWriteMessage() throws Exception {
         final AtomicBoolean wasEmpty = new AtomicBoolean();
         final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
         final CountDownLatch latch = new CountDownLatch(100);

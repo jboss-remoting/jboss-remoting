@@ -109,6 +109,12 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             throw log.channelBusy();
         }
     }
+    
+    synchronized void free(OutboundMessage outboundMessage) {
+        outboundMessages.remove(outboundMessage);
+        outboundMessageCount++;
+        notifyAll();
+    }
 
     public synchronized void writeShutdown() throws IOException {
         if (writeClosed) {

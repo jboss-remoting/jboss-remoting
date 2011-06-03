@@ -138,6 +138,7 @@ final class OutboundMessage extends MessageOutputStream {
 
     void asyncClose() {
         IoUtils.safeClose(pipeOutputStream);
+        channel.free(this);
         synchronized (this) {
             closed = true;
             // wake up waiters
@@ -163,6 +164,7 @@ final class OutboundMessage extends MessageOutputStream {
 
     public void close() throws IOException {
         pipeOutputStream.close();
+        channel.free(this);
     }
 
     public MessageOutputStream cancel() {
