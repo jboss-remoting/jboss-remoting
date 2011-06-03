@@ -33,6 +33,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.jboss.remoting3.Channel;
@@ -94,6 +95,7 @@ public abstract class ChannelTestBase {
         assertTrue(wasEmpty.get());
     }
 
+    
     @Test
     public void testLotsOfContent() throws IOException, InterruptedException {
         final AtomicBoolean wasOk = new AtomicBoolean();
@@ -475,6 +477,54 @@ public abstract class ChannelTestBase {
         assertEquals(bytes, receiverBytes);
         Byte[] senderBytes = senderResult.toArray(new Byte[senderResult.size()]);
         assertEquals(manipulatedBytes, senderBytes);
+    }
+
+    @Test
+    public void testSeveralWriteMessage() throws IOException, InterruptedException {
+        final AtomicBoolean wasEmpty = new AtomicBoolean();
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
+        final CountDownLatch latch = new CountDownLatch(100);
+        final AtomicInteger count = new AtomicInteger();
+        recvChannel.receiveMessage(new Channel.Receiver() {
+            public void handleError(final Channel channel, final IOException error) {
+                error.printStackTrace();
+                exRef.set(error);
+                latch.countDown();
+            }
+
+            public void handleEnd(final Channel channel) {
+                System.out.println("End of channel");
+                latch.countDown();
+            }
+
+            public void handleMessage(final Channel channel, final MessageInputStream message) {
+                System.out.println("Message received");
+                try {
+                    if (message.read() == -1) {
+                        wasEmpty.set(true);
+                    }
+                    message.close();
+                } catch (IOException e) {
+                    exRef.set(e);
+                } finally {
+                    IoUtils.safeClose(message);
+                    latch.countDown();
+                    if (count.getAndIncrement() < 100) {
+                        recvChannel.receiveMessage(this);
+                    }
+                }
+            }
+        });
+        for (int i = 0 ; i < 100 ; i++) {
+            MessageOutputStream messageOutputStream = sendChannel.writeMessage();
+            messageOutputStream.close();
+        }
+        latch.await();
+        IOException exception = exRef.get();
+        if (exception != null) {
+            throw exception;
+        }
+        assertTrue(wasEmpty.get());
     }
 
 }
