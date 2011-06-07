@@ -67,7 +67,6 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                             log.debugf("Failed to shut down reads on %s: %s", connection, e);
                         }
                     } else if (res == 0) {
-                        channel.resumeReads();
                         return;
                     }
                     buffer.flip();
@@ -245,6 +244,5 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
         } catch (IOException e) {
             connection.handleException(e);
         }
-        channel.resumeReads();
     }
 }

@@ -132,7 +132,6 @@ final class RemoteConnection {
                         queue.poll().free();
                     } else {
                         // try again later
-                        channel.suspendWrites();
                         return;
                     }
                 }
@@ -144,8 +143,6 @@ final class RemoteConnection {
                         return;
                     }
                     channel.suspendWrites();
-                } else {
-                    channel.resumeWrites();
                 }
             } catch (IOException e) {
                 handleException(e);
