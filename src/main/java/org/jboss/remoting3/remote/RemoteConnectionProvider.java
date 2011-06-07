@@ -116,7 +116,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
         };
         if (secure) {
             try {
-                return xnio.connectSsl(destination, connectThreadPool.getThread(), readThreadPool.getThread(), writeThreadPool.getThread(), openListener, connectOptions);
+                return xnio.connectSsl(destination, connectThreadPool.getThread(), readThreadPool.getThread(), writeThreadPool.getThread(), openListener, connectOptions, bufferPool);
             } catch (NoSuchProviderException e) {
                 result.setException(new IOException(e));
                 return IoUtils.nullCancellable();
