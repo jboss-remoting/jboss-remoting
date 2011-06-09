@@ -81,7 +81,13 @@ final class RemoteConnection {
     }
 
     void handleException(IOException e) {
-        RemoteLogger.log.connectionError(e);
+        handleException(e, true);
+    }
+    
+    void handleException(IOException e, boolean log) {
+        if (log) {
+            RemoteLogger.log.connectionError(e);
+        }
         IoUtils.safeClose(channel);
         final Result<ConnectionHandlerFactory> result = this.result;
         if (result != null) {

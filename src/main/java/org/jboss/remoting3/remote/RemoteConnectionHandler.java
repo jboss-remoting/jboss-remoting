@@ -131,7 +131,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     }
 
     public void close() throws IOException {
-        remoteConnection.handleException(new ClosedChannelException());
+        remoteConnection.handleException(new ClosedChannelException(), false);
     }
 
     ConnectionHandlerContext getConnectionContext() {
