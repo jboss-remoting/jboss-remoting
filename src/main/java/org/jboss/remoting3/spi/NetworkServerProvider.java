@@ -22,8 +22,9 @@
 
 package org.jboss.remoting3.spi;
 
+import java.io.IOException;
+import java.net.SocketAddress;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
-import org.xnio.ChannelListener;
 import org.xnio.OptionMap;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
@@ -34,11 +35,13 @@ import org.xnio.channels.ConnectedStreamChannel;
 public interface NetworkServerProvider {
 
     /**
-     * Get the channel open listener for servers of this connection provider type.
+     * Create a network server.
      *
-     * @param optionMap options which may be used to configure the returned server
-     * @param authenticationProvider the server authentication provider
-     * @return the channel listener
+     * @param bindAddress the address to bind to
+     * @param optionMap the server options
+     * @param authenticationProvider the authentication provider
+     * @return the server channel
+     * @throws IOException if the server could not be created
      */
-    ChannelListener<AcceptingChannel<ConnectedStreamChannel>> getServerListener(OptionMap optionMap, ServerAuthenticationProvider authenticationProvider);
+    AcceptingChannel<? extends ConnectedStreamChannel> createServer(SocketAddress bindAddress, OptionMap optionMap, ServerAuthenticationProvider authenticationProvider) throws IOException;
 }

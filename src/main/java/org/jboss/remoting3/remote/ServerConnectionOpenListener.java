@@ -23,6 +23,9 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.security.Principal;
 import java.util.Collections;
@@ -55,7 +58,7 @@ import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslServerFactory;
 
 import static org.jboss.remoting3.remote.RemoteAuthLogger.authLog;
-import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.jboss.remoting3.remote.RemoteLogger.server;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -84,6 +87,12 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             connection.setReadListener(new Initial());
             connection.send(pooled);
             ok = true;
+            return;
+        } catch (BufferUnderflowException e) {
+            connection.handleException(RemoteLogger.log.invalidMessage(connection));
+            return;
+        } catch (BufferOverflowException e) {
+            connection.handleException(RemoteLogger.log.invalidMessage(connection));
             return;
         } finally {
             if (! ok) pooled.free();
@@ -119,16 +128,30 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         // only enable external auth if there's a peer principal (else it's just ANONYMOUS)
                         if (principal != null) {
                             allowedMechanisms.put("EXTERNAL", new ExternalSaslServerFactory(principal));
+                        } else {
+                            server.trace("No EXTERNAL mechanism due to lack of peer principal");
                         }
+                    } else {
+                        server.trace("No EXTERNAL mechanism due to lack of SSL");
                     }
+                } else {
+                    server.trace("No EXTERNAL mechanism due to explicit exclusion");
                 }
             } catch (IOException e) {
                 // ignore
             }
             while (factories.hasMoreElements()) {
                 SaslServerFactory factory = factories.nextElement();
+                server.tracef("Trying SASL server factory %s", factory);
                 for (String mechName : factory.getMechanismNames(propertyMap)) {
-                    if ((restrictions == null || restrictions.contains(mechName)) && ! disallowed.contains(mechName) && ! allowedMechanisms.containsKey(mechName)) {
+                    if (restrictions != null && ! restrictions.contains(mechName)) {
+                        server.tracef("Excluding mechanism %s because it is not in the allowed list", mechName);
+                    } else if (disallowed.contains(mechName)) {
+                        server.tracef("Excluding mechanism %s because it is in the disallowed list", mechName);
+                    } else if (allowedMechanisms.containsKey(mechName)) {
+                        server.tracef("Excluding repeated occurrence of mechanism %s", mechName);
+                    } else {
+                        server.tracef("Added mechanism %s", mechName);
                         allowedMechanisms.put(mechName, factory);
                     }
                 }
@@ -155,27 +178,12 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 final byte msgType = buffer.get();
                 switch (msgType) {
                     case Protocol.CAPABILITIES: {
-                        final Pooled<ByteBuffer> pooled = connection.allocate();
-                        boolean ok = false;
-                        try {
-                            ByteBuffer sendBuffer = pooled.getResource();
-                            sendBuffer.put(Protocol.CAPABILITIES);
-                            ProtocolUtils.writeByte(sendBuffer, Protocol.CAP_VERSION, version);
-                            if (starttls) {
-                                ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_STARTTLS);
-                            }
-                            for (String mechName : allowedMechanisms.keySet()) {
-                                ProtocolUtils.writeString(sendBuffer, Protocol.CAP_SASL_MECH, mechName);
-                            }
-                            sendBuffer.flip();
-                            connection.send(pooled);
-                            ok = true;
-                            return;
-                        } finally {
-                            if (! ok) pooled.free();
-                        }
+                        server.tracef("Server received capabilities request");
+                        sendCapabilities();
+                        return;
                     }
                     case Protocol.STARTTLS: {
+                        server.tracef("Server received STARTTLS request");
                         final Pooled<ByteBuffer> pooled = connection.allocate();
                         boolean ok = false;
                         try {
@@ -197,6 +205,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         }
                     }
                     case Protocol.AUTH_REQUEST: {
+                        server.tracef("Server received authentication request");
                         if (retryCount.decrementAndGet() < 1) {
                             // no more tries left
                             connection.handleException(new SaslException("Too many authentication failures; connection terminated"), false);
@@ -217,7 +226,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         }
                         final SaslServer saslServer;
                         try {
-                            saslServer = saslServerFactory.createSaslServer(mechName, "remote", connectionProviderContext.getEndpoint().getName(), propertyMap, callbackHandler);
+                            saslServer = saslServerFactory.createSaslServer(mechName, "remote", channel.getLocalAddress(InetSocketAddress.class).getHostName(), propertyMap, callbackHandler);
                         } catch (SaslException e) {
                             connection.handleException(e);
                             return;
@@ -231,6 +240,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             try {
                                 sendBuffer.put(Protocol.AUTH_COMPLETE);
                                 if (SaslUtils.evaluateResponse(saslServer, sendBuffer, buffer)) {
+                                    server.tracef("Server sending authentication complete");
                                     connectionProviderContext.accept(new ConnectionHandlerFactory() {
                                         public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                             final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection);
@@ -239,10 +249,12 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                         }
                                     });
                                 } else {
+                                    server.tracef("Server sending authentication challenge");
                                     sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
                                     connection.setReadListener(new Authentication(saslServer));
                                 }
-                            } catch (SaslException e) {
+                            } catch (Exception e) {
+                                server.tracef("Server sending authentication rejected (%s)", e);
                                 sendBuffer.put(p, Protocol.AUTH_REJECTED);
                                 if (retryCount.decrementAndGet() <= 0) {
                                     close = true;
@@ -259,12 +271,41 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         }
                     }
                     default: {
-                        log.unknownProtocolId(msgType);
+                        server.unknownProtocolId(msgType);
+                        connection.handleException(RemoteLogger.log.invalidMessage(connection));
                         break;
                     }
                 }
+            } catch (BufferUnderflowException e) {
+                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                return;
+            } catch (BufferOverflowException e) {
+                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                return;
             } finally {
                 pooledBuffer.free();
+            }
+        }
+
+        void sendCapabilities() {
+            final Pooled<ByteBuffer> pooled = connection.allocate();
+            boolean ok = false;
+            try {
+                ByteBuffer sendBuffer = pooled.getResource();
+                sendBuffer.put(Protocol.CAPABILITIES);
+                ProtocolUtils.writeByte(sendBuffer, Protocol.CAP_VERSION, version);
+                if (starttls) {
+                    ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_STARTTLS);
+                }
+                for (String mechName : allowedMechanisms.keySet()) {
+                    ProtocolUtils.writeString(sendBuffer, Protocol.CAP_SASL_MECH, mechName);
+                }
+                sendBuffer.flip();
+                connection.send(pooled);
+                ok = true;
+                return;
+            } finally {
+                if (! ok) pooled.free();
             }
         }
     }
@@ -291,10 +332,12 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 if (res == 0) {
                     return;
                 }
+                server.tracef("Received %s", buffer);
                 buffer.flip();
                 final byte msgType = buffer.get();
                 switch (msgType) {
                     case Protocol.AUTH_RESPONSE: {
+                        server.tracef("Server received authentication response");
                         boolean ok = false;
                         boolean close = false;
                         final Pooled<ByteBuffer> pooled = connection.allocate();
@@ -304,6 +347,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             try {
                                 sendBuffer.put(Protocol.AUTH_COMPLETE);
                                 if (SaslUtils.evaluateResponse(saslServer, sendBuffer, buffer)) {
+                                    server.tracef("Server sending authentication complete");
                                     connectionProviderContext.accept(new ConnectionHandlerFactory() {
                                         public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                             final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection);
@@ -312,9 +356,11 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                         }
                                     });
                                 } else {
+                                    server.tracef("Server sending authentication challenge");
                                     sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
                                 }
                             } catch (SaslException e) {
+                                server.tracef("Server sending authentication rejected (%s)", e);
                                 sendBuffer.put(p, Protocol.AUTH_REJECTED);
                                 connection.setReadListener(new Initial());
                             }
@@ -328,11 +374,25 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             }
                         }
                     }
+                    case Protocol.CAPABILITIES: {
+                        server.trace("Server received capabilities request (cancelling authentication)");
+                        final Initial initial = new Initial();
+                        connection.setReadListener(initial);
+                        initial.sendCapabilities();
+                        return;
+                    }
                     default: {
-                        log.unknownProtocolId(msgType);
+                        server.unknownProtocolId(msgType);
+                        connection.handleException(RemoteLogger.log.invalidMessage(connection));
                         break;
                     }
                 }
+            } catch (BufferUnderflowException e) {
+                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                return;
+            } catch (BufferOverflowException e) {
+                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                return;
             } finally {
                 pooledBuffer.free();
             }

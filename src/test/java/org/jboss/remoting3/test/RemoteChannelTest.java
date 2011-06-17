@@ -47,16 +47,12 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.xnio.ChannelListener;
-import org.xnio.ConnectionChannelThread;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
-import org.xnio.ReadChannelThread;
 import org.xnio.Sequence;
-import org.xnio.WriteChannelThread;
 import org.xnio.Xnio;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
@@ -67,25 +63,21 @@ import org.xnio.channels.ConnectedStreamChannel;
 public final class RemoteChannelTest extends ChannelTestBase {
     protected Endpoint endpoint;
     protected ExecutorService executorService;
-    private ReadChannelThread readChannelThread;
-    private WriteChannelThread writeChannelThread;
     private AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
     private Connection connection;
     private Registration serviceRegistration;
+    private Registration registration;
 
     @BeforeClass
     public void create() throws IOException {
         executorService = new ThreadPoolExecutor(16, 16, 1L, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
         endpoint = Remoting.createEndpoint("test", executorService, OptionMap.EMPTY);
         Xnio xnio = Xnio.getInstance();
-        readChannelThread = xnio.createReadChannelThread();
-        writeChannelThread = xnio.createWriteChannelThread();
-        endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.EMPTY);
+        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.create(Options.SSL_ENABLED, false));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
-        ChannelListener<AcceptingChannel<ConnectedStreamChannel>> serverListener = networkServerProvider.getServerListener(OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("DIGEST-MD5")), provider);
-        streamServer = xnio.createStreamServer(new InetSocketAddress("::1", 30123), writeChannelThread, serverListener, OptionMap.EMPTY);
+        streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("DIGEST-MD5")), provider);
     }
 
     @BeforeMethod
@@ -119,11 +111,10 @@ public final class RemoteChannelTest extends ChannelTestBase {
     public void destroy() throws IOException, InterruptedException {
         IoUtils.safeClose(streamServer);
         IoUtils.safeClose(endpoint);
+        IoUtils.safeClose(registration);
         executorService.shutdown();
         executorService.awaitTermination(1L, TimeUnit.DAYS);
         executorService.shutdownNow();
-        readChannelThread.shutdown();
-        writeChannelThread.shutdown();
     }
 
     @Test

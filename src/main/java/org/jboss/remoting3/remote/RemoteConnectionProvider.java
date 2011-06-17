@@ -25,6 +25,7 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -76,7 +77,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
     RemoteConnectionProvider(final Xnio xnio, final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
         this.xnio = xnio;
         try {
-            if (optionMap.get(Options.SECURE, true)) {
+            if (optionMap.get(Options.SSL_ENABLED, true)) {
                 xnioSsl = xnio.getSslProvider(optionMap);
             } else {
                 xnioSsl = null;
@@ -139,14 +140,21 @@ final class RemoteConnectionProvider implements ConnectionProvider {
         ChannelThreadPools.shutdown(writeThreadPool);
     }
 
-    private final class ProviderInterface implements NetworkServerProvider {
+    final class ProviderInterface implements NetworkServerProvider {
 
-        public ChannelListener<AcceptingChannel<ConnectedStreamChannel>> getServerListener(final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) {
-            return new AcceptListener(optionMap, authenticationProvider);
+        public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) throws IOException {
+            final boolean sslCapable = xnioSsl != null;
+            final WriteChannelThread writeThread = writeThreadPool.getThread();
+            final AcceptListener acceptListener = new AcceptListener(optionMap, authenticationProvider);
+            if (sslCapable && optionMap.get(Options.SSL_ENABLED, true)) {
+                return xnioSsl.createSslTcpServer((InetSocketAddress) bindAddress, writeThread, acceptListener, optionMap);
+            } else {
+                return xnio.createStreamServer(bindAddress, writeThread, acceptListener, optionMap);
+            }
         }
     }
 
-    private final class AcceptListener implements ChannelListener<AcceptingChannel<ConnectedStreamChannel>> {
+    private final class AcceptListener implements ChannelListener<AcceptingChannel<? extends ConnectedStreamChannel>> {
 
         private final OptionMap serverOptionMap;
         private final ServerAuthenticationProvider serverAuthenticationProvider;
@@ -156,7 +164,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
             this.serverAuthenticationProvider = serverAuthenticationProvider;
         }
 
-        public void handleEvent(final AcceptingChannel<ConnectedStreamChannel> channel) {
+        public void handleEvent(final AcceptingChannel<? extends ConnectedStreamChannel> channel) {
             ConnectedStreamChannel accepted = null;
             try {
                 accepted = channel.accept(readThreadPool.getThread(), writeThreadPool.getThread());

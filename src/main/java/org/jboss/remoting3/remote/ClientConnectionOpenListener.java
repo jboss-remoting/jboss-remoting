@@ -56,6 +56,8 @@ import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
 
+import static org.jboss.remoting3.remote.RemoteLogger.client;
+
 final class ClientConnectionOpenListener implements ChannelListener<ConnectedMessageChannel> {
     private final RemoteConnection connection;
     private final CallbackHandler callbackHandler;
@@ -77,10 +79,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
     }
 
     public void handleEvent(final ConnectedMessageChannel channel) {
-        connection.setReadListener(new Capabilities());
+        connection.setReadListener(new Greeting());
     }
 
     void sendCapRequest() {
+        client.trace("Client sending capabilities request");
         // Prepare the request message body
         final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
         boolean ok = false;
@@ -115,28 +118,32 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     return;
                 }
                 if (res == -1) {
-                    connection.handleException(RemoteLogger.log.abruptClose(connection));
+                    connection.handleException(client.abruptClose(connection));
                     return;
                 }
                 if (res == 0) {
                     return;
                 }
+                client.tracef("Received %s", receiveBuffer);
                 receiveBuffer.flip();
-                switch (receiveBuffer.get()) {
+                final byte msgType = receiveBuffer.get();
+                switch (msgType) {
                     case Protocol.GREETING: {
+                        client.trace("Client received greeting");
                         sendCapRequest();
                         return;
                     }
                     default: {
-                        connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                        client.unknownProtocolId(msgType);
+                        connection.handleException(client.invalidMessage(connection));
                         return;
                     }
                 }
             } catch (BufferUnderflowException e) {
-                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                connection.handleException(client.invalidMessage(connection));
                 return;
             } catch (BufferOverflowException e) {
-                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                connection.handleException(client.invalidMessage(connection));
                 return;
             } finally {
                 pooledReceiveBuffer.free();
@@ -159,7 +166,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     return;
                 }
                 if (res == -1) {
-                    connection.handleException(RemoteLogger.log.abruptClose(connection));
+                    connection.handleException(client.abruptClose(connection));
                     return;
                 }
                 if (res == 0) {
@@ -168,29 +175,37 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 receiveBuffer.flip();
                 boolean starttls = false;
                 final Set<String> saslMechs = new LinkedHashSet<String>();
-                switch (receiveBuffer.get()) {
+                final byte msgType = receiveBuffer.get();
+                switch (msgType) {
                     case Protocol.CAPABILITIES: {
+                        client.trace("Client received capabilities response");
                         while (receiveBuffer.hasRemaining()) {
                             final byte type = receiveBuffer.get();
                             final int len = receiveBuffer.get() & 0xff;
                             final ByteBuffer data = Buffers.slice(receiveBuffer, len);
                             switch (type) {
                                 case Protocol.CAP_VERSION: {
+                                    final byte version = data.get();
+                                    client.tracef("Client received capability: version %d", Integer.valueOf(version & 0xff));
                                     // We only support version zero, so knowing the other side's version is not useful presently
                                     break;
                                 }
                                 case Protocol.CAP_SASL_MECH: {
                                     final String mechName = Buffers.getModifiedUtf8(data);
+                                    client.tracef("Client received capability: SASL mechanism %s", mechName);
                                     if (! failedMechs.contains(mechName) && ! disallowedMechs.contains(mechName) && (allowedMechs == null || allowedMechs.contains(mechName))) {
+                                        client.tracef("SASL mechanism %s added to allowed set", mechName);
                                         saslMechs.add(mechName);
                                     }
                                     break;
                                 }
                                 case Protocol.CAP_STARTTLS: {
+                                    client.trace("Client received capability: STARTTLS");
                                     starttls = true;
                                     break;
                                 }
                                 default: {
+                                    client.tracef("Client received unknown capability %02x", Integer.valueOf(type & 0xff));
                                     // unknown, skip it for forward compatibility.
                                     break;
                                 }
@@ -232,6 +247,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             return;
                         }
                         final String mechanismName = saslClient.getMechanismName();
+                        client.tracef("Client initiating authentication using mechanism %s", mechanismName);
                         // Prepare the request message body
                         final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
                         final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
@@ -243,15 +259,16 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         return;
                     }
                     default: {
-                        connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                        client.unknownProtocolId(msgType);
+                        connection.handleException(client.invalidMessage(connection));
                         return;
                     }
                 }
             } catch (BufferUnderflowException e) {
-                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                connection.handleException(client.invalidMessage(connection));
                 return;
             } catch (BufferOverflowException e) {
-                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                connection.handleException(client.invalidMessage(connection));
                 return;
             } finally {
                 pooledReceiveBuffer.free();
@@ -273,15 +290,18 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     return;
                 }
                 if (res == -1) {
-                    connection.handleException(RemoteLogger.log.abruptClose(connection));
+                    connection.handleException(client.abruptClose(connection));
                     return;
                 }
                 if (res == 0) {
                     return;
                 }
+                client.tracef("Received %s", receiveBuffer);
                 receiveBuffer.flip();
-                switch (receiveBuffer.get()) {
+                final byte msgType = receiveBuffer.get();
+                switch (msgType) {
                     case Protocol.STARTTLS: {
+                        client.trace("Client received STARTTLS response");
                         try {
                             ((SslChannel)channel).startHandshake();
                         } catch (IOException e) {
@@ -292,15 +312,16 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         return;
                     }
                     default: {
-                        connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                        client.unknownProtocolId(msgType);
+                        connection.handleException(client.invalidMessage(connection));
                         return;
                     }
                 }
             } catch (BufferUnderflowException e) {
-                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                connection.handleException(client.invalidMessage(connection));
                 return;
             } catch (BufferOverflowException e) {
-                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                connection.handleException(client.invalidMessage(connection));
                 return;
             } finally {
                 pooledReceiveBuffer.free();
@@ -334,6 +355,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 final byte msgType = buffer.get();
                 switch (msgType) {
                     case Protocol.AUTH_CHALLENGE: {
+                        client.trace("Client received authentication challenge");
                         final boolean clientComplete = saslClient.isComplete();
                         if (clientComplete) {
                             connection.handleException(new SaslException("Received extra auth message after completion"));
@@ -347,12 +369,13 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 connection.handleException(new SaslException("Received extra auth message after completion"));
                                 return;
                             }
-                        } catch (SaslException e) {
-                            // todo log message
+                        } catch (Exception e) {
+                            client.tracef("Client authentication failed: %s", e);
                             failedMechs.add(saslClient.getMechanismName());
                             sendCapRequest();
                             return;
                         }
+                        client.trace("Client sending authentication response");
                         final Pooled<ByteBuffer> pooled = connection.allocate();
                         final ByteBuffer sendBuffer = pooled.getResource();
                         sendBuffer.put(Protocol.AUTH_RESPONSE);
@@ -362,6 +385,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         return;
                     }
                     case Protocol.AUTH_COMPLETE: {
+                        client.trace("Client received authentication complete");
                         final boolean clientComplete = saslClient.isComplete();
                         final byte[] challenge = Buffers.take(buffer, buffer.remaining());
                         if (! clientComplete) try {
@@ -393,9 +417,15 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         return;
                     }
                     case Protocol.AUTH_REJECTED: {
+                        client.trace("Client received authentication rejected");
                         // todo log message
                         failedMechs.add(saslClient.getMechanismName());
                         sendCapRequest();
+                        return;
+                    }
+                    default: {
+                        client.unknownProtocolId(msgType);
+                        connection.handleException(client.invalidMessage(connection));
                         return;
                     }
                 }
