@@ -58,6 +58,11 @@ public interface ConnectionProvider {
     Object getProviderInterface();
 
     /**
+     * Called when the provider's registration is closed.
+     */
+    void close();
+
+    /**
      * The object to use when a connection provider has no provider interfaces.
      */
     Object NO_PROVIDER_INTERFACES = new Object();

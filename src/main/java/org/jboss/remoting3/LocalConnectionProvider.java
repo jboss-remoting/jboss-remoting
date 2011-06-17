@@ -61,6 +61,10 @@ final class LocalConnectionProvider implements ConnectionProvider {
         return NO_PROVIDER_INTERFACES;
     }
 
+    public void close() {
+        // no op
+    }
+
     private class LoopbackConnectionHandler implements ConnectionHandler {
 
         private final ConnectionHandlerContext context;

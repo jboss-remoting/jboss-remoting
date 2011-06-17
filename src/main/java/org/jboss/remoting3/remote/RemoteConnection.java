@@ -35,6 +35,8 @@ import org.xnio.Pool;
 import org.xnio.Pooled;
 import org.xnio.Result;
 import org.xnio.channels.ConnectedMessageChannel;
+import org.xnio.channels.ConnectedStreamChannel;
+import org.xnio.channels.SslChannel;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -42,13 +44,15 @@ import org.xnio.channels.ConnectedMessageChannel;
 final class RemoteConnection {
     private final Pool<ByteBuffer> messageBufferPool;
     private final ConnectedMessageChannel channel;
+    private final ConnectedStreamChannel underlyingChannel;
     private final OptionMap optionMap;
     private final RemoteWriteListener writeListener = new RemoteWriteListener();
     private final Executor executor;
     private volatile Result<ConnectionHandlerFactory> result;
 
-    RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedMessageChannel channel, final OptionMap optionMap, final Executor executor) {
+    RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedStreamChannel underlyingChannel, final ConnectedMessageChannel channel, final OptionMap optionMap, final Executor executor) {
         this.messageBufferPool = messageBufferPool;
+        this.underlyingChannel = underlyingChannel;
         this.channel = channel;
         this.optionMap = optionMap;
         this.executor = executor;
@@ -59,6 +63,7 @@ final class RemoteConnection {
     }
 
     void setReadListener(ChannelListener<? super ConnectedMessageChannel> listener) {
+        RemoteLogger.log.tracef("Setting read listener to %s", listener);
         channel.getReadSetter().set(listener);
         if (listener != null) {
             channel.resumeReads();
@@ -66,6 +71,7 @@ final class RemoteConnection {
     }
 
     void setWriteListener(ChannelListener<? super ConnectedMessageChannel> listener) {
+        RemoteLogger.log.tracef("Setting write listener to %s", listener);
         channel.getWriteSetter().set(listener);
         if (listener != null) {
             channel.resumeWrites();
@@ -87,6 +93,8 @@ final class RemoteConnection {
     void handleException(IOException e, boolean log) {
         if (log) {
             RemoteLogger.log.connectionError(e);
+        } else {
+            RemoteLogger.log.tracef(e, "Unlogworthy connection error");
         }
         IoUtils.safeClose(channel);
         final Result<ConnectionHandlerFactory> result = this.result;
@@ -120,6 +128,10 @@ final class RemoteConnection {
         return executor;
     }
 
+    public SslChannel getSslChannel() {
+        return underlyingChannel instanceof SslChannel ? (SslChannel) underlyingChannel : null;
+    }
+
     final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {
 
         private final Queue<Pooled<ByteBuffer>> queue = new ArrayDeque<Pooled<ByteBuffer>>();
@@ -134,7 +146,9 @@ final class RemoteConnection {
             final Queue<Pooled<ByteBuffer>> queue = this.queue;
             try {
                 while ((pooled = queue.peek()) != null) {
-                    if (channel.send(pooled.getResource())) {
+                    final ByteBuffer buffer = pooled.getResource();
+                    if (channel.send(buffer)) {
+                        RemoteLogger.log.tracef("Sent message %s (via queue)", buffer);
                         queue.poll().free();
                     } else {
                         // try again later
@@ -142,6 +156,7 @@ final class RemoteConnection {
                     }
                 }
                 if (channel.flush()) {
+                    RemoteLogger.log.tracef("Flushed channel");
                     if (closed) {
                         // either this is successful and no more notifications will come, or not and it will be retried
                         channel.shutdownWrites();
@@ -166,16 +181,20 @@ final class RemoteConnection {
             boolean free = true;
             try {
                 if (queue.isEmpty()) {
-                    if (! channel.send(pooled.getResource())) {
+                    final ByteBuffer buffer = pooled.getResource();
+                    if (! channel.send(buffer)) {
+                        RemoteLogger.log.tracef("Can't directly send message %s, enqueued", buffer);
                         queue.add(pooled);
                         free = false;
                         channel.resumeWrites();
                         return;
                     }
+                    RemoteLogger.log.tracef("Sent message %s (direct)", buffer);
                     if (! channel.flush()) {
                         channel.resumeWrites();
                         return;
                     }
+                    RemoteLogger.log.tracef("Flushed channel");
                 } else {
                     queue.add(pooled);
                     free = false;

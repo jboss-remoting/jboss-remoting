@@ -132,10 +132,12 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      *
      * @param uriScheme the URI scheme
      * @param providerFactory the provider factory
+     * @param optionMap the configuration options for the connection provider
      * @return a handle which may be used to remove the registration
+     * @throws IOException if the provider failed to initialize
      * @throws DuplicateRegistrationException if there is already a provider registered to that URI scheme
      */
-    Registration addConnectionProvider(String uriScheme, ConnectionProviderFactory providerFactory) throws DuplicateRegistrationException;
+    Registration addConnectionProvider(String uriScheme, ConnectionProviderFactory providerFactory, OptionMap optionMap) throws DuplicateRegistrationException, IOException;
 
     /**
      * Get the interface for a connection provider.

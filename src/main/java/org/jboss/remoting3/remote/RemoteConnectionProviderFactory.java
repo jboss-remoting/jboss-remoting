@@ -22,47 +22,33 @@
 
 package org.jboss.remoting3.remote;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
-import org.xnio.ChannelThreadPool;
-import org.xnio.ConnectionChannelThread;
-import org.xnio.Pool;
-import org.xnio.ReadChannelThread;
-import org.xnio.WriteChannelThread;
+import org.xnio.OptionMap;
 import org.xnio.Xnio;
 
 /**
+ * A {@link ConnectionProviderFactory} for the {@code remote} protocol.
+ *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class RemoteConnectionProviderFactory implements ConnectionProviderFactory {
 
     private final Xnio xnio;
-    private final Pool<ByteBuffer> bufferPool;
-    private final ChannelThreadPool<ReadChannelThread> readThreadPool;
-    private final ChannelThreadPool<WriteChannelThread> writeThreadPool;
-    private final ChannelThreadPool<ConnectionChannelThread> connectionThreadPool;
 
     /**
      * Construct a new instance.
      *
      * @param xnio the XNIO provider to use
-     * @param bufferPool the buffer pool to use
-     * @param readThreadPool the read thread pool to use
-     * @param writeThreadPool the write thread pool to use
-     * @param connectionThreadPool the connection thread pool to use
      */
-    public RemoteConnectionProviderFactory(final Xnio xnio, final Pool<ByteBuffer> bufferPool, final ChannelThreadPool<ReadChannelThread> readThreadPool, final ChannelThreadPool<WriteChannelThread> writeThreadPool, final ChannelThreadPool<ConnectionChannelThread> connectionThreadPool) {
+    public RemoteConnectionProviderFactory(final Xnio xnio) {
         this.xnio = xnio;
-        this.bufferPool = bufferPool;
-        this.readThreadPool = readThreadPool;
-        this.writeThreadPool = writeThreadPool;
-        this.connectionThreadPool = connectionThreadPool;
     }
 
     /** {@inheritDoc} */
-    public ConnectionProvider createInstance(final ConnectionProviderContext context) {
-        return new RemoteConnectionProvider(xnio, bufferPool, readThreadPool, writeThreadPool, connectionThreadPool, context);
+    public ConnectionProvider createInstance(final ConnectionProviderContext context, final OptionMap optionMap) throws IOException {
+        return new RemoteConnectionProvider(xnio, optionMap, context);
     }
 }

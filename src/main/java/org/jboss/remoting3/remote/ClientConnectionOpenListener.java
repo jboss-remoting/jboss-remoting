@@ -22,35 +22,386 @@
 
 package org.jboss.remoting3.remote;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.security.AccessControlContext;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3.spi.ConnectionHandler;
+import org.jboss.remoting3.spi.ConnectionHandlerContext;
+import org.jboss.remoting3.spi.ConnectionHandlerFactory;
+import org.xnio.Buffers;
 import org.xnio.ChannelListener;
+import org.xnio.OptionMap;
+import org.xnio.Options;
 import org.xnio.Pooled;
+import org.xnio.Sequence;
+import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
+import org.xnio.channels.SslChannel;
+import org.xnio.sasl.SaslUtils;
 
 import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslClient;
+import javax.security.sasl.SaslException;
 
 final class ClientConnectionOpenListener implements ChannelListener<ConnectedMessageChannel> {
     private final RemoteConnection connection;
     private final CallbackHandler callbackHandler;
     private final AccessControlContext accessControlContext;
+    private final OptionMap optionMap;
+    private final Set<String> failedMechs = new HashSet<String>();
+    private final Set<String> allowedMechs;
+    private final Set<String> disallowedMechs;
 
-    ClientConnectionOpenListener(final RemoteConnection connection, final CallbackHandler callbackHandler, final AccessControlContext accessControlContext) {
+    ClientConnectionOpenListener(final RemoteConnection connection, final CallbackHandler callbackHandler, final AccessControlContext accessControlContext, final OptionMap optionMap) {
         this.connection = connection;
         this.callbackHandler = callbackHandler;
         this.accessControlContext = accessControlContext;
+        this.optionMap = optionMap;
+        final Sequence<String> allowedMechs = optionMap.get(Options.SASL_MECHANISMS);
+        final Sequence<String> disallowedMechs = optionMap.get(Options.SASL_DISALLOWED_MECHANISMS);
+        this.allowedMechs = allowedMechs == null ? null : new HashSet<String>(allowedMechs);
+        this.disallowedMechs = disallowedMechs == null ? Collections.<String>emptySet() : new HashSet<String>(disallowedMechs);
     }
 
     public void handleEvent(final ConnectedMessageChannel channel) {
-        final Pooled<ByteBuffer> pooled = connection.allocate();
-        final ByteBuffer buffer = pooled.getResource();
-        // Build initial greeting message
-        buffer.put(Protocol.GREETING);
-        // version ID
-        ProtocolUtils.writeByte(buffer, Protocol.GREETING_VERSION, Protocol.VERSION);
-        // that's it!
-        buffer.flip();
-        connection.send(pooled);
-        connection.setReadListener(new ClientConnectionGreetingListener(connection, callbackHandler, accessControlContext));
+        connection.setReadListener(new Capabilities());
+    }
+
+    void sendCapRequest() {
+        // Prepare the request message body
+        final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
+        boolean ok = false;
+        try {
+            final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
+            sendBuffer.put(Protocol.CAPABILITIES);
+            ProtocolUtils.writeByte(sendBuffer, Protocol.CAP_VERSION, 0);
+            sendBuffer.flip();
+            connection.setReadListener(new Capabilities());
+            connection.send(pooledSendBuffer);
+            ok = true;
+            // all set
+            return;
+        } finally {
+            if (! ok) {
+                pooledSendBuffer.free();
+            }
+        }
+    }
+
+    final class Greeting implements ChannelListener<ConnectedMessageChannel> {
+
+        public void handleEvent(final ConnectedMessageChannel channel) {
+            final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
+            try {
+                final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
+                int res = 0;
+                try {
+                    res = channel.receive(receiveBuffer);
+                } catch (IOException e) {
+                    connection.handleException(e);
+                    return;
+                }
+                if (res == -1) {
+                    connection.handleException(RemoteLogger.log.abruptClose(connection));
+                    return;
+                }
+                if (res == 0) {
+                    return;
+                }
+                receiveBuffer.flip();
+                switch (receiveBuffer.get()) {
+                    case Protocol.GREETING: {
+                        sendCapRequest();
+                        return;
+                    }
+                    default: {
+                        connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                        return;
+                    }
+                }
+            } catch (BufferUnderflowException e) {
+                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                return;
+            } catch (BufferOverflowException e) {
+                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                return;
+            } finally {
+                pooledReceiveBuffer.free();
+            }
+        }
+
+    }
+
+    final class Capabilities implements ChannelListener<ConnectedMessageChannel> {
+
+        public void handleEvent(final ConnectedMessageChannel channel) {
+            final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
+            try {
+                final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
+                int res = 0;
+                try {
+                    res = channel.receive(receiveBuffer);
+                } catch (IOException e) {
+                    connection.handleException(e);
+                    return;
+                }
+                if (res == -1) {
+                    connection.handleException(RemoteLogger.log.abruptClose(connection));
+                    return;
+                }
+                if (res == 0) {
+                    return;
+                }
+                receiveBuffer.flip();
+                boolean starttls = false;
+                final Set<String> saslMechs = new LinkedHashSet<String>();
+                switch (receiveBuffer.get()) {
+                    case Protocol.CAPABILITIES: {
+                        while (receiveBuffer.hasRemaining()) {
+                            final byte type = receiveBuffer.get();
+                            final int len = receiveBuffer.get() & 0xff;
+                            final ByteBuffer data = Buffers.slice(receiveBuffer, len);
+                            switch (type) {
+                                case Protocol.CAP_VERSION: {
+                                    // We only support version zero, so knowing the other side's version is not useful presently
+                                    break;
+                                }
+                                case Protocol.CAP_SASL_MECH: {
+                                    final String mechName = Buffers.getModifiedUtf8(data);
+                                    if (! failedMechs.contains(mechName) && ! disallowedMechs.contains(mechName) && (allowedMechs == null || allowedMechs.contains(mechName))) {
+                                        saslMechs.add(mechName);
+                                    }
+                                    break;
+                                }
+                                case Protocol.CAP_STARTTLS: {
+                                    starttls = true;
+                                    break;
+                                }
+                                default: {
+                                    // unknown, skip it for forward compatibility.
+                                    break;
+                                }
+                            }
+                        }
+                        if (starttls) {
+                            // only initiate starttls if not forbidden by config
+                            if (optionMap.get(Options.SSL_STARTTLS, true)) {
+                                // Prepare the request message body
+                                final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
+                                final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
+                                sendBuffer.put(Protocol.STARTTLS);
+                                sendBuffer.flip();
+                                connection.setReadListener(new StartTls());
+                                connection.send(pooledSendBuffer);
+                                // all set
+                                return;
+                            }
+                        }
+
+                        if (saslMechs.isEmpty()) {
+                            connection.handleException(new SaslException("No more authentication mechanisms to try"));
+                            return;
+                        }
+                        // OK now send our authentication request
+                        final OptionMap optionMap = connection.getOptionMap();
+                        final String userName = optionMap.get(RemotingOptions.AUTHORIZE_ID);
+                        final Map<String, ?> propertyMap = SaslUtils.createPropertyMap(optionMap, Channels.getOption(channel, Options.SECURE, false));
+                        final SaslClient saslClient;
+                        try {
+                            saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
+                                public SaslClient run() throws SaslException {
+                                    return Sasl.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", channel.getPeerAddress(InetSocketAddress.class).getHostName(), propertyMap, callbackHandler);
+                                }
+                            }, accessControlContext);
+                        } catch (PrivilegedActionException e) {
+                            final SaslException se = (SaslException) e.getCause();
+                            connection.handleException(se);
+                            return;
+                        }
+                        final String mechanismName = saslClient.getMechanismName();
+                        // Prepare the request message body
+                        final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
+                        final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
+                        sendBuffer.put(Protocol.AUTH_REQUEST);
+                        Buffers.putModifiedUtf8(sendBuffer, mechanismName);
+                        sendBuffer.flip();
+                        connection.send(pooledSendBuffer);
+                        connection.setReadListener(new Authentication(saslClient));
+                        return;
+                    }
+                    default: {
+                        connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                        return;
+                    }
+                }
+            } catch (BufferUnderflowException e) {
+                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                return;
+            } catch (BufferOverflowException e) {
+                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                return;
+            } finally {
+                pooledReceiveBuffer.free();
+            }
+        }
+    }
+
+    final class StartTls implements ChannelListener<ConnectedMessageChannel> {
+
+        public void handleEvent(final ConnectedMessageChannel channel) {
+            final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
+            try {
+                final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
+                int res = 0;
+                try {
+                    res = channel.receive(receiveBuffer);
+                } catch (IOException e) {
+                    connection.handleException(e);
+                    return;
+                }
+                if (res == -1) {
+                    connection.handleException(RemoteLogger.log.abruptClose(connection));
+                    return;
+                }
+                if (res == 0) {
+                    return;
+                }
+                receiveBuffer.flip();
+                switch (receiveBuffer.get()) {
+                    case Protocol.STARTTLS: {
+                        try {
+                            ((SslChannel)channel).startHandshake();
+                        } catch (IOException e) {
+                            connection.handleException(e, false);
+                            return;
+                        }
+                        sendCapRequest();
+                        return;
+                    }
+                    default: {
+                        connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                        return;
+                    }
+                }
+            } catch (BufferUnderflowException e) {
+                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                return;
+            } catch (BufferOverflowException e) {
+                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                return;
+            } finally {
+                pooledReceiveBuffer.free();
+            }
+        }
+    }
+
+    final class Authentication implements ChannelListener<ConnectedMessageChannel> {
+
+        private final SaslClient saslClient;
+
+        Authentication(final SaslClient saslClient) {
+            this.saslClient = saslClient;
+        }
+
+        public void handleEvent(final ConnectedMessageChannel channel) {
+            final Pooled<ByteBuffer> pooledBuffer = connection.allocate();
+            try {
+                final ByteBuffer buffer = pooledBuffer.getResource();
+                final int res;
+                try {
+                    res = channel.receive(buffer);
+                } catch (IOException e) {
+                    connection.handleException(e);
+                    return;
+                }
+                if (res == 0) {
+                    return;
+                }
+                buffer.flip();
+                final byte msgType = buffer.get();
+                switch (msgType) {
+                    case Protocol.AUTH_CHALLENGE: {
+                        final boolean clientComplete = saslClient.isComplete();
+                        if (clientComplete) {
+                            connection.handleException(new SaslException("Received extra auth message after completion"));
+                            return;
+                        }
+                        final byte[] response;
+                        final byte[] challenge = Buffers.take(buffer, buffer.remaining());
+                        try {
+                            response = saslClient.evaluateChallenge(challenge);
+                            if (msgType == Protocol.AUTH_COMPLETE && response != null && response.length > 0) {
+                                connection.handleException(new SaslException("Received extra auth message after completion"));
+                                return;
+                            }
+                        } catch (SaslException e) {
+                            // todo log message
+                            failedMechs.add(saslClient.getMechanismName());
+                            sendCapRequest();
+                            return;
+                        }
+                        final Pooled<ByteBuffer> pooled = connection.allocate();
+                        final ByteBuffer sendBuffer = pooled.getResource();
+                        sendBuffer.put(Protocol.AUTH_RESPONSE);
+                        sendBuffer.put(response);
+                        sendBuffer.flip();
+                        connection.send(pooled);
+                        return;
+                    }
+                    case Protocol.AUTH_COMPLETE: {
+                        final boolean clientComplete = saslClient.isComplete();
+                        final byte[] challenge = Buffers.take(buffer, buffer.remaining());
+                        if (! clientComplete) try {
+                            final byte[] response = saslClient.evaluateChallenge(challenge);
+                            if (response != null && response.length > 0) {
+                                connection.handleException(new SaslException("Received extra auth message after completion"));
+                                return;
+                            }
+                            if (! saslClient.isComplete()) {
+                                connection.handleException(new SaslException("Client not complete after processing auth complete message"));
+                                return;
+                            }
+                        } catch (SaslException e) {
+                            // todo log message
+                            failedMechs.add(saslClient.getMechanismName());
+                            sendCapRequest();
+                            return;
+                        }
+                        // auth complete.
+                        final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {
+                            public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
+                                // this happens immediately.
+                                final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection);
+                                connection.setReadListener(new RemoteReadListener(connectionHandler, connection));
+                                return connectionHandler;
+                            }
+                        };
+                        connection.getResult().setResult(connectionHandlerFactory);
+                        return;
+                    }
+                    case Protocol.AUTH_REJECTED: {
+                        // todo log message
+                        failedMechs.add(saslClient.getMechanismName());
+                        sendCapRequest();
+                        return;
+                    }
+                }
+            } finally {
+                pooledBuffer.free();
+            }
+        }
     }
 }

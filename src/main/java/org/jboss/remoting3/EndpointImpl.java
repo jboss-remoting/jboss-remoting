@@ -125,7 +125,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (existing != null) {
             throw new ServiceRegistrationException("Service type '" + serviceType + "' is already registered");
         }
-        return new MapRegistration<OpenListener>(registeredServices, serviceType, openListener);
+        return new MapRegistration<OpenListener>(registeredServices, serviceType, openListener) {
+            protected void closeAction() {
+                super.closeAction();
+                openListener.registrationTerminated();
+            }
+        };
     }
 
     public IoFuture<Connection> connect(final URI destination) throws IOException {
@@ -215,19 +220,32 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return doConnect(destination, finalMap, new PasswordClientCallbackHandler(actualUserName, actualUserRealm, password));
     }
 
-    public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory) {
+    public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory, final OptionMap optionMap) throws IOException {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(ADD_CONNECTION_PROVIDER_PERM);
         }
         final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl();
-        final ConnectionProvider provider = providerFactory.createInstance(context);
-        if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
-            throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
+        final ConnectionProvider provider = providerFactory.createInstance(context, optionMap);
+        boolean ok = false;
+        try {
+            if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
+                throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
+            }
+            log.tracef("Adding connection provider registration named '%s': %s", uriScheme, provider);
+            final Registration handle = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider) {
+                protected void closeAction() {
+                    super.closeAction();
+                    provider.close();
+                }
+            };
+            ok = true;
+            return handle;
+        } finally {
+            if (! ok) {
+                provider.close();
+            }
         }
-        log.tracef("Adding connection provider registration named '%s': %s", uriScheme, provider);
-        final Registration handle = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider);
-        return handle;
     }
 
     public <T> T getConnectionProviderInterface(final String uriScheme, final Class<T> expectedType) throws UnknownURISchemeException, ClassCastException {

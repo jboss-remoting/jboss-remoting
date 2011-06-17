@@ -29,42 +29,33 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.AccessController;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.security.GeneralSecurityException;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.NetworkServerProvider;
+import org.xnio.BufferAllocator;
+import org.xnio.ByteBufferSlicePool;
 import org.xnio.Cancellable;
 import org.xnio.ChannelListener;
 import org.xnio.ChannelThreadPool;
-import org.xnio.ConnectionChannelThread;
+import org.xnio.ChannelThreadPools;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pool;
-import org.xnio.Pooled;
 import org.xnio.ReadChannelThread;
 import org.xnio.Result;
-import org.xnio.Sequence;
 import org.xnio.WriteChannelThread;
 import org.xnio.Xnio;
 import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedSslStreamChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
-import org.xnio.sasl.SaslUtils;
+import org.xnio.ssl.XnioSsl;
 
 import javax.security.auth.callback.CallbackHandler;
-import javax.security.sasl.Sasl;
-import javax.security.sasl.SaslServerFactory;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
 
@@ -75,23 +66,39 @@ final class RemoteConnectionProvider implements ConnectionProvider {
 
     private final ProviderInterface providerInterface = new ProviderInterface();
     private final Xnio xnio;
+    private final XnioSsl xnioSsl;
     private final ChannelThreadPool<ReadChannelThread> readThreadPool;
     private final ChannelThreadPool<WriteChannelThread> writeThreadPool;
-    private final ChannelThreadPool<ConnectionChannelThread> connectThreadPool;
     private final ConnectionProviderContext connectionProviderContext;
-    private final Pool<ByteBuffer> bufferPool;
+    private final Pool<ByteBuffer> messageBufferPool;
+    private final Pool<ByteBuffer> framingBufferPool;
 
-    RemoteConnectionProvider(final Xnio xnio, final Pool<ByteBuffer> bufferPool, final ChannelThreadPool<ReadChannelThread> readThreadPool, final ChannelThreadPool<WriteChannelThread> writeThreadPool, final ChannelThreadPool<ConnectionChannelThread> connectThreadPool, final ConnectionProviderContext connectionProviderContext) {
+    RemoteConnectionProvider(final Xnio xnio, final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
         this.xnio = xnio;
-        this.readThreadPool = readThreadPool;
-        this.writeThreadPool = writeThreadPool;
-        this.bufferPool = bufferPool;
-        this.connectThreadPool = connectThreadPool;
+        try {
+            if (optionMap.get(Options.SECURE, true)) {
+                xnioSsl = xnio.getSslProvider(optionMap);
+            } else {
+                xnioSsl = null;
+            }
+        } catch (GeneralSecurityException e) {
+            throw new IOException("Failed to configure SSL", e);
+        }
+        readThreadPool = ChannelThreadPools.createLightestLoadPool();
+        ChannelThreadPools.addReadThreadsToPool(xnio, readThreadPool, optionMap.get(RemotingOptions.READ_THREAD_POOL_SIZE, 1), optionMap);
+        writeThreadPool = ChannelThreadPools.createLightestLoadPool();
+        ChannelThreadPools.addWriteThreadsToPool(xnio, writeThreadPool, optionMap.get(RemotingOptions.WRITE_THREAD_POOL_SIZE, 1), optionMap);
         this.connectionProviderContext = connectionProviderContext;
+        final int messageBufferSize = optionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, 8192);
+        messageBufferPool = new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, messageBufferSize * 2));
+        final int framingBufferSize = messageBufferSize + 4;
+        framingBufferPool = new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, framingBufferSize * 2));
     }
 
     public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
-        boolean secure = connectOptions.get(Options.SECURE, false);
+        RemoteLogger.log.tracef("Attempting to connect to \"%s\" with options %s", uri, connectOptions);
+        final boolean sslCapable = xnioSsl != null;
+        boolean useSsl = sslCapable && ! connectOptions.get(Options.SECURE, false);
         final InetSocketAddress destination;
         try {
             destination = new InetSocketAddress(InetAddress.getByName(uri.getHost()), uri.getPort());
@@ -106,31 +113,30 @@ final class RemoteConnectionProvider implements ConnectionProvider {
                 } catch (IOException e) {
                     // ignore
                 }
-                final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, bufferPool.allocate(), bufferPool.allocate());
-                final RemoteConnection remoteConnection = new RemoteConnection(bufferPool, messageChannel, connectOptions, connectionProviderContext.getExecutor());
+                final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
+                final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, connectionProviderContext.getExecutor());
                 remoteConnection.setResult(result);
                 messageChannel.getWriteSetter().set(remoteConnection.getWriteListener());
-                final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, callbackHandler, AccessController.getContext());
+                final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, callbackHandler, AccessController.getContext(), connectOptions);
                 openListener.handleEvent(messageChannel);
             }
         };
-        if (secure) {
-            try {
-                return xnio.connectSsl(destination, connectThreadPool.getThread(), readThreadPool.getThread(), writeThreadPool.getThread(), openListener, connectOptions, bufferPool);
-            } catch (NoSuchProviderException e) {
-                result.setException(new IOException(e));
-                return IoUtils.nullCancellable();
-            } catch (NoSuchAlgorithmException e) {
-                result.setException(new IOException(e));
-                return IoUtils.nullCancellable();
-            }
+        final WriteChannelThread writeThread = writeThreadPool.getThread();
+        final ReadChannelThread readThread = readThreadPool.getThread();
+        if (useSsl) {
+            return xnioSsl.connectSsl(destination, writeThread, readThread, writeThread, openListener, connectOptions);
         } else {
-            return xnio.connectStream(destination, connectThreadPool.getThread(), readThreadPool.getThread(), writeThreadPool.getThread(), openListener, null, connectOptions);
+            return xnio.connectStream(destination, writeThread, readThread, writeThread, openListener, connectOptions);
         }
     }
 
     public Object getProviderInterface() {
         return providerInterface;
+    }
+
+    public void close() {
+        ChannelThreadPools.shutdown(readThreadPool);
+        ChannelThreadPools.shutdown(writeThreadPool);
     }
 
     private final class ProviderInterface implements NetworkServerProvider {
@@ -159,58 +165,20 @@ final class RemoteConnectionProvider implements ConnectionProvider {
                 }
             } catch (IOException e) {
                 log.failedToAccept(e);
+                return;
             }
-
-            final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, bufferPool.allocate(), bufferPool.allocate());
-            RemoteConnection connection = new RemoteConnection(bufferPool, messageChannel, serverOptionMap, connectionProviderContext.getExecutor());
-            messageChannel.getWriteSetter().set(connection.getWriteListener());
-            final Map<String, SaslServerFactory> allowedMechanisms;
-            boolean ok = false;
-            final Map<String, ?> propertyMap;
-            final Pooled<ByteBuffer> pooled = bufferPool.allocate();
             try {
-                ByteBuffer buffer = pooled.getResource();
-                buffer.put(Protocol.GREETING);
-                ProtocolUtils.writeByte(buffer, Protocol.GREETING_VERSION, 0);
-                propertyMap = SaslUtils.createPropertyMap(serverOptionMap);
-                final Sequence<String> saslMechs = serverOptionMap.get(Options.SASL_MECHANISMS);
-                final Set<String> restrictions = saslMechs == null ? null : new HashSet<String>(saslMechs);
-                final Enumeration<SaslServerFactory> factories = Sasl.getSaslServerFactories();
-                allowedMechanisms = new LinkedHashMap<String, SaslServerFactory>();
-                try {
-                    if (restrictions == null || restrictions.contains("EXTERNAL")) {
-                        if (channel instanceof ConnectedSslStreamChannel) {
-                            ConnectedSslStreamChannel sslStreamChannel = (ConnectedSslStreamChannel) channel;
-                            allowedMechanisms.put("EXTERNAL", new ExternalSaslServerFactory(sslStreamChannel.getSslSession().getPeerPrincipal()));
-                        }
-                    }
-                } catch (IOException e) {
-                    // ignore
-                }
-                while (factories.hasMoreElements()) {
-                    SaslServerFactory factory = factories.nextElement();
-                    for (String mechName : factory.getMechanismNames(propertyMap)) {
-                        if ((restrictions == null || restrictions.contains(mechName)) && ! allowedMechanisms.containsKey(mechName)) {
-                            allowedMechanisms.put(mechName, factory);
-                        }
-                    }
-                }
-                for (String name : allowedMechanisms.keySet()) {
-                    ProtocolUtils.writeString(buffer, Protocol.GREETING_SASL_MECH, name);
-                }
-                ProtocolUtils.writeString(buffer, Protocol.GREETING_ENDPOINT_NAME, connectionProviderContext.getEndpoint().getName());
-                ProtocolUtils.writeShort(buffer, Protocol.GREETING_CHANNEL_LIMIT, serverOptionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, Protocol.DEFAULT_CHANNEL_COUNT));
-                buffer.flip();
-                connection.send(pooled);
-                ok = true;
-            } finally {
-                if (! ok) {
-                    pooled.free();
-                }
+                accepted.setOption(Options.TCP_NODELAY, Boolean.TRUE);
+            } catch (IOException e) {
+                // ignore
             }
 
-            messageChannel.getReadSetter().set(new ServerConnectionGreetingListener(connection, allowedMechanisms, serverAuthenticationProvider, serverOptionMap, connectionProviderContext, propertyMap));
-            messageChannel.resumeReads();
+            final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, framingBufferPool.allocate(), framingBufferPool.allocate());
+            final RemoteConnection connection = new RemoteConnection(messageBufferPool, accepted, messageChannel, serverOptionMap, connectionProviderContext.getExecutor());
+            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, serverAuthenticationProvider, serverOptionMap);
+            messageChannel.getWriteSetter().set(connection.getWriteListener());
+            RemoteLogger.log.tracef("Accepted connection from %s to %s", accepted.getPeerAddress(), accepted.getLocalAddress());
+            openListener.handleEvent(messageChannel);
         }
     }
 }

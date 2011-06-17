@@ -28,9 +28,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -49,18 +47,13 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.xnio.BufferAllocator;
-import org.xnio.Buffers;
 import org.xnio.ChannelListener;
-import org.xnio.ChannelThreadPool;
-import org.xnio.ChannelThreadPools;
 import org.xnio.ConnectionChannelThread;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
-import org.xnio.Pool;
 import org.xnio.ReadChannelThread;
 import org.xnio.Sequence;
 import org.xnio.WriteChannelThread;
@@ -76,7 +69,6 @@ public final class RemoteChannelTest extends ChannelTestBase {
     protected ExecutorService executorService;
     private ReadChannelThread readChannelThread;
     private WriteChannelThread writeChannelThread;
-    private ConnectionChannelThread connectionChannelThread;
     private AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
     private Connection connection;
     private Registration serviceRegistration;
@@ -86,19 +78,14 @@ public final class RemoteChannelTest extends ChannelTestBase {
         executorService = new ThreadPoolExecutor(16, 16, 1L, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
         endpoint = Remoting.createEndpoint("test", executorService, OptionMap.EMPTY);
         Xnio xnio = Xnio.getInstance();
-        readChannelThread = xnio.createReadChannelThread(Executors.defaultThreadFactory());
-        writeChannelThread = xnio.createWriteChannelThread(Executors.defaultThreadFactory());
-        connectionChannelThread = xnio.createReadChannelThread(Executors.defaultThreadFactory());
-        ChannelThreadPool<ReadChannelThread> readPool = ChannelThreadPools.singleton(readChannelThread);
-        ChannelThreadPool<WriteChannelThread> writePool = ChannelThreadPools.singleton(writeChannelThread);
-        ChannelThreadPool<ConnectionChannelThread> connectionPool = ChannelThreadPools.singleton(connectionChannelThread);
-        Pool<ByteBuffer> bufferPool = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, 8192);
-        endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio, bufferPool, readPool, writePool, connectionPool));
+        readChannelThread = xnio.createReadChannelThread();
+        writeChannelThread = xnio.createWriteChannelThread();
+        endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.EMPTY);
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
         ChannelListener<AcceptingChannel<ConnectedStreamChannel>> serverListener = networkServerProvider.getServerListener(OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("DIGEST-MD5")), provider);
-        streamServer = xnio.createStreamServer(new InetSocketAddress("::1", 30123), connectionChannelThread, serverListener, OptionMap.EMPTY);
+        streamServer = xnio.createStreamServer(new InetSocketAddress("::1", 30123), writeChannelThread, serverListener, OptionMap.EMPTY);
     }
 
     @BeforeMethod
@@ -137,7 +124,6 @@ public final class RemoteChannelTest extends ChannelTestBase {
         executorService.shutdownNow();
         readChannelThread.shutdown();
         writeChannelThread.shutdown();
-        connectionChannelThread.shutdown();
     }
 
     @Test

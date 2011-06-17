@@ -65,6 +65,11 @@ final class ProtocolUtils {
         buffer.put(value);
     }
 
+    static void writeEmpty(final ByteBuffer buffer, final int type) {
+        buffer.put((byte) type);
+        buffer.put((byte) 0);
+    }
+
     static String readString(ByteBuffer buffer) {
         int length = buffer.get() & 0xff;
         return new String(take(buffer, length), UTF_8);

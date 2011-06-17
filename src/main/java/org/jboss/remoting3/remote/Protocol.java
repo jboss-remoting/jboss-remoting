@@ -37,35 +37,55 @@ final class Protocol {
     // Message types
 
     /**
+     * Sent by server only.
      * byte 0: GREETING
      * byte 1..n: greeting message body
      */
     static final byte GREETING = 0;
-
     /**
+     * Sent by client then server.
+     * byte 0: CAPABILITIES
+     * byte 1..n: capabilities summary
+     */
+    static final byte CAPABILITIES = 1;
+    /**
+     * Sent by client
      * byte 0: AUTH_REQUEST
      * byte 1..n: request body
      */
-    static final byte AUTH_REQUEST = 1;
+    static final byte AUTH_REQUEST = 2;
     /**
+     * Sent by server
      * byte 0: AUTH_CHALLENGE
-     * byte 1..n: request body
+     * byte 1..n: challenge body
      */
-    static final byte AUTH_CHALLENGE = 2;
+    static final byte AUTH_CHALLENGE = 3;
     /**
+     * Sent by client
      * byte 0: AUTH_RESPONSE
-     * byte 1..n: request body
+     * byte 1..n: response body
      */
-    static final byte AUTH_RESPONSE = 3;
+    static final byte AUTH_RESPONSE = 4;
     /**
+     * Sent by server
      * byte 0: AUTH_COMPLETE
      */
-    static final byte AUTH_COMPLETE = 4;
+    static final byte AUTH_COMPLETE = 5;
     /**
+     * Sent by server
      * byte 0: AUTH_REJECTED
-     * byte 1..n: UTF-8 reason string
      */
-    static final byte AUTH_REJECTED = 5;
+    static final byte AUTH_REJECTED = 6;
+    /**
+     * Sent by client then server
+     * byte 0: STARTTLS
+     */
+    static final byte STARTTLS = 7;
+    /**
+     * Sent by server when message is not understood or invalid.
+     * byte 0: NAK
+     */
+    static final byte NAK = 8;
 
     // Messages for opening channels
 
@@ -152,6 +172,14 @@ final class Protocol {
      * Always flows from message recipient to message sender.
      */
     static final byte MESSAGE_ASYNC_CLOSE = 0x32;
+    /**
+     * byte 0: MESSAGE_CANCELLED
+     * byte 1..4: channel ID
+     * byte 5..6: message ID
+     *
+     * Bypasses message data in queue.
+     */
+    static final byte MESSAGE_CANCELLED = 0x33;
 
     // Messages for handling connection status
 
@@ -160,13 +188,18 @@ final class Protocol {
      * byte 1..n: random padding (optional)
      */
     static final byte CONNECTION_ALIVE = (byte) 0xF0;
+    /**
+     * byte 0: CONNECTION_CLOSE
+     *
+     * No packets may be sent afterwards.  Connection is closed when message is sent and received.
+     */
+    static final byte CONNECTION_CLOSE = (byte) 0xFF;
 
-    // Greeting types
+    // Capabilities
 
-    static final byte GREETING_VERSION = 0;   // sent by client & server
-    static final byte GREETING_SASL_MECH = 1; // sent by server
-    static final byte GREETING_ENDPOINT_NAME = 2; // sent by client & server
-    static final byte GREETING_CHANNEL_LIMIT = 3; // sent by client & server - max # of concurrent incoming channels
+    static final byte CAP_VERSION = 0;   // sent by client & server - max version supported (must be first)
+    static final byte CAP_SASL_MECH = 1; // sent by server; content = mechanism name (utf-8)
+    static final byte CAP_STARTTLS = 2;  // sent by server; content = empty
 
     static final Charset UTF_8 = Charset.forName("UTF8");
 

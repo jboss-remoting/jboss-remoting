@@ -35,12 +35,17 @@ public final class RemotingOptions {
     /**
      * The size of the largest buffer that this endpoint will transmit over a connection.
      */
-    public static final Option<Integer> MAX_TRANSMIT_SIZE = Option.simple(RemotingOptions.class, "MAX_TRANSMIT_SIZE", Integer.class);
+    public static final Option<Integer> SEND_BUFFER_SIZE = Option.simple(RemotingOptions.class, "SEND_BUFFER_SIZE", Integer.class);
 
     /**
      * The size of the largest buffer that this endpoint will accept over a connection.
      */
-    public static final Option<Integer> MAX_RECEIVE_SIZE = Option.simple(RemotingOptions.class, "MAX_RECEIVE_SIZE", Integer.class);
+    public static final Option<Integer> RECEIVE_BUFFER_SIZE = Option.simple(RemotingOptions.class, "RECEIVE_BUFFER_SIZE", Integer.class);
+
+    /**
+     * The size of allocated buffer regions.
+     */
+    public static final Option<Integer> BUFFER_REGION_SIZE = Option.simple(RemotingOptions.class, "BUFFER_REGION_SIZE", Integer.class);
 
     /**
      * The maximum window size of the transmit direction for connection channels, in bytes.
@@ -79,11 +84,6 @@ public final class RemotingOptions {
     public static final Option<Integer> AUTHENTICATION_RETRIES = Option.simple(RemotingOptions.class, "AUTHENTICATION_RETRIES", Integer.class);
 
     /**
-     * The maximum amount of time (in milliseconds) to delay sending small messages, to reduce packet traffic.
-     */
-    public static final Option<Integer> COALESCE_INTERVAL = Option.simple(RemotingOptions.class, "COALESCE_INTERVAL", Integer.class);
-
-    /**
      * The maximum number of consecutive outbound messages on a channel.
      */
     public static final Option<Integer> MAX_OUTBOUND_MESSAGES = Option.simple(RemotingOptions.class, "MAX_OUTBOUND_MESSAGES", Integer.class);
@@ -92,4 +92,14 @@ public final class RemotingOptions {
      * The maximum number of consecutive inbound messages on a channel.
      */
     public static final Option<Integer> MAX_INBOUND_MESSAGES = Option.simple(RemotingOptions.class, "MAX_INBOUND_MESSAGES", Integer.class);
+
+    /**
+     * The size of the pool of read threads.
+     */
+    public static final Option<Integer> READ_THREAD_POOL_SIZE = Option.simple(RemotingOptions.class, "READ_THREAD_POOL_SIZE", Integer.class);
+
+    /**
+     * The size of the pool of write threads.
+     */
+    public static final Option<Integer> WRITE_THREAD_POOL_SIZE = Option.simple(RemotingOptions.class, "WRITE_THREAD_POOL_SIZE", Integer.class);
 }

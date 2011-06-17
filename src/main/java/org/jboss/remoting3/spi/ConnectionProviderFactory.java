@@ -22,6 +22,9 @@
 
 package org.jboss.remoting3.spi;
 
+import java.io.IOException;
+import org.xnio.OptionMap;
+
 /**
  * A connection provider factory.  Implementations of this interface provide a connection facility for a URI scheme.  An
  * endpoint will call the {@code createInstance()} method with its provider context when instances of this interface
@@ -33,7 +36,9 @@ public interface ConnectionProviderFactory {
      * Create a provider instance for an endpoint.
      *
      * @param context the provider context
+     * @param optionMap the options to pass to the provider factory
      * @return the provider
+     * @throws IOException if the provider cannot be created
      */
-    ConnectionProvider createInstance(ConnectionProviderContext context);
+    ConnectionProvider createInstance(ConnectionProviderContext context, final OptionMap optionMap) throws IOException;
 }
