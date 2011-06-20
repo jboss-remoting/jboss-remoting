@@ -33,7 +33,6 @@ import java.util.concurrent.Executor;
 
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.xnio.Pooled;
