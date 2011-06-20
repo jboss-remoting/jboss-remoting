@@ -154,6 +154,14 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
     <T> T getConnectionProviderInterface(String uriScheme, Class<T> expectedType) throws UnknownURISchemeException, ClassCastException;
 
     /**
+     * Determine whether the given URI scheme is valid for this endpoint.
+     *
+     * @param uriScheme the URI scheme
+     * @return {@code true} if the URI scheme is valid at the time this method is called
+     */
+    boolean isValidUriScheme(String uriScheme);
+
+    /**
      * Flags which can be passed in to listener registration methods.
      */
     enum ListenerFlag {

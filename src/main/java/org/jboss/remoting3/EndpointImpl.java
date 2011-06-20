@@ -263,6 +263,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return expectedType.cast(provider.getProviderInterface());
     }
 
+    public boolean isValidUriScheme(final String uriScheme) {
+        return connectionProviders.containsKey(uriScheme);
+    }
+
     public String toString() {
         return "endpoint \"" + name + "\" <" + Integer.toHexString(hashCode()) + ">";
     }
