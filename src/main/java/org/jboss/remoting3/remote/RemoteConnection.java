@@ -152,6 +152,7 @@ final class RemoteConnection {
                         queue.poll().free();
                     } else {
                         // try again later
+                        channel.suspendWrites();
                         return;
                     }
                 }
