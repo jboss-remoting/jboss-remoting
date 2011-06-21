@@ -72,7 +72,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                         return;
                     }
                     buffer.flip();
-                    final int protoId = buffer.get() & 0xff;
+                    final byte protoId = buffer.get();
                     try {
                         switch (protoId) {
                             case Protocol.CONNECTION_ALIVE: {
