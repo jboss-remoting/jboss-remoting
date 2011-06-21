@@ -58,6 +58,7 @@ import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslServerFactory;
 
 import static org.jboss.remoting3.remote.RemoteAuthLogger.authLog;
+import static org.jboss.remoting3.remote.RemoteLogger.log;
 import static org.jboss.remoting3.remote.RemoteLogger.server;
 
 /**
@@ -172,6 +173,11 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     return;
                 }
                 if (res == 0) {
+                    return;
+                }
+                if (res == -1) {
+                    log.trace("Received connection end-of-stream");
+                    connection.handleIncomingCloseRequest();
                     return;
                 }
                 buffer.flip();
@@ -336,6 +342,11 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     res = channel.receive(buffer);
                 } catch (IOException e) {
                     connection.handleException(e);
+                    return;
+                }
+                if (res == -1) {
+                    log.trace("Received connection end-of-stream");
+                    connection.handleIncomingCloseRequest();
                     return;
                 }
                 if (res == 0) {

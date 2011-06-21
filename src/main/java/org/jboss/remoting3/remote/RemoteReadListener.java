@@ -61,13 +61,9 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                 for (;;) try {
                     res = channel.receive(buffer);
                     if (res == -1) {
-                        try {
-                            channel.shutdownReads();
-                            return;
-                        } catch (IOException e) {
-                            log.debugf("Failed to shut down reads on %s: %s", connection, e);
-                            return;
-                        }
+                        log.trace("Received connection end-of-stream");
+                        connection.handleIncomingCloseRequest();
+                        return;
                     } else if (res == 0) {
                         return;
                     }

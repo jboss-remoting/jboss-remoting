@@ -378,6 +378,10 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 if (res == 0) {
                     return;
                 }
+                if (res == -1) {
+                    connection.handleException(client.abruptClose(connection));
+                    return;
+                }
                 buffer.flip();
                 final byte msgType = buffer.get();
                 switch (msgType) {
