@@ -177,8 +177,17 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 buffer.flip();
                 final byte msgType = buffer.get();
                 switch (msgType) {
+                    case Protocol.CONNECTION_CLOSE: {
+                        server.trace("Server received connection close request");
+                        connection.handleIncomingCloseRequest();
+                        return;
+                    }
+                    case Protocol.CONNECTION_ALIVE: {
+                        server.trace("Server received connection alive");
+                        return;
+                    }
                     case Protocol.CAPABILITIES: {
-                        server.tracef("Server received capabilities request");
+                        server.trace("Server received capabilities request");
                         sendCapabilities();
                         return;
                     }
@@ -336,6 +345,11 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 buffer.flip();
                 final byte msgType = buffer.get();
                 switch (msgType) {
+                    case Protocol.CONNECTION_CLOSE: {
+                        server.trace("Server received connection close request");
+                        connection.handleIncomingCloseRequest();
+                        return;
+                    }
                     case Protocol.AUTH_RESPONSE: {
                         server.tracef("Server received authentication response");
                         boolean ok = false;

@@ -128,6 +128,15 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 receiveBuffer.flip();
                 final byte msgType = receiveBuffer.get();
                 switch (msgType) {
+                    case Protocol.CONNECTION_ALIVE: {
+                        client.trace("Client received connection alive");
+                        return;
+                    }
+                    case Protocol.CONNECTION_CLOSE: {
+                        client.trace("Client received connection close request");
+                        connection.handleIncomingCloseRequest();
+                        return;
+                    }
                     case Protocol.GREETING: {
                         client.trace("Client received greeting");
                         sendCapRequest();
@@ -177,6 +186,15 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 final Set<String> saslMechs = new LinkedHashSet<String>();
                 final byte msgType = receiveBuffer.get();
                 switch (msgType) {
+                    case Protocol.CONNECTION_ALIVE: {
+                        client.trace("Client received connection alive");
+                        return;
+                    }
+                    case Protocol.CONNECTION_CLOSE: {
+                        client.trace("Client received connection close request");
+                        connection.handleIncomingCloseRequest();
+                        return;
+                    }
                     case Protocol.CAPABILITIES: {
                         client.trace("Client received capabilities response");
                         while (receiveBuffer.hasRemaining()) {
@@ -300,6 +318,15 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 receiveBuffer.flip();
                 final byte msgType = receiveBuffer.get();
                 switch (msgType) {
+                    case Protocol.CONNECTION_ALIVE: {
+                        client.trace("Client received connection alive");
+                        return;
+                    }
+                    case Protocol.CONNECTION_CLOSE: {
+                        client.trace("Client received connection close request");
+                        connection.handleIncomingCloseRequest();
+                        return;
+                    }
                     case Protocol.STARTTLS: {
                         client.trace("Client received STARTTLS response");
                         try {
@@ -354,6 +381,15 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 buffer.flip();
                 final byte msgType = buffer.get();
                 switch (msgType) {
+                    case Protocol.CONNECTION_ALIVE: {
+                        client.trace("Client received connection alive");
+                        return;
+                    }
+                    case Protocol.CONNECTION_CLOSE: {
+                        client.trace("Client received connection close request");
+                        connection.handleIncomingCloseRequest();
+                        return;
+                    }
                     case Protocol.AUTH_CHALLENGE: {
                         client.trace("Client received authentication challenge");
                         final boolean clientComplete = saslClient.isComplete();

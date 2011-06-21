@@ -101,7 +101,6 @@ final class RemoteConnectionHandler implements ConnectionHandler {
                     PendingChannel pendingChannel = new PendingChannel(id, outboundWindowSize, inboundWindowSize, outboundMessageCount, inboundMessageCount, result);
                     pendingChannels.put(pendingChannel);
                     this.channelCount = channelCount - 1;
-                    // TODO send
                     Pooled<ByteBuffer> pooled = remoteConnection.allocate();
                     try {
                         ByteBuffer buffer = pooled.getResource();
@@ -131,7 +130,23 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     }
 
     public void close() throws IOException {
-        remoteConnection.handleException(new ClosedChannelException(), false);
+        if (remoteConnection.handleOutboundCloseRequest()) {
+            closeAllChannels();
+        }
+    }
+
+    private void closeAllChannels() {
+        synchronized (this) {
+            final ClosedChannelException exception = new ClosedChannelException();
+            for (PendingChannel pendingChannel : pendingChannels) {
+                pendingChannel.getResult().setException(exception);
+            }
+            pendingChannels.clear();
+            for (RemoteConnectionChannel channel : channels) {
+                channel.handleRemoteClose();
+            }
+            channels.clear();
+        }
     }
 
     ConnectionHandlerContext getConnectionContext() {

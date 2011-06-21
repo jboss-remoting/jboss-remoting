@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.xnio.ChannelListener;
 import org.xnio.IoUtils;
@@ -49,6 +50,7 @@ final class RemoteConnection {
     private final RemoteWriteListener writeListener = new RemoteWriteListener();
     private final Executor executor;
     private volatile Result<ConnectionHandlerFactory> result;
+    private final AtomicBoolean closeSent = new AtomicBoolean(false);
 
     RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedStreamChannel underlyingChannel, final ConnectedMessageChannel channel, final OptionMap optionMap, final Executor executor) {
         this.messageBufferPool = messageBufferPool;
@@ -132,6 +134,42 @@ final class RemoteConnection {
         return underlyingChannel instanceof SslChannel ? (SslChannel) underlyingChannel : null;
     }
 
+    void handleIncomingCloseRequest() {
+        RemoteLogger.log.tracef("Received connection close request");
+        try {
+            channel.shutdownReads();
+        } catch (IOException e) {
+            RemoteLogger.log.debugf("Failed to shut down reads: %s", e);
+        }
+        sendCloseRequest();
+    }
+
+    boolean handleOutboundCloseRequest() {
+        RemoteLogger.log.trace("Initiating connection close request");
+        return sendCloseRequest();
+    }
+
+    private boolean sendCloseRequest() {
+        if (closeSent.compareAndSet(false, true)) {
+            final Pooled<ByteBuffer> pooled = allocate();
+            boolean ok = false;
+            try {
+                final ByteBuffer buffer = pooled.getResource();
+                buffer.put(Protocol.CONNECTION_CLOSE);
+                buffer.flip();
+                writeListener.send(pooled, true);
+                ok = true;
+            } finally {
+                if (! ok) {
+                    pooled.free();
+                }
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {
 
         private final Queue<Pooled<ByteBuffer>> queue = new ArrayDeque<Pooled<ByteBuffer>>();
@@ -175,6 +213,26 @@ final class RemoteConnection {
             // else try again later
         }
 
+        public synchronized void shutdownWrites() {
+            closed = true;
+            final ConnectedMessageChannel channel = getChannel();
+            try {
+                if (queue.isEmpty()) {
+                    if (! channel.flush()) {
+                        channel.resumeWrites();
+                        return;
+                    }
+                    RemoteLogger.log.tracef("Flushed channel");
+                }
+            } catch (IOException e) {
+                handleException(e);
+                Pooled<ByteBuffer> unqueued;
+                while ((unqueued = queue.poll()) != null) {
+                    unqueued.free();
+                }
+            }
+        }
+
         public synchronized void send(final Pooled<ByteBuffer> pooled, final boolean close) {
             if (closed) { pooled.free(); return; }
             if (close) { closed = true; }
@@ -196,6 +254,14 @@ final class RemoteConnection {
                         return;
                     }
                     RemoteLogger.log.tracef("Flushed channel");
+                    if (close) {
+                        if (channel.shutdownWrites()) {
+                            RemoteLogger.log.trace("Shut down writes on channel");
+                        } else {
+                            channel.resumeWrites();
+                            return;
+                        }
+                    }
                 } else {
                     queue.add(pooled);
                     free = false;

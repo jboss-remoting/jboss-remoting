@@ -27,13 +27,9 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
-import org.jboss.remoting3.RemotingOptions;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
-import org.xnio.IoUtils;
-import org.xnio.OptionMap;
 import org.xnio.Pooled;
-import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
@@ -76,6 +72,11 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                         switch (protoId) {
                             case Protocol.CONNECTION_ALIVE: {
                                 break;
+                            }
+                            case Protocol.CONNECTION_CLOSE: {
+                                log.trace("Received connection close request");
+                                connection.handleIncomingCloseRequest();
+                                return;
                             }
                             case Protocol.CHANNEL_OPEN_REQUEST: {
                                 int channelId = buffer.getInt() ^ 0x80000000;
