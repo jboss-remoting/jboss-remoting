@@ -66,6 +66,7 @@ import org.xnio.channels.ConnectedStreamChannel;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  * @author <a href="mailto:flavia.rainone@jboss.com">Flavia Rainone</a>
  */
+@Test(enabled = false)
 public final class RemoteSslChannelTest extends ChannelTestBase {
     private static final String KEY_STORE_PROPERTY = "javax.net.ssl.keyStore";
     private static final String KEY_STORE_PASSWORD_PROPERTY = "javax.net.ssl.keyStorePassword";
