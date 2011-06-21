@@ -255,7 +255,10 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     @Override
     protected void closeAction() throws IOException {
-        writeShutdown();
+        try {
+            writeShutdown();
+        } catch (IOException ignored) {
+        }
         handleRemoteClose();
     }
 
