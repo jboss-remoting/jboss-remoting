@@ -1,5 +1,0 @@
-#
-# Remoting "remote" protocol descriptors
-#
-org.jboss.remoting3.remote.RemoteProtocolDescriptor
-org.jboss.remoting3.remote.RemoteSslProtocolDescriptor
