@@ -82,7 +82,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
         connection.setReadListener(new Greeting());
     }
 
-    void sendCapRequest() {
+    void sendCapRequest(final String serverName) {
         client.trace("Client sending capabilities request");
         // Prepare the request message body
         final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
@@ -92,7 +92,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             sendBuffer.put(Protocol.CAPABILITIES);
             ProtocolUtils.writeByte(sendBuffer, Protocol.CAP_VERSION, 0);
             sendBuffer.flip();
-            connection.setReadListener(new Capabilities());
+            connection.setReadListener(new Capabilities(serverName));
             connection.send(pooledSendBuffer);
             ok = true;
             // all set
@@ -126,6 +126,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 }
                 client.tracef("Received %s", receiveBuffer);
                 receiveBuffer.flip();
+                String serverName = channel.getPeerAddress(InetSocketAddress.class).getHostName();
                 final byte msgType = receiveBuffer.get();
                 switch (msgType) {
                     case Protocol.CONNECTION_ALIVE: {
@@ -139,7 +140,24 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                     case Protocol.GREETING: {
                         client.trace("Client received greeting");
-                        sendCapRequest();
+                        while (receiveBuffer.hasRemaining()) {
+                            final byte type = receiveBuffer.get();
+                            final int len = receiveBuffer.get() & 0xff;
+                            final ByteBuffer data = Buffers.slice(receiveBuffer, len);
+                            switch (type) {
+                                case Protocol.GRT_SERVER_NAME: {
+                                    serverName = Buffers.getModifiedUtf8(data);
+                                    client.tracef("Client received server name: %s", serverName);
+                                    break;
+                                }
+                                default: {
+                                    client.tracef("Client received unknown greeting message %02x", Integer.valueOf(type & 0xff));
+                                    // unknown, skip it for forward compatibility.
+                                    break;
+                                }
+                            }
+                        }
+                        sendCapRequest(serverName);
                         return;
                     }
                     default: {
@@ -162,6 +180,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
     }
 
     final class Capabilities implements ChannelListener<ConnectedMessageChannel> {
+
+        private final String serverName;
+
+        Capabilities(final String serverName) {
+            this.serverName = serverName;
+        }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
@@ -237,7 +261,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
                                 sendBuffer.put(Protocol.STARTTLS);
                                 sendBuffer.flip();
-                                connection.setReadListener(new StartTls());
+                                connection.setReadListener(new StartTls(serverName));
                                 connection.send(pooledSendBuffer);
                                 // all set
                                 return;
@@ -256,7 +280,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         try {
                             saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
                                 public SaslClient run() throws SaslException {
-                                    return Sasl.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", channel.getPeerAddress(InetSocketAddress.class).getHostName(), propertyMap, callbackHandler);
+                                    return Sasl.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", serverName, propertyMap, callbackHandler);
                                 }
                             }, accessControlContext);
                         } catch (PrivilegedActionException e) {
@@ -273,7 +297,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         Buffers.putModifiedUtf8(sendBuffer, mechanismName);
                         sendBuffer.flip();
                         connection.send(pooledSendBuffer);
-                        connection.setReadListener(new Authentication(saslClient));
+                        connection.setReadListener(new Authentication(saslClient, serverName));
                         return;
                     }
                     default: {
@@ -295,6 +319,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
     }
 
     final class StartTls implements ChannelListener<ConnectedMessageChannel> {
+
+        private final String serverName;
+
+        StartTls(final String serverName) {
+            this.serverName = serverName;
+        }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
@@ -335,7 +365,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             connection.handleException(e, false);
                             return;
                         }
-                        sendCapRequest();
+                        sendCapRequest(serverName);
                         return;
                     }
                     default: {
@@ -359,9 +389,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
     final class Authentication implements ChannelListener<ConnectedMessageChannel> {
 
         private final SaslClient saslClient;
+        private final String serverName;
 
-        Authentication(final SaslClient saslClient) {
+        Authentication(final SaslClient saslClient, final String serverName) {
             this.saslClient = saslClient;
+            this.serverName = serverName;
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
@@ -414,7 +446,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 } catch (Exception e) {
                                     client.tracef("Client authentication failed: %s", e);
                                     failedMechs.add(saslClient.getMechanismName());
-                                    sendCapRequest();
+                                    sendCapRequest(serverName);
                                     return;
                                 }
                                 client.trace("Client sending authentication response");
@@ -450,7 +482,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 } catch (SaslException e) {
                                     // todo log message
                                     failedMechs.add(saslClient.getMechanismName());
-                                    sendCapRequest();
+                                    sendCapRequest(serverName);
                                     return;
                                 }
                                 // auth complete.
@@ -473,7 +505,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     case Protocol.AUTH_REJECTED: {
                         client.trace("Client received authentication rejected");
                         failedMechs.add(saslClient.getMechanismName());
-                        sendCapRequest();
+                        sendCapRequest(serverName);
                         return;
                     }
                     default: {

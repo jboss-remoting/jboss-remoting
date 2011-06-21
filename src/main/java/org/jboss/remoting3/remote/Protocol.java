@@ -201,6 +201,8 @@ final class Protocol {
     static final byte CAP_SASL_MECH = 1; // sent by server; content = mechanism name (utf-8)
     static final byte CAP_STARTTLS = 2;  // sent by server; content = empty
 
+    static final byte GRT_SERVER_NAME = 0; // greeting server name
+
     static final Charset UTF_8 = Charset.forName("UTF8");
 
     static final byte MSG_FLAG_EOF = 0x01;

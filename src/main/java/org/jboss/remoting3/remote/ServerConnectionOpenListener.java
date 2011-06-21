@@ -70,12 +70,15 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
     private final ServerAuthenticationProvider serverAuthenticationProvider;
     private final OptionMap optionMap;
     private final AtomicInteger retryCount = new AtomicInteger(8);
+    private final String serverName;
+
 
     ServerConnectionOpenListener(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final ServerAuthenticationProvider serverAuthenticationProvider, final OptionMap optionMap) {
         this.connection = connection;
         this.connectionProviderContext = connectionProviderContext;
         this.serverAuthenticationProvider = serverAuthenticationProvider;
         this.optionMap = optionMap;
+        serverName = connection.getChannel().getLocalAddress(InetSocketAddress.class).getHostName();
     }
 
     public void handleEvent(final ConnectedMessageChannel channel) {
@@ -84,6 +87,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         try {
             ByteBuffer sendBuffer = pooled.getResource();
             sendBuffer.put(Protocol.GREETING);
+            ProtocolUtils.writeString(sendBuffer, Protocol.GRT_SERVER_NAME, serverName);
             sendBuffer.flip();
             connection.setReadListener(new Initial());
             connection.send(pooled);
@@ -241,7 +245,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         }
                         final SaslServer saslServer;
                         try {
-                            saslServer = saslServerFactory.createSaslServer(mechName, "remote", channel.getLocalAddress(InetSocketAddress.class).getHostName(), propertyMap, callbackHandler);
+                            saslServer = saslServerFactory.createSaslServer(mechName, "remote", serverName, propertyMap, callbackHandler);
                         } catch (SaslException e) {
                             connection.handleException(e);
                             return;
