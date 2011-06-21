@@ -103,12 +103,12 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
         executorService = new ThreadPoolExecutor(16, 16, 1L, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
         endpoint = Remoting.createEndpoint("test", executorService, OptionMap.EMPTY);
         Xnio xnio = Xnio.getInstance();
-        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.create(Options.SSL_ENABLED, false));
+        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.EMPTY);
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
         streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123),
-                OptionMap.create(Options.SSL_ENABLED, true, Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider);
+                OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE, Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider);
     }
 
     @BeforeMethod
@@ -122,7 +122,7 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
             public void registrationTerminated() {
             }
         }, OptionMap.EMPTY);
-        IoFuture<Connection> futureConnection = endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.create(Options.SECURE, true), "bob", "test", "pass".toCharArray());
+        IoFuture<Connection> futureConnection = endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE), "bob", "test", "pass".toCharArray());
         connection = futureConnection.get();
         IoFuture<Channel> futureChannel = connection.openChannel("org.jboss.test", OptionMap.EMPTY);
         sendChannel = futureChannel.get();
