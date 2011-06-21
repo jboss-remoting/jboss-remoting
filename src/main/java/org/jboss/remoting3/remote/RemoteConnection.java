@@ -149,6 +149,10 @@ final class RemoteConnection {
         return sendCloseRequest();
     }
 
+    void handleChannelClose() {
+        closeSent.set(true);
+    }
+
     private boolean sendCloseRequest() {
         if (closeSent.compareAndSet(false, true)) {
             final Pooled<ByteBuffer> pooled = allocate();

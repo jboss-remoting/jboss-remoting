@@ -135,7 +135,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
         }
     }
 
-    private void closeAllChannels() {
+    void closeAllChannels() {
         synchronized (this) {
             final ClosedChannelException exception = new ClosedChannelException();
             for (PendingChannel pendingChannel : pendingChannels) {
@@ -147,6 +147,11 @@ final class RemoteConnectionHandler implements ConnectionHandler {
             }
             channels.clear();
         }
+    }
+
+    void handleClose() {
+        remoteConnection.handleChannelClose();
+        closeAllChannels();
     }
 
     ConnectionHandlerContext getConnectionContext() {
