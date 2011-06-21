@@ -27,85 +27,50 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
 import org.jboss.remoting3.ChannelPair;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 
 /**
+ * Test for local channel communication.
+ * 
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-@Test
 public final class LocalChannelTest extends ChannelTestBase {
-    protected Endpoint endpoint;
-    protected ExecutorService executorService;
+    protected static Endpoint endpoint;
+    protected static ExecutorService executorService;
 
     @BeforeClass
-    public void create() throws IOException {
+    public static void create() throws IOException {
         executorService = new ThreadPoolExecutor(16, 16, 1L, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
         endpoint = Remoting.createEndpoint("test", executorService, OptionMap.EMPTY);
     }
 
-    @BeforeMethod
+    @Before
     public void testStart() {
         ChannelPair channelPair = endpoint.createChannelPair();
         sendChannel = channelPair.getLeftChannel();
         recvChannel = channelPair.getRightChannel();
     }
 
-    @AfterMethod
+    @After
     public void testFinish() {
         IoUtils.safeClose(sendChannel);
         IoUtils.safeClose(recvChannel);
     }
 
     @AfterClass
-    public void destroy() throws IOException, InterruptedException {
+    public static void destroy() throws IOException, InterruptedException {
         endpoint.close();
         executorService.shutdown();
         executorService.awaitTermination(1L, TimeUnit.DAYS);
         executorService.shutdownNow();
-    }
-    
-
-    @Test
-    public void testSimpleWriteMethod() throws Exception {
-        super.testSimpleWriteMethod();
-    }
-
-    @Test
-    public void testEmptyMessage() throws IOException, InterruptedException {
-        super.testEmptyMessage();
-    }
-
-    @Test
-    public void testLotsOfContent() throws IOException, InterruptedException {
-        super.testLotsOfContent();
-    }
-
-    @Test
-    public void testWriteCancel() throws IOException, InterruptedException {
-        super.testWriteCancel();
-    }
-
-    @Test
-    public void testWriteCancelIncompleteMessage() throws IOException, InterruptedException {
-        super.testWriteCancelIncompleteMessage();
-    }
-
-    @Test
-    public void testSimpleWriteMethodFromNonInitiatingSide() throws Exception {
-        super.testSimpleWriteMethodFromNonInitiatingSide();
-    }
-    
-    @Test
-    public void testSimpleWriteMethodTwoWay() throws Exception {
-        super.testSimpleWriteMethodTwoWay();
     }
 }

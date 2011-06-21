@@ -22,28 +22,29 @@
 
 package org.jboss.remoting3.test;
 
+import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertTrue;
+
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.jboss.logging.Logger;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
+import org.junit.Test;
 import org.xnio.IoUtils;
-import org.jboss.logging.Logger;
-import org.testng.annotations.Test;
-
-import static org.testng.Assert.assertFalse;
-import static org.testng.Assert.assertTrue;
 
 /**
  *
  */
-@Test(suiteName = "utils")
 public final class CloseableTestCase {
 
     private static final Logger log = Logger.getLogger("test");
 
+    @Test
     public void testBasic() throws Throwable {
         final ExecutorService executorService = Executors.newCachedThreadPool();
         try {

@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3.test;
 
-import static org.testng.Assert.assertNotNull;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -42,11 +42,10 @@ import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -58,18 +57,20 @@ import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
 /**
+ * Test for remote channel communication.
+ * 
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class RemoteChannelTest extends ChannelTestBase {
-    protected Endpoint endpoint;
-    protected ExecutorService executorService;
-    private AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
+    protected static Endpoint endpoint;
+    protected static ExecutorService executorService;
+    private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
+    private static Registration registration;
     private Connection connection;
     private Registration serviceRegistration;
-    private Registration registration;
 
     @BeforeClass
-    public void create() throws IOException {
+    public static void create() throws IOException {
         executorService = new ThreadPoolExecutor(16, 16, 1L, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
         endpoint = Remoting.createEndpoint("test", executorService, OptionMap.EMPTY);
         Xnio xnio = Xnio.getInstance();
@@ -80,7 +81,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
         streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider);
     }
 
-    @BeforeMethod
+    @Before
     public void testStart() throws IOException, URISyntaxException, InterruptedException {
         final FutureResult<Channel> passer = new FutureResult<Channel>();
         serviceRegistration = endpoint.registerService("org.jboss.test", new OpenListener() {
@@ -99,7 +100,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
         assertNotNull(recvChannel);
     }
 
-    @AfterMethod
+    @After
     public void testFinish() {
         IoUtils.safeClose(sendChannel);
         IoUtils.safeClose(recvChannel);
@@ -108,7 +109,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
     }
 
     @AfterClass
-    public void destroy() throws IOException, InterruptedException {
+    public static void destroy() throws IOException, InterruptedException {
         IoUtils.safeClose(streamServer);
         IoUtils.safeClose(endpoint);
         IoUtils.safeClose(registration);
@@ -116,45 +117,4 @@ public final class RemoteChannelTest extends ChannelTestBase {
         executorService.awaitTermination(1L, TimeUnit.DAYS);
         executorService.shutdownNow();
     }
-
-    @Test
-    public void testSimpleWriteMethod() throws Exception {
-        super.testSimpleWriteMethod();
-    }
-
-    @Test
-    public void testEmptyMessage() throws IOException, InterruptedException {
-        super.testEmptyMessage();
-    }
-
-    @Test
-    public void testLotsOfContent() throws IOException, InterruptedException {
-        super.testLotsOfContent();
-    }
-
-    @Test
-    public void testWriteCancel() throws IOException, InterruptedException {
-        super.testWriteCancel();
-    }
-    
-    @Test
-    public void testWriteCancelHalfMessage() throws IOException, InterruptedException {
-        super.testWriteCancelIncompleteMessage();
-    }
-
-    @Test
-    public void testSimpleWriteMethodFromNonInitiatingSide() throws Exception {
-        super.testSimpleWriteMethodFromNonInitiatingSide();
-    }
-
-    @Test
-    public void testSimpleWriteMethodTwoWay() throws Exception {
-        super.testSimpleWriteMethodTwoWay();
-    }
-    
-    @Test
-    public void testSeveralWriteMessage() throws Exception {
-        super.testSeveralWriteMessage();
-    }
-
 }

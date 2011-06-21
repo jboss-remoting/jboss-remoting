@@ -22,10 +22,10 @@
 
 package org.jboss.remoting3.test;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertNotNull;
-import static org.testng.Assert.assertNull;
-import static org.testng.Assert.assertTrue;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.FilterOutputStream;
 import java.io.IOException;
@@ -40,7 +40,7 @@ import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
-import org.testng.annotations.Test;
+import org.junit.Test;
 import org.xnio.IoUtils;
 
 /**
@@ -144,7 +144,7 @@ public abstract class ChannelTestBase {
                     } while (c < TEST_FILE_LENGTH);
                     message.close();
 
-                    assertEquals(data, received);
+                    assertArrayEquals(data, received);
                     wasOk.set(true);
                 } catch (IOException e) {
                     exRef.set(e);
@@ -283,7 +283,7 @@ public abstract class ChannelTestBase {
         
         final CountDownLatch latch = new CountDownLatch(1);
         final ArrayList<Byte> result = new ArrayList<Byte>();
-        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();        
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
         recvChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
                 error.printStackTrace();
@@ -316,7 +316,7 @@ public abstract class ChannelTestBase {
         latch.await();
         assertNull(exRef.get());
         Byte[] resultBytes = result.toArray(new Byte[result.size()]);
-        assertEquals(bytes, resultBytes);
+        assertArrayEquals(bytes, resultBytes);
     }
 
     @Test
@@ -333,7 +333,7 @@ public abstract class ChannelTestBase {
         
         final CountDownLatch latch = new CountDownLatch(1);
         final ArrayList<Byte> result = new ArrayList<Byte>();
-        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();        
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
         recvChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
                 error.printStackTrace();
@@ -366,7 +366,7 @@ public abstract class ChannelTestBase {
         latch.await();
         assertNull(exRef.get());
         Byte[] resultBytes = result.toArray(new Byte[result.size()]);
-        assertEquals(bytes, resultBytes);
+        assertArrayEquals(bytes, resultBytes);
     }
 
     @Test
@@ -412,7 +412,7 @@ public abstract class ChannelTestBase {
         latch.await();
         assertNull(exRef.get());
         Byte[] resultBytes = result.toArray(new Byte[result.size()]);
-        assertEquals(bytes, resultBytes);
+        assertArrayEquals(bytes, resultBytes);
     }
 
     @Test
@@ -502,9 +502,9 @@ public abstract class ChannelTestBase {
         latch.await();
         assertNull(exRef.get());
         Byte[] receiverBytes = receiverResult.toArray(new Byte[receiverResult.size()]);
-        assertEquals(bytes, receiverBytes);
+        assertArrayEquals(bytes, receiverBytes);
         Byte[] senderBytes = senderResult.toArray(new Byte[senderResult.size()]);
-        assertEquals(manipulatedBytes, senderBytes);
+        assertArrayEquals(manipulatedBytes, senderBytes);
     }
 
     @Test

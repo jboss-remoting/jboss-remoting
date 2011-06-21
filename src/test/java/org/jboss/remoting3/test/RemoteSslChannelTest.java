@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3.test;
 
-import static org.testng.Assert.assertNotNull;
+import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -45,11 +45,11 @@ import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -66,7 +66,7 @@ import org.xnio.channels.ConnectedStreamChannel;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  * @author <a href="mailto:flavia.rainone@jboss.com">Flavia Rainone</a>
  */
-@Test(enabled = false)
+@Ignore
 public final class RemoteSslChannelTest extends ChannelTestBase {
     private static final String KEY_STORE_PROPERTY = "javax.net.ssl.keyStore";
     private static final String KEY_STORE_PASSWORD_PROPERTY = "javax.net.ssl.keyStorePassword";
@@ -75,15 +75,15 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
     private static final String DEFAULT_KEY_STORE = "keystore.jks";
     private static final String DEFAULT_KEY_STORE_PASSWORD = "jboss-remoting-test";
 
-    protected Endpoint endpoint;
-    protected ExecutorService executorService;
-    private AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
+    protected static Endpoint endpoint;
+    protected static ExecutorService executorService;
+    private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
+    private static Registration registration;
     private Connection connection;
     private Registration serviceRegistration;
-    private Registration registration;
 
-    private void setKeyStoreAndTrustStore() {
-        final URL storePath = this.getClass().getClassLoader().getResource(DEFAULT_KEY_STORE);
+    private static void setKeyStoreAndTrustStore() {
+        final URL storePath = RemoteSslChannelTest.class.getClassLoader().getResource(DEFAULT_KEY_STORE);
         if (System.getProperty(KEY_STORE_PROPERTY) == null) {
             System.setProperty(KEY_STORE_PROPERTY, storePath.getFile());
         }
@@ -99,7 +99,7 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
     }
 
     @BeforeClass
-    public void create() throws IOException, NoSuchProviderException, NoSuchAlgorithmException {
+    public static void create() throws IOException, NoSuchProviderException, NoSuchAlgorithmException {
         setKeyStoreAndTrustStore();
         executorService = new ThreadPoolExecutor(16, 16, 1L, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
         endpoint = Remoting.createEndpoint("test", executorService, OptionMap.EMPTY);
@@ -112,7 +112,7 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
                 OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE, Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider);
     }
 
-    @BeforeMethod
+    @Before
     public void testStart() throws IOException, URISyntaxException, InterruptedException {
         final FutureResult<Channel> passer = new FutureResult<Channel>();
         serviceRegistration = endpoint.registerService("org.jboss.test", new OpenListener() {
@@ -131,7 +131,7 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
         assertNotNull(recvChannel);
     }
 
-    @AfterMethod
+    @After
     public void testFinish() {
         IoUtils.safeClose(sendChannel);
         IoUtils.safeClose(recvChannel);
@@ -140,47 +140,12 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
     }
 
     @AfterClass
-    public void destroy() throws IOException, InterruptedException {
+    public static void destroy() throws IOException, InterruptedException {
         IoUtils.safeClose(streamServer);
         IoUtils.safeClose(endpoint);
         IoUtils.safeClose(registration);
         executorService.shutdown();
         executorService.awaitTermination(1L, TimeUnit.DAYS);
         executorService.shutdownNow();
-    }
-
-    @Test
-    public void testSimpleWriteMethod() throws Exception {
-        super.testSimpleWriteMethod();
-    }
-
-    @Test
-    public void testEmptyMessage() throws IOException, InterruptedException {
-        super.testEmptyMessage();
-    }
-
-    @Test
-    public void testLotsOfContent() throws IOException, InterruptedException {
-        super.testLotsOfContent();
-    }
-
-    @Test
-    public void testWriteCancel() throws IOException, InterruptedException {
-        super.testWriteCancel();
-    }
-
-    @Test
-    public void testWriteCancelIncompleteMessage() throws IOException, InterruptedException {
-        super.testWriteCancelIncompleteMessage();
-    }
-
-    @Test
-    public void testSimpleWriteMethodFromNonInitiatingSide() throws Exception {
-        super.testSimpleWriteMethodFromNonInitiatingSide();
-    }
-
-    @Test
-    public void testSimpleWriteMethodTwoWay() throws Exception {
-        super.testSimpleWriteMethodTwoWay();
     }
 }
