@@ -46,9 +46,9 @@ interface RemoteLogger extends BasicLogger {
     RemoteLogger server = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote.server");
     RemoteLogger client = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote.client");
 
-    @Message(id = 200, value = "Remote connection failed")
+    @Message(id = 200, value = "Remote connection failed: %s")
     @LogMessage(level = ERROR)
-    void connectionError(@Cause IOException cause);
+    void connectionError(IOException cause);
 
     @Message(id = 201, value = "Received invalid message on %s")
     IOException invalidMessage(RemoteConnection connection);

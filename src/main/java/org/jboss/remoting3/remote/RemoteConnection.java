@@ -209,7 +209,7 @@ final class RemoteConnection {
                     channel.suspendWrites();
                 }
             } catch (IOException e) {
-                handleException(e);
+                handleException(e, false);
                 while ((pooled = queue.poll()) != null) {
                     pooled.free();
                 }
@@ -229,7 +229,7 @@ final class RemoteConnection {
                     RemoteLogger.log.tracef("Flushed channel");
                 }
             } catch (IOException e) {
-                handleException(e);
+                handleException(e, false);
                 Pooled<ByteBuffer> unqueued;
                 while ((unqueued = queue.poll()) != null) {
                     unqueued.free();
@@ -271,7 +271,7 @@ final class RemoteConnection {
                     free = false;
                 }
             } catch (IOException e) {
-                handleException(e);
+                handleException(e, false);
                 Pooled<ByteBuffer> unqueued;
                 while ((unqueued = queue.poll()) != null) {
                     unqueued.free();
