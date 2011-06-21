@@ -182,103 +182,109 @@ final class RemoteConnection {
         RemoteWriteListener() {
         }
 
-        public synchronized void handleEvent(final ConnectedMessageChannel channel) {
-            assert channel == getChannel();
-            Pooled<ByteBuffer> pooled;
-            final Queue<Pooled<ByteBuffer>> queue = this.queue;
-            try {
-                while ((pooled = queue.peek()) != null) {
-                    final ByteBuffer buffer = pooled.getResource();
-                    if (channel.send(buffer)) {
-                        RemoteLogger.log.tracef("Sent message %s (via queue)", buffer);
-                        queue.poll().free();
-                    } else {
-                        // try again later
-                        channel.suspendWrites();
-                        return;
-                    }
-                }
-                if (channel.flush()) {
-                    RemoteLogger.log.tracef("Flushed channel");
-                    if (closed) {
-                        // either this is successful and no more notifications will come, or not and it will be retried
-                        channel.shutdownWrites();
-                        // either way we're done here
-                        return;
-                    }
-                    channel.suspendWrites();
-                }
-            } catch (IOException e) {
-                handleException(e, false);
-                while ((pooled = queue.poll()) != null) {
-                    pooled.free();
-                }
-            }
-            // else try again later
-        }
-
-        public synchronized void shutdownWrites() {
-            closed = true;
-            final ConnectedMessageChannel channel = getChannel();
-            try {
-                if (queue.isEmpty()) {
-                    if (! channel.flush()) {
-                        channel.resumeWrites();
-                        return;
-                    }
-                    RemoteLogger.log.tracef("Flushed channel");
-                }
-            } catch (IOException e) {
-                handleException(e, false);
-                Pooled<ByteBuffer> unqueued;
-                while ((unqueued = queue.poll()) != null) {
-                    unqueued.free();
-                }
-            }
-        }
-
-        public synchronized void send(final Pooled<ByteBuffer> pooled, final boolean close) {
-            if (closed) { pooled.free(); return; }
-            if (close) { closed = true; }
-            final ConnectedMessageChannel channel = getChannel();
-            boolean free = true;
-            try {
-                if (queue.isEmpty()) {
-                    final ByteBuffer buffer = pooled.getResource();
-                    if (! channel.send(buffer)) {
-                        RemoteLogger.log.tracef("Can't directly send message %s, enqueued", buffer);
-                        queue.add(pooled);
-                        free = false;
-                        channel.resumeWrites();
-                        return;
-                    }
-                    RemoteLogger.log.tracef("Sent message %s (direct)", buffer);
-                    if (! channel.flush()) {
-                        channel.resumeWrites();
-                        return;
-                    }
-                    RemoteLogger.log.tracef("Flushed channel");
-                    if (close) {
-                        if (channel.shutdownWrites()) {
-                            RemoteLogger.log.trace("Shut down writes on channel");
+        public void handleEvent(final ConnectedMessageChannel channel) {
+            synchronized (RemoteConnection.this) {
+                assert channel == getChannel();
+                Pooled<ByteBuffer> pooled;
+                final Queue<Pooled<ByteBuffer>> queue = this.queue;
+                try {
+                    while ((pooled = queue.peek()) != null) {
+                        final ByteBuffer buffer = pooled.getResource();
+                        if (channel.send(buffer)) {
+                            RemoteLogger.log.tracef("Sent message %s (via queue)", buffer);
+                            queue.poll().free();
                         } else {
-                            channel.resumeWrites();
+                            // try again later
+                            channel.suspendWrites();
                             return;
                         }
                     }
-                } else {
-                    queue.add(pooled);
-                    free = false;
+                    if (channel.flush()) {
+                        RemoteLogger.log.tracef("Flushed channel");
+                        if (closed) {
+                            // either this is successful and no more notifications will come, or not and it will be retried
+                            channel.shutdownWrites();
+                            // either way we're done here
+                            return;
+                        }
+                        channel.suspendWrites();
+                    }
+                } catch (IOException e) {
+                    handleException(e, false);
+                    while ((pooled = queue.poll()) != null) {
+                        pooled.free();
+                    }
                 }
-            } catch (IOException e) {
-                handleException(e, false);
-                Pooled<ByteBuffer> unqueued;
-                while ((unqueued = queue.poll()) != null) {
-                    unqueued.free();
+                // else try again later
+            }
+        }
+
+        public void shutdownWrites() {
+            synchronized (RemoteConnection.this) {
+                closed = true;
+                final ConnectedMessageChannel channel = getChannel();
+                try {
+                    if (queue.isEmpty()) {
+                        if (! channel.flush()) {
+                            channel.resumeWrites();
+                            return;
+                        }
+                        RemoteLogger.log.tracef("Flushed channel");
+                    }
+                } catch (IOException e) {
+                    handleException(e, false);
+                    Pooled<ByteBuffer> unqueued;
+                    while ((unqueued = queue.poll()) != null) {
+                        unqueued.free();
+                    }
                 }
-            } finally {
-                if (free) {
-                    pooled.free();
+            }
+        }
+
+        public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
+            synchronized (RemoteConnection.this) {
+                if (closed) { pooled.free(); return; }
+                if (close) { closed = true; }
+                final ConnectedMessageChannel channel = getChannel();
+                boolean free = true;
+                try {
+                    if (queue.isEmpty()) {
+                        final ByteBuffer buffer = pooled.getResource();
+                        if (! channel.send(buffer)) {
+                            RemoteLogger.log.tracef("Can't directly send message %s, enqueued", buffer);
+                            queue.add(pooled);
+                            free = false;
+                            channel.resumeWrites();
+                            return;
+                        }
+                        RemoteLogger.log.tracef("Sent message %s (direct)", buffer);
+                        if (! channel.flush()) {
+                            channel.resumeWrites();
+                            return;
+                        }
+                        RemoteLogger.log.tracef("Flushed channel");
+                        if (close) {
+                            if (channel.shutdownWrites()) {
+                                RemoteLogger.log.trace("Shut down writes on channel");
+                            } else {
+                                channel.resumeWrites();
+                                return;
+                            }
+                        }
+                    } else {
+                        queue.add(pooled);
+                        free = false;
+                    }
+                } catch (IOException e) {
+                    handleException(e, false);
+                    Pooled<ByteBuffer> unqueued;
+                    while ((unqueued = queue.poll()) != null) {
+                        unqueued.free();
+                    }
+                } finally {
+                    if (free) {
+                        pooled.free();
+                    }
                 }
             }
         }
