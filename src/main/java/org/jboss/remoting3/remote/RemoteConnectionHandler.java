@@ -152,6 +152,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     void handleClose() {
         remoteConnection.handleChannelClose();
         closeAllChannels();
+        connectionContext.remoteClosed();
     }
 
     ConnectionHandlerContext getConnectionContext() {
