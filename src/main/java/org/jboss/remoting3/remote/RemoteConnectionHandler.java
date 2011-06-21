@@ -83,7 +83,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
         final int outboundMessageCount = optionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
         final int inboundMessageCount = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
         UnlockedReadIntIndexHashMap<PendingChannel> pendingChannels = this.pendingChannels;
-        synchronized (this) {
+        synchronized (remoteConnection) {
             int channelCount;
             while ((channelCount = this.channelCount) == 0) {
                 try {
@@ -136,7 +136,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     }
 
     void closeAllChannels() {
-        synchronized (this) {
+        synchronized (remoteConnection) {
             final ClosedChannelException exception = new ClosedChannelException();
             for (PendingChannel pendingChannel : pendingChannels) {
                 pendingChannel.getResult().setException(exception);

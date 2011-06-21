@@ -81,14 +81,14 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     public MessageOutputStream writeMessage() throws IOException {
         int tries = 50;
         UnlockedReadIntIndexHashMap<OutboundMessage> outboundMessages = this.outboundMessages;
-        synchronized (this) {
+        synchronized (connection) {
             if (writeClosed) {
                 throw log.channelNotOpen();
             }
             int messageCount;
             while ((messageCount = outboundMessageCount) == 0) {
                 try {
-                    wait();
+                    connection.wait();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw log.writeInterrupted();
@@ -109,46 +109,52 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         }
     }
     
-    synchronized void free(OutboundMessage outboundMessage) {
-        outboundMessages.remove(outboundMessage);
-        outboundMessageCount++;
-        notifyAll();
-    }
-
-    public synchronized void writeShutdown() throws IOException {
-        if (writeClosed) {
-            return;
-        }
-        writeClosed = true;
-        Pooled<ByteBuffer> pooled = connection.allocate();
-        try {
-            ByteBuffer byteBuffer = pooled.getResource();
-            byteBuffer.put(Protocol.CHANNEL_SHUTDOWN_WRITE);
-            byteBuffer.putInt(channelId);
-            byteBuffer.flip();
-            ConnectedMessageChannel channel = connection.getChannel();
-            Channels.sendBlocking(channel, byteBuffer);
-            Channels.flushBlocking(channel);
-        } finally {
-            pooled.free();
+    void free(OutboundMessage outboundMessage) {
+        synchronized (connection) {
+            outboundMessages.remove(outboundMessage);
+            outboundMessageCount++;
+            connection.notifyAll();
         }
     }
 
-    synchronized void handleRemoteClose() {
-        writeClosed = true;
-        if (readClosed) {
-            return;
+    public void writeShutdown() throws IOException {
+        synchronized (connection) {
+            if (writeClosed) {
+                return;
+            }
+            writeClosed = true;
+            Pooled<ByteBuffer> pooled = connection.allocate();
+            try {
+                ByteBuffer byteBuffer = pooled.getResource();
+                byteBuffer.put(Protocol.CHANNEL_SHUTDOWN_WRITE);
+                byteBuffer.putInt(channelId);
+                byteBuffer.flip();
+                ConnectedMessageChannel channel = connection.getChannel();
+                Channels.sendBlocking(channel, byteBuffer);
+                Channels.flushBlocking(channel);
+            } finally {
+                pooled.free();
+            }
         }
-        readClosed = true;
-        for (OutboundMessage message : outboundMessages) {
-            message.asyncClose();
+    }
+
+    void handleRemoteClose() {
+        synchronized (connection) {
+            writeClosed = true;
+            if (readClosed) {
+                return;
+            }
+            readClosed = true;
+            for (OutboundMessage message : outboundMessages) {
+                message.asyncClose();
+            }
         }
     }
 
     void handleWriteShutdown() {
         final Receiver receiver;
         final Runnable runnable;
-        synchronized (this) {
+        synchronized (connection) {
             receiver = nextReceiver;
             if (receiver != null) {
                 runnable = new Runnable() {
@@ -169,7 +175,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     public void receiveMessage(final Receiver handler) {
-        synchronized (this) {
+        synchronized (connection) {
             if (inboundMessageQueue.isEmpty()) {
                 if (nextReceiver != null) {
                     throw new IllegalStateException("Message handler already queued");
@@ -183,7 +189,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                     }
                 });
             }
-            notify();
+            connection.notify();
         }
     }
 
@@ -198,7 +204,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 connection.handleException(new IOException("Protocol error: incoming message with duplicate ID received"));
                 return;
             }
-            synchronized(this) {
+            synchronized(connection) {
                 if (nextReceiver != null) {
                     final Receiver receiver = nextReceiver;
                     nextReceiver = null;
