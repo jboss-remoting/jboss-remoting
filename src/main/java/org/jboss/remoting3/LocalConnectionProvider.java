@@ -24,6 +24,9 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.net.URI;
+import java.security.Principal;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -83,6 +86,10 @@ final class LocalConnectionProvider implements ConnectionProvider {
             }
             result.setResult(channel);
             return nullCancellable();
+        }
+
+        public Collection<Principal> getPrincipals() {
+            return Collections.emptySet();
         }
 
         public void close() throws IOException {

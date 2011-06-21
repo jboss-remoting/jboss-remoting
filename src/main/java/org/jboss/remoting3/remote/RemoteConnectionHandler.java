@@ -24,12 +24,20 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
+import java.security.Principal;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Random;
+import java.util.Set;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.ServiceOpenException;
+import org.jboss.remoting3.security.InetAddressPrincipal;
+import org.jboss.remoting3.security.UserPrincipal;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.xnio.Cancellable;
@@ -39,6 +47,9 @@ import org.xnio.Pooled;
 import org.xnio.Result;
 import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
+import org.xnio.channels.SslChannel;
+
+import javax.net.ssl.SSLPeerUnverifiedException;
 
 final class RemoteConnectionHandler implements ConnectionHandler {
 
@@ -58,13 +69,36 @@ final class RemoteConnectionHandler implements ConnectionHandler {
      * Pending channels.  All have a "1" MSB.  Replies are read with a "0" MSB.
      */
     private final UnlockedReadIntIndexHashMap<PendingChannel> pendingChannels = new UnlockedReadIntIndexHashMap<PendingChannel>(PendingChannel.INDEXER);
+    private final Collection<Principal> principals;
 
     // todo limit or whatever
     private int channelCount = 50;
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final String authorizationId) {
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
+        final SslChannel sslChannel = remoteConnection.getSslChannel();
+        final Set<Principal> principals = new LinkedHashSet<Principal>();
+        if (sslChannel != null) {
+            try {
+                final Principal peerPrincipal = sslChannel.getSslSession().getPeerPrincipal();
+                principals.add(peerPrincipal);
+            } catch (SSLPeerUnverifiedException ignored) {
+            }
+        }
+        if (authorizationId != null) {
+            principals.add(new UserPrincipal(authorizationId));
+        }
+        final ConnectedMessageChannel channel = remoteConnection.getChannel();
+        final InetSocketAddress address = channel.getPeerAddress(InetSocketAddress.class);
+        if (address != null) {
+            principals.add(new InetAddressPrincipal(address.getAddress()));
+        }
+        this.principals = Collections.unmodifiableSet(principals);
+    }
+
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection) {
+        this(connectionContext, remoteConnection, null);
     }
 
     public Cancellable open(final String serviceType, final Result<Channel> result, final OptionMap optionMap) {
@@ -127,6 +161,10 @@ final class RemoteConnectionHandler implements ConnectionHandler {
                 }
             }
         }
+    }
+
+    public Collection<Principal> getPrincipals() {
+        return principals;
     }
 
     public void close() throws IOException {

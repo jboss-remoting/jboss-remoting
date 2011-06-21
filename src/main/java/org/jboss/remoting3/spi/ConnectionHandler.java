@@ -23,6 +23,8 @@
 package org.jboss.remoting3.spi;
 
 import java.io.Closeable;
+import java.security.Principal;
+import java.util.Collection;
 import org.jboss.remoting3.Channel;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
@@ -42,4 +44,11 @@ public interface ConnectionHandler extends Closeable {
      * @return a handle which may be used to cancel the pending operation
      */
     Cancellable open(String serviceType, Result<Channel> result, OptionMap optionMap);
+
+    /**
+     * Get the authenticated principals for this connection.
+     *
+     * @return the authenticated principals
+     */
+    Collection<Principal> getPrincipals();
 }
