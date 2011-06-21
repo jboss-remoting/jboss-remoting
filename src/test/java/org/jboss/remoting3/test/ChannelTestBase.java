@@ -95,7 +95,6 @@ public abstract class ChannelTestBase {
         assertTrue(wasEmpty.get());
     }
 
-    
     @Test
     public void testLotsOfContent() throws IOException, InterruptedException {
         final AtomicBoolean wasOk = new AtomicBoolean();
@@ -168,9 +167,6 @@ public abstract class ChannelTestBase {
 
     @Test
     public void testWriteCancel() throws IOException, InterruptedException {
-        final AtomicBoolean wasOk = new AtomicBoolean();
-        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
-        final CountDownLatch latch = new CountDownLatch(1);
         InputStream stream = ChannelTestBase.class.getResourceAsStream("/test-content.bin");
         assertNotNull(stream);
         final byte[] data;
@@ -188,6 +184,35 @@ public abstract class ChannelTestBase {
         } finally {
             IoUtils.safeClose(stream);
         }
+        testWriteCancel(data);
+    }
+
+    @Test
+    public void testWriteCancelIncompleteMessage() throws IOException, InterruptedException {
+        InputStream stream = ChannelTestBase.class.getResourceAsStream("/test-content.bin");
+        assertNotNull(stream);
+        final byte[] data;
+        try {
+            data = new byte[TEST_FILE_LENGTH/2];
+            int c = 0;
+            do {
+                int r = stream.read(data, c, TEST_FILE_LENGTH/2 - c);
+                if (r == -1) {
+                    break;
+                }
+                c += r;
+            } while (c < TEST_FILE_LENGTH/2);
+            stream.close();
+        } finally {
+            IoUtils.safeClose(stream);
+        }
+        testWriteCancel(data);
+    }
+
+    public void testWriteCancel(final byte[] data) throws IOException, InterruptedException {
+        final AtomicBoolean wasOk = new AtomicBoolean();
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
+        final CountDownLatch latch = new CountDownLatch(1);
         recvChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
                 error.printStackTrace();
@@ -205,13 +230,17 @@ public abstract class ChannelTestBase {
                 int c = 0;
                 try {
                     System.out.println("Message received");
+                    int r;
                     do {
-                        int r = message.read(received, c, TEST_FILE_LENGTH - c);
+                        r = message.read(received, c, TEST_FILE_LENGTH - c);
                         if (r == -1) {
                             break;
                         }
                         c += r;
                     } while (c < TEST_FILE_LENGTH);
+                    if (r != -1) {
+                        r = message.read();
+                    }
                     message.close();
                 } catch (MessageCancelledException e) {
                     System.out.println("Value of c at message cancelled is " + c);
@@ -289,7 +318,7 @@ public abstract class ChannelTestBase {
         Byte[] resultBytes = result.toArray(new Byte[result.size()]);
         assertEquals(bytes, resultBytes);
     }
-    
+
     @Test
     public void testSimpleWriteMethodWithWrappedOuputStream() throws Exception {
         Byte[] bytes = new Byte[] {1, 2, 3};
@@ -380,7 +409,6 @@ public abstract class ChannelTestBase {
                 }
             }
         });
-        
         latch.await();
         assertNull(exRef.get());
         Byte[] resultBytes = result.toArray(new Byte[result.size()]);

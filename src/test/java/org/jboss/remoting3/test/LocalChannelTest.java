@@ -93,7 +93,12 @@ public final class LocalChannelTest extends ChannelTestBase {
     public void testWriteCancel() throws IOException, InterruptedException {
         super.testWriteCancel();
     }
-    
+
+    @Test
+    public void testWriteCancelIncompleteMessage() throws IOException, InterruptedException {
+        super.testWriteCancelIncompleteMessage();
+    }
+
     @Test
     public void testSimpleWriteMethodFromNonInitiatingSide() throws Exception {
         super.testSimpleWriteMethodFromNonInitiatingSide();

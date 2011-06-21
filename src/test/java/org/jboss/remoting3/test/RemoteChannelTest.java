@@ -138,6 +138,11 @@ public final class RemoteChannelTest extends ChannelTestBase {
     }
     
     @Test
+    public void testWriteCancelHalfMessage() throws IOException, InterruptedException {
+        super.testWriteCancelIncompleteMessage();
+    }
+
+    @Test
     public void testSimpleWriteMethodFromNonInitiatingSide() throws Exception {
         super.testSimpleWriteMethodFromNonInitiatingSide();
     }

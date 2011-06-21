@@ -214,11 +214,11 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
             return inputStream;
         }
 
-        void doCancel() {
+        synchronized void doCancel() {
             cancelled = true;
         }
 
-        public boolean wasCancelled() {
+        public synchronized boolean wasCancelled() {
             return cancelled;
         }
 
@@ -227,7 +227,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
             return inputStream.read();
         }
 
-        private void checkCancel() throws MessageCancelledException {
+        private synchronized void checkCancel() throws MessageCancelledException {
             if (cancelled) {
                 throw new MessageCancelledException();
             }
