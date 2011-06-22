@@ -37,6 +37,7 @@ import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
+import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -125,12 +126,20 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (existing != null) {
             throw new ServiceRegistrationException("Service type '" + serviceType + "' is already registered");
         }
-        return new MapRegistration<OpenListener>(registeredServices, serviceType, openListener) {
+        final MapRegistration<OpenListener> registration = new MapRegistration<OpenListener>(registeredServices, serviceType, openListener) {
             protected void closeAction() {
                 super.closeAction();
                 openListener.registrationTerminated();
             }
         };
+        // automatically close the registration when the endpoint is closed
+        final Key key = addCloseHandler(SpiUtils.closingCloseHandler(registration));
+        registration.addCloseHandler(new CloseHandler<Registration>() {
+            public void handleClose(final Registration closed) {
+                key.remove();
+            }
+        });
+        return registration;
     }
 
     public IoFuture<Connection> connect(final URI destination) throws IOException {
@@ -233,14 +242,21 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
             }
             log.tracef("Adding connection provider registration named '%s': %s", uriScheme, provider);
-            final Registration handle = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider) {
+            final Registration registration = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider) {
                 protected void closeAction() {
                     super.closeAction();
                     provider.close();
                 }
             };
+            // automatically close the registration when the endpoint is closed
+            final Key key = addCloseHandler(SpiUtils.closingCloseHandler(registration));
+            registration.addCloseHandler(new CloseHandler<Registration>() {
+                public void handleClose(final Registration closed) {
+                    key.remove();
+                }
+            });
             ok = true;
-            return handle;
+            return registration;
         } finally {
             if (! ok) {
                 provider.close();
