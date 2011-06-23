@@ -25,7 +25,6 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.util.Arrays;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.regex.Pattern;
@@ -128,14 +127,17 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
         final MapRegistration<OpenListener> registration = new MapRegistration<OpenListener>(registeredServices, serviceType, openListener) {
             protected void closeAction() {
-                super.closeAction();
-                openListener.registrationTerminated();
+                try {
+                    openListener.registrationTerminated();
+                } finally {
+                    super.closeAction();
+                }
             }
         };
         // automatically close the registration when the endpoint is closed
         final Key key = addCloseHandler(SpiUtils.closingCloseHandler(registration));
         registration.addCloseHandler(new CloseHandler<Registration>() {
-            public void handleClose(final Registration closed) {
+            public void handleClose(final Registration closed, final IOException exception) {
                 key.remove();
             }
         });
@@ -185,7 +187,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
 
             public boolean setException(final IOException exception) {
-                glueStackTraces(exception, mark, 1, "asynchronous invocation");
+                SpiUtils.glueStackTraces(exception, mark, 1, "asynchronous invocation");
                 return futureResult.setException(exception);
             }
 
@@ -194,14 +196,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
         }, callbackHandler));
         return futureResult.getIoFuture();
-    }
-
-    static void glueStackTraces(final Throwable exception, final StackTraceElement[] ust, final int trimCount, final String msg) {
-        final StackTraceElement[] est = exception.getStackTrace();
-        final StackTraceElement[] fst = Arrays.copyOf(est, est.length + ust.length);
-        fst[est.length] = new StackTraceElement("..." + msg + "..", "", null, -1);
-        System.arraycopy(ust, trimCount, fst, est.length + 1, ust.length - trimCount);
-        exception.setStackTrace(fst);
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
@@ -244,14 +238,17 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             log.tracef("Adding connection provider registration named '%s': %s", uriScheme, provider);
             final Registration registration = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider) {
                 protected void closeAction() {
-                    super.closeAction();
-                    provider.close();
+                    try {
+                        provider.close();
+                    } finally {
+                        super.closeAction();
+                    }
                 }
             };
             // automatically close the registration when the endpoint is closed
             final Key key = addCloseHandler(SpiUtils.closingCloseHandler(registration));
             registration.addCloseHandler(new CloseHandler<Registration>() {
-                public void handleClose(final Registration closed) {
+                public void handleClose(final Registration closed, final IOException exception) {
                     key.remove();
                 }
             });
@@ -355,6 +352,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         protected void closeAction() {
             map.remove(key, value);
+            closeComplete();
         }
 
         public void close() {

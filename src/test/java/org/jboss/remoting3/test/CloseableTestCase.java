@@ -25,6 +25,7 @@ package org.jboss.remoting3.test;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -55,7 +56,7 @@ public final class CloseableTestCase {
             };
             try {
                 closeable.addCloseHandler(new CloseHandler<Object>() {
-                    public void handleClose(final Object x) {
+                    public void handleClose(final Object x, final IOException exception) {
                         closed.set(true);
                         latch.countDown();
                     }

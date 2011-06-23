@@ -47,7 +47,12 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     }
 
     protected void closeAction() throws IOException {
-        connectionHandler.close();
+        connectionHandler.closeAsync();
+        connectionHandler.addCloseHandler(new CloseHandler<ConnectionHandler>() {
+            public void handleClose(final ConnectionHandler closed, final IOException exception) {
+                closeComplete();
+            }
+        });
     }
 
     public Collection<Principal> getPrincipals() {

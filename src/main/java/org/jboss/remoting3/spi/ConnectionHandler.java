@@ -26,6 +26,7 @@ import java.io.Closeable;
 import java.security.Principal;
 import java.util.Collection;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.HandleableCloseable;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
@@ -33,7 +34,7 @@ import org.xnio.Result;
 /**
  * A connection to a foreign endpoint.  This interface is implemented by the protocol implementation.
  */
-public interface ConnectionHandler extends Closeable {
+public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler> {
 
     /**
      * Open a request handler.

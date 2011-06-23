@@ -24,6 +24,7 @@ package org.jboss.remoting3;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.xnio.IoFuture;
 
 /**
  * A Remoting resource that can be closed.
@@ -53,6 +54,11 @@ public interface HandleableCloseable<T> extends Closeable {
      * Wait for a resource close to complete.
      */
     void awaitClosedUninterruptibly();
+
+    /**
+     * Asynchronously close this resource.  Returns immediately.
+     */
+    void closeAsync();
 
     /**
      * Add a handler that will be called upon close.  If the resource is already closed, the handler will be called

@@ -23,6 +23,9 @@
 package org.jboss.remoting3.spi;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.IdentityHashMap;
@@ -113,43 +116,194 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
 
     /**
      * Called exactly once when the {@code close()} method is invoked; the actual close operation should take place here.
+     * This method <b>must</b> call {@link #closeComplete()}, directly or indirectly, for the close operation to finish
+     * (it may happen in another thread but it must happen).
      *
      * @throws RemotingException if the close failed
      */
-    protected void closeAction() throws IOException {}
+    protected void closeAction() throws IOException {
+        closeComplete();
+    }
 
     /**
      * {@inheritDoc}
      */
     public void close() throws IOException {
-        final Map<Key, CloseHandler<? super T>> closeHandlers;
+        boolean first = false;
         synchronized (closeLock) {
             switch (state) {
                 case OPEN: {
+                    first = true;
                     state = State.CLOSING;
-                    closeHandlers = this.closeHandlers;
-                    this.closeHandlers = null;
                     break;
                 }
-                case CLOSING:
+                case CLOSING: {
+                    break;
+                }
                 case CLOSED: return;
                 default: throw new IllegalStateException();
             }
         }
-        if (closeHandlers != null) {
-            log.tracef("Closed %s", this);
-            if (closeHandlers != null) {
-                for (final CloseHandler<? super T> handler : closeHandlers.values()) {
-                    runCloseTask(executor, new CloseHandlerTask(handler));
-                }
-            }
-        }
-        try {
+        if (first) try {
             closeAction();
-        } finally {
+        } catch (IOException e) {
+            log.tracef(e, "Close of %s failed", this);
+            final Map<Key, CloseHandler<? super T>> closeHandlers;
             synchronized (closeLock) {
                 state = State.CLOSED;
+                closeHandlers = this.closeHandlers;
+                this.closeHandlers = null;
                 closeLock.notifyAll();
+            }
+            if (closeHandlers != null) {
+                for (final CloseHandler<? super T> handler : closeHandlers.values()) {
+                    runCloseTask(executor, new CloseHandlerTask(handler, e));
+                }
+            }
+            throw e;
+        } catch (Throwable t) {
+            log.errorf(t, "Close action for %s failed to execute (resource may be left in an indeterminate state)", this);
+            throw new IllegalStateException(t);
+        }
+        final SyncCloseHandler<T> syncCloseHandler = new SyncCloseHandler<T>();
+        final Key key = addCloseHandler(syncCloseHandler);
+        try {
+            synchronized (syncCloseHandler) {
+                while (! syncCloseHandler.done) {
+                    try {
+                        syncCloseHandler.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new InterruptedIOException("Interrupted while waiting for close to complete");
+                    }
+                }
+                IOException cause = syncCloseHandler.cause;
+                if (cause != null) {
+                    final IOException clone = clone(cause);
+                    if (cause != clone) {
+                        SpiUtils.glueStackTraces(cause, Thread.currentThread().getStackTrace(), 1, "asynchronous close");
+                    }
+                    throw clone;
+                }
+                return;
+            }
+        } finally {
+            key.remove();
+        }
+    }
+
+    private static <T extends IOException> T clone(T original) {
+        final Throwable cause = original.getCause();
+        @SuppressWarnings("unchecked")
+        final Class<T> originalClass = (Class<T>) original.getClass();
+        // try a few constructors
+        Constructor<T> constructor = null;
+        try {
+            constructor = originalClass.getConstructor(String.class, Throwable.class);
+            final T clone = constructor.newInstance(original.getMessage(), cause);
+            clone.setStackTrace(original.getStackTrace());
+            return clone;
+        } catch (NoSuchMethodException e) {
+            // nope
+        } catch (InvocationTargetException e) {
+            // nope
+        } catch (InstantiationException e) {
+            // nope
+        } catch (IllegalAccessException e) {
+            // nope
+        }
+        try {
+            constructor = originalClass.getConstructor(String.class);
+            final T clone = constructor.newInstance(original.getMessage());
+            clone.initCause(cause);
+            clone.setStackTrace(original.getStackTrace());
+            return clone;
+        } catch (NoSuchMethodException e) {
+            // nope
+        } catch (InvocationTargetException e) {
+            // nope
+        } catch (InstantiationException e) {
+            // nope
+        } catch (IllegalAccessException e) {
+            // nope
+        }
+        try {
+            constructor = originalClass.getConstructor();
+            final T clone = constructor.newInstance();
+            clone.initCause(cause);
+            clone.setStackTrace(original.getStackTrace());
+            return clone;
+        } catch (NoSuchMethodException e) {
+            // nope
+        } catch (InvocationTargetException e) {
+            // nope
+        } catch (InstantiationException e) {
+            // nope
+        } catch (IllegalAccessException e) {
+            // nope
+        }
+        // we tried!
+        return original;
+    }
+
+    /**
+     * Call when close is complete.
+     */
+    protected void closeComplete() {
+        final Map<Key, CloseHandler<? super T>> closeHandlers;
+        synchronized (closeLock) {
+            switch (state) {
+                case CLOSING: {
+                    log.tracef("Completed close of %s", this);
+                    state = State.CLOSED;
+                    closeHandlers = this.closeHandlers;
+                    this.closeHandlers = null;
+                    break;
+                }
+                case CLOSED: {
+                    // idempotent
+                    return;
+                }
+                default:
+                    throw new IllegalStateException();
+            }
+            closeLock.notifyAll();
+        }
+        if (closeHandlers != null) {
+            for (final CloseHandler<? super T> handler : closeHandlers.values()) {
+                runCloseTask(executor, new CloseHandlerTask(handler, null));
+            }
+        }
+    }
+
+    /**
+     * Call if an async close has failed.
+     *
+     * @param cause the failure cause
+     */
+    protected void closeFailed(IOException cause) {
+        final Map<Key, CloseHandler<? super T>> closeHandlers;
+        synchronized (closeLock) {
+            switch (state) {
+                case CLOSING: {
+                    log.tracef(cause, "Completed close of %s with failure", this);
+                    state = State.CLOSED;
+                    closeHandlers = this.closeHandlers;
+                    this.closeHandlers = null;
+                    break;
+                }
+                case CLOSED: {
+                    // idempotent
+                    return;
+                }
+                default:
+                    throw new IllegalStateException();
+            }
+            closeLock.notifyAll();
+        }
+        if (closeHandlers != null) {
+            for (final CloseHandler<? super T> handler : closeHandlers.values()) {
+                runCloseTask(executor, new CloseHandlerTask(handler, cause));
             }
         }
     }
@@ -181,6 +335,40 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         }
     }
 
+    /** {@inheritDoc} */
+    public void closeAsync() {
+        synchronized (closeLock) {
+            switch (state) {
+                case OPEN: {
+                    state = State.CLOSING;
+                    break;
+                }
+                case CLOSING:
+                case CLOSED: return;
+                default: throw new IllegalStateException();
+            }
+        }
+        try {
+            closeAction();
+        } catch (IOException e) {
+            log.tracef(e, "Close of %s failed", this);
+            final Map<Key, CloseHandler<? super T>> closeHandlers;
+            synchronized (closeLock) {
+                state = State.CLOSED;
+                closeHandlers = this.closeHandlers;
+                this.closeHandlers = null;
+                closeLock.notifyAll();
+            }
+            if (closeHandlers != null) {
+                for (final CloseHandler<? super T> handler : closeHandlers.values()) {
+                    runCloseTask(executor, new CloseHandlerTask(handler, e));
+                }
+            }
+        } catch (Throwable t) {
+            log.errorf(t, "Close action for %s failed to execute (resource may be left in an indeterminate state)", this);
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -202,7 +390,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                 return key;
             }
         }
-        runCloseTask(executor, new CloseHandlerTask(handler));
+        runCloseTask(executor, new CloseHandlerTask(handler, null));
         return new NullKey();
     }
 
@@ -281,9 +469,9 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     }
 
     @SuppressWarnings({ "serial" })
-    private static final class LeakThrowable extends Throwable {
+    static final class LeakThrowable extends Throwable {
 
-        public LeakThrowable() {
+        LeakThrowable() {
         }
 
         public String toString() {
@@ -291,17 +479,33 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         }
     }
 
-    private final class CloseHandlerTask implements Runnable {
+    final class CloseHandlerTask implements Runnable {
 
         private final CloseHandler<? super T> handler;
+        private final IOException exception;
 
-        private CloseHandlerTask(final CloseHandler<? super T> handler) {
+        CloseHandlerTask(final CloseHandler<? super T> handler, final IOException exception) {
             this.handler = handler;
+            this.exception = exception;
         }
 
-        @SuppressWarnings({ "unchecked" })
+        @SuppressWarnings("unchecked")
         public void run() {
-            SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this);
+            SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this, exception);
+        }
+    }
+
+    private class SyncCloseHandler<T extends HandleableCloseable<T>> implements CloseHandler<T> {
+
+        boolean done;
+        IOException cause;
+
+        public void handleClose(final T closed, final IOException exception) {
+            synchronized (this) {
+                done = true;
+                cause = exception;
+                notifyAll();
+            }
         }
     }
 }

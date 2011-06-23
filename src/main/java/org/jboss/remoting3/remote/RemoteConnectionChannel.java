@@ -260,6 +260,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         } catch (IOException ignored) {
         }
         handleRemoteClose();
+        closeComplete();
     }
 
     RemoteConnection getConnection() {

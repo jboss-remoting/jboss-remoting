@@ -23,6 +23,8 @@
 package org.jboss.remoting3.spi;
 
 import java.io.Closeable;
+import java.io.IOException;
+import java.util.Arrays;
 import org.jboss.remoting3.CloseHandler;
 import org.xnio.IoUtils;
 import org.jboss.logging.Logger;
@@ -39,13 +41,14 @@ public final class SpiUtils {
     /**
      * Safely handle a close notification.
      *
-     * @param <T> the type of the closable resource
      * @param handler the close handler
      * @param closed the object that was closed
+     * @param exception the close exception, or {@code null} if the close succeeded
+     * @param <T> the type of the closed resource
      */
-    public static <T> void safeHandleClose(final CloseHandler<? super T> handler, final T closed) {
+    public static <T> void safeHandleClose(final CloseHandler<? super T> handler, final T closed, final IOException exception) {
         try {
-            if (handler != null && closed != null) handler.handleClose(closed);
+            if (handler != null && closed != null) handler.handleClose(closed, exception);
         } catch (Throwable t) {
             heLog.error("Close handler threw an exception", t);
         }
@@ -59,9 +62,25 @@ public final class SpiUtils {
      */
     public static CloseHandler<Object> closingCloseHandler(final Closeable c) {
         return new CloseHandler<Object>() {
-            public void handleClose(final Object closed) {
+            public void handleClose(final Object closed, final IOException exception) {
                 IoUtils.safeClose(c);
             }
         };
+    }
+
+    /**
+     * Glue two stack traces together.
+     *
+     * @param exception the exception which occurred in another thread
+     * @param userStackTrace the stack trace of the current thread from {@link Thread#getStackTrace()}
+     * @param trimCount the number of frames to trim
+     * @param msg the message to use
+     */
+    public static void glueStackTraces(final Throwable exception, final StackTraceElement[] userStackTrace, final int trimCount, final String msg) {
+        final StackTraceElement[] est = exception.getStackTrace();
+        final StackTraceElement[] fst = Arrays.copyOf(est, est.length + userStackTrace.length);
+        fst[est.length] = new StackTraceElement("..." + msg + "..", "", null, -1);
+        System.arraycopy(userStackTrace, trimCount, fst, est.length + 1, userStackTrace.length - trimCount);
+        exception.setStackTrace(fst);
     }
 }

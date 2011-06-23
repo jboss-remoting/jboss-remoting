@@ -38,6 +38,7 @@ import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3.security.InetAddressPrincipal;
 import org.jboss.remoting3.security.UserPrincipal;
+import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.xnio.Cancellable;
@@ -51,7 +52,7 @@ import org.xnio.channels.SslChannel;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
 
-final class RemoteConnectionHandler implements ConnectionHandler {
+final class RemoteConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
 
     static final int LENGTH_PLACEHOLDER = 0;
 
@@ -75,6 +76,7 @@ final class RemoteConnectionHandler implements ConnectionHandler {
     private int channelCount = 50;
 
     RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final String authorizationId) {
+        super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
         final SslChannel sslChannel = remoteConnection.getSslChannel();
@@ -167,10 +169,11 @@ final class RemoteConnectionHandler implements ConnectionHandler {
         return principals;
     }
 
-    public void close() throws IOException {
+    protected void closeAction() throws IOException {
         if (remoteConnection.handleOutboundCloseRequest()) {
             closeAllChannels();
         }
+        closeComplete();
     }
 
     void closeAllChannels() {

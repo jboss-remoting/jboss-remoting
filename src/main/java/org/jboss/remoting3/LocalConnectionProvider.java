@@ -22,12 +22,12 @@
 
 package org.jboss.remoting3;
 
-import java.io.IOException;
 import java.net.URI;
 import java.security.Principal;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.Executor;
+import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
@@ -68,11 +68,12 @@ final class LocalConnectionProvider implements ConnectionProvider {
         // no op
     }
 
-    private class LoopbackConnectionHandler implements ConnectionHandler {
+    private class LoopbackConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
 
         private final ConnectionHandlerContext context;
 
         LoopbackConnectionHandler(final ConnectionHandlerContext context) {
+            super(executor);
             this.context = context;
         }
 
@@ -90,9 +91,6 @@ final class LocalConnectionProvider implements ConnectionProvider {
 
         public Collection<Principal> getPrincipals() {
             return Collections.emptySet();
-        }
-
-        public void close() throws IOException {
         }
     }
 }

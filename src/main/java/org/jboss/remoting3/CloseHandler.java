@@ -22,6 +22,7 @@
 
 package org.jboss.remoting3;
 
+import java.io.IOException;
 import java.util.EventListener;
 
 /**
@@ -37,6 +38,7 @@ public interface CloseHandler<T> extends EventListener {
      * Receive a notification that the resource was closed.
      *
      * @param closed the closed resource
+     * @param exception the exception which occurred during close, if any
      */
-    void handleClose(T closed);
+    void handleClose(T closed, IOException exception);
 }

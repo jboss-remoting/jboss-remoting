@@ -160,6 +160,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
             closed = true;
             lock.notifyAll();
         }
+        closeComplete();
     }
 
     LoopbackChannel getOtherSide() {
