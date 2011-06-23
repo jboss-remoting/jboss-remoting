@@ -23,6 +23,7 @@
 package org.jboss.remoting3.spi;
 
 import java.net.URI;
+import org.jboss.remoting3.HandleableCloseable;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
@@ -33,7 +34,7 @@ import javax.security.auth.callback.CallbackHandler;
  * A connection provider.  Used to establish connections with remote systems.  There is typically one instance
  * of this interface per connection provider factory per endpoint.
  */
-public interface ConnectionProvider {
+public interface ConnectionProvider extends HandleableCloseable<ConnectionProvider> {
 
     /**
      * Open an outbound connection to the given URI.  This method is expected to be non-blocking, with the result
@@ -56,11 +57,6 @@ public interface ConnectionProvider {
      * @see NetworkServerProvider
      */
     Object getProviderInterface();
-
-    /**
-     * Called when the provider's registration is closed.
-     */
-    void close();
 
     /**
      * The object to use when a connection provider has no provider interfaces.

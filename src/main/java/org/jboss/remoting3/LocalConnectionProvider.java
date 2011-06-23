@@ -41,12 +41,13 @@ import javax.security.auth.callback.CallbackHandler;
 
 import static org.xnio.IoUtils.nullCancellable;
 
-final class LocalConnectionProvider implements ConnectionProvider {
+final class LocalConnectionProvider extends AbstractHandleableCloseable<ConnectionProvider> implements ConnectionProvider {
 
     private final Executor executor;
     private final ConnectionProviderContext context;
 
     LocalConnectionProvider(final ConnectionProviderContext context, final Executor executor) {
+        super(executor);
         this.context = context;
         this.executor = executor;
     }
@@ -62,10 +63,6 @@ final class LocalConnectionProvider implements ConnectionProvider {
 
     public Object getProviderInterface() {
         return NO_PROVIDER_INTERFACES;
-    }
-
-    public void close() {
-        // no op
     }
 
     private class LoopbackConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {

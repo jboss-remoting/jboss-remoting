@@ -33,6 +33,7 @@ import java.security.AccessController;
 import java.security.GeneralSecurityException;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
+import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
@@ -63,7 +64,7 @@ import static org.jboss.remoting3.remote.RemoteLogger.log;
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-final class RemoteConnectionProvider implements ConnectionProvider {
+final class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionProvider> implements ConnectionProvider {
 
     private final ProviderInterface providerInterface = new ProviderInterface();
     private final Xnio xnio;
@@ -75,6 +76,7 @@ final class RemoteConnectionProvider implements ConnectionProvider {
     private final Pool<ByteBuffer> framingBufferPool;
 
     RemoteConnectionProvider(final Xnio xnio, final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
+        super(connectionProviderContext.getExecutor());
         this.xnio = xnio;
         try {
             if (optionMap.get(Options.SSL_ENABLED, true)) {
@@ -135,9 +137,11 @@ final class RemoteConnectionProvider implements ConnectionProvider {
         return providerInterface;
     }
 
-    public void close() {
+    protected void closeAction() {
         ChannelThreadPools.shutdown(readThreadPool);
         ChannelThreadPools.shutdown(writeThreadPool);
+        // todo tear down connections...
+        closeComplete();
     }
 
     final class ProviderInterface implements NetworkServerProvider {

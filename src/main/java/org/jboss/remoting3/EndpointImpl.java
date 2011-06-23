@@ -27,6 +27,7 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import org.jboss.remoting3.security.PasswordClientCallbackHandler;
 import org.jboss.remoting3.security.RemotingPermission;
@@ -113,6 +114,36 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return new ChannelPair(channel, channel.getOtherSide());
     }
 
+    protected void closeAction() throws IOException {
+        @SuppressWarnings("serial")
+        class CloseCounter extends AtomicInteger implements CloseHandler<Object> {
+            CloseCounter() {
+                super(1);
+            }
+
+            public void handleClose(final Object closed, final IOException exception) {
+                tick();
+            }
+
+            void tick() {
+                if (getAndDecrement() == 0) {
+                    closeComplete();
+                }
+            }
+
+            void addTo(HandleableCloseable<?> target) {
+                getAndIncrement();
+                target.closeAsync();
+                target.addCloseHandler(this);
+            }
+        }
+        final CloseCounter counter = new CloseCounter();
+        for (ConnectionProvider connectionProvider : connectionProviders.values()) {
+            counter.addTo(connectionProvider);
+        }
+        counter.tick();
+    }
+
     public Registration registerService(final String serviceType, final OpenListener openListener, final OptionMap optionMap) throws ServiceRegistrationException {
         if (! VALID_SERVICE_PATTERN.matcher(serviceType).matches()) {
             throw new IllegalArgumentException("Service type must match " + VALID_SERVICE_PATTERN);
@@ -126,7 +157,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             throw new ServiceRegistrationException("Service type '" + serviceType + "' is already registered");
         }
         final MapRegistration<OpenListener> registration = new MapRegistration<OpenListener>(registeredServices, serviceType, openListener) {
-            protected void closeAction() {
+            protected void closeAction() throws IOException {
                 try {
                     openListener.registrationTerminated();
                 } finally {
@@ -237,7 +268,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
             log.tracef("Adding connection provider registration named '%s': %s", uriScheme, provider);
             final Registration registration = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider) {
-                protected void closeAction() {
+                protected void closeAction() throws IOException {
                     try {
                         provider.close();
                     } finally {
@@ -350,7 +381,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             this.value = value;
         }
 
-        protected void closeAction() {
+        protected void closeAction() throws IOException {
             map.remove(key, value);
             closeComplete();
         }
