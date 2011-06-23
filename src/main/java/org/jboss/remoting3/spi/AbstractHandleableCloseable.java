@@ -129,6 +129,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
      * {@inheritDoc}
      */
     public void close() throws IOException {
+        log.tracef("Closing %s synchronously", this);
         boolean first = false;
         synchronized (closeLock) {
             switch (state) {
@@ -337,6 +338,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
 
     /** {@inheritDoc} */
     public void closeAsync() {
+        log.tracef("Closing %s asynchronously", this);
         synchronized (closeLock) {
             switch (state) {
                 case OPEN: {

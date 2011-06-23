@@ -31,6 +31,8 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.GeneralSecurityException;
+import java.util.Set;
+import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
@@ -99,6 +101,9 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     }
 
     public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
+        if (! isOpen()) {
+            throw new IllegalStateException("Connection provider is closed");
+        }
         RemoteLogger.log.tracef("Attempting to connect to \"%s\" with options %s", uri, connectOptions);
         final boolean sslCapable = xnioSsl != null;
         boolean useSsl = sslCapable && ! connectOptions.get(Options.SECURE, false);
@@ -150,11 +155,18 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             final boolean sslCapable = xnioSsl != null;
             final WriteChannelThread writeThread = writeThreadPool.getThread();
             final AcceptListener acceptListener = new AcceptListener(optionMap, authenticationProvider);
+            final AcceptingChannel<? extends ConnectedStreamChannel> result;
             if (sslCapable && optionMap.get(Options.SSL_ENABLED, true)) {
-                return xnioSsl.createSslTcpServer((InetSocketAddress) bindAddress, writeThread, acceptListener, optionMap);
+                result = xnioSsl.createSslTcpServer((InetSocketAddress) bindAddress, writeThread, acceptListener, optionMap);
             } else {
-                return xnio.createStreamServer(bindAddress, writeThread, acceptListener, optionMap);
+                result = xnio.createStreamServer(bindAddress, writeThread, acceptListener, optionMap);
             }
+            addCloseHandler(new CloseHandler<ConnectionProvider>() {
+                public void handleClose(final ConnectionProvider closed, final IOException exception) {
+                    IoUtils.safeClose(result);
+                }
+            });
+            return result;
         }
     }
 

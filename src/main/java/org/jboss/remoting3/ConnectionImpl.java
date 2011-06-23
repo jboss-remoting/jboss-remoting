@@ -38,11 +38,9 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     private final Attachments attachments = new Attachments();
 
     private final ConnectionHandler connectionHandler;
-    private final String name;
 
-    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final String name) {
+    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext) {
         super(endpoint.getExecutor());
-        this.name = name;
         connectionHandler = connectionHandlerFactory.createInstance(endpoint.new LocalConnectionContext(connectionProviderContext, this));
     }
 
@@ -70,6 +68,6 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     }
 
     public String toString() {
-        return "Connection to " + name;
+        return String.format("Remoting connection <%x>", Integer.valueOf(hashCode()));
     }
 }

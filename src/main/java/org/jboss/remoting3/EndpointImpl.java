@@ -25,6 +25,9 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -69,6 +72,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private final ConcurrentMap<String, ConnectionProvider> connectionProviders = new UnlockedReadHashMap<String, ConnectionProvider>();
     private final ConcurrentMap<String, OpenListener> registeredServices = new UnlockedReadHashMap<String, OpenListener>();
+    private final Set<Connection> connections = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<Connection, Boolean>()));
 
     private static final Pattern VALID_SERVICE_PATTERN = Pattern.compile("[-.:a-zA-Z_0-9]+");
 
@@ -79,6 +83,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     @SuppressWarnings("unused")
     private final OptionMap optionMap;
     private final ConnectionProviderContext connectionProviderContext;
+    private final CloseHandler<Connection> connectionCloseHandler = new CloseHandler<Connection>() {
+        public void handleClose(final Connection closed, final IOException exception) {
+            connections.remove(closed);
+        }
+    };
 
     EndpointImpl(final Executor executor, final String name, final OptionMap optionMap) throws IOException {
         super(executor);
@@ -140,6 +149,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final CloseCounter counter = new CloseCounter();
         for (ConnectionProvider connectionProvider : connectionProviders.values()) {
             counter.addTo(connectionProvider);
+        }
+        Object[] array = connections.toArray();
+        for (Object connection : array) {
+            counter.addTo((Connection) connection);
         }
         counter.tick();
     }
@@ -214,7 +227,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
         futureResult.addCancelHandler(connectionProvider.connect(destination, connectOptions, new Result<ConnectionHandlerFactory>() {
             public boolean setResult(final ConnectionHandlerFactory result) {
-                return futureResult.setResult(new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext, destination.toString()));
+                final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext);
+                connections.add(connection);
+                connection.addCloseHandler(connectionCloseHandler);
+                return futureResult.setResult(connection);
             }
 
             public boolean setException(final IOException exception) {
@@ -439,7 +455,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory) {
-            new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, "client");
+            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this);
+            connection.addCloseHandler(connectionCloseHandler);
+            connections.add(connection);
         }
 
         public Endpoint getEndpoint() {
