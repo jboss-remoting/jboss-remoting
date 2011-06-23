@@ -171,7 +171,12 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             }
         }
         Executor executor = connection.getExecutor();
-        executor.execute(runnable);
+        try {
+            executor.execute(runnable);
+        } catch (Throwable t) {
+            connection.handleException(new IOException("Fatal connection error", t));
+            return;
+        }
     }
 
     public void receiveMessage(final Receiver handler) {
@@ -183,11 +188,16 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 nextReceiver = handler;
             } else {
                 final InboundMessage message = inboundMessageQueue.remove();
-                getExecutor().execute(new Runnable() {
-                    public void run() {
-                        handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream);
-                    }
-                });
+                try {
+                    getExecutor().execute(new Runnable() {
+                        public void run() {
+                            handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream);
+                        }
+                    });
+                } catch (Throwable t) {
+                    connection.handleException(new IOException("Fatal connection error", t));
+                    return;
+                }
             }
             connection.notify();
         }
@@ -208,11 +218,16 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 if (nextReceiver != null) {
                     final Receiver receiver = nextReceiver;
                     nextReceiver = null;
-                    getExecutor().execute(new Runnable() {
-                        public void run() {
-                            receiver.handleMessage(RemoteConnectionChannel.this, inboundMessage.messageInputStream);
-                        }
-                    });
+                    try {
+                        getExecutor().execute(new Runnable() {
+                            public void run() {
+                                receiver.handleMessage(RemoteConnectionChannel.this, inboundMessage.messageInputStream);
+                            }
+                        });
+                    } catch (Throwable t) {
+                        connection.handleException(new IOException("Fatal connection error", t));
+                        return;
+                    }
                 } else {
                     inboundMessageQueue.add(inboundMessage);
                 }
