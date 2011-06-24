@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
@@ -555,4 +556,44 @@ public abstract class ChannelTestBase {
         assertTrue(wasEmpty.get());
     }
 
+    @Test
+    public void testRemoteChannelClose() throws Exception {
+        final CountDownLatch closedLatch = new CountDownLatch(1);
+        sendChannel.addCloseHandler(new CloseHandler<Channel>() {
+            public void handleClose(final Channel closed, final IOException exception) {
+                closedLatch.countDown();
+            }
+        });
+        sendChannel.receiveMessage(new Channel.Receiver() {
+            public void handleError(final Channel channel, final IOException error) {
+                IoUtils.safeClose(channel);
+            }
+
+            public void handleEnd(final Channel channel) {
+                IoUtils.safeClose(channel);
+            }
+
+            public void handleMessage(final Channel channel, final MessageInputStream message) {
+                IoUtils.safeClose(message);
+            }
+        });
+        recvChannel.receiveMessage(new Channel.Receiver() {
+            public void handleError(final Channel channel, final IOException error) {
+                IoUtils.safeClose(channel);
+            }
+
+            public void handleEnd(final Channel channel) {
+                IoUtils.safeClose(channel);
+            }
+
+            public void handleMessage(final Channel channel, final MessageInputStream message) {
+                IoUtils.safeClose(message);
+            }
+        });
+        sendChannel.writeShutdown();
+        IoUtils.safeClose(recvChannel);
+        System.out.println("Waiting for closed");
+        closedLatch.await();
+        System.out.println("Closed");
+    }
 }
