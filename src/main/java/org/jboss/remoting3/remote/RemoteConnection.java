@@ -51,6 +51,7 @@ final class RemoteConnection {
     private final Executor executor;
     private volatile Result<ConnectionHandlerFactory> result;
     private final AtomicBoolean closeSent = new AtomicBoolean(false);
+    private final AtomicBoolean closeReceived = new AtomicBoolean(false);
 
     RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedStreamChannel underlyingChannel, final ConnectedMessageChannel channel, final OptionMap optionMap, final Executor executor) {
         this.messageBufferPool = messageBufferPool;
@@ -141,12 +142,13 @@ final class RemoteConnection {
         } catch (IOException e) {
             RemoteLogger.log.debugf("Failed to shut down reads: %s", e);
         }
+        closeReceived.set(true);
         sendCloseRequest();
     }
 
     boolean handleOutboundCloseRequest() {
         RemoteLogger.log.trace("Initiating connection close request");
-        return sendCloseRequest();
+        return (sendCloseRequest() || closeSent.get()) && closeReceived.get();
     }
 
     void handleChannelClose() {

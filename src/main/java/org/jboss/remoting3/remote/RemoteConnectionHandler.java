@@ -172,8 +172,9 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     protected void closeAction() throws IOException {
         if (remoteConnection.handleOutboundCloseRequest()) {
             closeAllChannels();
+            closeComplete();
         }
-        closeComplete();
+
     }
 
     void closeAllChannels() {
