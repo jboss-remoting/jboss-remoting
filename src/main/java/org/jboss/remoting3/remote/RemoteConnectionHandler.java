@@ -194,7 +194,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             }
             pendingChannels.clear();
             for (RemoteConnectionChannel channel : channels) {
-                channel.handleRemoteClose();
+                channel.closeAsync();
             }
             channels.clear();
         }
