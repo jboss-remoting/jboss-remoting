@@ -45,7 +45,7 @@ import org.xnio.channels.ConnectedMessageChannel;
 final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel> implements Channel {
 
     static final IntIndexer<RemoteConnectionChannel> INDEXER = new IntIndexer<RemoteConnectionChannel>() {
-        public int indexOf(final RemoteConnectionChannel argument) {
+        public int getKey(final RemoteConnectionChannel argument) {
             return argument.channelId;
         }
 
@@ -56,8 +56,8 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     private final RemoteConnection connection;
     private final int channelId;
-    private final UnlockedReadIntIndexHashMap<OutboundMessage> outboundMessages = new UnlockedReadIntIndexHashMap<OutboundMessage>(OutboundMessage.INDEXER);
-    private final UnlockedReadIntIndexHashMap<InboundMessage> inboundMessages = new UnlockedReadIntIndexHashMap<InboundMessage>(InboundMessage.INDEXER);
+    private final IntIndexMap<OutboundMessage> outboundMessages = new UnlockedIntIndexHashMap2<OutboundMessage>(OutboundMessage.INDEXER, Equaller.IDENTITY);
+    private final IntIndexMap<InboundMessage> inboundMessages = new UnlockedIntIndexHashMap2<InboundMessage>(InboundMessage.INDEXER, Equaller.IDENTITY);
     private final Random random;
     private final int outboundWindow;
     private final int inboundWindow;
@@ -80,7 +80,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     public MessageOutputStream writeMessage() throws IOException {
         int tries = 50;
-        UnlockedReadIntIndexHashMap<OutboundMessage> outboundMessages = this.outboundMessages;
+        IntIndexMap<OutboundMessage> outboundMessages = this.outboundMessages;
         synchronized (connection) {
             if (writeClosed) {
                 throw log.channelNotOpen();
@@ -287,11 +287,11 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     void freeOutboundMessage(final short id) {
-        outboundMessages.remove(id & 0xffff);
+        outboundMessages.removeKey(id & 0xffff);
     }
 
     void freeInboundMessage(final short id) {
-        inboundMessages.remove(id & 0xffff);
+        inboundMessages.removeKey(id & 0xffff);
     }
 
     Pooled<ByteBuffer> allocate(final byte protoId) {

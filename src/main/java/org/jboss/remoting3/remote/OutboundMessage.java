@@ -107,7 +107,7 @@ final class OutboundMessage extends MessageOutputStream {
     };
 
     static final IntIndexer<OutboundMessage> INDEXER = new IntIndexer<OutboundMessage>() {
-        public int indexOf(final OutboundMessage argument) {
+        public int getKey(final OutboundMessage argument) {
             return argument.messageId & 0xffff;
         }
 

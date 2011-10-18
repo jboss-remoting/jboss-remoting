@@ -30,7 +30,5 @@ package org.jboss.remoting3.remote;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 interface IntIndexer<T> {
-    int indexOf(T argument);
-
-    boolean equals(T argument, int index);
+    int getKey(T argument);
 }

@@ -65,11 +65,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
      * Local channel IDs are read with a "0" MSB and written with a "1" MSB.  Channel IDs here
      * are stored from the "write" perspective.  Remote channels "0", Local channels "1" MSB.
      */
-    private final UnlockedReadIntIndexHashMap<RemoteConnectionChannel> channels = new UnlockedReadIntIndexHashMap<RemoteConnectionChannel>(RemoteConnectionChannel.INDEXER);
+    private final IntIndexMap<RemoteConnectionChannel> channels = new UnlockedIntIndexHashMap2<RemoteConnectionChannel>(RemoteConnectionChannel.INDEXER, Equaller.IDENTITY);
     /**
      * Pending channels.  All have a "1" MSB.  Replies are read with a "0" MSB.
      */
-    private final UnlockedReadIntIndexHashMap<PendingChannel> pendingChannels = new UnlockedReadIntIndexHashMap<PendingChannel>(PendingChannel.INDEXER);
+    private final IntIndexMap<PendingChannel> pendingChannels = new UnlockedIntIndexHashMap2<PendingChannel>(PendingChannel.INDEXER, Equaller.IDENTITY);
     private final Collection<Principal> principals;
 
     // todo limit or whatever
@@ -118,7 +118,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         final int inboundWindowSize = optionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, connectionOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
         final int outboundMessageCount = optionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
         final int inboundMessageCount = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
-        UnlockedReadIntIndexHashMap<PendingChannel> pendingChannels = this.pendingChannels;
+        IntIndexMap<PendingChannel> pendingChannels = this.pendingChannels;
         synchronized (remoteConnection) {
             int channelCount;
             while ((channelCount = this.channelCount) == 0) {
@@ -152,7 +152,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                             Channels.sendBlocking(channel, buffer);
                         } catch (IOException e) {
                             result.setException(e);
-                            pendingChannels.remove(id);
+                            pendingChannels.removeKey(id);
                             return IoUtils.nullCancellable();
                         }
                         // TODO: allow cancel
@@ -246,7 +246,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     PendingChannel removePendingChannel(final int id) {
-        return pendingChannels.remove(id);
+        return pendingChannels.removeKey(id);
     }
 
     void putChannel(final RemoteConnectionChannel channel) {

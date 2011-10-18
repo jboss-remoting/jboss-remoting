@@ -42,7 +42,7 @@ final class InboundMessage {
     boolean cancelled;
 
     static final IntIndexer<InboundMessage> INDEXER = new IntIndexer<InboundMessage>() {
-        public int indexOf(final InboundMessage argument) {
+        public int getKey(final InboundMessage argument) {
             return argument.messageId & 0xffff;
         }
 

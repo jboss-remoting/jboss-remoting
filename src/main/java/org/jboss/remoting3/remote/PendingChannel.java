@@ -70,7 +70,7 @@ final class PendingChannel {
     }
 
     static final IntIndexer<PendingChannel> INDEXER = new IntIndexer<PendingChannel>() {
-        public int indexOf(final PendingChannel argument) {
+        public int getKey(final PendingChannel argument) {
             return argument.id;
         }
 
