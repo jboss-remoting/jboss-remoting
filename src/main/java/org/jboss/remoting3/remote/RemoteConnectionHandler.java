@@ -168,6 +168,15 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     public Collection<Principal> getPrincipals() {
         return principals;
     }
+    
+    protected void proceedClose() throws IOException {
+        synchronized(this) {
+            if (isClosing()) {
+                // it is a case of async close that is waiting for a signal to proceed
+                closeAction();
+            }
+        }
+    }
 
     protected void closeAction() throws IOException {
         if (remoteConnection.handleOutboundCloseRequest()) {

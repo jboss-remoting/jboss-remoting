@@ -114,6 +114,12 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         }
     }
 
+    protected boolean isClosing() {
+        synchronized (closeLock) {
+            return state == State.CLOSING;
+        }
+    }
+
     /**
      * Called exactly once when the {@code close()} method is invoked; the actual close operation should take place here.
      * This method <b>must</b> call {@link #closeComplete()}, directly or indirectly, for the close operation to finish
@@ -379,7 +385,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             throw new NullPointerException("handler is null");
         }
         synchronized (closeLock) {
-            if (state == State.OPEN) {
+            if (state == State.OPEN || state == State.CLOSING) {
                 final Key key = new KeyImpl<T>(this);
                 final Map<Key, CloseHandler<? super T>> closeHandlers = this.closeHandlers;
                 if (closeHandlers == null) {

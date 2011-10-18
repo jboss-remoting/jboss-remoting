@@ -135,7 +135,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
 
             void tick() {
-                if (getAndDecrement() == 0) {
+                if (decrementAndGet() == 0) {
                     closeComplete();
                 }
             }
