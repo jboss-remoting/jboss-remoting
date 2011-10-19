@@ -29,8 +29,8 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.security.Principal;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -124,7 +124,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             final Set<String> restrictions = saslMechs == null ? null : new HashSet<String>(saslMechs);
             final Sequence<String> saslNoMechs = optionMap.get(Options.SASL_DISALLOWED_MECHANISMS);
             final Set<String> disallowed = saslNoMechs == null ? Collections.<String>emptySet() : new HashSet<String>(saslNoMechs);
-            final Enumeration<SaslServerFactory> factories = Sasl.getSaslServerFactories();
+            final Iterator<SaslServerFactory> factories = SaslUtils.getSaslServerFactories();
             try {
                 if ((restrictions == null || restrictions.contains("EXTERNAL")) && ! disallowed.contains("EXTERNAL")) {
                     // only enable external if there is indeed an external auth layer to be had
@@ -145,8 +145,8 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             } catch (IOException e) {
                 // ignore
             }
-            while (factories.hasMoreElements()) {
-                SaslServerFactory factory = factories.nextElement();
+            while (factories.hasNext()) {
+                SaslServerFactory factory = factories.next();
                 server.tracef("Trying SASL server factory %s", factory);
                 for (String mechName : factory.getMechanismNames(propertyMap)) {
                     if (restrictions != null && ! restrictions.contains(mechName)) {
