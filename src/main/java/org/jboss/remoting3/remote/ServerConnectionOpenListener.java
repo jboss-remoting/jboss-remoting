@@ -262,7 +262,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                     server.tracef("Server sending authentication complete");
                                     connectionProviderContext.accept(new ConnectionHandlerFactory() {
                                         public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                                            final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection);
+                                            final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, saslServer.getAuthorizationID());
                                             connection.setReadListener(new RemoteReadListener(connectionHandler, connection));
                                             return connectionHandler;
                                         }
@@ -381,7 +381,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                             server.tracef("Server sending authentication complete");
                                             connectionProviderContext.accept(new ConnectionHandlerFactory() {
                                                 public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection);
+                                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, saslServer.getAuthorizationID());
                                                     connection.setReadListener(new RemoteReadListener(connectionHandler, connection));
                                                     return connectionHandler;
                                                 }

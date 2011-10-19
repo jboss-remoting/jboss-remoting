@@ -172,14 +172,6 @@ final class Protocol {
      * Always flows from message recipient to message sender.
      */
     static final byte MESSAGE_ASYNC_CLOSE = 0x32;
-    /**
-     * byte 0: MESSAGE_CANCELLED
-     * byte 1..4: channel ID
-     * byte 5..6: message ID
-     *
-     * Bypasses message data in queue.
-     */
-    static final byte MESSAGE_CANCELLED = 0x33;
 
     // Messages for handling connection status
 

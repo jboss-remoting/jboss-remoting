@@ -23,12 +23,19 @@
 package org.jboss.remoting3.remote;
 
 import java.nio.ByteBuffer;
+import java.util.Random;
 import org.xnio.Buffers;
 
 import static org.jboss.remoting3.remote.Protocol.UTF_8;
 import static org.xnio.Buffers.take;
 
 final class ProtocolUtils {
+
+    static final ThreadLocal<Random> randomHolder = new ThreadLocal<Random>() {
+        protected Random initialValue() {
+            return new Random();
+        }
+    };
 
     private ProtocolUtils() {
     }

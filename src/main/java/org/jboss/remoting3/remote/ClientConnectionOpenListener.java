@@ -297,7 +297,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         Buffers.putModifiedUtf8(sendBuffer, mechanismName);
                         sendBuffer.flip();
                         connection.send(pooledSendBuffer);
-                        connection.setReadListener(new Authentication(saslClient, serverName));
+                        connection.setReadListener(new Authentication(saslClient, serverName, userName));
                         return;
                     }
                     default: {
@@ -390,10 +390,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
         private final SaslClient saslClient;
         private final String serverName;
+        private final String authorizationID;
 
-        Authentication(final SaslClient saslClient, final String serverName) {
+        Authentication(final SaslClient saslClient, final String serverName, final String authorizationID) {
             this.saslClient = saslClient;
             this.serverName = serverName;
+            this.authorizationID = authorizationID;
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
@@ -489,7 +491,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {
                                     public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                         // this happens immediately.
-                                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection);
+                                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, authorizationID);
                                         connection.setReadListener(new RemoteReadListener(connectionHandler, connection));
                                         return connectionHandler;
                                     }

@@ -116,7 +116,23 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     }
                                 }
                                 if (serviceType == null) {
-                                    // todo: exception
+                                    // invalid service reply
+                                    Pooled<ByteBuffer> pooledReply = connection.allocate();
+                                    boolean ok = false;
+                                    try {
+                                        ByteBuffer replyBuffer = pooledReply.getResource();
+                                        replyBuffer.clear();
+                                        replyBuffer.put(Protocol.SERVICE_ERROR);
+                                        replyBuffer.putInt(channelId);
+                                        replyBuffer.put("Missing service name".getBytes(Protocol.UTF_8));
+                                        replyBuffer.flip();
+                                        ok = true;
+                                        // send takes ownership of the buffer
+                                        connection.send(pooledReply);
+                                    } finally {
+                                        if (! ok) pooledReply.free();
+                                    }
+                                    break;
                                 }
 
                                 // construct the channel
@@ -128,6 +144,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 
                                 // construct reply
                                 Pooled<ByteBuffer> pooledReply = connection.allocate();
+                                boolean ok = false;
                                 try {
                                     ByteBuffer replyBuffer = pooledReply.getResource();
                                     replyBuffer.clear();
@@ -137,9 +154,11 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     ProtocolUtils.writeShort(replyBuffer, 0x81, outboundMessages);
                                     replyBuffer.put((byte) 0);
                                     replyBuffer.flip();
+                                    ok = true;
+                                    // send takes ownership of the buffer
                                     connection.send(pooledReply);
                                 } finally {
-                                    pooledReply.free();
+                                    if (! ok) pooledReply.free();
                                 }
                                 break;
                             }
