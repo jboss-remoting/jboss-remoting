@@ -24,8 +24,6 @@ package org.jboss.remoting3.test;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.jboss.remoting3.ChannelPair;
@@ -49,8 +47,7 @@ public final class LocalChannelTest extends ChannelTestBase {
 
     @BeforeClass
     public static void create() throws IOException {
-        executorService = new ThreadPoolExecutor(16, 16, 1L, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
-        endpoint = Remoting.createEndpoint("test", executorService, OptionMap.EMPTY);
+        endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
     }
 
     @Before

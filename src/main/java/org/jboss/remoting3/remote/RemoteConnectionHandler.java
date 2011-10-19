@@ -65,11 +65,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
      * Local channel IDs are read with a "0" MSB and written with a "1" MSB.  Channel IDs here
      * are stored from the "write" perspective.  Remote channels "0", Local channels "1" MSB.
      */
-    private final IntIndexMap<RemoteConnectionChannel> channels = new UnlockedIntIndexHashMap2<RemoteConnectionChannel>(RemoteConnectionChannel.INDEXER, Equaller.IDENTITY);
+    private final IntIndexMap<RemoteConnectionChannel> channels = new IntIndexHashMap<RemoteConnectionChannel>(RemoteConnectionChannel.INDEXER, Equaller.IDENTITY);
     /**
      * Pending channels.  All have a "1" MSB.  Replies are read with a "0" MSB.
      */
-    private final IntIndexMap<PendingChannel> pendingChannels = new UnlockedIntIndexHashMap2<PendingChannel>(PendingChannel.INDEXER, Equaller.IDENTITY);
+    private final IntIndexMap<PendingChannel> pendingChannels = new IntIndexHashMap<PendingChannel>(PendingChannel.INDEXER, Equaller.IDENTITY);
     private final Collection<Principal> principals;
 
     // todo limit or whatever

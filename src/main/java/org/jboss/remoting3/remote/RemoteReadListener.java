@@ -120,7 +120,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 }
 
                                 // construct the channel
-                                RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler.getConnectionContext().getConnectionProviderContext().getExecutor(), connection, channelId, new Random(), outboundWindow, inboundWindow, outboundMessages, inboundMessages);
+                                RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler.getConnectionContext().getConnectionProviderContext().getReadThreadPool(), connection, channelId, new Random(), outboundWindow, inboundWindow, outboundMessages, inboundMessages);
                                 handler.addChannel(connectionChannel);
                                 
                                 //Open any services
@@ -228,7 +228,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                         }
                                     }
                                 }
-                                RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler.getConnectionContext().getConnectionProviderContext().getExecutor(), connection, channelId, new Random(), outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount);
+                                RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler.getConnectionContext().getConnectionProviderContext().getReadThreadPool(), connection, channelId, new Random(), outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount);
                                 handler.putChannel(newChannel);
                                 pendingChannel.getResult().setResult(newChannel);
                                 break;

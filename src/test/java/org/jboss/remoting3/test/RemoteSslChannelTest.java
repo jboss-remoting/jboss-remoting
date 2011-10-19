@@ -32,8 +32,6 @@ import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.jboss.remoting3.Channel;
@@ -101,10 +99,9 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
     @BeforeClass
     public static void create() throws IOException, NoSuchProviderException, NoSuchAlgorithmException {
         setKeyStoreAndTrustStore();
-        executorService = new ThreadPoolExecutor(16, 16, 1L, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
-        endpoint = Remoting.createEndpoint("test", executorService, OptionMap.EMPTY);
+        endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
         Xnio xnio = Xnio.getInstance();
-        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.EMPTY);
+        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());

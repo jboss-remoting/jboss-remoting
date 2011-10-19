@@ -42,9 +42,9 @@
     </parent>
 
     <properties>
-        <xnio.version>3.0.0.Beta2</xnio.version>
-        <logging.version>3.0.0.Beta5</logging.version>
-        <logging-tools.version>1.0.0.Beta6</logging-tools.version>
+        <xnio.version>3.0.0.Beta6-SNAPSHOT</xnio.version>
+        <logging.version>3.1.0.Beta1</logging.version>
+        <logging-tools.version>1.0.0.CR2</logging-tools.version>
     </properties>
 
     <licenses>

@@ -41,12 +41,16 @@ import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.SpiUtils;
+import org.xnio.ChannelThreadPool;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
+import org.xnio.ReadChannelThread;
 import org.xnio.Result;
 import org.jboss.logging.Logger;
+import org.xnio.WriteChannelThread;
+import org.xnio.Xnio;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -74,6 +78,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final ConcurrentMap<String, OpenListener> registeredServices = new UnlockedReadHashMap<String, OpenListener>();
     private final Set<Connection> connections = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<Connection, Boolean>()));
 
+    private final Xnio xnio;
+    private final ChannelThreadPool<ReadChannelThread> readPool;
+    private final ChannelThreadPool<WriteChannelThread> writePool;
+
     private static final Pattern VALID_SERVICE_PATTERN = Pattern.compile("[-.:a-zA-Z_0-9]+");
 
     /**
@@ -89,21 +97,21 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     };
 
-    EndpointImpl(final Executor executor, final String name, final OptionMap optionMap) throws IOException {
-        super(executor);
-        this.executor = executor;
+    EndpointImpl(final Xnio xnio, final ChannelThreadPool<ReadChannelThread> readPool, final ChannelThreadPool<WriteChannelThread> writePool, final String name, final OptionMap optionMap) {
+        super(readPool);
+        this.xnio = xnio;
+        this.readPool = readPool;
+        this.writePool = writePool;
         this.name = name;
+        this.optionMap = optionMap;
+        // initialize CPC
         connectionProviderContext = new ConnectionProviderContextImpl();
         // add default connection providers
-        connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, executor));
-        // add default services
-        this.optionMap = optionMap;
+        connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, readPool));
     }
 
-    private final Executor executor;
-
     protected Executor getExecutor() {
-        return executor;
+        return readPool;
     }
 
     public Attachments getAttachments() {
@@ -119,7 +127,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(CREATE_CHANNEL_PERM);
         }
-        final LoopbackChannel channel = new LoopbackChannel(executor);
+        final LoopbackChannel channel = new LoopbackChannel(readPool);
         return new ChannelPair(channel, channel.getOtherSide());
     }
 
@@ -222,7 +230,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (connectionProvider == null) {
             throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
         }
-        final FutureResult<Connection> futureResult = new FutureResult<Connection>(executor);
+        final FutureResult<Connection> futureResult = new FutureResult<Connection>(writePool);
         // Mark the stack because otherwise debugging connect problems can be incredibly tough
         final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
         futureResult.addCancelHandler(connectionProvider.connect(destination, connectOptions, new Result<ConnectionHandlerFactory>() {
@@ -391,7 +399,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         private final T value;
 
         private MapRegistration(final ConcurrentMap<String, T> map, final String key, final T value) {
-            super(executor, false);
+            super(writePool, false);
             this.map = map;
             this.key = key;
             this.value = value;
@@ -433,7 +441,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             if (listener == null) {
                 throw new ServiceNotFoundException("Unable to find service type '" + serviceType + "'");
             }
-            executor.execute(new Runnable() {
+            readPool.execute(new Runnable() {
                 public void run() {
                     listener.channelOpened(newChannel);
                 }
@@ -450,10 +458,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         private ConnectionProviderContextImpl() {
         }
 
-        public Executor getExecutor() {
-            return executor;
-        }
-
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory) {
             final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this);
             connection.addCloseHandler(connectionCloseHandler);
@@ -462,6 +466,18 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public Endpoint getEndpoint() {
             return EndpointImpl.this;
+        }
+
+        public Xnio getXnio() {
+            return xnio;
+        }
+
+        public ChannelThreadPool<ReadChannelThread> getReadThreadPool() {
+            return readPool;
+        }
+
+        public ChannelThreadPool<WriteChannelThread> getWriteThreadPool() {
+            return writePool;
         }
     }
 }

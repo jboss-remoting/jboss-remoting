@@ -22,21 +22,17 @@
 
 package org.jboss.remoting3.spi;
 
-import java.util.concurrent.Executor;
 import org.jboss.remoting3.Endpoint;
+import org.xnio.ChannelThreadPool;
+import org.xnio.ReadChannelThread;
+import org.xnio.WriteChannelThread;
+import org.xnio.Xnio;
 
 /**
  * A context for a connection provider.  This provides additional endpoint methods to connection providers which are not
  * accessible otherwise.
  */
 public interface ConnectionProviderContext {
-
-    /**
-     * Get the endpoint's executor.
-     *
-     * @return the endpoint executor
-     */
-    Executor getExecutor();
 
     /**
      * Accept a connection that was received by the corresponding protocol handler.
@@ -51,4 +47,25 @@ public interface ConnectionProviderContext {
      * @return the endpoint
      */
     Endpoint getEndpoint();
+
+    /**
+     * Get the XNIO instance.
+     *
+     * @return the XNIO instance
+     */
+    Xnio getXnio();
+
+    /**
+     * Get the XNIO read channel thread pool.
+     *
+     * @return the read channel thread pool
+     */
+    ChannelThreadPool<ReadChannelThread> getReadThreadPool();
+
+    /**
+     * Get the XNIO write channel thread pool.
+     *
+     * @return the write channel thread pool
+     */
+    ChannelThreadPool<WriteChannelThread> getWriteThreadPool();
 }

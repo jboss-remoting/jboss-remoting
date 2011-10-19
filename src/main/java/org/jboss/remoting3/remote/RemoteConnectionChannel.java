@@ -56,8 +56,8 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     private final RemoteConnection connection;
     private final int channelId;
-    private final IntIndexMap<OutboundMessage> outboundMessages = new UnlockedIntIndexHashMap2<OutboundMessage>(OutboundMessage.INDEXER, Equaller.IDENTITY);
-    private final IntIndexMap<InboundMessage> inboundMessages = new UnlockedIntIndexHashMap2<InboundMessage>(InboundMessage.INDEXER, Equaller.IDENTITY);
+    private final IntIndexMap<OutboundMessage> outboundMessages = new IntIndexHashMap<OutboundMessage>(OutboundMessage.INDEXER, Equaller.IDENTITY);
+    private final IntIndexMap<InboundMessage> inboundMessages = new IntIndexHashMap<InboundMessage>(InboundMessage.INDEXER, Equaller.IDENTITY);
     private final Random random;
     private final int outboundWindow;
     private final int inboundWindow;

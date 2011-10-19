@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements IntIndexMap<V> {
+final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndexMap<V> {
     private static final int DEFAULT_INITIAL_CAPACITY = 512;
     private static final int MAXIMUM_CAPACITY = 1 << 30;
     private static final float DEFAULT_LOAD_FACTOR = 0.60f;
@@ -61,7 +61,7 @@ final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements
     private static final AtomicIntegerFieldUpdater<Table> sizeUpdater = AtomicIntegerFieldUpdater.newUpdater(Table.class, "size");
 
     @SuppressWarnings("unchecked")
-    private static final AtomicReferenceFieldUpdater<UnlockedIntIndexHashMap2, Table> tableUpdater = AtomicReferenceFieldUpdater.newUpdater(UnlockedIntIndexHashMap2.class, Table.class, "table");
+    private static final AtomicReferenceFieldUpdater<IntIndexHashMap, Table> tableUpdater = AtomicReferenceFieldUpdater.newUpdater(IntIndexHashMap.class, Table.class, "table");
 
     /**
      * Construct a new instance.
@@ -71,7 +71,7 @@ final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements
      * @param initialCapacity the initial capacity
      * @param loadFactor the load factor
      */
-    UnlockedIntIndexHashMap2(IntIndexer<? super V> indexer, Equaller<? super V> valueEqualler, int initialCapacity, float loadFactor) {
+    IntIndexHashMap(IntIndexer<? super V> indexer, Equaller<? super V> valueEqualler, int initialCapacity, float loadFactor) {
         if (valueEqualler == null) {
             throw new IllegalArgumentException("valueEqualler is null");
         }
@@ -106,7 +106,7 @@ final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements
      * @param indexer the key indexer
      * @param valueEqualler the value equaller
      */
-    UnlockedIntIndexHashMap2(IntIndexer<? super V> indexer, Equaller<? super V> valueEqualler) {
+    IntIndexHashMap(IntIndexer<? super V> indexer, Equaller<? super V> valueEqualler) {
         this(indexer, valueEqualler, DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR);
     }
 
@@ -117,7 +117,7 @@ final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements
      * @param initialCapacity the initial capacity
      * @param loadFactor the load factor
      */
-    UnlockedIntIndexHashMap2(IntIndexer<? super V> indexer, int initialCapacity, final float loadFactor) {
+    IntIndexHashMap(IntIndexer<? super V> indexer, int initialCapacity, final float loadFactor) {
         this(indexer, Equaller.DEFAULT, initialCapacity, loadFactor);
     }
 
@@ -127,7 +127,7 @@ final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements
      * @param indexer the key indexer
      * @param loadFactor the load factor
      */
-    UnlockedIntIndexHashMap2(IntIndexer<? super V> indexer, final float loadFactor) {
+    IntIndexHashMap(IntIndexer<? super V> indexer, final float loadFactor) {
         this(indexer, DEFAULT_INITIAL_CAPACITY, loadFactor);
     }
 
@@ -137,7 +137,7 @@ final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements
      * @param indexer the key indexer
      * @param initialCapacity the initial capacity
      */
-    UnlockedIntIndexHashMap2(IntIndexer<? super V> indexer, final int initialCapacity) {
+    IntIndexHashMap(IntIndexer<? super V> indexer, final int initialCapacity) {
         this(indexer, initialCapacity, DEFAULT_LOAD_FACTOR);
     }
 
@@ -146,7 +146,7 @@ final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements
      *
      * @param indexer the key indexer
      */
-    UnlockedIntIndexHashMap2(IntIndexer<? super V> indexer) {
+    IntIndexHashMap(IntIndexer<? super V> indexer) {
         this(indexer, DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR);
     }
 
@@ -457,7 +457,7 @@ final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements
                         newArray.lazySet(i + origCapacity, newRow1);
                     }
                 }
-            } while (! origArray.compareAndSet(i, origRow, UnlockedIntIndexHashMap2.<V>resized()));
+            } while (! origArray.compareAndSet(i, origRow, IntIndexHashMap.<V>resized()));
             sizeUpdater.getAndAdd(newTable, origRow.length);
         }
 
@@ -631,7 +631,7 @@ final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements
     }
 
     final class EntryIterator implements Iterator<V> {
-        private final Table<V> table = UnlockedIntIndexHashMap2.this.table;
+        private final Table<V> table = IntIndexHashMap.this.table;
         private Iterator<V> tableIterator;
         private Iterator<V> removeIterator;
         private int tableIdx;
@@ -685,7 +685,7 @@ final class UnlockedIntIndexHashMap2<V> extends AbstractCollection<V> implements
         volatile Table<V> resizeView;
 
         private Table(int capacity, float loadFactor) {
-            array = new AtomicReferenceArray<V>(capacity);
+            array = new AtomicReferenceArray<V[]>(capacity);
             threshold = capacity == MAXIMUM_CAPACITY ? Integer.MAX_VALUE : (int)(capacity * loadFactor);
         }
     }

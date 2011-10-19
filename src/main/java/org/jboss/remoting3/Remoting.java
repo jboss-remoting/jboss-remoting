@@ -23,9 +23,13 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
-import java.util.concurrent.Executor;
 import org.jboss.remoting3.security.RemotingPermission;
+import org.xnio.ChannelThreadPool;
+import org.xnio.ChannelThreadPools;
 import org.xnio.OptionMap;
+import org.xnio.ReadChannelThread;
+import org.xnio.WriteChannelThread;
+import org.xnio.Xnio;
 
 /**
  * The standalone interface into Remoting.  This class contains static methods that are useful to standalone programs
@@ -38,29 +42,70 @@ public final class Remoting {
     private static final RemotingPermission CREATE_ENDPOINT_PERM = new RemotingPermission("createEndpoint");
 
     /**
-     * Create an endpoint configured with the given option map.  The following options are supported:
-     * <ul>
-     * </ul>
+     * Create an endpoint with the given configuration.
      *
-     * @param endpointName the endpoint name
-     * @param executor the thread pool to use
-     * @param optionMap the endpoint options
-     * @return the endpoint
+     * @param endpointName the name of the endpoint
+     * @param xnio the XNIO instance to use
+     * @param optionMap the options to configure the endpoint
+     * @return the new endpoint
      * @throws IOException if an error occurs
      */
-    public static Endpoint createEndpoint(final String endpointName, final Executor executor, final OptionMap optionMap) throws IOException {
+    public static Endpoint createEndpoint(final String endpointName, final Xnio xnio, final OptionMap optionMap) throws IOException {
         if (endpointName == null) {
-            throw new NullPointerException("endpointName is null");
+            throw new IllegalArgumentException("endpointName is null");
         }
         if (optionMap == null) {
-            throw new NullPointerException("optionMap is null");
+            throw new IllegalArgumentException("optionMap is null");
         }
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CREATE_ENDPOINT_PERM);
         }
-        final Endpoint endpoint = new EndpointImpl(executor, endpointName, optionMap);
-        return endpoint;
+        final int readPoolSize = optionMap.get(RemotingOptions.READ_THREAD_POOL_SIZE, 1);
+        if (readPoolSize < 1) {
+            throw new IllegalArgumentException("Read thread pool must have at least one thread");
+        }
+        final int writePoolSize = optionMap.get(RemotingOptions.WRITE_THREAD_POOL_SIZE, 1);
+        if (writePoolSize < 1) {
+            throw new IllegalArgumentException("Write thread pool must have at least one thread");
+        }
+        boolean ok = false;
+        ChannelThreadPool<ReadChannelThread> readPool = null;
+        ChannelThreadPool<WriteChannelThread> writePool = null;
+        try {
+            if (readPoolSize == 1) {
+                readPool = ChannelThreadPools.singleton(xnio.createReadChannelThread());
+            } else {
+                readPool = ChannelThreadPools.createRoundRobinPool();
+                ChannelThreadPools.addReadThreadsToPool(xnio, readPool, readPoolSize, optionMap);
+            }
+            if (writePoolSize == 1) {
+                writePool = ChannelThreadPools.singleton(xnio.createWriteChannelThread());
+            } else {
+                writePool = ChannelThreadPools.createRoundRobinPool();
+                ChannelThreadPools.addWriteThreadsToPool(xnio, writePool, writePoolSize, optionMap);
+            }
+            ok = true;
+        } finally {
+            if (! ok) {
+                if (readPool != null) ChannelThreadPools.shutdown(readPool);
+                if (writePool != null) ChannelThreadPools.shutdown(writePool);
+            }
+        }
+        return new EndpointImpl(xnio, readPool, writePool, endpointName, optionMap);
+    }
+
+    /**
+     * Create a new endpoint with the given configuration.  The XNIO implementation which is visible from the class
+     * loader of this class will be used.
+     *
+     * @param endpointName the name of the endpoint
+     * @param optionMap the options to configure the endpoint
+     * @return the new endpoint
+     * @throws IOException if an error occurs
+     */
+    public static Endpoint createEndpoint(final String endpointName, final OptionMap optionMap) throws IOException {
+        return createEndpoint(endpointName, Xnio.getInstance(Remoting.class.getClassLoader()), optionMap);
     }
 
     private Remoting() { /* empty */ }

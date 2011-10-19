@@ -31,7 +31,6 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.GeneralSecurityException;
-import java.util.Set;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
@@ -45,7 +44,6 @@ import org.xnio.ByteBufferSlicePool;
 import org.xnio.Cancellable;
 import org.xnio.ChannelListener;
 import org.xnio.ChannelThreadPool;
-import org.xnio.ChannelThreadPools;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
@@ -77,9 +75,9 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     private final Pool<ByteBuffer> messageBufferPool;
     private final Pool<ByteBuffer> framingBufferPool;
 
-    RemoteConnectionProvider(final Xnio xnio, final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
-        super(connectionProviderContext.getExecutor());
-        this.xnio = xnio;
+    RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
+        super(connectionProviderContext.getReadThreadPool());
+        xnio = connectionProviderContext.getXnio();
         try {
             if (optionMap.get(Options.SSL_ENABLED, true)) {
                 xnioSsl = xnio.getSslProvider(optionMap);
@@ -89,10 +87,8 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         } catch (GeneralSecurityException e) {
             throw new IOException("Failed to configure SSL", e);
         }
-        readThreadPool = ChannelThreadPools.createLightestLoadPool();
-        ChannelThreadPools.addReadThreadsToPool(xnio, readThreadPool, optionMap.get(RemotingOptions.READ_THREAD_POOL_SIZE, 1), optionMap);
-        writeThreadPool = ChannelThreadPools.createLightestLoadPool();
-        ChannelThreadPools.addWriteThreadsToPool(xnio, writeThreadPool, optionMap.get(RemotingOptions.WRITE_THREAD_POOL_SIZE, 1), optionMap);
+        readThreadPool = connectionProviderContext.getReadThreadPool();
+        writeThreadPool = connectionProviderContext.getWriteThreadPool();
         this.connectionProviderContext = connectionProviderContext;
         final int messageBufferSize = optionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, 8192);
         messageBufferPool = new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, messageBufferSize * 2));
@@ -122,7 +118,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                     // ignore
                 }
                 final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
-                final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, connectionProviderContext.getExecutor());
+                final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, readThreadPool);
                 remoteConnection.setResult(result);
                 messageChannel.getWriteSetter().set(remoteConnection.getWriteListener());
                 final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, callbackHandler, AccessController.getContext(), connectOptions);
@@ -143,8 +139,6 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     }
 
     protected void closeAction() {
-        ChannelThreadPools.shutdown(readThreadPool);
-        ChannelThreadPools.shutdown(writeThreadPool);
         // todo tear down connections...
         closeComplete();
     }
@@ -198,7 +192,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             }
 
             final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, framingBufferPool.allocate(), framingBufferPool.allocate());
-            final RemoteConnection connection = new RemoteConnection(messageBufferPool, accepted, messageChannel, serverOptionMap, connectionProviderContext.getExecutor());
+            final RemoteConnection connection = new RemoteConnection(messageBufferPool, accepted, messageChannel, serverOptionMap, readThreadPool);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, serverAuthenticationProvider, serverOptionMap);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
             RemoteLogger.log.tracef("Accepted connection from %s to %s", accepted.getPeerAddress(), accepted.getLocalAddress());

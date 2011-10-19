@@ -27,7 +27,6 @@ import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.xnio.OptionMap;
-import org.xnio.Xnio;
 
 /**
  * A {@link ConnectionProviderFactory} for the {@code remote} protocol.
@@ -36,19 +35,15 @@ import org.xnio.Xnio;
  */
 public final class RemoteConnectionProviderFactory implements ConnectionProviderFactory {
 
-    private final Xnio xnio;
-
     /**
      * Construct a new instance.
      *
-     * @param xnio the XNIO provider to use
      */
-    public RemoteConnectionProviderFactory(final Xnio xnio) {
-        this.xnio = xnio;
+    public RemoteConnectionProviderFactory() {
     }
 
     /** {@inheritDoc} */
     public ConnectionProvider createInstance(final ConnectionProviderContext context, final OptionMap optionMap) throws IOException {
-        return new RemoteConnectionProvider(xnio, optionMap, context);
+        return new RemoteConnectionProvider(optionMap, context);
     }
 }
