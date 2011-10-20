@@ -132,27 +132,31 @@ public abstract class ChannelTestBase {
             }
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {
-                try {
-                    System.out.println("Message received");
-                    final byte[] received = new byte[TEST_FILE_LENGTH];
-                    int c = 0;
-                    do {
-                        int r = message.read(received, c, TEST_FILE_LENGTH - c);
-                        if (r == -1) {
-                            break;
-                        }
-                        c += r;
-                    } while (c < TEST_FILE_LENGTH);
-                    message.close();
+                new Thread(new Runnable() {
+                    public void run() {
+                        try {
+                            System.out.println("Message received");
+                            final byte[] received = new byte[TEST_FILE_LENGTH];
+                            int c = 0;
+                            do {
+                                int r = message.read(received, c, TEST_FILE_LENGTH - c);
+                                if (r == -1) {
+                                    break;
+                                }
+                                c += r;
+                            } while (c < TEST_FILE_LENGTH);
+                            message.close();
 
-                    assertArrayEquals(data, received);
-                    wasOk.set(true);
-                } catch (IOException e) {
-                    exRef.set(e);
-                } finally {
-                    IoUtils.safeClose(message);
-                    latch.countDown();
-                }
+                            assertArrayEquals(data, received);
+                            wasOk.set(true);
+                        } catch (IOException e) {
+                            exRef.set(e);
+                        } finally {
+                            IoUtils.safeClose(message);
+                            latch.countDown();
+                        }
+                    }
+                }).start();
             }
         });
         MessageOutputStream messageOutputStream = sendChannel.writeMessage();
@@ -227,38 +231,42 @@ public abstract class ChannelTestBase {
             }
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {
-                final byte[] received = new byte[TEST_FILE_LENGTH];
-                int c = 0;
-                try {
-                    System.out.println("Message received");
-                    int r;
-                    do {
-                        r = message.read(received, c, TEST_FILE_LENGTH - c);
-                        if (r == -1) {
-                            break;
+                new Thread(new Runnable() {
+                    public void run() {
+                        final byte[] received = new byte[TEST_FILE_LENGTH];
+                        int c = 0;
+                        try {
+                            System.out.println("Message received");
+                            int r;
+                            do {
+                                r = message.read(received, c, TEST_FILE_LENGTH - c);
+                                if (r == -1) {
+                                    break;
+                                }
+                                c += r;
+                            } while (c < TEST_FILE_LENGTH);
+                            if (r != -1) {
+                                r = message.read();
+                            }
+                            message.close();
+                        } catch (MessageCancelledException e) {
+                            System.out.println("Value of c at message cancelled is " + c);
+                            int i = 0;
+                            while (i < c) {
+                                if (data[i] != received[i]) {
+                                    break;
+                                }
+                                i++;
+                            }
+                            wasOk.set(i == c);
+                        } catch (IOException e) {
+                            exRef.set(e);
+                        } finally {
+                            IoUtils.safeClose(message);
+                            latch.countDown();
                         }
-                        c += r;
-                    } while (c < TEST_FILE_LENGTH);
-                    if (r != -1) {
-                        r = message.read();
                     }
-                    message.close();
-                } catch (MessageCancelledException e) {
-                    System.out.println("Value of c at message cancelled is " + c);
-                    int i = 0;
-                    while (i < c) {
-                        if (data[i] != received[i]) {
-                            break;
-                        }
-                        i++;
-                    }
-                    wasOk.set(i == c);
-                } catch (IOException e) {
-                    exRef.set(e);
-                } finally {
-                    IoUtils.safeClose(message);
-                    latch.countDown();
-                }
+                }).start();
             }
         });
         MessageOutputStream messageOutputStream = sendChannel.writeMessage();
@@ -566,11 +574,11 @@ public abstract class ChannelTestBase {
         });
         sendChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
-                IoUtils.safeClose(channel);
+                channel.closeAsync();
             }
 
             public void handleEnd(final Channel channel) {
-                IoUtils.safeClose(channel);
+                channel.closeAsync();
             }
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {
@@ -579,11 +587,11 @@ public abstract class ChannelTestBase {
         });
         recvChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
-                IoUtils.safeClose(channel);
+                channel.closeAsync();
             }
 
             public void handleEnd(final Channel channel) {
-                IoUtils.safeClose(channel);
+                channel.closeAsync();
             }
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {

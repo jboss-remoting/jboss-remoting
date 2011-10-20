@@ -61,7 +61,6 @@ import org.xnio.channels.ConnectedStreamChannel;
  */
 public final class RemoteChannelTest extends ChannelTestBase {
     protected static Endpoint endpoint;
-    protected static ExecutorService executorService;
     private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
     private static Registration registration;
     private Connection connection;
@@ -110,8 +109,5 @@ public final class RemoteChannelTest extends ChannelTestBase {
         IoUtils.safeClose(streamServer);
         IoUtils.safeClose(endpoint);
         IoUtils.safeClose(registration);
-        executorService.shutdown();
-        executorService.awaitTermination(1L, TimeUnit.DAYS);
-        executorService.shutdownNow();
     }
 }

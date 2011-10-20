@@ -496,7 +496,7 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
     private V doGet(final Table<V> table, final int key) {
         final AtomicReferenceArray<V[]> array = table.array;
         final V[] row = array.get(key & (array.length() - 1));
-        for (V item : row) {
+        if (row != null) for (V item : row) {
             if (key == indexer.getKey(item)) {
                 return item;
             }

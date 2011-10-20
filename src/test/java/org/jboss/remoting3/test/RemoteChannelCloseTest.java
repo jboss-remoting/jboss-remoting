@@ -44,7 +44,6 @@ import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Sequence;
-import org.xnio.Xnio;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
@@ -53,9 +52,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertNotNull;
@@ -71,7 +67,6 @@ public class RemoteChannelCloseTest {
     private Channel clientChannel;
     private Channel serverChannel;
 
-    private static ExecutorService executorService;
     private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
     private static Registration registration;
     private Connection connection;
@@ -79,10 +74,8 @@ public class RemoteChannelCloseTest {
 
     @BeforeClass
     public static void create() throws IOException {
-        executorService = new ThreadPoolExecutor(16, 16, 1L, TimeUnit.DAYS, new LinkedBlockingQueue<Runnable>());
-        endpoint = Remoting.createEndpoint("test", executorService, OptionMap.EMPTY);
-        Xnio xnio = Xnio.getInstance();
-        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(xnio), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
+        endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
+        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
@@ -122,9 +115,6 @@ public class RemoteChannelCloseTest {
         IoUtils.safeClose(streamServer);
         IoUtils.safeClose(endpoint);
         IoUtils.safeClose(registration);
-        executorService.shutdown();
-        executorService.awaitTermination(1L, TimeUnit.DAYS);
-        executorService.shutdownNow();
     }
 
     /**

@@ -43,7 +43,7 @@
 
     <properties>
         <xnio.version>3.0.0.Beta6-SNAPSHOT</xnio.version>
-        <logging.version>3.1.0.Beta1</logging.version>
+        <logging.version>3.1.0.Beta2</logging.version>
         <logging-tools.version>1.0.0.CR2</logging-tools.version>
     </properties>
 
@@ -112,10 +112,14 @@
                             <name>jboss.remoting.leakdebugging</name>
                             <value>false</value>
                         </property>
+                        <property>
+                            <name>test.level</name>
+                            <value>${test.level}</value>
+                        </property>
                     </systemProperties>
                     <printSummary>true</printSummary>
                     <reportFormat>plain</reportFormat>
-                    <redirectTestOutputToFile>true</redirectTestOutputToFile>
+                    <redirectTestOutputToFile>false</redirectTestOutputToFile>
                 </configuration>
             </plugin>
             <plugin>

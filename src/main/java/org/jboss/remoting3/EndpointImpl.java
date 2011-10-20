@@ -449,7 +449,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public void remoteClosed() {
-            IoUtils.safeClose(connection);
+            connection.closeAsync();
         }
     }
 

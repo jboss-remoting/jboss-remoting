@@ -23,8 +23,6 @@
 package org.jboss.remoting3.test;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import org.jboss.remoting3.ChannelPair;
 import org.jboss.remoting3.Endpoint;
@@ -43,7 +41,6 @@ import org.xnio.OptionMap;
  */
 public final class LocalChannelTest extends ChannelTestBase {
     protected static Endpoint endpoint;
-    protected static ExecutorService executorService;
 
     @BeforeClass
     public static void create() throws IOException {
@@ -66,8 +63,5 @@ public final class LocalChannelTest extends ChannelTestBase {
     @AfterClass
     public static void destroy() throws IOException, InterruptedException {
         endpoint.close();
-        executorService.shutdown();
-        executorService.awaitTermination(1L, TimeUnit.DAYS);
-        executorService.shutdownNow();
     }
 }
