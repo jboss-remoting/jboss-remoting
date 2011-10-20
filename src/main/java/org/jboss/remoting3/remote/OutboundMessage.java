@@ -66,7 +66,7 @@ final class OutboundMessage extends MessageOutputStream {
         public void accept(final Pooled<ByteBuffer> pooledBuffer, final boolean eof) throws IOException {
             try {
                 final ByteBuffer buffer = pooledBuffer.getResource();
-                final ConnectedMessageChannel messageChannel = channel.getConnection().getChannel();
+                final ConnectedMessageChannel messageChannel = channel.getRemoteConnection().getChannel();
                 if (eof) {
                     // EOF flag (sync close)
                     buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_EOF));
@@ -102,7 +102,7 @@ final class OutboundMessage extends MessageOutputStream {
 
         public void flush() throws IOException {
             RemoteLogger.log.trace("Flushing message channel");
-            Channels.flushBlocking(channel.getConnection().getChannel());
+            Channels.flushBlocking(channel.getRemoteConnection().getChannel());
         }
     };
 

@@ -23,6 +23,7 @@
 package org.jboss.remoting3.spi;
 
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.ServiceNotFoundException;
 
 /**
@@ -50,4 +51,11 @@ public interface ConnectionHandlerContext {
      * Indicate that the remote side has terminated the connection, so the local side should be closed as well.
      */
     void remoteClosed();
+
+    /**
+     * Get the connection corresponding to this connection handler context.
+     *
+     * @return the connection
+     */
+    Connection getConnection();
 }

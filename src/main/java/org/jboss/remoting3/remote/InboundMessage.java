@@ -66,7 +66,7 @@ final class InboundMessage {
                 ByteBuffer buffer = pooled.getResource();
                 buffer.putInt(consumed); // Open window by buffer size
                 buffer.flip();
-                Channels.sendBlocking(channel.getConnection().getChannel(), buffer);
+                Channels.sendBlocking(channel.getRemoteConnection().getChannel(), buffer);
             } finally {
                 pooled.free();
             }
@@ -109,7 +109,7 @@ final class InboundMessage {
         try {
             ByteBuffer buffer = pooled.getResource();
             buffer.flip();
-            Channels.sendBlocking(channel.getConnection().getChannel(), buffer);
+            Channels.sendBlocking(channel.getRemoteConnection().getChannel(), buffer);
         } finally {
             pooled.free();
         }
@@ -132,7 +132,7 @@ final class InboundMessage {
     void closeInboundWindow(int produced) {
         synchronized (this) {
             if ((inboundWindow -= produced) < 0) {
-                channel.getConnection().handleException(new IOException("Input overrun"));
+                channel.getRemoteConnection().handleException(new IOException("Input overrun"));
             }
         }
     }

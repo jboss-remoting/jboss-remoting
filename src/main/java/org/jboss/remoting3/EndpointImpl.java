@@ -44,7 +44,6 @@ import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.ChannelThreadPool;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
-import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.ReadChannelThread;
 import org.xnio.Result;
@@ -120,15 +119,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     public String getName() {
         return name;
-    }
-
-    public ChannelPair createChannelPair() {
-        final SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            sm.checkPermission(CREATE_CHANNEL_PERM);
-        }
-        final LoopbackChannel channel = new LoopbackChannel(readPool);
-        return new ChannelPair(channel, channel.getOtherSide());
     }
 
     protected void closeAction() throws IOException {
@@ -446,6 +436,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     listener.channelOpened(newChannel);
                 }
             });
+        }
+
+        public Connection getConnection() {
+            return connection;
         }
 
         public void remoteClosed() {

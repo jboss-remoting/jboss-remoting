@@ -61,13 +61,6 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
     Registration registerService(String serviceType, OpenListener openListener, OptionMap optionMap) throws ServiceRegistrationException;
 
     /**
-     * Create a channel pair which are connected to one another.
-     *
-     * @return the channel pair
-     */
-    ChannelPair createChannelPair();
-
-    /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>

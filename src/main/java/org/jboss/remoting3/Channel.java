@@ -35,6 +35,13 @@ import java.io.IOException;
 public interface Channel extends Attachable, HandleableCloseable<Channel> {
 
     /**
+     * Get the connection associated with this channel.
+     *
+     * @return the connection
+     */
+    Connection getConnection();
+
+    /**
      * Write a new message on to this channel, blocking if necessary.
      *
      * @return the outbound message to send

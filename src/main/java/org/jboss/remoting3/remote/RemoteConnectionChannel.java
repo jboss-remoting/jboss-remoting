@@ -33,8 +33,10 @@ import java.util.concurrent.Executor;
 
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
+import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.xnio.Pooled;
 import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
@@ -54,6 +56,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         }
     };
 
+    private final ConnectionHandlerContext connectionHandlerContext;
     private final RemoteConnection connection;
     private final int channelId;
     private final IntIndexMap<OutboundMessage> outboundMessages = new IntIndexHashMap<OutboundMessage>(OutboundMessage.INDEXER, Equaller.IDENTITY);
@@ -68,8 +71,9 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private boolean writeClosed;
     private boolean readClosed;
 
-    RemoteConnectionChannel(final Executor executor, final RemoteConnection connection, final int channelId, final Random random, final int outboundWindow, final int inboundWindow, final int outboundMessageCount, final int inboundMessageCount) {
+    RemoteConnectionChannel(final ConnectionHandlerContext connectionHandlerContext, final Executor executor, final RemoteConnection connection, final int channelId, final Random random, final int outboundWindow, final int inboundWindow, final int outboundMessageCount, final int inboundMessageCount) {
         super(executor);
+        this.connectionHandlerContext = connectionHandlerContext;
         this.connection = connection;
         this.channelId = channelId;
         this.random = random;
@@ -108,7 +112,11 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             throw log.channelBusy();
         }
     }
-    
+
+    ConnectionHandlerContext getConnectionHandlerContext() {
+        return connectionHandlerContext;
+    }
+
     void free(OutboundMessage outboundMessage) {
         synchronized (connection) {
             outboundMessages.remove(outboundMessage);
@@ -268,6 +276,10 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         return attachments;
     }
 
+    public Connection getConnection() {
+        return connectionHandlerContext.getConnection();
+    }
+
     @Override
     protected void closeAction() throws IOException {
         try {
@@ -278,7 +290,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         closeComplete();
     }
 
-    RemoteConnection getConnection() {
+    RemoteConnection getRemoteConnection() {
         return connection;
     }
 

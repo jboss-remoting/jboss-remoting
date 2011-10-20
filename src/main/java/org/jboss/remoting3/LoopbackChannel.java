@@ -30,6 +30,7 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
+import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.xnio.IoUtils;
 import org.xnio.streams.Pipe;
 
@@ -39,6 +40,7 @@ import org.xnio.streams.Pipe;
 final class LoopbackChannel extends AbstractHandleableCloseable<Channel> implements Channel {
     private final Attachments attachments = new Attachments();
     private final LoopbackChannel otherSide;
+    private final ConnectionHandlerContext connectionHandlerContext;
     private final Queue<In> messageQueue;
     private final Object lock = new Object();
     private final int queueLength;
@@ -48,17 +50,19 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
 
     private boolean closed;
 
-    LoopbackChannel(final Executor executor, final LoopbackChannel otherSide) {
+    LoopbackChannel(final Executor executor, final LoopbackChannel otherSide, final ConnectionHandlerContext connectionHandlerContext) {
         super(executor);
         this.otherSide = otherSide;
+        this.connectionHandlerContext = connectionHandlerContext;
         queueLength = 8;
         messageQueue = new ArrayDeque<In>(queueLength);
         bufferSize = 8192;
     }
 
-    LoopbackChannel(final Executor executor) {
+    LoopbackChannel(final Executor executor, final ConnectionHandlerContext connectionHandlerContext) {
         super(executor);
-        otherSide = new LoopbackChannel(executor, this);
+        this.connectionHandlerContext = connectionHandlerContext;
+        otherSide = new LoopbackChannel(executor, this, connectionHandlerContext);
         queueLength = 8;
         messageQueue = new ArrayDeque<In>(queueLength);
         bufferSize = 8192;
@@ -153,6 +157,10 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
 
     public Attachments getAttachments() {
         return attachments;
+    }
+
+    public Connection getConnection() {
+        return connectionHandlerContext.getConnection();
     }
 
     protected void closeAction() throws IOException {
