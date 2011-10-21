@@ -61,7 +61,6 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private final int channelId;
     private final IntIndexMap<OutboundMessage> outboundMessages = new IntIndexHashMap<OutboundMessage>(OutboundMessage.INDEXER, Equaller.IDENTITY);
     private final IntIndexMap<InboundMessage> inboundMessages = new IntIndexHashMap<InboundMessage>(InboundMessage.INDEXER, Equaller.IDENTITY);
-    private final Random random;
     private final int outboundWindow;
     private final int inboundWindow;
     private final Attachments attachments = new Attachments();
@@ -71,12 +70,11 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private boolean writeClosed;
     private boolean readClosed;
 
-    RemoteConnectionChannel(final ConnectionHandlerContext connectionHandlerContext, final Executor executor, final RemoteConnection connection, final int channelId, final Random random, final int outboundWindow, final int inboundWindow, final int outboundMessageCount, final int inboundMessageCount) {
+    RemoteConnectionChannel(final ConnectionHandlerContext connectionHandlerContext, final Executor executor, final RemoteConnection connection, final int channelId, final int outboundWindow, final int inboundWindow, final int outboundMessageCount, final int inboundMessageCount) {
         super(executor);
         this.connectionHandlerContext = connectionHandlerContext;
         this.connection = connection;
         this.channelId = channelId;
-        this.random = random;
         this.outboundWindow = outboundWindow;
         this.inboundWindow = inboundWindow;
         this.outboundMessageCount = outboundMessageCount;
@@ -98,7 +96,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                     throw log.writeInterrupted();
                 }
             }
-            final Random random = this.random;
+            final Random random = ProtocolUtils.randomHolder.get();
             while (tries > 0) {
                 final int id = random.nextInt() & 0xfffe;
                 if (! outboundMessages.containsKey(id)) {
@@ -284,7 +282,8 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     protected void closeAction() throws IOException {
         try {
             writeShutdown();
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            log.trace("Failed to shut down writes", e);
         }
         handleRemoteClose();
         closeComplete();

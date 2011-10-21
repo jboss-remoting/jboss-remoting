@@ -27,7 +27,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.xnio.ChannelListener;
 import org.xnio.IoUtils;
@@ -50,8 +49,6 @@ final class RemoteConnection {
     private final RemoteWriteListener writeListener = new RemoteWriteListener();
     private final Executor executor;
     private volatile Result<ConnectionHandlerFactory> result;
-    private final AtomicBoolean closeSent = new AtomicBoolean(false);
-    private final AtomicBoolean closeReceived = new AtomicBoolean(false);
 
     RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedStreamChannel underlyingChannel, final ConnectedMessageChannel channel, final OptionMap optionMap, final Executor executor) {
         this.messageBufferPool = messageBufferPool;
@@ -115,6 +112,10 @@ final class RemoteConnection {
         writeListener.send(pooled, close);
     }
 
+    void shutdownWrites() {
+        writeListener.shutdownWrites();
+    }
+
     OptionMap getOptionMap() {
         return optionMap;
     }
@@ -135,44 +136,11 @@ final class RemoteConnection {
         return underlyingChannel instanceof SslChannel ? (SslChannel) underlyingChannel : null;
     }
 
-    void handleIncomingCloseRequest() {
-        RemoteLogger.log.tracef("Received connection close request");
+    void handlePreAuthCloseRequest() {
         try {
-            channel.shutdownReads();
+            channel.close();
         } catch (IOException e) {
-            RemoteLogger.log.debugf("Failed to shut down reads: %s", e);
-        }
-        closeReceived.set(true);
-        sendCloseRequest();
-    }
-
-    boolean handleOutboundCloseRequest() {
-        RemoteLogger.log.trace("Initiating connection close request");
-        return (sendCloseRequest() || closeSent.get()) && closeReceived.get();
-    }
-
-    void handleChannelClose() {
-        closeSent.set(true);
-    }
-
-    private boolean sendCloseRequest() {
-        if (closeSent.compareAndSet(false, true)) {
-            final Pooled<ByteBuffer> pooled = allocate();
-            boolean ok = false;
-            try {
-                final ByteBuffer buffer = pooled.getResource();
-                buffer.put(Protocol.CONNECTION_CLOSE);
-                buffer.flip();
-                writeListener.send(pooled, true);
-                ok = true;
-            } finally {
-                if (! ok) {
-                    pooled.free();
-                }
-            }
-            return true;
-        } else {
-            return false;
+            RemoteLogger.log.debug("Error closing remoting channel", e);
         }
     }
 

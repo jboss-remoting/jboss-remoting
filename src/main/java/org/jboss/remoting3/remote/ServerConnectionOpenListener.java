@@ -181,7 +181,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 }
                 if (res == -1) {
                     log.trace("Received connection end-of-stream");
-                    connection.handleIncomingCloseRequest();
+                    connection.handlePreAuthCloseRequest();
                     return;
                 }
                 buffer.flip();
@@ -189,7 +189,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 switch (msgType) {
                     case Protocol.CONNECTION_CLOSE: {
                         server.trace("Server received connection close request");
-                        connection.handleIncomingCloseRequest();
+                        connection.handlePreAuthCloseRequest();
                         return;
                     }
                     case Protocol.CONNECTION_ALIVE: {
@@ -350,7 +350,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 }
                 if (res == -1) {
                     log.trace("Received connection end-of-stream");
-                    connection.handleIncomingCloseRequest();
+                    connection.handlePreAuthCloseRequest();
                     return;
                 }
                 if (res == 0) {
@@ -362,7 +362,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 switch (msgType) {
                     case Protocol.CONNECTION_CLOSE: {
                         server.trace("Server received connection close request");
-                        connection.handleIncomingCloseRequest();
+                        connection.handlePreAuthCloseRequest();
                         return;
                     }
                     case Protocol.AUTH_RESPONSE: {

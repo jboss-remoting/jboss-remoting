@@ -33,7 +33,10 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.NotOpenException;
+import org.jboss.remoting3.ProtocolException;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3.security.InetAddressPrincipal;
@@ -75,6 +78,18 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     // todo limit or whatever
     private int channelCount = 50;
 
+    private volatile int channelState = 0;
+
+    private static final AtomicIntegerFieldUpdater<RemoteConnectionHandler> channelStateUpdater = AtomicIntegerFieldUpdater.newUpdater(RemoteConnectionHandler.class, "channelState");
+
+    private static final int COUNT_MASK         = (1 << 20) - 1; // 20 bits of counter, 12 bits of flags
+    private static final int FLAGS_MASK         = ~ COUNT_MASK;
+
+    /** Sending close request, now shutting down the write side of all channels and refusing new channels. Once send, received = true and count == 0, shut down writes on the socket. */
+    private static final int SENT_CLOSE_REQ   = (1 << 20);
+    /** Received close request.  Send a close req if we haven't already done so. */
+    private static final int RECEIVED_CLOSE_REQ = (1 << 21);
+
     RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final String authorizationId) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
@@ -103,6 +118,106 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         this(connectionContext, remoteConnection, null);
     }
 
+    /**
+     * The channel was closed with or without our consent.
+     */
+    void handleChannelClose() {
+        closePendingChannels();
+        closeAllChannels();
+    }
+
+    /**
+     * A channel was closed, locally or remotely.
+     */
+    void decrementChannelCount() {
+        // use decrement because the channel count is in the low-order bits.
+        int oldState = channelStateUpdater.getAndDecrement(this);
+        if ((oldState & COUNT_MASK) == COUNT_MASK) {
+            // some kind of problem, we decremented below zero, just try to recover
+            channelStateUpdater.incrementAndGet(this);
+            throw new Error("Decremented channel count below zero");
+        }
+        if ((oldState & COUNT_MASK) == 0 && (oldState & (SENT_CLOSE_REQ | RECEIVED_CLOSE_REQ)) == (SENT_CLOSE_REQ | RECEIVED_CLOSE_REQ)) {
+            remoteConnection.shutdownWrites();
+        }
+    }
+
+    /**
+     * A channel was opened, locally or remotely.
+     *
+     * @throws IOException if there are too many channels open
+     */
+    void incrementChannelCount() throws IOException {
+        int oldState, newState;
+        do {
+            oldState = channelState;
+            int oldCount = oldState & COUNT_MASK;
+            if (oldCount == COUNT_MASK) {
+                throw new ProtocolException("Too many channels open");
+            }
+            if ((oldState & SENT_CLOSE_REQ) != 0) {
+                throw new NotOpenException("Cannot open new channel because close was initiated");
+            }
+            newState = oldState & FLAGS_MASK | oldCount + 1;
+        } while (! channelStateUpdater.compareAndSet(this, oldState, newState));
+    }
+
+    /**
+     * The remote side requests a close of the whole channel.
+     */
+    void receiveCloseRequest() {
+        int oldState, newState;
+        do {
+            oldState = channelState;
+            if ((oldState & RECEIVED_CLOSE_REQ) != 0) {
+                // ignore duplicate, weird though it may be
+                return;
+            }
+            newState = oldState | RECEIVED_CLOSE_REQ | SENT_CLOSE_REQ;
+        } while (! channelStateUpdater.compareAndSet(this, oldState, newState));
+        closePendingChannels();
+        if ((oldState & SENT_CLOSE_REQ) == 0) {
+            sendCloseRequestBody();
+            closeAllChannels();
+        }
+        if ((oldState & COUNT_MASK) == 0) {
+            remoteConnection.shutdownWrites();
+        }
+    }
+
+    void sendCloseRequest() {
+        int oldState, newState;
+        do {
+            oldState = channelState;
+            if ((oldState & SENT_CLOSE_REQ) != 0) {
+                // idempotent close
+                return;
+            }
+            newState = oldState | SENT_CLOSE_REQ;
+        } while (! channelStateUpdater.compareAndSet(this, oldState, newState));
+        sendCloseRequestBody();
+        closeAllChannels();
+        if ((oldState & COUNT_MASK) == 0) {
+            remoteConnection.shutdownWrites();
+        }
+    }
+
+    private void sendCloseRequestBody() {
+        final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
+        boolean ok = false;
+        try {
+            final ByteBuffer buffer = pooled.getResource();
+            buffer.put(Protocol.CONNECTION_CLOSE);
+            buffer.flip();
+            remoteConnection.send(pooled, true);
+            ok = true;
+        } finally {
+            if (! ok) {
+                pooled.free();
+            }
+        }
+    }
+
     public Cancellable open(final String serviceType, final Result<Channel> result, final OptionMap optionMap) {
         byte[] serviceTypeBytes = serviceType.getBytes(Protocol.UTF_8);
         final int serviceTypeLength = serviceTypeBytes.length;
@@ -120,58 +235,68 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         final int inboundMessageCount = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
         final IntIndexMap<PendingChannel> pendingChannels = this.pendingChannels;
         int channelCount;
-        synchronized (channelSemaphoreLock) {
-            while ((channelCount = this.channelCount) == 0) {
-                try {
-                    channelSemaphoreLock.wait();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    result.setException(new InterruptedIOException("Interrupted while waiting to write message"));
-                    return IoUtils.nullCancellable();
-                }
-                this.channelCount = channelCount - 1;
-            }
+        try {
+            incrementChannelCount();
+        } catch (IOException e) {
+            result.setException(e);
+            return IoUtils.nullCancellable();
         }
         boolean ok = false;
         try {
-            final Random random = ProtocolUtils.randomHolder.get();
-            for (;;) {
-                id = random.nextInt() | 0x80000000;
-                if (! pendingChannels.containsKey(id)) {
-                    PendingChannel pendingChannel = new PendingChannel(id, outboundWindowSize, inboundWindowSize, outboundMessageCount, inboundMessageCount, result);
-                    if (pendingChannels.putIfAbsent(pendingChannel) == null) {
-                        Pooled<ByteBuffer> pooled = remoteConnection.allocate();
-                        try {
-                            ByteBuffer buffer = pooled.getResource();
-                            ConnectedMessageChannel channel = remoteConnection.getChannel();
-                            buffer.put(Protocol.CHANNEL_OPEN_REQUEST);
-                            buffer.putInt(id);
-                            ProtocolUtils.writeBytes(buffer, 1, serviceTypeBytes);
-                            ProtocolUtils.writeInt(buffer, 0x80, inboundWindowSize);
-                            ProtocolUtils.writeShort(buffer, 0x81, inboundMessageCount);
-                            buffer.put((byte) 0);
-                            buffer.flip();
+            synchronized (channelSemaphoreLock) {
+                while ((channelCount = this.channelCount) == 0) {
+                    try {
+                        channelSemaphoreLock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        result.setException(new InterruptedIOException("Interrupted while waiting to write message"));
+                        return IoUtils.nullCancellable();
+                    }
+                    this.channelCount = channelCount - 1;
+                }
+            }
+            try {
+                final Random random = ProtocolUtils.randomHolder.get();
+                for (;;) {
+                    id = random.nextInt() | 0x80000000;
+                    if (! pendingChannels.containsKey(id)) {
+                        PendingChannel pendingChannel = new PendingChannel(id, outboundWindowSize, inboundWindowSize, outboundMessageCount, inboundMessageCount, result);
+                        if (pendingChannels.putIfAbsent(pendingChannel) == null) {
+                            Pooled<ByteBuffer> pooled = remoteConnection.allocate();
                             try {
-                                Channels.sendBlocking(channel, buffer);
-                            } catch (IOException e) {
-                                result.setException(e);
-                                pendingChannels.removeKey(id);
+                                ByteBuffer buffer = pooled.getResource();
+                                ConnectedMessageChannel channel = remoteConnection.getChannel();
+                                buffer.put(Protocol.CHANNEL_OPEN_REQUEST);
+                                buffer.putInt(id);
+                                ProtocolUtils.writeBytes(buffer, 1, serviceTypeBytes);
+                                ProtocolUtils.writeInt(buffer, 0x80, inboundWindowSize);
+                                ProtocolUtils.writeShort(buffer, 0x81, inboundMessageCount);
+                                buffer.put((byte) 0);
+                                buffer.flip();
+                                try {
+                                    Channels.sendBlocking(channel, buffer);
+                                } catch (IOException e) {
+                                    result.setException(e);
+                                    pendingChannels.removeKey(id);
+                                    return IoUtils.nullCancellable();
+                                }
+                                ok = true;
+                                // TODO: allow cancel
                                 return IoUtils.nullCancellable();
+                            } finally {
+                                pooled.free();
                             }
-                            ok = true;
-                            // TODO: allow cancel
-                            return IoUtils.nullCancellable();
-                        } finally {
-                            pooled.free();
                         }
                     }
                 }
+            } finally {
+                if (! ok) synchronized (channelSemaphoreLock) {
+                    this.channelCount++;
+                    channelSemaphoreLock.notify();
+                }
             }
         } finally {
-            if (! ok) synchronized (channelSemaphoreLock) {
-                this.channelCount++;
-                channelSemaphoreLock.notify();
-            }
+            if (! ok) decrementChannelCount();
         }
     }
 
@@ -189,31 +314,23 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     protected void closeAction() throws IOException {
-        if (remoteConnection.handleOutboundCloseRequest()) {
-            closeAllChannels();
-            closeComplete();
-        }
-
+        sendCloseRequest();
     }
 
-    void closeAllChannels() {
+    private void closePendingChannels() {
         synchronized (remoteConnection) {
-            final ClosedChannelException exception = new ClosedChannelException();
             for (PendingChannel pendingChannel : pendingChannels) {
-                pendingChannel.getResult().setException(exception);
+                pendingChannel.getResult().setCancelled();
             }
-            pendingChannels.clear();
+        }
+    }
+
+    private void closeAllChannels() {
+        synchronized (remoteConnection) {
             for (RemoteConnectionChannel channel : channels) {
                 channel.closeAsync();
             }
-            channels.clear();
         }
-    }
-
-    void handleClose() {
-        remoteConnection.handleChannelClose();
-        closeAllChannels();
-        connectionContext.remoteClosed();
     }
 
     ConnectionHandlerContext getConnectionContext() {

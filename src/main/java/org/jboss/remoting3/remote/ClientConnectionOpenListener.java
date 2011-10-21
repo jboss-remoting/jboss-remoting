@@ -135,7 +135,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                     case Protocol.CONNECTION_CLOSE: {
                         client.trace("Client received connection close request");
-                        connection.handleIncomingCloseRequest();
+                        connection.handlePreAuthCloseRequest();
                         return;
                     }
                     case Protocol.GREETING: {
@@ -216,7 +216,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                     case Protocol.CONNECTION_CLOSE: {
                         client.trace("Client received connection close request");
-                        connection.handleIncomingCloseRequest();
+                        connection.handlePreAuthCloseRequest();
                         return;
                     }
                     case Protocol.CAPABILITIES: {
@@ -354,7 +354,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                     case Protocol.CONNECTION_CLOSE: {
                         client.trace("Client received connection close request");
-                        connection.handleIncomingCloseRequest();
+                        connection.handlePreAuthCloseRequest();
                         return;
                     }
                     case Protocol.STARTTLS: {
@@ -425,7 +425,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                     case Protocol.CONNECTION_CLOSE: {
                         client.trace("Client received connection close request");
-                        connection.handleIncomingCloseRequest();
+                        connection.handlePreAuthCloseRequest();
                         return;
                     }
                     case Protocol.AUTH_CHALLENGE: {

@@ -31,6 +31,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.regex.Pattern;
 import org.jboss.remoting3.security.PasswordClientCallbackHandler;
 import org.jboss.remoting3.security.RemotingPermission;
@@ -66,7 +68,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private static final Logger log = Logger.getLogger("org.jboss.remoting.endpoint");
 
     private static final RemotingPermission REGISTER_SERVICE_PERM = new RemotingPermission("registerService");
-    private static final RemotingPermission CREATE_CHANNEL_PERM = new RemotingPermission("createChannel");
     private static final RemotingPermission CONNECT_PERM = new RemotingPermission("connect");
     private static final RemotingPermission ADD_CONNECTION_PROVIDER_PERM = new RemotingPermission("addConnectionProvider");
     private static final RemotingPermission GET_CONNECTION_PROVIDER_INTERFACE_PERM = new RemotingPermission("getConnectionProviderInterface");
@@ -80,6 +81,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final Xnio xnio;
     private final ChannelThreadPool<ReadChannelThread> readPool;
     private final ChannelThreadPool<WriteChannelThread> writePool;
+
+    private volatile long allChannelsState = 0;
+    private static final AtomicLongFieldUpdater<EndpointImpl> allChannelsStateUpdater = AtomicLongFieldUpdater.newUpdater(EndpointImpl.class, "allChannelsState");
+
+    private static final long CHANNEL_COUNT_MASK = (1L << 16L) - 1L;
+    private static final long TASK_COUNT_MASK = ((1L << 26L) - 1L) & ~CHANNEL_COUNT_MASK;
+    private static final long CLOSE_INITIATED = 1L << 26L;
+    private static final long CLOSE_COMPLETED = 1L << 27L;
 
     private static final Pattern VALID_SERVICE_PATTERN = Pattern.compile("[-.:a-zA-Z_0-9]+");
 

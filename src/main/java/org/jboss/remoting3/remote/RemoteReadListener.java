@@ -25,10 +25,10 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.util.Random;
 
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
+import org.xnio.IoUtils;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
 
@@ -47,7 +47,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
             public void handleEvent(final java.nio.channels.Channel channel) {
                 connection.getExecutor().execute(new Runnable() {
                     public void run() {
-                        handler.handleClose();
+                        handler.handleChannelClose();
                     }
                 });
             }
@@ -66,7 +66,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                     res = channel.receive(buffer);
                     if (res == -1) {
                         log.trace("Received connection end-of-stream");
-                        connection.handleIncomingCloseRequest();
+                        IoUtils.safeClose(channel);
                         return;
                     } else if (res == 0) {
                         return;
@@ -80,8 +80,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                             }
                             case Protocol.CONNECTION_CLOSE: {
                                 log.trace("Received connection close request");
-                                connection.handleIncomingCloseRequest();
-                                handler.proceedClose();
+                                handler.receiveCloseRequest();
                                 return;
                             }
                             case Protocol.CHANNEL_OPEN_REQUEST: {
@@ -136,7 +135,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 }
 
                                 // construct the channel
-                                RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler.getConnectionContext(), handler.getConnectionContext().getConnectionProviderContext().getReadThreadPool(), connection, channelId, new Random(), outboundWindow, inboundWindow, outboundMessages, inboundMessages);
+                                RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler.getConnectionContext(), handler.getConnectionContext().getConnectionProviderContext().getReadThreadPool(), connection, channelId, outboundWindow, inboundWindow, outboundMessages, inboundMessages);
                                 handler.addChannel(connectionChannel);
                                 
                                 //Open any services
@@ -247,7 +246,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                         }
                                     }
                                 }
-                                RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler.getConnectionContext(), handler.getConnectionContext().getConnectionProviderContext().getReadThreadPool(), connection, channelId, new Random(), outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount);
+                                RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler.getConnectionContext(), handler.getConnectionContext().getConnectionProviderContext().getReadThreadPool(), connection, channelId, outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount);
                                 handler.putChannel(newChannel);
                                 pendingChannel.getResult().setResult(newChannel);
                                 break;
