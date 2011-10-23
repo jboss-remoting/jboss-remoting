@@ -202,7 +202,7 @@ final class Protocol {
     static final byte MSG_FLAG_CANCELLED = 0x04;
 
     static final int DEFAULT_WINDOW_SIZE = 0x4000;
-    static final int DEFAULT_MESSAGE_COUNT = 4;
+    static final int DEFAULT_MESSAGE_COUNT = 80;
     static final int DEFAULT_CHANNEL_COUNT = 24;
 
     private Protocol() {

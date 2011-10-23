@@ -260,6 +260,10 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         final Map<Key, CloseHandler<? super T>> closeHandlers;
         synchronized (closeLock) {
             switch (state) {
+                case OPEN: {
+                    log.tracef("Closing %s asynchronously", this);
+                    // fall thru
+                }
                 case CLOSING: {
                     log.tracef("Completed close of %s", this);
                     state = State.CLOSED;

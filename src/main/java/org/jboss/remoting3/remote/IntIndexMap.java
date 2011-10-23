@@ -31,7 +31,7 @@ import java.util.Collection;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public interface IntIndexMap<E> extends Iterable<E>, IntIndexer<E>, Collection<E> {
+interface IntIndexMap<E> extends Iterable<E>, IntIndexer<E>, Collection<E> {
 
     /**
      * Determine whether the given index is contained in the map.
@@ -64,6 +64,8 @@ public interface IntIndexMap<E> extends Iterable<E>, IntIndexer<E>, Collection<E
      * @return the old value, or {@code null} if the old value was {@code null} or was not present
      */
     E put(E value);
+
+    boolean remove(Object o);
 
     /**
      * Put a value into the map if there is not already an existing mapping for it.

@@ -33,6 +33,7 @@ import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.streams.BufferPipeOutputStream;
 
+import static org.jboss.remoting3.remote.RemoteLogger.log;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -70,38 +71,38 @@ final class OutboundMessage extends MessageOutputStream {
                 if (eof) {
                     // EOF flag (sync close)
                     buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_EOF));
-                    RemoteLogger.log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
+                    log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
                 }
                 if (cancelled) {
                     buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
                     buffer.limit(8); // discard everything in the buffer
-                    RemoteLogger.log.trace("Message includes cancel flag");
+                    log.trace("Message includes cancel flag");
                 }
                 synchronized (OutboundMessage.this) {
                     int msgSize = buffer.remaining();
                     window -= msgSize;
                     while (window < msgSize) {
                         try {
-                            RemoteLogger.log.trace("Message window is closed, waiting");
+                            log.trace("Message window is closed, waiting");
                             OutboundMessage.this.wait();
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                             throw new InterruptedIOException("Interrupted on write");
                         }
                     }
-                    RemoteLogger.log.trace("Message window is open, proceeding with send");
+                    log.trace("Message window is open, proceeding with send");
                 }
                 Channels.sendBlocking(messageChannel, buffer);
             } finally {
                 pooledBuffer.free();
                 if (eof) {
-                    channel.freeOutboundMessage(messageId);
+                    channel.free(OutboundMessage.this);
                 }
             }
         }
 
         public void flush() throws IOException {
-            RemoteLogger.log.trace("Flushing message channel");
+            log.trace("Flushing message channel");
             Channels.flushBlocking(channel.getRemoteConnection().getChannel());
         }
     };
@@ -137,19 +138,19 @@ final class OutboundMessage extends MessageOutputStream {
 
     void acknowledge(int count) {
         synchronized (this) {
-            if (RemoteLogger.log.isTraceEnabled()) {
+            if (log.isTraceEnabled()) {
                 // do trace enabled check because of boxing here
-                RemoteLogger.log.tracef("Acknowledged %d bytes on %s", Integer.valueOf(count), this);
+                log.tracef("Acknowledged %d bytes on %s", Integer.valueOf(count), this);
             }
             window += count;
             notifyAll();
         }
     }
 
-    void asyncClose() {
+    void closeAsync() {
         IoUtils.safeClose(pipeOutputStream);
-        channel.free(this);
         synchronized (this) {
+            channel.free(this);
             closed = true;
             // wake up waiters
             notifyAll();
@@ -174,12 +175,15 @@ final class OutboundMessage extends MessageOutputStream {
 
     public void close() throws IOException {
         pipeOutputStream.close();
-        channel.free(this);
     }
 
     public MessageOutputStream cancel() {
         cancelled = true;
         IoUtils.safeClose(pipeOutputStream);
         return this;
+    }
+
+    public String toString() {
+        return String.format("Outbound message ID %04x on %s", Short.valueOf(messageId), channel);
     }
 }

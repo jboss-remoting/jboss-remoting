@@ -29,12 +29,14 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.Random;
-import java.util.concurrent.Executor;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.ChannelBusyException;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.MessageOutputStream;
+import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.xnio.Pooled;
@@ -56,58 +58,249 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         }
     };
 
+    private final RemoteConnectionHandler connectionHandler;
     private final ConnectionHandlerContext connectionHandlerContext;
     private final RemoteConnection connection;
     private final int channelId;
-    private final IntIndexMap<OutboundMessage> outboundMessages = new IntIndexHashMap<OutboundMessage>(OutboundMessage.INDEXER, Equaller.IDENTITY);
-    private final IntIndexMap<InboundMessage> inboundMessages = new IntIndexHashMap<InboundMessage>(InboundMessage.INDEXER, Equaller.IDENTITY);
+    private final IntIndexMap<OutboundMessage> outboundMessages = new IntIndexHashMap<OutboundMessage>(OutboundMessage.INDEXER, Equaller.IDENTITY, 512, 0.5f);
+    private final IntIndexMap<InboundMessage> inboundMessages = new IntIndexHashMap<InboundMessage>(InboundMessage.INDEXER, Equaller.IDENTITY, 512, 0.5f);
     private final int outboundWindow;
     private final int inboundWindow;
     private final Attachments attachments = new Attachments();
     private final Queue<InboundMessage> inboundMessageQueue = new ArrayDeque<InboundMessage>();
-    private Receiver nextReceiver;
-    private int outboundMessageCount;
-    private boolean writeClosed;
-    private boolean readClosed;
+    private final int maxOutboundMessages;
+    private final int maxInboundMessages;
+    private volatile int channelState = 0;
 
-    RemoteConnectionChannel(final ConnectionHandlerContext connectionHandlerContext, final Executor executor, final RemoteConnection connection, final int channelId, final int outboundWindow, final int inboundWindow, final int outboundMessageCount, final int inboundMessageCount) {
-        super(executor);
-        this.connectionHandlerContext = connectionHandlerContext;
+    private static final AtomicIntegerFieldUpdater<RemoteConnectionChannel> channelStateUpdater = AtomicIntegerFieldUpdater.newUpdater(RemoteConnectionChannel.class, "channelState");
+
+    private Receiver nextReceiver;
+
+    private static final int WRITE_CLOSED = (1 << 31);
+    private static final int READ_CLOSED = (1 << 30);
+    private static final int OUTBOUND_MESSAGES_MASK = (1 << 15) - 1;
+    private static final int ONE_OUTBOUND_MESSAGE = 1;
+    private static final int INBOUND_MESSAGES_MASK = ((1 << 30) - 1) & ~OUTBOUND_MESSAGES_MASK;
+    private static final int ONE_INBOUND_MESSAGE = (1 << 15);
+
+    RemoteConnectionChannel(final RemoteConnectionHandler connectionHandler, final RemoteConnection connection, final int channelId, final int outboundWindow, final int inboundWindow, final int maxOutboundMessages, final int maxInboundMessages) {
+        super(connectionHandler.getConnectionContext().getConnectionProviderContext().getReadThreadPool());
+        connectionHandlerContext = connectionHandler.getConnectionContext();
+        this.connectionHandler = connectionHandler;
         this.connection = connection;
         this.channelId = channelId;
         this.outboundWindow = outboundWindow;
         this.inboundWindow = inboundWindow;
-        this.outboundMessageCount = outboundMessageCount;
+        this.maxOutboundMessages = maxOutboundMessages;
+        this.maxInboundMessages = maxInboundMessages;
+    }
+
+    void openOutboundMessage() throws IOException {
+        int oldState, newState;
+        do {
+            oldState = channelState;
+            if ((oldState & WRITE_CLOSED) != 0) {
+                throw new NotOpenException("Writes closed");
+            }
+            final int outboundCount = oldState & OUTBOUND_MESSAGES_MASK;
+            if (outboundCount == maxOutboundMessages) {
+                throw new ChannelBusyException("Too many open outbound writes");
+            }
+            newState = oldState + ONE_OUTBOUND_MESSAGE;
+        } while (!casState(oldState, newState));
+        log.tracef("Opened outbound message on %s", this);
+    }
+
+    private int incrementState(final int count) {
+        final int oldState = channelStateUpdater.getAndAdd(this, count);
+        if (log.isTraceEnabled()) {
+            final int newState = oldState + count;
+            log.tracef("CAS %s\n\told: RS=%s WS=%s IM=%d OM=%d\n\tnew: RS=%s WS=%s IM=%d OM=%d", this,
+                    Boolean.valueOf((oldState & READ_CLOSED) != 0),
+                    Boolean.valueOf((oldState & WRITE_CLOSED) != 0),
+                    Integer.valueOf((oldState & INBOUND_MESSAGES_MASK) >> Integer.numberOfTrailingZeros(ONE_INBOUND_MESSAGE)),
+                    Integer.valueOf((oldState & OUTBOUND_MESSAGES_MASK) >> Integer.numberOfTrailingZeros(ONE_OUTBOUND_MESSAGE)),
+                    Boolean.valueOf((newState & READ_CLOSED) != 0),
+                    Boolean.valueOf((newState & WRITE_CLOSED) != 0),
+                    Integer.valueOf((newState & INBOUND_MESSAGES_MASK) >> Integer.numberOfTrailingZeros(ONE_INBOUND_MESSAGE)),
+                    Integer.valueOf((newState & OUTBOUND_MESSAGES_MASK) >> Integer.numberOfTrailingZeros(ONE_OUTBOUND_MESSAGE))
+                    );
+        }
+        return oldState;
+    }
+
+    private boolean casState(final int oldState, final int newState) {
+        final boolean result = channelStateUpdater.compareAndSet(this, oldState, newState);
+        if (result && log.isTraceEnabled()) {
+            log.tracef("CAS %s\n\told: RS=%s WS=%s IM=%d OM=%d\n\tnew: RS=%s WS=%s IM=%d OM=%d", this,
+                    Boolean.valueOf((oldState & READ_CLOSED) != 0),
+                    Boolean.valueOf((oldState & WRITE_CLOSED) != 0),
+                    Integer.valueOf((oldState & INBOUND_MESSAGES_MASK) >> Integer.numberOfTrailingZeros(ONE_INBOUND_MESSAGE)),
+                    Integer.valueOf((oldState & OUTBOUND_MESSAGES_MASK) >> Integer.numberOfTrailingZeros(ONE_OUTBOUND_MESSAGE)),
+                    Boolean.valueOf((newState & READ_CLOSED) != 0),
+                    Boolean.valueOf((newState & WRITE_CLOSED) != 0),
+                    Integer.valueOf((newState & INBOUND_MESSAGES_MASK) >> Integer.numberOfTrailingZeros(ONE_INBOUND_MESSAGE)),
+                    Integer.valueOf((newState & OUTBOUND_MESSAGES_MASK) >> Integer.numberOfTrailingZeros(ONE_OUTBOUND_MESSAGE))
+                    );
+        }
+        return result;
+    }
+
+    void closeOutboundMessage() {
+        int oldState = incrementState(-ONE_OUTBOUND_MESSAGE);
+        if (oldState == (WRITE_CLOSED | READ_CLOSED)) {
+            // no messages left and read & write closed
+            log.tracef("Closed outbound message on %s (unregistering)", this);
+            unregister();
+        } else {
+            log.tracef("Closed outbound message on %s", this);
+        }
+    }
+
+    boolean openInboundMessage() {
+        int oldState, newState;
+        do {
+            oldState = channelState;
+            if ((oldState & READ_CLOSED) != 0) {
+                log.tracef("Refusing inbound message on %s (reads closed)", this);
+                return false;
+            }
+            final int inboundCount = oldState & INBOUND_MESSAGES_MASK;
+            if (inboundCount == maxInboundMessages) {
+                log.tracef("Refusing inbound message on %s (too many concurrent reads)", this);
+                return false;
+            }
+            newState = oldState + ONE_INBOUND_MESSAGE;
+        } while (!casState(oldState, newState));
+        log.tracef("Opened inbound message on %s", this);
+        return true;
+    }
+
+    void closeInboundMessage() {
+        int oldState = incrementState(-ONE_INBOUND_MESSAGE);
+        if (oldState == (WRITE_CLOSED | READ_CLOSED)) {
+            // no messages left and read & write closed
+            log.tracef("Closed inbound message on %s (unregistering)", this);
+            unregister();
+        } else {
+            log.tracef("Closed inbound message on %s", this);
+        }
+    }
+
+    void closeReads() {
+        int oldState, newState;
+        do {
+            oldState = channelState;
+            if ((oldState & READ_CLOSED) != 0) {
+                return;
+            }
+            newState = oldState | READ_CLOSED | WRITE_CLOSED;
+        } while (!casState(oldState, newState));
+        if ((oldState & (INBOUND_MESSAGES_MASK | OUTBOUND_MESSAGES_MASK)) == 0) {
+            // no channels
+            log.tracef("Closed channel reads on %s (unregistering)", this);
+            unregister();
+        }
+        if ((oldState & WRITE_CLOSED) == 0) {
+            // we're sending the write close request asynchronously
+            Pooled<ByteBuffer> pooled = connection.allocate();
+            boolean ok = false;
+            try {
+                ByteBuffer byteBuffer = pooled.getResource();
+                byteBuffer.put(Protocol.CHANNEL_SHUTDOWN_WRITE);
+                byteBuffer.putInt(channelId);
+                byteBuffer.flip();
+                ok = true;
+                connection.send(pooled);
+            } finally {
+                if (! ok) pooled.free();
+            }
+            log.tracef("Closed channel reads on %s", this);
+        }
+    }
+
+    boolean closeWrites() {
+        int oldState, newState;
+        do {
+            oldState = channelState;
+            if ((oldState & WRITE_CLOSED) != 0) {
+                return false;
+            }
+            newState = oldState | WRITE_CLOSED;
+        } while (!casState(oldState, newState));
+        if (oldState == READ_CLOSED) {
+            // no channels and read was closed
+            log.tracef("Closed channel writes on %s (unregistering)", this);
+            unregister();
+        } else {
+            log.tracef("Closed channel writes on %s", this);
+        }
+        return true;
+    }
+
+    boolean closeReadsAndWrites() {
+        int oldState, newState;
+        do {
+            oldState = channelState;
+            if ((oldState & (READ_CLOSED | WRITE_CLOSED)) == (READ_CLOSED | WRITE_CLOSED)) {
+                return false;
+            }
+            newState = oldState | READ_CLOSED | WRITE_CLOSED;
+        } while (!casState(oldState, newState));
+        if ((oldState & WRITE_CLOSED) == 0) {
+            // we're sending the write close request asynchronously
+            Pooled<ByteBuffer> pooled = connection.allocate();
+            boolean ok = false;
+            try {
+                ByteBuffer byteBuffer = pooled.getResource();
+                byteBuffer.put(Protocol.CHANNEL_SHUTDOWN_WRITE);
+                byteBuffer.putInt(channelId);
+                byteBuffer.flip();
+                ok = true;
+                connection.send(pooled);
+            } finally {
+                if (! ok) pooled.free();
+            }
+            log.tracef("Closed channel reads on %s", this);
+        }
+        if ((oldState & (INBOUND_MESSAGES_MASK | OUTBOUND_MESSAGES_MASK)) == 0) {
+            // there were no channels open
+            log.tracef("Closed channel reads and writes on %s (unregistering)", this);
+            unregister();
+        } else {
+            log.tracef("Closed channel reads and writes on %s", this);
+        }
+        return true;
+    }
+
+    private void unregister() {
+        log.tracef("Unregistering %s", this);
+        closeAsync();
+        connectionHandler.handleChannelClosed(this);
     }
 
     public MessageOutputStream writeMessage() throws IOException {
         int tries = 50;
         IntIndexMap<OutboundMessage> outboundMessages = this.outboundMessages;
-        synchronized (connection) {
-            if (writeClosed) {
-                throw log.channelNotOpen();
-            }
-            int messageCount;
-            while ((messageCount = outboundMessageCount) == 0) {
-                try {
-                    connection.wait();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw log.writeInterrupted();
-                }
-            }
+        openOutboundMessage();
+        boolean ok = false;
+        try {
             final Random random = ProtocolUtils.randomHolder.get();
             while (tries > 0) {
                 final int id = random.nextInt() & 0xfffe;
                 if (! outboundMessages.containsKey(id)) {
                     OutboundMessage message = new OutboundMessage((short) id, this, outboundWindow);
                     outboundMessages.put(message);
-                    outboundMessageCount = messageCount - 1;
+                    ok = true;
                     return message;
                 }
                 tries --;
             }
             throw log.channelBusy();
+        } finally {
+            if (! ok) {
+                closeOutboundMessage();
+            }
         }
     }
 
@@ -116,19 +309,16 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     void free(OutboundMessage outboundMessage) {
-        synchronized (connection) {
-            outboundMessages.remove(outboundMessage);
-            outboundMessageCount++;
-            connection.notifyAll();
+        if (outboundMessages.remove(outboundMessage)) {
+            log.tracef("Removed %s", outboundMessage);
+            closeOutboundMessage();
+        } else {
+            log.tracef("Got redundant free for %s", outboundMessage);
         }
     }
 
     public void writeShutdown() throws IOException {
-        synchronized (connection) {
-            if (writeClosed) {
-                return;
-            }
-            writeClosed = true;
+        if (closeWrites()) {
             Pooled<ByteBuffer> pooled = connection.allocate();
             try {
                 ByteBuffer byteBuffer = pooled.getResource();
@@ -145,44 +335,11 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     void handleRemoteClose() {
-        synchronized (connection) {
-            writeClosed = true;
-            if (readClosed) {
-                return;
-            }
-            readClosed = true;
-            for (OutboundMessage message : outboundMessages) {
-                message.asyncClose();
-            }
-        }
+        closeReadsAndWrites();
     }
 
     void handleWriteShutdown() {
-        final Receiver receiver;
-        final Runnable runnable;
-        synchronized (connection) {
-            receiver = nextReceiver;
-            if (receiver != null) {
-                runnable = new Runnable() {
-                    public void run() {
-                        try {
-                            receiver.handleEnd(RemoteConnectionChannel.this);
-                        } catch (Throwable t) {
-                            log.exceptionInUserHandler(t);
-                        }
-                    }
-                };
-            } else {
-                return;
-            }
-        }
-        Executor executor = connection.getExecutor();
-        try {
-            executor.execute(runnable);
-        } catch (Throwable t) {
-            connection.handleException(new IOException("Fatal connection error", t));
-            return;
-        }
+        closeReads();
     }
 
     public void receiveMessage(final Receiver handler) {
@@ -215,33 +372,56 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         int flags = buffer.get() & 0xff;
         final InboundMessage inboundMessage;
         if ((flags & Protocol.MSG_FLAG_NEW) != 0) {
-            inboundMessage = new InboundMessage((short) id, this, inboundWindow);
-            if (inboundMessages.putIfAbsent(inboundMessage) != null) {
-                connection.handleException(new IOException("Protocol error: incoming message with duplicate ID received"));
+            if (! openInboundMessage()) {
+                Pooled<ByteBuffer> pooled = connection.allocate();
+                boolean ok = false;
+                try {
+                    ByteBuffer byteBuffer = pooled.getResource();
+                    byteBuffer.put(Protocol.MESSAGE_ASYNC_CLOSE);
+                    byteBuffer.putInt(channelId);
+                    byteBuffer.putShort((short) id);
+                    byteBuffer.flip();
+                    ok = true;
+                    connection.send(pooled);
+                } finally {
+                    if (! ok) pooled.free();
+                }
                 return;
             }
-            synchronized(connection) {
-                if (nextReceiver != null) {
-                    final Receiver receiver = nextReceiver;
-                    nextReceiver = null;
-                    try {
-                        getExecutor().execute(new Runnable() {
-                            public void run() {
-                                receiver.handleMessage(RemoteConnectionChannel.this, inboundMessage.messageInputStream);
-                            }
-                        });
-                    } catch (Throwable t) {
-                        connection.handleException(new IOException("Fatal connection error", t));
-                        return;
-                    }
-                } else {
-                    inboundMessageQueue.add(inboundMessage);
+            boolean ok = false;
+            try {
+                inboundMessage = new InboundMessage((short) id, this, inboundWindow);
+                if (inboundMessages.putIfAbsent(inboundMessage) != null) {
+                    connection.handleException(new IOException("Protocol error: incoming message with duplicate ID received"));
+                    return;
                 }
+                synchronized(connection) {
+                    if (nextReceiver != null) {
+                        final Receiver receiver = nextReceiver;
+                        nextReceiver = null;
+                        try {
+                            getExecutor().execute(new Runnable() {
+                                public void run() {
+                                    receiver.handleMessage(RemoteConnectionChannel.this, inboundMessage.messageInputStream);
+                                }
+                            });
+                            ok = true;
+                        } catch (Throwable t) {
+                            connection.handleException(new IOException("Fatal connection error", t));
+                            return;
+                        }
+                    } else {
+                        inboundMessageQueue.add(inboundMessage);
+                        ok = true;
+                    }
+                }
+            } finally {
+                if (! ok) closeInboundMessage();
             }
         } else {
             inboundMessage = inboundMessages.get(id);
             if (inboundMessage == null) {
-                connection.handleException(new IOException("Protocol error: incoming message with unknown ID received"));
+                log.tracef("Ignoring message on channel %s for unknown message ID %04x", this, Integer.valueOf(id));
                 return;
             }
         }
@@ -267,7 +447,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             // ignore; probably harmless...?
             return;
         }
-        outboundMessage.asyncClose();
+        outboundMessage.closeAsync();
     }
 
     public Attachments getAttachments() {
@@ -280,12 +460,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     @Override
     protected void closeAction() throws IOException {
-        try {
-            writeShutdown();
-        } catch (IOException e) {
-            log.trace("Failed to shut down writes", e);
-        }
-        handleRemoteClose();
+        closeReadsAndWrites();
         closeComplete();
     }
 
@@ -297,11 +472,8 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         return channelId;
     }
 
-    void freeOutboundMessage(final short id) {
-        outboundMessages.removeKey(id & 0xffff);
-    }
-
     void freeInboundMessage(final short id) {
+        closeInboundMessage();
         inboundMessages.removeKey(id & 0xffff);
     }
 
@@ -311,5 +483,9 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         buffer.put(protoId);
         buffer.putInt(channelId);
         return pooled;
+    }
+
+    public String toString() {
+        return String.format("Channel ID %08x (%s) of %s", Integer.valueOf(channelId), (channelId & 0x80000000) == 0 ? "inbound" : "outbound", connection);
     }
 }

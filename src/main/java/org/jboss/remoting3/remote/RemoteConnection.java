@@ -200,6 +200,11 @@ final class RemoteConnection {
                             return;
                         }
                         RemoteLogger.log.tracef("Flushed channel");
+                        if (! channel.shutdownWrites()) {
+                            channel.resumeWrites();
+                            return;
+                        }
+                        RemoteLogger.log.trace("Shut down writes on channel");
                     }
                 } catch (IOException e) {
                     handleException(e, false);
@@ -258,5 +263,9 @@ final class RemoteConnection {
                 }
             }
         }
+    }
+
+    public String toString() {
+        return String.format("Remoting connection %08x to %s", Integer.valueOf(hashCode()), channel.getPeerAddress());
     }
 }

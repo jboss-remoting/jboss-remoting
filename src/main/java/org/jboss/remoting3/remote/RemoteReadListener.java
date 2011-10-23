@@ -28,7 +28,6 @@ import java.nio.ByteBuffer;
 
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
-import org.xnio.IoUtils;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
 
@@ -47,7 +46,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
             public void handleEvent(final java.nio.channels.Channel channel) {
                 connection.getExecutor().execute(new Runnable() {
                     public void run() {
-                        handler.handleChannelClose();
+                        handler.handleConnectionClose();
                     }
                 });
             }
@@ -66,7 +65,11 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                     res = channel.receive(buffer);
                     if (res == -1) {
                         log.trace("Received connection end-of-stream");
-                        IoUtils.safeClose(channel);
+                        try {
+                            channel.shutdownReads();
+                        } finally {
+                            handler.handleConnectionClose();
+                        }
                         return;
                     } else if (res == 0) {
                         return;
@@ -86,8 +89,8 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                             case Protocol.CHANNEL_OPEN_REQUEST: {
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 int inboundWindow = Protocol.DEFAULT_WINDOW_SIZE;
-                                int outboundWindow = Protocol.DEFAULT_WINDOW_SIZE;
                                 int inboundMessages = Protocol.DEFAULT_MESSAGE_COUNT;
+                                int outboundWindow = Protocol.DEFAULT_WINDOW_SIZE;
                                 int outboundMessages = Protocol.DEFAULT_MESSAGE_COUNT;
                                 // parse out request
                                 int b;
@@ -134,8 +137,28 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     break;
                                 }
 
+                                if (! handler.handleInboundChannelOpen()) {
+                                    // refuse
+                                    Pooled<ByteBuffer> pooledReply = connection.allocate();
+                                    boolean ok = false;
+                                    try {
+                                        ByteBuffer replyBuffer = pooledReply.getResource();
+                                        replyBuffer.clear();
+                                        replyBuffer.put(Protocol.SERVICE_ERROR);
+                                        replyBuffer.putInt(channelId);
+                                        replyBuffer.put("Channel refused".getBytes(Protocol.UTF_8));
+                                        replyBuffer.flip();
+                                        ok = true;
+                                        // send takes ownership of the buffer
+                                        connection.send(pooledReply);
+                                    } finally {
+                                        if (! ok) pooledReply.free();
+                                    }
+                                    break;
+                                }
+
                                 // construct the channel
-                                RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler.getConnectionContext(), handler.getConnectionContext().getConnectionProviderContext().getReadThreadPool(), connection, channelId, outboundWindow, inboundWindow, outboundMessages, inboundMessages);
+                                RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessages, inboundMessages);
                                 handler.addChannel(connectionChannel);
                                 
                                 //Open any services
@@ -246,7 +269,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                         }
                                     }
                                 }
-                                RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler.getConnectionContext(), handler.getConnectionContext().getConnectionProviderContext().getReadThreadPool(), connection, channelId, outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount);
+                                RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount);
                                 handler.putChannel(newChannel);
                                 pendingChannel.getResult().setResult(newChannel);
                                 break;
