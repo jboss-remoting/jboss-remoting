@@ -98,7 +98,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             throw new NullPointerException("executor is null");
         }
         this.executor = executor;
-        backtrace = LEAK_DEBUGGING ? new Throwable().getStackTrace() : null;
+        backtrace = LEAK_DEBUGGING ? Thread.currentThread().getStackTrace() : null;
         this.autoClose = autoClose;
     }
 
@@ -111,12 +111,6 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     protected boolean isOpen() {
         synchronized (closeLock) {
             return state == State.OPEN;
-        }
-    }
-
-    protected boolean isClosing() {
-        synchronized (closeLock) {
-            return state == State.CLOSING;
         }
     }
 
@@ -180,7 +174,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         final SyncCloseHandler<T> syncCloseHandler;
         final Key key;
         synchronized (closeLock) {
-            //if this is already closed we don't want to register an aync task
+            //if this is already closed we don't want to register an async task
             //to listen for closure
             //we can just return
             if (state == State.CLOSED) {
@@ -364,9 +358,11 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     /** {@inheritDoc} */
     public void closeAsync() {
         log.tracef("Closing %s asynchronously", this);
+        boolean first = false;
         synchronized (closeLock) {
             switch (state) {
                 case OPEN: {
+                    first = true;
                     state = State.CLOSING;
                     break;
                 }
@@ -375,7 +371,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                 default: throw new IllegalStateException();
             }
         }
-        try {
+        if (first) try {
             closeAction();
         } catch (IOException e) {
             log.tracef(e, "Close of %s failed", this);
