@@ -30,7 +30,7 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -166,7 +166,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     private EndpointImpl(final int poolSize, final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
-        this(new ThreadPoolExecutor(poolSize, poolSize, 30L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(), new EndpointThreadFactory(name)), xnio, name, optionMap);
+        this(new ThreadPoolExecutor(poolSize, poolSize, 30L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new EndpointThreadFactory(name)), xnio, name, optionMap);
     }
 
     EndpointImpl(final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
