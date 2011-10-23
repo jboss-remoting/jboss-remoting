@@ -28,16 +28,14 @@ import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.regex.Pattern;
 import org.jboss.remoting3.security.PasswordClientCallbackHandler;
 import org.jboss.remoting3.security.RemotingPermission;
@@ -49,9 +47,11 @@ import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.ChannelThreadPool;
+import org.xnio.ChannelThreadPools;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
+import org.xnio.Options;
 import org.xnio.ReadChannelThread;
 import org.xnio.Result;
 import org.jboss.logging.Logger;
@@ -104,23 +104,73 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     };
 
-    EndpointImpl(final Xnio xnio, final ChannelThreadPool<ReadChannelThread> readPool, final ChannelThreadPool<WriteChannelThread> writePool, final String name, final OptionMap optionMap) {
-        this(new ThreadPoolExecutor(1, optionMap.get(RemotingOptions.TASK_THREAD_POOL_SIZE, 4), 30L, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(20), new EndpointThreadFactory(name)), xnio, readPool, writePool, name, optionMap);
-    }
-
-    private EndpointImpl(final ThreadPoolExecutor executor, final Xnio xnio, final ChannelThreadPool<ReadChannelThread> readPool, final ChannelThreadPool<WriteChannelThread> writePool, final String name, final OptionMap optionMap) {
+    private EndpointImpl(final ThreadPoolExecutor executor, final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
         super(executor);
+        executor.allowCoreThreadTimeOut(true);
         this.executor = executor;
+        if (xnio == null) {
+            throw new IllegalArgumentException("xnio is null");
+        }
+        if (name == null) {
+            throw new IllegalArgumentException("name is null");
+        }
+        if (optionMap == null) {
+            throw new IllegalArgumentException("optionMap is null");
+        }
         this.xnio = xnio;
-        this.readPool = readPool;
-        this.writePool = writePool;
         this.name = name;
         this.optionMap = optionMap;
         // initialize CPC
         connectionProviderContext = new ConnectionProviderContextImpl();
         // add default connection providers
         connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, executor));
+        // fill XNIO thread pools
+        final int readPoolSize = optionMap.get(RemotingOptions.READ_THREAD_POOL_SIZE, 1);
+        if (readPoolSize < 1) {
+            throw new IllegalArgumentException("Read thread pool must have at least one thread");
+        }
+        final int writePoolSize = optionMap.get(RemotingOptions.WRITE_THREAD_POOL_SIZE, 1);
+        if (writePoolSize < 1) {
+            throw new IllegalArgumentException("Write thread pool must have at least one thread");
+        }
+        boolean ok = false;
+        ChannelThreadPool<ReadChannelThread> readPool = null;
+        ChannelThreadPool<WriteChannelThread> writePool = null;
+        try {
+            if (readPoolSize == 1) {
+                readPool = ChannelThreadPools.singleton(xnio.createReadChannelThread(OptionMap.create(Options.ALLOW_BLOCKING, Boolean.FALSE, Options.THREAD_NAME, String.format("Remoting \"%s\" read-1", name))));
+            } else {
+                readPool = ChannelThreadPools.createRoundRobinPool();
+                for (int i = 1; i <= readPoolSize; i++) {
+                    readPool.addToPool(xnio.createReadChannelThread(OptionMap.create(Options.ALLOW_BLOCKING, Boolean.FALSE, Options.THREAD_NAME, String.format("Remoting \"%s\" read-%d", name, Integer.valueOf(i)))));
+                }
+            }
+            if (writePoolSize == 1) {
+                writePool = ChannelThreadPools.singleton(xnio.createWriteChannelThread(OptionMap.create(Options.ALLOW_BLOCKING, Boolean.FALSE, Options.THREAD_NAME, String.format("Remoting \"%s\" write-1", name))));
+            } else {
+                writePool = ChannelThreadPools.createRoundRobinPool();
+                for (int i = 1; i <= readPoolSize; i++) {
+                    writePool.addToPool(xnio.createWriteChannelThread(OptionMap.create(Options.ALLOW_BLOCKING, Boolean.FALSE, Options.THREAD_NAME, String.format("Remoting \"%s\" write-%d", name, Integer.valueOf(i)))));
+                }
+            }
+            ok = true;
+        } finally {
+            if (! ok) {
+                if (readPool != null) ChannelThreadPools.shutdown(readPool);
+                if (writePool != null) ChannelThreadPools.shutdown(writePool);
+            }
+        }
+        this.readPool = readPool;
+        this.writePool = writePool;
         log.tracef("Completed open of %s", this);
+    }
+
+    private EndpointImpl(final int poolSize, final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
+        this(new ThreadPoolExecutor(poolSize, poolSize, 30L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(), new EndpointThreadFactory(name)), xnio, name, optionMap);
+    }
+
+    EndpointImpl(final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
+        this(optionMap.get(RemotingOptions.TASK_THREAD_POOL_SIZE, 4), xnio, name, optionMap);
     }
 
     protected Executor getExecutor() {
@@ -506,7 +556,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public Thread newThread(final Runnable r) {
-            final Thread thread = new Thread(r, String.format("Remoting Endpoint '%s' thread %d", name, Integer.valueOf(threadIdUpdater.getAndIncrement(this))));
+            final Thread thread = new Thread(r, String.format("Remoting \"%s\" task-%d", name, Integer.valueOf(threadIdUpdater.getAndIncrement(this))));
             thread.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
                 public void uncaughtException(final Thread t, final Throwable e) {
                     log.errorf(e, "Uncaught exception in thread %s", t);

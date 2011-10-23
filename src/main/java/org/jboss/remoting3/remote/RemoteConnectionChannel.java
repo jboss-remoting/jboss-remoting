@@ -194,29 +194,16 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             if ((oldState & READ_CLOSED) != 0) {
                 return;
             }
-            newState = oldState | READ_CLOSED | WRITE_CLOSED;
+            newState = oldState | READ_CLOSED;
         } while (!casState(oldState, newState));
-        if ((oldState & (INBOUND_MESSAGES_MASK | OUTBOUND_MESSAGES_MASK)) == 0) {
+        if (oldState == WRITE_CLOSED) {
             // no channels
             log.tracef("Closed channel reads on %s (unregistering)", this);
             unregister();
-        }
-        if ((oldState & WRITE_CLOSED) == 0) {
-            // we're sending the write close request asynchronously
-            Pooled<ByteBuffer> pooled = connection.allocate();
-            boolean ok = false;
-            try {
-                ByteBuffer byteBuffer = pooled.getResource();
-                byteBuffer.put(Protocol.CHANNEL_SHUTDOWN_WRITE);
-                byteBuffer.putInt(channelId);
-                byteBuffer.flip();
-                ok = true;
-                connection.send(pooled);
-            } finally {
-                if (! ok) pooled.free();
-            }
+        } else {
             log.tracef("Closed channel reads on %s", this);
         }
+        notifyEnd();
     }
 
     boolean closeWrites() {
@@ -270,7 +257,27 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         } else {
             log.tracef("Closed channel reads and writes on %s", this);
         }
+        notifyEnd();
         return true;
+    }
+
+    private void notifyEnd() {
+        synchronized (connection) {
+            if (nextReceiver != null) {
+                final Receiver receiver = nextReceiver;
+                nextReceiver = null;
+                try {
+                    getExecutor().execute(new Runnable() {
+                        public void run() {
+                            receiver.handleEnd(RemoteConnectionChannel.this);
+                        }
+                    });
+                } catch (Throwable t) {
+                    connection.handleException(new IOException("Fatal connection error", t));
+                    return;
+                }
+            }
+        }
     }
 
     private void unregister() {
@@ -338,7 +345,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         closeReadsAndWrites();
     }
 
-    void handleWriteShutdown() {
+    void handleIncomingWriteShutdown() {
         closeReads();
     }
 
@@ -350,16 +357,24 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 }
                 nextReceiver = handler;
             } else {
-                final InboundMessage message = inboundMessageQueue.remove();
-                try {
+                if ((channelState & READ_CLOSED) != 0) {
                     getExecutor().execute(new Runnable() {
                         public void run() {
-                            handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream);
+                            handler.handleEnd(RemoteConnectionChannel.this);
                         }
                     });
-                } catch (Throwable t) {
-                    connection.handleException(new IOException("Fatal connection error", t));
-                    return;
+                } else {
+                    final InboundMessage message = inboundMessageQueue.remove();
+                    try {
+                        getExecutor().execute(new Runnable() {
+                            public void run() {
+                                handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream);
+                            }
+                        });
+                    } catch (Throwable t) {
+                        connection.handleException(new IOException("Fatal connection error", t));
+                        return;
+                    }
                 }
             }
             connection.notify();

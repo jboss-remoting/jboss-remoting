@@ -24,11 +24,7 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import org.jboss.remoting3.security.RemotingPermission;
-import org.xnio.ChannelThreadPool;
-import org.xnio.ChannelThreadPools;
 import org.xnio.OptionMap;
-import org.xnio.ReadChannelThread;
-import org.xnio.WriteChannelThread;
 import org.xnio.Xnio;
 
 /**
@@ -61,38 +57,7 @@ public final class Remoting {
         if (sm != null) {
             sm.checkPermission(CREATE_ENDPOINT_PERM);
         }
-        final int readPoolSize = optionMap.get(RemotingOptions.READ_THREAD_POOL_SIZE, 1);
-        if (readPoolSize < 1) {
-            throw new IllegalArgumentException("Read thread pool must have at least one thread");
-        }
-        final int writePoolSize = optionMap.get(RemotingOptions.WRITE_THREAD_POOL_SIZE, 1);
-        if (writePoolSize < 1) {
-            throw new IllegalArgumentException("Write thread pool must have at least one thread");
-        }
-        boolean ok = false;
-        ChannelThreadPool<ReadChannelThread> readPool = null;
-        ChannelThreadPool<WriteChannelThread> writePool = null;
-        try {
-            if (readPoolSize == 1) {
-                readPool = ChannelThreadPools.singleton(xnio.createReadChannelThread());
-            } else {
-                readPool = ChannelThreadPools.createRoundRobinPool();
-                ChannelThreadPools.addReadThreadsToPool(xnio, readPool, readPoolSize, optionMap);
-            }
-            if (writePoolSize == 1) {
-                writePool = ChannelThreadPools.singleton(xnio.createWriteChannelThread());
-            } else {
-                writePool = ChannelThreadPools.createRoundRobinPool();
-                ChannelThreadPools.addWriteThreadsToPool(xnio, writePool, writePoolSize, optionMap);
-            }
-            ok = true;
-        } finally {
-            if (! ok) {
-                if (readPool != null) ChannelThreadPools.shutdown(readPool);
-                if (writePool != null) ChannelThreadPools.shutdown(writePool);
-            }
-        }
-        return new EndpointImpl(xnio, readPool, writePool, endpointName, optionMap);
+        return new EndpointImpl(xnio, endpointName, optionMap);
     }
 
     /**

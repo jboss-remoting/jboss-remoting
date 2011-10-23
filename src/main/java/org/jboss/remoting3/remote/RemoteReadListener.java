@@ -188,7 +188,8 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
                                 if (connectionChannel == null) {
-                                    connection.handleException(new IOException("Message data for non-existent channel"));
+                                    // ignore the data
+                                    log.tracef("Ignoring message data for expired channel");
                                     break;
                                 }
                                 connectionChannel.handleMessageData(pooled);
@@ -201,7 +202,8 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
                                 if (connectionChannel == null) {
-                                    connection.handleException(new IOException("Window open for non-existent channel"));
+                                    // ignore
+                                    log.tracef("Ignoring window open for expired channel");
                                     break;
                                 }
                                 connectionChannel.handleWindowOpen(pooled);
@@ -231,7 +233,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 if (connectionChannel == null) {
                                     break;
                                 }
-                                connectionChannel.handleWriteShutdown();
+                                connectionChannel.handleIncomingWriteShutdown();
                                 break;
                             }
                             case Protocol.CHANNEL_OPEN_ACK: {
