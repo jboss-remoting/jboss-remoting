@@ -124,6 +124,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         closePendingChannels();
         closeAllChannels();
         remoteConnection.shutdownWrites();
+        try {
+            closeAction();
+        } catch (IOException ignored) {
+            log.tracef(ignored, "Failure to close after forced connection close");
+        }
         closeComplete();
     }
 

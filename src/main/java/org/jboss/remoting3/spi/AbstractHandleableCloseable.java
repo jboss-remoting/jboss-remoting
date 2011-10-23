@@ -408,9 +408,13 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
 
     private static void runCloseTask(final Executor executor, final Runnable task) {
         try {
-            executor.execute(task);
-        } catch (RejectedExecutionException ree) {
-            task.run();
+            try {
+                executor.execute(task);
+            } catch (RejectedExecutionException ree) {
+                task.run();
+            }
+        } catch (Throwable t) {
+            log.tracef(t, "Got exception running close task directly");
         }
     }
 

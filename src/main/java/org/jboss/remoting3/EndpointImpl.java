@@ -32,9 +32,11 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.regex.Pattern;
 import org.jboss.remoting3.security.PasswordClientCallbackHandler;
@@ -103,7 +105,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     };
 
     EndpointImpl(final Xnio xnio, final ChannelThreadPool<ReadChannelThread> readPool, final ChannelThreadPool<WriteChannelThread> writePool, final String name, final OptionMap optionMap) {
-        this(new ThreadPoolExecutor(1, optionMap.get(RemotingOptions.TASK_THREAD_POOL_SIZE, 4), 30L, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(20)), xnio, readPool, writePool, name, optionMap);
+        this(new ThreadPoolExecutor(1, optionMap.get(RemotingOptions.TASK_THREAD_POOL_SIZE, 4), 30L, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(20), new EndpointThreadFactory(name)), xnio, readPool, writePool, name, optionMap);
     }
 
     private EndpointImpl(final ThreadPoolExecutor executor, final Xnio xnio, final ChannelThreadPool<ReadChannelThread> readPool, final ChannelThreadPool<WriteChannelThread> writePool, final String name, final OptionMap optionMap) {
@@ -118,6 +120,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         connectionProviderContext = new ConnectionProviderContextImpl();
         // add default connection providers
         connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, executor));
+        log.tracef("Completed open of %s", this);
     }
 
     protected Executor getExecutor() {
@@ -488,6 +491,28 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public Executor getExecutor() {
             return executor;
+        }
+    }
+
+    static final class EndpointThreadFactory implements ThreadFactory {
+        private final String name;
+        @SuppressWarnings("unused")
+        private volatile int threadId = 1;
+
+        private static final AtomicIntegerFieldUpdater<EndpointThreadFactory> threadIdUpdater = AtomicIntegerFieldUpdater.newUpdater(EndpointThreadFactory.class, "threadId");
+
+        EndpointThreadFactory(final String name) {
+            this.name = name;
+        }
+
+        public Thread newThread(final Runnable r) {
+            final Thread thread = new Thread(r, String.format("Remoting Endpoint '%s' thread %d", name, Integer.valueOf(threadIdUpdater.getAndIncrement(this))));
+            thread.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+                public void uncaughtException(final Thread t, final Throwable e) {
+                    log.errorf(e, "Uncaught exception in thread %s", t);
+                }
+            });
+            return thread;
         }
     }
 }
