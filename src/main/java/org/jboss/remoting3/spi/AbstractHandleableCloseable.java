@@ -125,6 +125,10 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
      * This method <b>must</b> call {@link #closeComplete()}, directly or indirectly, for the close operation to finish
      * (it may happen in another thread but it must happen).
      *
+     * This method should not expect the {@link #closeComplete()} call to be made from another thread from the same thread pool
+     * that may cause {@link #close()}. As close will block, this can result in situations where all threads in the pool are
+     * blocked on {@link #close()} method calls, which means the {@link #closeComplete()} will never be run.
+     * 
      * @throws RemotingException if the close failed
      */
     protected void closeAction() throws IOException {
@@ -172,11 +176,22 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             log.errorf(t, "Close action for %s failed to execute (resource may be left in an indeterminate state)", this);
             throw new IllegalStateException(t);
         }
-        final SyncCloseHandler<T> syncCloseHandler = new SyncCloseHandler<T>();
-        final Key key = addCloseHandler(syncCloseHandler);
+
+        final SyncCloseHandler<T> syncCloseHandler;
+        final Key key;
+        synchronized (closeLock) {
+            //if this is already closed we don't want to register an aync task
+            //to listen for closure
+            //we can just return
+            if (state == State.CLOSED) {
+                return;
+            }
+            syncCloseHandler = new SyncCloseHandler<T>();
+            key = addCloseHandler(syncCloseHandler);
+        }
         try {
             synchronized (syncCloseHandler) {
-                while (! syncCloseHandler.done) {
+                while (!syncCloseHandler.done) {
                     try {
                         syncCloseHandler.wait();
                     } catch (InterruptedException e) {
