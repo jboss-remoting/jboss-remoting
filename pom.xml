@@ -119,7 +119,7 @@
                             <value>${test.level}</value>
                         </property>
                     </systemProperties>
-                    <redirectTestOutputToFile>false</redirectTestOutputToFile>
+                    <redirectTestOutputToFile>true</redirectTestOutputToFile>
                 </configuration>
             </plugin>
             <plugin>

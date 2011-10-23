@@ -84,7 +84,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private static final int ONE_INBOUND_MESSAGE = (1 << 15);
 
     RemoteConnectionChannel(final RemoteConnectionHandler connectionHandler, final RemoteConnection connection, final int channelId, final int outboundWindow, final int inboundWindow, final int maxOutboundMessages, final int maxInboundMessages) {
-        super(connectionHandler.getConnectionContext().getConnectionProviderContext().getReadThreadPool());
+        super(connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor());
         connectionHandlerContext = connectionHandler.getConnectionContext();
         this.connectionHandler = connectionHandler;
         this.connection = connection;

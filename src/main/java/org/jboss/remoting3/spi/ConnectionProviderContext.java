@@ -22,6 +22,7 @@
 
 package org.jboss.remoting3.spi;
 
+import java.util.concurrent.Executor;
 import org.jboss.remoting3.Endpoint;
 import org.xnio.ChannelThreadPool;
 import org.xnio.ReadChannelThread;
@@ -68,4 +69,11 @@ public interface ConnectionProviderContext {
      * @return the write channel thread pool
      */
     ChannelThreadPool<WriteChannelThread> getWriteThreadPool();
+
+    /**
+     * Get an executor usable for running asynchronous tasks.
+     *
+     * @return the executor
+     */
+    Executor getExecutor();
 }

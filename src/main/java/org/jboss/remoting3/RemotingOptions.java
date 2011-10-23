@@ -102,4 +102,9 @@ public final class RemotingOptions {
      * The size of the pool of write threads.
      */
     public static final Option<Integer> WRITE_THREAD_POOL_SIZE = Option.simple(RemotingOptions.class, "WRITE_THREAD_POOL_SIZE", Integer.class);
+
+    /**
+     * The maximum size of the pool of task threads.
+     */
+    public static final Option<Integer> TASK_THREAD_POOL_SIZE = Option.simple(RemotingOptions.class, "TASK_THREAD_POOL_SIZE", Integer.class);
 }

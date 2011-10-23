@@ -28,10 +28,13 @@ import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.regex.Pattern;
 import org.jboss.remoting3.security.PasswordClientCallbackHandler;
@@ -82,13 +85,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final ChannelThreadPool<ReadChannelThread> readPool;
     private final ChannelThreadPool<WriteChannelThread> writePool;
 
-    private volatile long allChannelsState = 0;
-    private static final AtomicLongFieldUpdater<EndpointImpl> allChannelsStateUpdater = AtomicLongFieldUpdater.newUpdater(EndpointImpl.class, "allChannelsState");
-
-    private static final long CHANNEL_COUNT_MASK = (1L << 16L) - 1L;
-    private static final long TASK_COUNT_MASK = ((1L << 26L) - 1L) & ~CHANNEL_COUNT_MASK;
-    private static final long CLOSE_INITIATED = 1L << 26L;
-    private static final long CLOSE_COMPLETED = 1L << 27L;
+    private final ThreadPoolExecutor executor;
 
     private static final Pattern VALID_SERVICE_PATTERN = Pattern.compile("[-.:a-zA-Z_0-9]+");
 
@@ -106,7 +103,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     };
 
     EndpointImpl(final Xnio xnio, final ChannelThreadPool<ReadChannelThread> readPool, final ChannelThreadPool<WriteChannelThread> writePool, final String name, final OptionMap optionMap) {
-        super(readPool);
+        this(new ThreadPoolExecutor(1, optionMap.get(RemotingOptions.TASK_THREAD_POOL_SIZE, 4), 30L, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(20)), xnio, readPool, writePool, name, optionMap);
+    }
+
+    private EndpointImpl(final ThreadPoolExecutor executor, final Xnio xnio, final ChannelThreadPool<ReadChannelThread> readPool, final ChannelThreadPool<WriteChannelThread> writePool, final String name, final OptionMap optionMap) {
+        super(executor);
+        this.executor = executor;
         this.xnio = xnio;
         this.readPool = readPool;
         this.writePool = writePool;
@@ -115,11 +117,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         // initialize CPC
         connectionProviderContext = new ConnectionProviderContextImpl();
         // add default connection providers
-        connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, readPool));
+        connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, executor));
     }
 
     protected Executor getExecutor() {
-        return readPool;
+        return executor;
     }
 
     public Attachments getAttachments() {
@@ -144,6 +146,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             void tick() {
                 if (decrementAndGet() == 0) {
                     closeComplete();
+                    executor.shutdown();
                 }
             }
 
@@ -440,7 +443,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             if (listener == null) {
                 throw new ServiceNotFoundException("Unable to find service type '" + serviceType + "'");
             }
-            readPool.execute(new Runnable() {
+            executor.execute(new Runnable() {
                 public void run() {
                     listener.channelOpened(newChannel);
                 }
@@ -481,6 +484,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public ChannelThreadPool<WriteChannelThread> getWriteThreadPool() {
             return writePool;
+        }
+
+        public Executor getExecutor() {
+            return executor;
         }
     }
 }

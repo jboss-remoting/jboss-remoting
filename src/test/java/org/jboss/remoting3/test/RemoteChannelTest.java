@@ -50,7 +50,6 @@ import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Sequence;
-import org.xnio.Xnio;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
@@ -68,8 +67,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
 
     @BeforeClass
     public static void create() throws IOException {
-        Xnio xnio = Xnio.getInstance();
-        endpoint = Remoting.createEndpoint("test", xnio, OptionMap.EMPTY);
+        endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
         registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();

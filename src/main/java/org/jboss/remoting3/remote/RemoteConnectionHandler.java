@@ -178,7 +178,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                 log.tracef("Refused inbound channel request on %s because close request was sent");
                 return false;
             }
-            newState = oldState & ~INBOUND_CHANNELS_MASK | oldCount + 1;
+            newState = oldState + ONE_INBOUND_CHANNEL;
         } while (!casState(oldState, newState));
         log.tracef("Opened inbound channel on %s", this);
         return true;
@@ -197,7 +197,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                 log.tracef("Refused outbound channel open on %s because close request was sent");
                 throw new NotOpenException("Cannot open new channel because close was initiated");
             }
-            newState = oldState & ~OUTBOUND_CHANNELS_MASK | oldCount + 1;
+            newState = oldState + ONE_OUTBOUND_CHANNEL;
         } while (!casState(oldState, newState));
         log.tracef("Opened outbound channel on %s", this);
     }
