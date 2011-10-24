@@ -44,6 +44,7 @@ import org.xnio.ByteBufferSlicePool;
 import org.xnio.Cancellable;
 import org.xnio.ChannelListener;
 import org.xnio.ChannelThreadPool;
+import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
@@ -53,6 +54,7 @@ import org.xnio.Result;
 import org.xnio.WriteChannelThread;
 import org.xnio.Xnio;
 import org.xnio.channels.AcceptingChannel;
+import org.xnio.channels.ConnectedSslStreamChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
 import org.xnio.ssl.XnioSsl;
@@ -127,11 +129,22 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         };
         final WriteChannelThread writeThread = writeThreadPool.getThread();
         final ReadChannelThread readThread = readThreadPool.getThread();
+        final IoFuture<? extends ConnectedStreamChannel> future;
         if (useSsl) {
-            return xnioSsl.connectSsl(destination, writeThread, readThread, writeThread, openListener, connectOptions);
+            future = xnioSsl.connectSsl(destination, writeThread, readThread, writeThread, openListener, connectOptions);
         } else {
-            return xnio.connectStream(destination, writeThread, readThread, writeThread, openListener, connectOptions);
+            future = xnio.connectStream(destination, writeThread, readThread, writeThread, openListener, connectOptions);
         }
+        future.addNotifier(new IoFuture.HandlingNotifier<ConnectedStreamChannel, Result<ConnectionHandlerFactory>>() {
+            public void handleCancelled(final Result<ConnectionHandlerFactory> attachment) {
+                attachment.setCancelled();
+            }
+
+            public void handleFailed(final IOException exception, final Result<ConnectionHandlerFactory> attachment) {
+                attachment.setException(exception);
+            }
+        }, result);
+        return future;
     }
 
     public Object getProviderInterface() {
