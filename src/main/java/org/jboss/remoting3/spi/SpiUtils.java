@@ -26,6 +26,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
 import org.jboss.remoting3.CloseHandler;
+import org.jboss.remoting3.HandleableCloseable;
 import org.xnio.IoUtils;
 import org.jboss.logging.Logger;
 
@@ -64,6 +65,20 @@ public final class SpiUtils {
         return new CloseHandler<Object>() {
             public void handleClose(final Object closed, final IOException exception) {
                 IoUtils.safeClose(c);
+            }
+        };
+    }
+
+    /**
+     * A close handler which closes another resource asynchronously.
+     *
+     * @param c the resource to close
+     * @return the close handler
+     */
+    public static CloseHandler<Object> asyncClosingCloseHandler(final HandleableCloseable<?> c) {
+        return new CloseHandler<Object>() {
+            public void handleClose(final Object closed, final IOException exception) {
+                c.closeAsync();
             }
         };
     }

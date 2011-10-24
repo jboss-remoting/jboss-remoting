@@ -53,6 +53,10 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
         });
     }
 
+    ConnectionHandler getConnectionHandler() {
+        return connectionHandler;
+    }
+
     public Collection<Principal> getPrincipals() {
         return connectionHandler.getPrincipals();
     }
