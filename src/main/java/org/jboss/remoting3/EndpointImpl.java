@@ -25,6 +25,9 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
@@ -43,6 +46,7 @@ import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.SpiUtils;
+import org.xnio.Cancellable;
 import org.xnio.ChannelThread;
 import org.xnio.ChannelThreadPool;
 import org.xnio.ChannelThreadPools;
@@ -74,6 +78,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private static final RemotingPermission CONNECT_PERM = new RemotingPermission("connect");
     private static final RemotingPermission ADD_CONNECTION_PROVIDER_PERM = new RemotingPermission("addConnectionProvider");
     private static final RemotingPermission GET_CONNECTION_PROVIDER_INTERFACE_PERM = new RemotingPermission("getConnectionProviderInterface");
+    private static final int CLOSED_FLAG = 0x80000000;
+    private static final int COUNT_MASK = ~(CLOSED_FLAG);
+
+    private final Set<ConnectionImpl> connections = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<ConnectionImpl, Boolean>()));
 
     private final Attachments attachments = new Attachments();
 
@@ -89,7 +97,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private static final AtomicIntegerFieldUpdater<EndpointImpl> resourceCountUpdater = AtomicIntegerFieldUpdater.newUpdater(EndpointImpl.class, "resourceCount");
 
     @SuppressWarnings("unused")
-    private volatile int resourceCount = 1;
+    private volatile int resourceCount = 0;
 
     private static final Pattern VALID_SERVICE_PATTERN = Pattern.compile("[-.:a-zA-Z_0-9]+");
 
@@ -102,9 +110,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final ConnectionProviderContext connectionProviderContext;
     private final CloseHandler<Object> resourceCloseHandler = new CloseHandler<Object>() {
         public void handleClose(final Object closed, final IOException exception) {
-            closeTick1();
+            closeTick1(closed);
         }
     };
+    private final EndpointImpl.ConnectionCloseHandler connectionCloseHandler = new EndpointImpl.ConnectionCloseHandler();
 
     private EndpointImpl(final Pool executor, final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
         super(executor);
@@ -194,44 +203,70 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return name;
     }
 
-    void closeTick1() {
-        final int res = resourceCountUpdater.decrementAndGet(this);
-        if (res == 0) {
-            log.tracef("Finished phase 1 shutdown of %s", this);
-            // all our original resources were closed; now move on to stage two (thread pools)
-            closeUntick();
-            final ChannelThread.Listener listener = new ChannelThread.Listener() {
-                public void handleTerminationInitiated(final ChannelThread thread) {
-                }
-
-                public void handleTerminationComplete(final ChannelThread thread) {
-                    closeTick2();
-                }
-            };
-            for (ReadChannelThread thread : readPool.getCurrentPool()) {
-                closeUntick();
-                thread.addTerminationListener(listener);
-                thread.shutdown();
+    void closeTick1(Object c) {
+        int res = resourceCountUpdater.decrementAndGet(this);
+        if (res == CLOSED_FLAG) {
+            // this was the last phase 1 resource.
+            finishPhase1();
+        } else if ((res & CLOSED_FLAG) != 0) {
+            // shutdown is currently in progress.
+            if (log.isTraceEnabled()) {
+                log.tracef("Phase 1 shutdown count %d of %s (closed %s)", Integer.valueOf(res & COUNT_MASK), this, c);
             }
-            for (WriteChannelThread thread : writePool.getCurrentPool()) {
-                closeUntick();
-                thread.addTerminationListener(listener);
-                thread.shutdown();
+        } else {
+            if (log.isTraceEnabled()) {
+                log.tracef("Resource closed count %d of %s (closed %s)", Integer.valueOf(res & COUNT_MASK), this, c);
             }
-            closeTick2();
-        } else if (log.isTraceEnabled()) {
-            log.tracef("Phase 1 shutdown count %d", Integer.valueOf(res));
         }
+    }
+
+    private void finishPhase1() {
+        // all our original resources were closed; now move on to stage two (thread pools)
+        log.tracef("Finished phase 1 shutdown of %s", this);
+        closeUntick();
+        final ChannelThread.Listener listener = new ChannelThread.Listener() {
+            public void handleTerminationInitiated(final ChannelThread thread) {
+            }
+
+            public void handleTerminationComplete(final ChannelThread thread) {
+                closeTick2();
+            }
+        };
+        for (ReadChannelThread thread : readPool.getCurrentPool()) {
+            closeUntick();
+            thread.addTerminationListener(listener);
+            thread.shutdown();
+        }
+        for (WriteChannelThread thread : writePool.getCurrentPool()) {
+            closeUntick();
+            thread.addTerminationListener(listener);
+            thread.shutdown();
+        }
+        closeTick2();
+        return;
     }
 
     void closeTick2() {
         final int res = resourceCountUpdater.decrementAndGet(this);
-        if (res == 0) {
+        if (res == CLOSED_FLAG) {
             log.tracef("Finished phase 2 shutdown of %s", this);
             // all our phase 2 resources were closed; just one left
             executor.shutdown();
         } else if (log.isTraceEnabled()) {
-            log.tracef("Phase 2 shutdown count %d", Integer.valueOf(res));
+            log.tracef("Phase 2 shutdown count %d of %s", Integer.valueOf(res & COUNT_MASK), this);
+        }
+    }
+
+    void resourceUntick(Object opened) throws NotOpenException {
+        int old;
+        do {
+            old = resourceCountUpdater.get(this);
+            if ((old & CLOSED_FLAG) != 0) {
+                throw new NotOpenException("Endpoint is not open");
+            }
+        } while (! resourceCountUpdater.compareAndSet(this, old, old + 1));
+        if (log.isTraceEnabled()) {
+            log.tracef("Allocated tick to %d of %s (opened %s)", Integer.valueOf(old + 1), this, opened);
         }
     }
 
@@ -240,11 +275,21 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     protected void closeAction() throws IOException {
-        for (ConnectionProvider connectionProvider : connectionProviders.values()) {
-            connectionProvider.closeAsync();
-        }
         // Commence phase one shutdown actions
-        closeTick1();
+        int res;
+        do {
+            res = resourceCount;
+        } while (! resourceCountUpdater.compareAndSet(this, res, res | CLOSED_FLAG));
+        if (res == 0) {
+            finishPhase1();
+        } else {
+            for (Object connection : connections.toArray()) {
+                ((ConnectionImpl)connection).closeAsync();
+            }
+            for (ConnectionProvider connectionProvider : connectionProviders.values()) {
+                connectionProvider.closeAsync();
+            }
+        }
     }
 
     public Registration registerService(final String serviceType, final OpenListener openListener, final OptionMap optionMap) throws ServiceRegistrationException {
@@ -307,33 +352,46 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(CONNECT_PERM);
         }
-        final String scheme = destination.getScheme();
-        final ConnectionProvider connectionProvider = connectionProviders.get(scheme);
-        if (connectionProvider == null) {
-            throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
+        boolean ok = false;
+        resourceUntick("Connection to " + destination);
+        try {
+            final String scheme = destination.getScheme();
+            final ConnectionProvider connectionProvider = connectionProviders.get(scheme);
+            if (connectionProvider == null) {
+                throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
+            }
+            final FutureResult<Connection> futureResult = new FutureResult<Connection>(writePool);
+            // Mark the stack because otherwise debugging connect problems can be incredibly tough
+            final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
+            final Cancellable connect = connectionProvider.connect(destination, connectOptions, new Result<ConnectionHandlerFactory>() {
+                public boolean setResult(final ConnectionHandlerFactory result) {
+                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext);
+                    connections.add(connection);
+                    connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
+                    connection.addCloseHandler(resourceCloseHandler);
+                    connection.addCloseHandler(connectionCloseHandler);
+                    return futureResult.setResult(connection);
+                }
+
+                public boolean setException(final IOException exception) {
+                    closeTick1("a failed connection (2)");
+                    SpiUtils.glueStackTraces(exception, mark, 1, "asynchronous invocation");
+                    return futureResult.setException(exception);
+                }
+
+                public boolean setCancelled() {
+                    closeTick1("a cancelled connection");
+                    return futureResult.setCancelled();
+                }
+            }, callbackHandler);
+            ok = true;
+            futureResult.addCancelHandler(connect);
+            return futureResult.getIoFuture();
+        } finally {
+            if (! ok) {
+                closeTick1("a failed connection (1)");
+            }
         }
-        final FutureResult<Connection> futureResult = new FutureResult<Connection>(writePool);
-        // Mark the stack because otherwise debugging connect problems can be incredibly tough
-        final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
-        futureResult.addCancelHandler(connectionProvider.connect(destination, connectOptions, new Result<ConnectionHandlerFactory>() {
-            public boolean setResult(final ConnectionHandlerFactory result) {
-                final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext);
-                connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
-                closeUntick();
-                connection.addCloseHandler(resourceCloseHandler);
-                return futureResult.setResult(connection);
-            }
-
-            public boolean setException(final IOException exception) {
-                SpiUtils.glueStackTraces(exception, mark, 1, "asynchronous invocation");
-                return futureResult.setException(exception);
-            }
-
-            public boolean setCancelled() {
-                return futureResult.setCancelled();
-            }
-        }, callbackHandler));
-        return futureResult.getIoFuture();
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
@@ -366,36 +424,42 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(ADD_CONNECTION_PROVIDER_PERM);
         }
-        final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl();
-        final ConnectionProvider provider = providerFactory.createInstance(context, optionMap);
         boolean ok = false;
+        resourceUntick("Connection provider for " + uriScheme);
         try {
-            if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
-                throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
-            }
-            // add a resource count for close
-            closeUntick();
-            log.tracef("Adding connection provider registration named '%s': %s", uriScheme, provider);
-            final Registration registration = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider) {
-                protected void closeAction() throws IOException {
-                    try {
-                        provider.closeAsync();
-                    } finally {
-                        super.closeAction();
+            final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl();
+            final ConnectionProvider provider = providerFactory.createInstance(context, optionMap);
+            try {
+                if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
+                    throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
+                }
+                // add a resource count for close
+                log.tracef("Adding connection provider registration named '%s': %s", uriScheme, provider);
+                final Registration registration = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider) {
+                    protected void closeAction() throws IOException {
+                        try {
+                            provider.closeAsync();
+                        } finally {
+                            super.closeAction();
+                        }
                     }
+                };
+                provider.addCloseHandler(new CloseHandler<ConnectionProvider>() {
+                    public void handleClose(final ConnectionProvider closed, final IOException exception) {
+                        registration.closeAsync();
+                        closeTick1(closed);
+                    }
+                });
+                ok = true;
+                return registration;
+            } finally {
+                if (! ok) {
+                    provider.close();
                 }
-            };
-            provider.addCloseHandler(new CloseHandler<ConnectionProvider>() {
-                public void handleClose(final ConnectionProvider closed, final IOException exception) {
-                    registration.closeAsync();
-                    closeTick1();
-                }
-            });
-            ok = true;
-            return registration;
+            }
         } finally {
             if (! ok) {
-                provider.close();
+                closeTick1("Connection provider for " + uriScheme);
             }
         }
     }
@@ -547,10 +611,22 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory) {
-            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this);
-            connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
-            closeUntick();
-            connection.addCloseHandler(resourceCloseHandler);
+            try {
+                resourceUntick("an inbound connection");
+            } catch (NotOpenException e) {
+                throw new IllegalStateException("Accept after endpoint close", e);
+            }
+            boolean ok = false;
+            try {
+                final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this);
+                connections.add(connection);
+                connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
+                connection.addCloseHandler(connectionCloseHandler);
+                connection.addCloseHandler(resourceCloseHandler);
+                ok = true;
+            } finally {
+                if (! ok) closeTick1("a failed inbound connection");
+            }
         }
 
         public Endpoint getEndpoint() {
@@ -606,6 +682,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         protected void terminated() {
             final Runnable task = stopTask;
             if (task != null) task.run();
+        }
+    }
+
+    private class ConnectionCloseHandler implements CloseHandler<Connection> {
+
+        public void handleClose(final Connection closed, final IOException exception) {
+            connections.remove(closed);
         }
     }
 }

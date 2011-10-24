@@ -90,4 +90,8 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
             return Collections.emptySet();
         }
     }
+
+    public String toString() {
+        return String.format("Remoting local connection provider %x for %s", Integer.valueOf(hashCode()), context.getEndpoint());
+    }
 }

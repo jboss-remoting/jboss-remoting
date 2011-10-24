@@ -200,6 +200,6 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     }
 
     public String toString() {
-        return String.format("Remoting remote connection provider %x", Integer.valueOf(hashCode()));
+        return String.format("Remoting remote connection provider %x for %s", Integer.valueOf(hashCode()), connectionProviderContext.getEndpoint());
     }
 }
