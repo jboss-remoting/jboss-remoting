@@ -100,7 +100,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         if (! isOpen()) {
             throw new IllegalStateException("Connection provider is closed");
         }
-        RemoteLogger.log.tracef("Attempting to connect to \"%s\" with options %s", uri, connectOptions);
+        log.tracef("Attempting to connect to \"%s\" with options %s", uri, connectOptions);
         final boolean sslCapable = xnioSsl != null;
         boolean useSsl = sslCapable && ! connectOptions.get(Options.SECURE, false);
         final InetSocketAddress destination;
@@ -197,5 +197,9 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             RemoteLogger.log.tracef("Accepted connection from %s to %s", accepted.getPeerAddress(), accepted.getLocalAddress());
             openListener.handleEvent(messageChannel);
         }
+    }
+
+    public String toString() {
+        return String.format("Remoting remote connection provider %x", Integer.valueOf(hashCode()));
     }
 }

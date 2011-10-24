@@ -75,7 +75,7 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
         }
 
         public Cancellable open(final String serviceType, final Result<Channel> result, final OptionMap optionMap) {
-            LoopbackChannel channel = new LoopbackChannel(executor, context);
+            LocalChannel channel = new LocalChannel(executor, context);
             try {
                 context.openService(channel.getOtherSide(), serviceType);
             } catch (ServiceNotFoundException e) {

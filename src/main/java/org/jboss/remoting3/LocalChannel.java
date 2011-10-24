@@ -37,9 +37,9 @@ import org.xnio.streams.Pipe;
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-final class LoopbackChannel extends AbstractHandleableCloseable<Channel> implements Channel {
+final class LocalChannel extends AbstractHandleableCloseable<Channel> implements Channel {
     private final Attachments attachments = new Attachments();
-    private final LoopbackChannel otherSide;
+    private final LocalChannel otherSide;
     private final ConnectionHandlerContext connectionHandlerContext;
     private final Queue<In> messageQueue;
     private final Object lock = new Object();
@@ -50,7 +50,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
 
     private boolean closed;
 
-    LoopbackChannel(final Executor executor, final LoopbackChannel otherSide, final ConnectionHandlerContext connectionHandlerContext) {
+    LocalChannel(final Executor executor, final LocalChannel otherSide, final ConnectionHandlerContext connectionHandlerContext) {
         super(executor);
         this.otherSide = otherSide;
         this.connectionHandlerContext = connectionHandlerContext;
@@ -59,17 +59,17 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
         bufferSize = 8192;
     }
 
-    LoopbackChannel(final Executor executor, final ConnectionHandlerContext connectionHandlerContext) {
+    LocalChannel(final Executor executor, final ConnectionHandlerContext connectionHandlerContext) {
         super(executor);
         this.connectionHandlerContext = connectionHandlerContext;
-        otherSide = new LoopbackChannel(executor, this, connectionHandlerContext);
+        otherSide = new LocalChannel(executor, this, connectionHandlerContext);
         queueLength = 8;
         messageQueue = new ArrayDeque<In>(queueLength);
         bufferSize = 8192;
     }
 
     public MessageOutputStream writeMessage() throws IOException {
-        final LoopbackChannel otherSide = this.otherSide;
+        final LocalChannel otherSide = this.otherSide;
         final Queue<In> otherSideQueue = otherSide.messageQueue;
         synchronized (otherSide.lock) {
             for (;;) {
@@ -105,7 +105,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
     }
 
     public void writeShutdown() throws IOException {
-        final LoopbackChannel otherSide = this.otherSide;
+        final LocalChannel otherSide = this.otherSide;
         synchronized (otherSide.lock) {
             if (! otherSide.closed) {
                 otherSide.closed = true;
@@ -142,7 +142,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
     private void executeEndTask(final Receiver handler) {
         getExecutor().execute(new Runnable() {
             public void run() {
-                handler.handleEnd(LoopbackChannel.this);
+                handler.handleEnd(LocalChannel.this);
             }
         });
     }
@@ -150,7 +150,7 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
     private void executeMessageTask(final Receiver handler, final In in) {
         getExecutor().execute(new Runnable() {
             public void run() {
-                handler.handleMessage(LoopbackChannel.this, in);
+                handler.handleMessage(LocalChannel.this, in);
             }
         });
     }
@@ -168,10 +168,11 @@ final class LoopbackChannel extends AbstractHandleableCloseable<Channel> impleme
             closed = true;
             lock.notifyAll();
         }
+        otherSide.connectionHandlerContext.remoteClosed();
         closeComplete();
     }
 
-    LoopbackChannel getOtherSide() {
+    LocalChannel getOtherSide() {
         return otherSide;
     }
 

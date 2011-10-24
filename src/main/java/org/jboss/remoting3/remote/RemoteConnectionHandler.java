@@ -118,7 +118,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     /**
-     * The channel was closed with or without our consent.
+     * The socket channel was closed with or without our consent.
      */
     void handleConnectionClose() {
         closePendingChannels();
@@ -205,14 +205,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             newState = oldState + ONE_OUTBOUND_CHANNEL;
         } while (!casState(oldState, newState));
         log.tracef("Opened outbound channel on %s", this);
-    }
-
-    /**
-     * A channel was opened, locally or remotely.
-     *
-     * @throws IOException if there are too many channels open
-     */
-    void handleChannelOpen() throws IOException {
     }
 
     /**
