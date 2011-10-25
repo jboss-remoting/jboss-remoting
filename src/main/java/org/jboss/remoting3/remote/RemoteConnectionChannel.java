@@ -35,6 +35,7 @@ import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.ChannelBusyException;
 import org.jboss.remoting3.Connection;
+import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
@@ -476,7 +477,17 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     @Override
     protected void closeAction() throws IOException {
         closeReadsAndWrites();
+        closeMessages();
         closeComplete();
+    }
+
+    private void closeMessages() {
+        for (InboundMessage message : inboundMessages) {
+            message.inputStream.pushException(new MessageCancelledException());
+        }
+        for (OutboundMessage message : outboundMessages) {
+            message.cancel();
+        }
     }
 
     RemoteConnection getRemoteConnection() {
