@@ -175,4 +175,15 @@ final class InboundMessage {
             inputStream.pushEof();
         }
     }
+
+    void cancel() {
+        synchronized (this) {
+            if (closed) {
+                return;
+            }
+            this.cancelled = true;
+            this.closed = true;
+            inputStream.pushEof();
+        }
+    }
 }

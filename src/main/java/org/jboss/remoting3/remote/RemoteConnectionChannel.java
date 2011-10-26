@@ -379,65 +379,77 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     void handleMessageData(final Pooled<ByteBuffer> message) {
-        ByteBuffer buffer = message.getResource();
-        int id = buffer.getShort() & 0xffff;
-        int flags = buffer.get() & 0xff;
-        final InboundMessage inboundMessage;
-        if ((flags & Protocol.MSG_FLAG_NEW) != 0) {
-            if (! openInboundMessage()) {
-                Pooled<ByteBuffer> pooled = connection.allocate();
-                boolean ok = false;
-                try {
-                    ByteBuffer byteBuffer = pooled.getResource();
-                    byteBuffer.put(Protocol.MESSAGE_ASYNC_CLOSE);
-                    byteBuffer.putInt(channelId);
-                    byteBuffer.putShort((short) id);
-                    byteBuffer.flip();
-                    ok = true;
-                    connection.send(pooled);
-                } finally {
-                    if (! ok) pooled.free();
-                }
-                return;
-            }
-            boolean ok = false;
-            try {
-                inboundMessage = new InboundMessage((short) id, this, inboundWindow);
-                if (inboundMessages.putIfAbsent(inboundMessage) != null) {
-                    connection.handleException(new IOException("Protocol error: incoming message with duplicate ID received"));
+        boolean ok1 = false;
+        try {
+            ByteBuffer buffer = message.getResource();
+            int id = buffer.getShort() & 0xffff;
+            int flags = buffer.get() & 0xff;
+            final InboundMessage inboundMessage;
+            if ((flags & Protocol.MSG_FLAG_NEW) != 0) {
+                if (! openInboundMessage()) {
+                    asyncCloseMessage(id);
                     return;
                 }
-                synchronized(connection) {
-                    if (nextReceiver != null) {
-                        final Receiver receiver = nextReceiver;
-                        nextReceiver = null;
-                        try {
-                            getExecutor().execute(new Runnable() {
-                                public void run() {
-                                    receiver.handleMessage(RemoteConnectionChannel.this, inboundMessage.messageInputStream);
-                                }
-                            });
-                            ok = true;
-                        } catch (Throwable t) {
-                            connection.handleException(new IOException("Fatal connection error", t));
-                            return;
-                        }
-                    } else {
-                        inboundMessageQueue.add(inboundMessage);
-                        ok = true;
+                boolean ok2 = false;
+                try {
+                    inboundMessage = new InboundMessage((short) id, this, inboundWindow);
+                    final InboundMessage existing = inboundMessages.putIfAbsent(inboundMessage);
+                    if (existing != null) {
+                        existing.cancel();
+                        asyncCloseMessage(id);
+                        return;
                     }
+                    synchronized(connection) {
+                        if (nextReceiver != null) {
+                            final Receiver receiver = nextReceiver;
+                            nextReceiver = null;
+                            try {
+                                getExecutor().execute(new Runnable() {
+                                    public void run() {
+                                        receiver.handleMessage(RemoteConnectionChannel.this, inboundMessage.messageInputStream);
+                                    }
+                                });
+                                ok2 = true;
+                            } catch (Throwable t) {
+                                connection.handleException(new IOException("Fatal connection error", t));
+                                return;
+                            }
+                        } else {
+                            inboundMessageQueue.add(inboundMessage);
+                            ok2 = true;
+                        }
+                    }
+                } finally {
+                    if (! ok2) closeInboundMessage();
                 }
-            } finally {
-                if (! ok) closeInboundMessage();
+            } else {
+                inboundMessage = inboundMessages.get(id);
+                if (inboundMessage == null) {
+                    log.tracef("Ignoring message on channel %s for unknown message ID %04x", this, Integer.valueOf(id));
+                    return;
+                }
             }
-        } else {
-            inboundMessage = inboundMessages.get(id);
-            if (inboundMessage == null) {
-                log.tracef("Ignoring message on channel %s for unknown message ID %04x", this, Integer.valueOf(id));
-                return;
-            }
+            inboundMessage.handleIncoming(message);
+            ok1 = true;
+        } finally {
+            if (! ok1) message.free();
         }
-        inboundMessage.handleIncoming(message);
+    }
+
+    private void asyncCloseMessage(final int id) {
+        Pooled<ByteBuffer> pooled = connection.allocate();
+        boolean ok = false;
+        try {
+            ByteBuffer byteBuffer = pooled.getResource();
+            byteBuffer.put(Protocol.MESSAGE_ASYNC_CLOSE);
+            byteBuffer.putInt(channelId);
+            byteBuffer.putShort((short) id);
+            byteBuffer.flip();
+            ok = true;
+            connection.send(pooled);
+        } finally {
+            if (! ok) pooled.free();
+        }
     }
 
     void handleWindowOpen(final Pooled<ByteBuffer> pooled) {
