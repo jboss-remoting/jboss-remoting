@@ -117,49 +117,38 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                         }
                                     }
                                 }
+                                if ((channelId & 0x80000000) != 0) {
+                                    // invalid channel ID, original should have had MSB=1 and thus the complement should be MSB=0
+                                    refuseService(channelId, "Invalid channel ID");
+                                    break;
+                                }
+
                                 if (serviceType == null) {
                                     // invalid service reply
-                                    Pooled<ByteBuffer> pooledReply = connection.allocate();
-                                    boolean ok = false;
-                                    try {
-                                        ByteBuffer replyBuffer = pooledReply.getResource();
-                                        replyBuffer.clear();
-                                        replyBuffer.put(Protocol.SERVICE_ERROR);
-                                        replyBuffer.putInt(channelId);
-                                        replyBuffer.put("Missing service name".getBytes(Protocol.UTF_8));
-                                        replyBuffer.flip();
-                                        ok = true;
-                                        // send takes ownership of the buffer
-                                        connection.send(pooledReply);
-                                    } finally {
-                                        if (! ok) pooledReply.free();
-                                    }
+                                    refuseService(channelId, "Missing service name");
                                     break;
                                 }
 
                                 if (! handler.handleInboundChannelOpen()) {
                                     // refuse
-                                    Pooled<ByteBuffer> pooledReply = connection.allocate();
-                                    boolean ok = false;
-                                    try {
-                                        ByteBuffer replyBuffer = pooledReply.getResource();
-                                        replyBuffer.clear();
-                                        replyBuffer.put(Protocol.SERVICE_ERROR);
-                                        replyBuffer.putInt(channelId);
-                                        replyBuffer.put("Channel refused".getBytes(Protocol.UTF_8));
-                                        replyBuffer.flip();
-                                        ok = true;
-                                        // send takes ownership of the buffer
-                                        connection.send(pooledReply);
-                                    } finally {
-                                        if (! ok) pooledReply.free();
-                                    }
+                                    refuseService(channelId, "Channel refused");
                                     break;
                                 }
 
                                 // construct the channel
                                 RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessages, inboundMessages);
-                                handler.addChannel(connectionChannel);
+                                RemoteConnectionChannel existing = handler.addChannel(connectionChannel);
+                                if (existing != null) {
+                                    log.tracef("Encountered open request for duplicate %s", existing);
+                                    // the channel already exists, which means the remote side "forgot" about it or we somehow missed the close message.
+                                    // the only safe thing to do is to terminate the existing channel.
+                                    try {
+                                        refuseService(channelId, "Duplicate ID");
+                                    } finally {
+                                        existing.handleRemoteClose();
+                                    }
+                                    break;
+                                }
                                 
                                 //Open any services
                                 handler.getConnectionContext().openService(connectionChannel, serviceType);
@@ -294,6 +283,24 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
             }
         } catch (IOException e) {
             connection.handleException(e);
+        }
+    }
+
+    private void refuseService(final int channelId, final String reason) {
+        Pooled<ByteBuffer> pooledReply = connection.allocate();
+        boolean ok = false;
+        try {
+            ByteBuffer replyBuffer = pooledReply.getResource();
+            replyBuffer.clear();
+            replyBuffer.put(Protocol.SERVICE_ERROR);
+            replyBuffer.putInt(channelId);
+            replyBuffer.put(reason.getBytes(Protocol.UTF_8));
+            replyBuffer.flip();
+            ok = true;
+            // send takes ownership of the buffer
+            connection.send(pooledReply);
+        } finally {
+            if (! ok) pooledReply.free();
         }
     }
 }

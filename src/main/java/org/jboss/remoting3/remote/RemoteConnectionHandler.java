@@ -55,7 +55,6 @@ import javax.net.ssl.SSLPeerUnverifiedException;
 
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
 
-    static final int LENGTH_PLACEHOLDER = 0;
     private static final RemoteLogger log = RemoteLogger.log;
 
     private final ConnectionHandlerContext connectionContext;
@@ -111,10 +110,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             principals.add(new InetAddressPrincipal(address.getAddress()));
         }
         this.principals = Collections.unmodifiableSet(principals);
-    }
-
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection) {
-        this(connectionContext, remoteConnection, null);
     }
 
     /**
@@ -394,31 +389,8 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         return connectionContext;
     }
 
-    RemoteConnection getRemoteConnection() {
-        return remoteConnection;
-    }
-
-    private static final ThreadLocal<RemoteConnectionHandler> current = new ThreadLocal<RemoteConnectionHandler>();
-
-    static RemoteConnectionHandler getCurrent() {
-        return current.get();
-    }
-
-    static RemoteConnectionHandler setCurrent(RemoteConnectionHandler newCurrent) {
-        final ThreadLocal<RemoteConnectionHandler> current = RemoteConnectionHandler.current;
-        try {
-            return current.get();
-        } finally {
-            current.set(newCurrent);
-        }
-    }
-
-    void addChannel(final RemoteConnectionChannel channel) {
-        RemoteConnectionChannel existing = channels.putIfAbsent(channel);
-        if (existing != null) {
-            // should not be possible...
-            channel.getRemoteConnection().handleException(new IOException("Attempted to add an already-existing channel"));
-        }
+    RemoteConnectionChannel addChannel(final RemoteConnectionChannel channel) {
+        return channels.putIfAbsent(channel);
     }
 
     RemoteConnectionChannel getChannel(final int id) {
