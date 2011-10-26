@@ -138,7 +138,7 @@ final class InboundMessage {
     }
 
     void handleIncoming(Pooled<ByteBuffer> pooledBuffer) {
-        boolean eof = false;
+        boolean eof;
         synchronized (this) {
             if (closed) {
                 // ignore

@@ -312,10 +312,6 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         }
     }
 
-    ConnectionHandlerContext getConnectionHandlerContext() {
-        return connectionHandlerContext;
-    }
-
     void free(OutboundMessage outboundMessage) {
         if (outboundMessages.remove(outboundMessage)) {
             log.tracef("Removed %s", outboundMessage);
