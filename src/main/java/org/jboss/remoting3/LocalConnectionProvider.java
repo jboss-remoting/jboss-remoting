@@ -33,6 +33,7 @@ import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
+import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
@@ -77,7 +78,11 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
         public Cancellable open(final String serviceType, final Result<Channel> result, final OptionMap optionMap) {
             LocalChannel channel = new LocalChannel(executor, context);
             try {
-                context.openService(channel.getOtherSide(), serviceType);
+                final OpenListener openListener = context.getServiceOpenListener(serviceType);
+                if (openListener == null) {
+                    throw new ServiceNotFoundException("Unable to find service type '" + serviceType + "'");
+                }
+                context.getConnectionProviderContext().getExecutor().execute(SpiUtils.getServiceOpenTask(channel.getOtherSide(), openListener));
             } catch (ServiceNotFoundException e) {
                 result.setException(e);
                 return nullCancellable();

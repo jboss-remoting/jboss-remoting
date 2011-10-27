@@ -25,8 +25,10 @@ package org.jboss.remoting3.spi;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
+import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.HandleableCloseable;
+import org.jboss.remoting3.OpenListener;
 import org.xnio.IoUtils;
 import org.jboss.logging.Logger;
 
@@ -97,5 +99,31 @@ public final class SpiUtils {
         fst[est.length] = new StackTraceElement("..." + msg + "..", "", null, -1);
         System.arraycopy(userStackTrace, trimCount, fst, est.length + 1, userStackTrace.length - trimCount);
         exception.setStackTrace(fst);
+    }
+
+    /**
+     * Get an executor task for opening a service.
+     *
+     * @param newChannel the new service channel
+     * @param listener the service open listener
+     * @return the runnable task
+     */
+    public static Runnable getServiceOpenTask(final Channel newChannel, final OpenListener listener) {
+        return new ServiceOpenTask(listener, newChannel);
+    }
+
+    static class ServiceOpenTask implements Runnable {
+
+        private final OpenListener listener;
+        private final Channel newChannel;
+
+        public ServiceOpenTask(final OpenListener listener, final Channel newChannel) {
+            this.listener = listener;
+            this.newChannel = newChannel;
+        }
+
+        public void run() {
+            listener.channelOpened(newChannel);
+        }
     }
 }

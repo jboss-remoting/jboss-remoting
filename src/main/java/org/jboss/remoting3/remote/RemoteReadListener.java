@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
+import org.jboss.remoting3.OpenListener;
+import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.Pooled;
@@ -129,49 +131,62 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     break;
                                 }
 
+                                final OpenListener openListener = handler.getConnectionContext().getServiceOpenListener(serviceType);
+                                if (openListener == null) {
+                                    refuseService(channelId, "Unknown service name");
+                                    break;
+                                }
+
                                 if (! handler.handleInboundChannelOpen()) {
                                     // refuse
                                     refuseService(channelId, "Channel refused");
                                     break;
                                 }
-
-                                // construct the channel
-                                RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessages, inboundMessages);
-                                RemoteConnectionChannel existing = handler.addChannel(connectionChannel);
-                                if (existing != null) {
-                                    log.tracef("Encountered open request for duplicate %s", existing);
-                                    // the channel already exists, which means the remote side "forgot" about it or we somehow missed the close message.
-                                    // the only safe thing to do is to terminate the existing channel.
-                                    try {
-                                        refuseService(channelId, "Duplicate ID");
-                                    } finally {
-                                        existing.handleRemoteClose();
-                                    }
-                                    break;
-                                }
-                                
-                                //Open any services
-                                handler.getConnectionContext().openService(connectionChannel, serviceType);
-                                
-                                // construct reply
-                                Pooled<ByteBuffer> pooledReply = connection.allocate();
-                                boolean ok = false;
+                                boolean ok1 = false;
                                 try {
-                                    ByteBuffer replyBuffer = pooledReply.getResource();
-                                    replyBuffer.clear();
-                                    replyBuffer.put(Protocol.CHANNEL_OPEN_ACK);
-                                    replyBuffer.putInt(channelId);
-                                    ProtocolUtils.writeInt(replyBuffer, 0x80, outboundWindow);
-                                    ProtocolUtils.writeShort(replyBuffer, 0x81, outboundMessages);
-                                    replyBuffer.put((byte) 0);
-                                    replyBuffer.flip();
-                                    ok = true;
-                                    // send takes ownership of the buffer
-                                    connection.send(pooledReply);
+                                    // construct the channel
+                                    RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessages, inboundMessages);
+                                    RemoteConnectionChannel existing = handler.addChannel(connectionChannel);
+                                    if (existing != null) {
+                                        log.tracef("Encountered open request for duplicate %s", existing);
+                                        // the channel already exists, which means the remote side "forgot" about it or we somehow missed the close message.
+                                        // the only safe thing to do is to terminate the existing channel.
+                                        try {
+                                            refuseService(channelId, "Duplicate ID");
+                                        } finally {
+                                            existing.handleRemoteClose();
+                                        }
+                                        break;
+                                    }
+
+                                    // construct reply
+                                    Pooled<ByteBuffer> pooledReply = connection.allocate();
+                                    boolean ok2 = false;
+                                    try {
+                                        ByteBuffer replyBuffer = pooledReply.getResource();
+                                        replyBuffer.clear();
+                                        replyBuffer.put(Protocol.CHANNEL_OPEN_ACK);
+                                        replyBuffer.putInt(channelId);
+                                        ProtocolUtils.writeInt(replyBuffer, 0x80, outboundWindow);
+                                        ProtocolUtils.writeShort(replyBuffer, 0x81, outboundMessages);
+                                        replyBuffer.put((byte) 0);
+                                        replyBuffer.flip();
+                                        ok2 = true;
+                                        // send takes ownership of the buffer
+                                        connection.send(pooledReply);
+                                    } finally {
+                                        if (! ok2) pooledReply.free();
+                                    }
+
+                                    ok1 = true;
+
+                                    // Call the service open listener
+                                    connection.getExecutor().execute(SpiUtils.getServiceOpenTask(connectionChannel, openListener));
+                                    break;
                                 } finally {
-                                    if (! ok) pooledReply.free();
+                                    // the inbound channel wasn't open so don't leak the ref count
+                                    if (! ok1) handler.handleInboundChannelClosed();
                                 }
-                                break;
                             }
                             case Protocol.MESSAGE_DATA: {
                                 int channelId = buffer.getInt() ^ 0x80000000;

@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3.spi;
 
-import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
+import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.ServiceNotFoundException;
 
 /**
@@ -39,13 +39,13 @@ public interface ConnectionHandlerContext {
     ConnectionProviderContext getConnectionProviderContext();
 
     /**
-     * Open a service.  This method should return immediately.
+     * Get the open listener for a service.  This method should return immediately.
      *
-     * @param newChannel the new incoming channel
      * @param serviceType the service type string
+     * @return the open listener
      * @throws ServiceNotFoundException if the service is not found
      */
-    void openService(Channel newChannel, String serviceType) throws ServiceNotFoundException;
+    OpenListener getServiceOpenListener(String serviceType) throws ServiceNotFoundException;
 
     /**
      * Indicate that the remote side has terminated the connection, so the local side should be closed as well.
