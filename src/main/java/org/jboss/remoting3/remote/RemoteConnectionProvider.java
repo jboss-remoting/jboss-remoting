@@ -29,6 +29,7 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.GeneralSecurityException;
 import org.jboss.remoting3.CloseHandler;
@@ -157,9 +158,10 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     final class ProviderInterface implements NetworkServerProvider {
 
         public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) throws IOException {
+            final AccessControlContext accessControlContext = AccessController.getContext();
             final boolean sslCapable = xnioSsl != null;
             final WriteChannelThread writeThread = writeThreadPool.getThread();
-            final AcceptListener acceptListener = new AcceptListener(optionMap, authenticationProvider);
+            final AcceptListener acceptListener = new AcceptListener(optionMap, authenticationProvider, accessControlContext);
             final AcceptingChannel<? extends ConnectedStreamChannel> result;
             if (sslCapable && optionMap.get(Options.SSL_ENABLED, true)) {
                 result = xnioSsl.createSslTcpServer((InetSocketAddress) bindAddress, writeThread, acceptListener, optionMap);
@@ -179,14 +181,16 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
 
         private final OptionMap serverOptionMap;
         private final ServerAuthenticationProvider serverAuthenticationProvider;
+        private final AccessControlContext accessControlContext;
 
-        AcceptListener(final OptionMap serverOptionMap, final ServerAuthenticationProvider serverAuthenticationProvider) {
+        AcceptListener(final OptionMap serverOptionMap, final ServerAuthenticationProvider serverAuthenticationProvider, final AccessControlContext accessControlContext) {
             this.serverOptionMap = serverOptionMap;
             this.serverAuthenticationProvider = serverAuthenticationProvider;
+            this.accessControlContext = accessControlContext;
         }
 
         public void handleEvent(final AcceptingChannel<? extends ConnectedStreamChannel> channel) {
-            ConnectedStreamChannel accepted = null;
+            final ConnectedStreamChannel accepted;
             try {
                 accepted = channel.accept(readThreadPool.getThread(), writeThreadPool.getThread());
                 if (accepted == null) {
@@ -204,7 +208,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
 
             final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, framingBufferPool.allocate(), framingBufferPool.allocate());
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, accepted, messageChannel, serverOptionMap, getExecutor());
-            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, serverAuthenticationProvider, serverOptionMap);
+            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, serverAuthenticationProvider, serverOptionMap, accessControlContext);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
             RemoteLogger.log.tracef("Accepted connection from %s to %s", accepted.getPeerAddress(), accepted.getLocalAddress());
             openListener.handleEvent(messageChannel);

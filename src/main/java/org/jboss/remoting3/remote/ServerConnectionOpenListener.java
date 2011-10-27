@@ -27,7 +27,10 @@ import java.net.InetSocketAddress;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.security.AccessControlContext;
+import java.security.AccessController;
 import java.security.Principal;
+import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -68,15 +71,16 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
     private final ConnectionProviderContext connectionProviderContext;
     private final ServerAuthenticationProvider serverAuthenticationProvider;
     private final OptionMap optionMap;
+    private final AccessControlContext accessControlContext;
     private final AtomicInteger retryCount = new AtomicInteger(8);
     private final String serverName;
 
-
-    ServerConnectionOpenListener(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final ServerAuthenticationProvider serverAuthenticationProvider, final OptionMap optionMap) {
+    ServerConnectionOpenListener(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final ServerAuthenticationProvider serverAuthenticationProvider, final OptionMap optionMap, final AccessControlContext accessControlContext) {
         this.connection = connection;
         this.connectionProviderContext = connectionProviderContext;
         this.serverAuthenticationProvider = serverAuthenticationProvider;
         this.optionMap = optionMap;
+        this.accessControlContext = accessControlContext;
         serverName = connection.getChannel().getLocalAddress(InetSocketAddress.class).getHostName();
     }
 
@@ -271,11 +275,18 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             connection.send(pooled);
                             return;
                         }
-                        final SaslServer saslServer;
-                        try {
-                            saslServer = saslServerFactory.createSaslServer(mechName, "remote", serverName, propertyMap, callbackHandler);
-                        } catch (SaslException e) {
-                            connection.handleException(e);
+                        final SaslServer saslServer = AccessController.doPrivileged(new PrivilegedAction<SaslServer>() {
+                            public SaslServer run() {
+                                try {
+                                    return saslServerFactory.createSaslServer(mechName, "remote", serverName, propertyMap, callbackHandler);
+                                } catch (SaslException e) {
+                                    connection.handleException(e);
+                                    return null;
+                                }
+                            }
+                        }, accessControlContext);
+                        if (saslServer == null) {
+                            // bail out
                             return;
                         }
                         boolean ok = false;
