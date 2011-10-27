@@ -40,6 +40,7 @@ import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
+import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.OptionMap;
@@ -60,6 +61,7 @@ import static org.jboss.remoting3.remote.RemoteLogger.client;
 
 final class ClientConnectionOpenListener implements ChannelListener<ConnectedMessageChannel> {
     private final RemoteConnection connection;
+    private final ConnectionProviderContext connectionProviderContext;
     private final CallbackHandler callbackHandler;
     private final AccessControlContext accessControlContext;
     private final OptionMap optionMap;
@@ -67,8 +69,9 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
     private final Set<String> allowedMechs;
     private final Set<String> disallowedMechs;
 
-    ClientConnectionOpenListener(final RemoteConnection connection, final CallbackHandler callbackHandler, final AccessControlContext accessControlContext, final OptionMap optionMap) {
+    ClientConnectionOpenListener(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final CallbackHandler callbackHandler, final AccessControlContext accessControlContext, final OptionMap optionMap) {
         this.connection = connection;
+        this.connectionProviderContext = connectionProviderContext;
         this.callbackHandler = callbackHandler;
         this.accessControlContext = accessControlContext;
         this.optionMap = optionMap;
@@ -82,7 +85,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
         connection.setReadListener(new Greeting());
     }
 
-    void sendCapRequest(final String serverName) {
+    void sendCapRequest(final String remoteServerName) {
         client.trace("Client sending capabilities request");
         // Prepare the request message body
         final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
@@ -91,8 +94,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
             sendBuffer.put(Protocol.CAPABILITIES);
             ProtocolUtils.writeByte(sendBuffer, Protocol.CAP_VERSION, 0);
+            final String localEndpointName = connectionProviderContext.getEndpoint().getName();
+            if (localEndpointName != null) {
+                ProtocolUtils.writeString(sendBuffer, Protocol.CAP_ENDPOINT_NAME, localEndpointName);
+            }
             sendBuffer.flip();
-            connection.setReadListener(new Capabilities(serverName));
+            connection.setReadListener(new Capabilities(remoteServerName));
             connection.send(pooledSendBuffer);
             ok = true;
             // all set
@@ -110,7 +117,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
                 final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                int res = 0;
+                int res;
                 try {
                     res = channel.receive(receiveBuffer);
                 } catch (IOException e) {
@@ -126,7 +133,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 }
                 client.tracef("Received %s", receiveBuffer);
                 receiveBuffer.flip();
-                String serverName = channel.getPeerAddress(InetSocketAddress.class).getHostName();
+                String remoteServerName = null;
                 final byte msgType = receiveBuffer.get();
                 switch (msgType) {
                     case Protocol.CONNECTION_ALIVE: {
@@ -146,8 +153,8 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             final ByteBuffer data = Buffers.slice(receiveBuffer, len);
                             switch (type) {
                                 case Protocol.GRT_SERVER_NAME: {
-                                    serverName = Buffers.getModifiedUtf8(data);
-                                    client.tracef("Client received server name: %s", serverName);
+                                    remoteServerName = Buffers.getModifiedUtf8(data);
+                                    client.tracef("Client received server name: %s", remoteServerName);
                                     break;
                                 }
                                 default: {
@@ -157,7 +164,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 }
                             }
                         }
-                        sendCapRequest(serverName);
+                        if (remoteServerName == null) {
+                            // they didn't give their name; guess it from the IP
+                            remoteServerName = channel.getPeerAddress(InetSocketAddress.class).getHostName();
+                        }
+                        sendCapRequest(remoteServerName);
                         return;
                     }
                     default: {
@@ -181,17 +192,17 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
     final class Capabilities implements ChannelListener<ConnectedMessageChannel> {
 
-        private final String serverName;
+        private final String remoteServerName;
 
-        Capabilities(final String serverName) {
-            this.serverName = serverName;
+        Capabilities(final String remoteServerName) {
+            this.remoteServerName = remoteServerName;
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
                 final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                int res = 0;
+                int res;
                 try {
                     res = channel.receive(receiveBuffer);
                 } catch (IOException e) {
@@ -221,6 +232,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                     case Protocol.CAPABILITIES: {
                         client.trace("Client received capabilities response");
+                        String remoteEndpointName = null;
                         while (receiveBuffer.hasRemaining()) {
                             final byte type = receiveBuffer.get();
                             final int len = receiveBuffer.get() & 0xff;
@@ -246,6 +258,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     starttls = true;
                                     break;
                                 }
+                                case Protocol.CAP_ENDPOINT_NAME: {
+                                    remoteEndpointName = Buffers.getModifiedUtf8(data);
+                                    client.tracef("Client received capability: remote endpoint name \"%s\"", remoteEndpointName);
+                                    break;
+                                }
                                 default: {
                                     client.tracef("Client received unknown capability %02x", Integer.valueOf(type & 0xff));
                                     // unknown, skip it for forward compatibility.
@@ -261,7 +278,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
                                 sendBuffer.put(Protocol.STARTTLS);
                                 sendBuffer.flip();
-                                connection.setReadListener(new StartTls(serverName));
+                                connection.setReadListener(new StartTls(remoteServerName));
                                 connection.send(pooledSendBuffer);
                                 // all set
                                 return;
@@ -280,7 +297,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         try {
                             saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
                                 public SaslClient run() throws SaslException {
-                                    return Sasl.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", serverName, propertyMap, callbackHandler);
+                                    return Sasl.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", remoteServerName, propertyMap, callbackHandler);
                                 }
                             }, accessControlContext);
                         } catch (PrivilegedActionException e) {
@@ -297,7 +314,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         Buffers.putModifiedUtf8(sendBuffer, mechanismName);
                         sendBuffer.flip();
                         connection.send(pooledSendBuffer);
-                        connection.setReadListener(new Authentication(saslClient, serverName, userName));
+                        connection.setReadListener(new Authentication(saslClient, remoteServerName, userName, remoteEndpointName));
                         return;
                     }
                     default: {
@@ -320,17 +337,17 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
     final class StartTls implements ChannelListener<ConnectedMessageChannel> {
 
-        private final String serverName;
+        private final String remoteServerName;
 
-        StartTls(final String serverName) {
-            this.serverName = serverName;
+        StartTls(final String remoteServerName) {
+            this.remoteServerName = remoteServerName;
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
                 final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                int res = 0;
+                int res;
                 try {
                     res = channel.receive(receiveBuffer);
                 } catch (IOException e) {
@@ -365,7 +382,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             connection.handleException(e, false);
                             return;
                         }
-                        sendCapRequest(serverName);
+                        sendCapRequest(remoteServerName);
                         return;
                     }
                     default: {
@@ -391,11 +408,13 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
         private final SaslClient saslClient;
         private final String serverName;
         private final String authorizationID;
+        private final String remoteEndpointName;
 
-        Authentication(final SaslClient saslClient, final String serverName, final String authorizationID) {
+        Authentication(final SaslClient saslClient, final String serverName, final String authorizationID, final String remoteEndpointName) {
             this.saslClient = saslClient;
             this.serverName = serverName;
             this.authorizationID = authorizationID;
+            this.remoteEndpointName = remoteEndpointName;
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
@@ -491,7 +510,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {
                                     public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                         // this happens immediately.
-                                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, authorizationID);
+                                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, authorizationID, remoteEndpointName);
                                         connection.setReadListener(new RemoteReadListener(connectionHandler, connection));
                                         return connectionHandler;
                                     }

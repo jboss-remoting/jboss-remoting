@@ -128,9 +128,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (xnio == null) {
             throw new IllegalArgumentException("xnio is null");
         }
-        if (name == null) {
-            throw new IllegalArgumentException("name is null");
-        }
         if (optionMap == null) {
             throw new IllegalArgumentException("optionMap is null");
         }
@@ -484,7 +481,15 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public String toString() {
-        return "endpoint \"" + name + "\" <" + Integer.toHexString(hashCode()) + ">";
+        StringBuilder b = new StringBuilder();
+        b.append("endpoint ");
+        if (name != null) {
+            b.append('"').append(name).append('"');
+        } else {
+            b.append("(anonymous)");
+        }
+        b.append(" <").append(Integer.toHexString(hashCode())).append(">");
+        return b.toString();
     }
 
     private static final Charset UTF_8 = Charset.forName("UTF-8");

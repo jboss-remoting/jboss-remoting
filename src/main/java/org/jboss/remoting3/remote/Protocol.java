@@ -192,6 +192,7 @@ final class Protocol {
     static final byte CAP_VERSION = 0;   // sent by client & server - max version supported (must be first)
     static final byte CAP_SASL_MECH = 1; // sent by server; content = mechanism name (utf-8)
     static final byte CAP_STARTTLS = 2;  // sent by server; content = empty
+    static final byte CAP_ENDPOINT_NAME = 3; // sent by client & server - our endpoint name if not anonymous
 
     static final byte GRT_SERVER_NAME = 0; // greeting server name
 

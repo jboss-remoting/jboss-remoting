@@ -47,4 +47,11 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * @return the future channel
      */
     IoFuture<Channel> openChannel(String serviceType, OptionMap optionMap);
+
+    /**
+     * Get the name of the remote endpoint, if it has one.
+     *
+     * @return the remote endpoint name or {@code null} if it is anonymous
+     */
+    String getRemoteEndpointName();
 }

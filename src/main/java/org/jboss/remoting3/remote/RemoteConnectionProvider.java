@@ -54,7 +54,6 @@ import org.xnio.Result;
 import org.xnio.WriteChannelThread;
 import org.xnio.Xnio;
 import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedSslStreamChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
 import org.xnio.ssl.XnioSsl;
@@ -123,7 +122,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                 final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, getExecutor());
                 remoteConnection.setResult(result);
                 messageChannel.getWriteSetter().set(remoteConnection.getWriteListener());
-                final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, callbackHandler, AccessController.getContext(), connectOptions);
+                final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, connectionProviderContext, callbackHandler, AccessController.getContext(), connectOptions);
                 openListener.handleEvent(messageChannel);
             }
         };

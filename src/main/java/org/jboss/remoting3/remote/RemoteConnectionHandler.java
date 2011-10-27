@@ -75,6 +75,8 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private final int maxInboundChannels = 40;
     private final int maxOutboundChannels = 40;
 
+    private final String remoteEndpointName;
+
     private volatile int channelState = 0;
 
     private static final AtomicIntegerFieldUpdater<RemoteConnectionHandler> channelStateUpdater = AtomicIntegerFieldUpdater.newUpdater(RemoteConnectionHandler.class, "channelState");
@@ -88,10 +90,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final String authorizationId) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final String authorizationId, final String remoteEndpointName) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
+        this.remoteEndpointName = remoteEndpointName;
         final SslChannel sslChannel = remoteConnection.getSslChannel();
         final Set<Principal> principals = new LinkedHashSet<Principal>();
         if (sslChannel != null) {
@@ -363,6 +366,10 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     public Collection<Principal> getPrincipals() {
         return principals;
+    }
+
+    public String getRemoteEndpointName() {
+        return remoteEndpointName;
     }
 
     protected void closeAction() throws IOException {

@@ -89,6 +89,10 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
         public Collection<Principal> getPrincipals() {
             return Collections.emptySet();
         }
+
+        public String getRemoteEndpointName() {
+            return context.getConnectionProviderContext().getEndpoint().getName();
+        }
     }
 
     public String toString() {

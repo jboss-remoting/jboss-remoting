@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3.spi;
 
-import java.io.Closeable;
 import java.security.Principal;
 import java.util.Collection;
 import org.jboss.remoting3.Channel;
@@ -52,4 +51,11 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
      * @return the authenticated principals
      */
     Collection<Principal> getPrincipals();
+
+    /**
+     * Get the name of the remote endpoint.
+     *
+     * @return the remote endpoint name
+     */
+    String getRemoteEndpointName();
 }

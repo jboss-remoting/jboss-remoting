@@ -73,5 +73,26 @@ public final class Remoting {
         return createEndpoint(endpointName, Xnio.getInstance(Remoting.class.getClassLoader()), optionMap);
     }
 
+    /**
+     * Create an anonymous endpoint.
+     *
+     * @param optionMap the options to configure the endpoint
+     * @return the new endpoint
+     * @throws IOException if an error occurs
+     */
+    public static Endpoint createEndpoint(OptionMap optionMap) throws IOException {
+        return createEndpoint(null, optionMap);
+    }
+
+    /**
+     * Create an anonymous endpoint.
+     *
+     * @return the new endpoint
+     * @throws IOException if an error occurs
+     */
+    public static Endpoint createEndpoint() throws IOException {
+        return createEndpoint(null, OptionMap.EMPTY);
+    }
+
     private Remoting() { /* empty */ }
 }

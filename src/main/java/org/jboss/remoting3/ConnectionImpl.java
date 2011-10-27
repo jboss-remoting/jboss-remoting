@@ -67,6 +67,10 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
         return result.getIoFuture();
     }
 
+    public String getRemoteEndpointName() {
+        return connectionHandler.getRemoteEndpointName();
+    }
+
     public Attachments getAttachments() {
         return attachments;
     }
