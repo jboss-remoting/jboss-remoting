@@ -589,12 +589,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             return connectionProviderContext;
         }
 
-        public OpenListener getServiceOpenListener(final String serviceType) throws ServiceNotFoundException {
-            final OpenListener listener = registeredServices.get(serviceType);
-            if (listener == null) {
-                throw new ServiceNotFoundException("Unable to find service type '" + serviceType + "'");
-            }
-            return listener;
+        public OpenListener getServiceOpenListener(final String serviceType) {
+            return registeredServices.get(serviceType);
         }
 
         public Connection getConnection() {

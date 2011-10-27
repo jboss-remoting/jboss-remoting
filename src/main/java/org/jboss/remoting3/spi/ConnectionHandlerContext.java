@@ -24,7 +24,6 @@ package org.jboss.remoting3.spi;
 
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.OpenListener;
-import org.jboss.remoting3.ServiceNotFoundException;
 
 /**
  * The context for connection handlers.  Used to inform the endpoint of incoming events on an established connection.
@@ -43,9 +42,8 @@ public interface ConnectionHandlerContext {
      *
      * @param serviceType the service type string
      * @return the open listener
-     * @throws ServiceNotFoundException if the service is not found
      */
-    OpenListener getServiceOpenListener(String serviceType) throws ServiceNotFoundException;
+    OpenListener getServiceOpenListener(String serviceType);
 
     /**
      * Indicate that the remote side has terminated the connection, so the local side should be closed as well.
