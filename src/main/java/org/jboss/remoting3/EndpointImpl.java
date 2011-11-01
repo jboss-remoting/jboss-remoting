@@ -35,6 +35,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.regex.Pattern;
 import org.jboss.remoting3.security.PasswordClientCallbackHandler;
@@ -47,18 +48,15 @@ import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Cancellable;
-import org.xnio.ChannelThread;
-import org.xnio.ChannelThreadPool;
-import org.xnio.ChannelThreadPools;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
+import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
-import org.xnio.ReadChannelThread;
 import org.xnio.Result;
 import org.jboss.logging.Logger;
-import org.xnio.WriteChannelThread;
 import org.xnio.Xnio;
+import org.xnio.XnioWorker;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -89,8 +87,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final ConcurrentMap<String, OpenListener> registeredServices = new UnlockedReadHashMap<String, OpenListener>();
 
     private final Xnio xnio;
-    private final ChannelThreadPool<ReadChannelThread> readPool;
-    private final ChannelThreadPool<WriteChannelThread> writePool;
+    private final XnioWorker worker;
 
     private final ThreadPoolExecutor executor;
 
@@ -133,50 +130,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
         this.xnio = xnio;
         this.name = name;
-        this.optionMap = optionMap;
+        final String workerName = name == null ? "Remoting (anonymous)" : "Remoting \"" + name + "\"";
+        this.optionMap = OptionMap.builder().addAll(optionMap).set(Options.WORKER_NAME, workerName).getMap();
         // initialize CPC
         connectionProviderContext = new ConnectionProviderContextImpl();
         // add default connection providers
         connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, executor));
-        // fill XNIO thread pools
-        final int readPoolSize = optionMap.get(RemotingOptions.READ_THREAD_POOL_SIZE, 1);
-        if (readPoolSize < 1) {
-            throw new IllegalArgumentException("Read thread pool must have at least one thread");
-        }
-        final int writePoolSize = optionMap.get(RemotingOptions.WRITE_THREAD_POOL_SIZE, 1);
-        if (writePoolSize < 1) {
-            throw new IllegalArgumentException("Write thread pool must have at least one thread");
-        }
-        boolean ok = false;
-        ChannelThreadPool<ReadChannelThread> readPool = null;
-        ChannelThreadPool<WriteChannelThread> writePool = null;
-        try {
-            if (readPoolSize == 1) {
-                readPool = ChannelThreadPools.singleton(xnio.createReadChannelThread(OptionMap.create(Options.ALLOW_BLOCKING, Boolean.FALSE, Options.THREAD_NAME, String.format("Remoting \"%s\" read-1", name))));
-            } else {
-                readPool = ChannelThreadPools.createRoundRobinPool();
-                for (int i = 1; i <= readPoolSize; i++) {
-                    readPool.addToPool(xnio.createReadChannelThread(OptionMap.create(Options.ALLOW_BLOCKING, Boolean.FALSE, Options.THREAD_NAME, String.format("Remoting \"%s\" read-%d", name, Integer.valueOf(i)))));
-                }
-            }
-            if (writePoolSize == 1) {
-                writePool = ChannelThreadPools.singleton(xnio.createWriteChannelThread(OptionMap.create(Options.ALLOW_BLOCKING, Boolean.FALSE, Options.THREAD_NAME, String.format("Remoting \"%s\" write-1", name))));
-            } else {
-                writePool = ChannelThreadPools.createRoundRobinPool();
-                for (int i = 1; i <= readPoolSize; i++) {
-                    writePool.addToPool(xnio.createWriteChannelThread(OptionMap.create(Options.ALLOW_BLOCKING, Boolean.FALSE, Options.THREAD_NAME, String.format("Remoting \"%s\" write-%d", name, Integer.valueOf(i)))));
-                }
-            }
-            ok = true;
-        } finally {
-            if (! ok) {
-                if (readPool != null) ChannelThreadPools.shutdown(readPool);
-                if (writePool != null) ChannelThreadPools.shutdown(writePool);
-                executor.shutdown();
-            }
-        }
-        this.readPool = readPool;
-        this.writePool = writePool;
+        // get XNIO worker
+        worker = xnio.createWorker(optionMap);
         log.tracef("Completed open of %s", this);
     }
 
@@ -200,7 +161,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return name;
     }
 
-    void closeTick1(Object c) {
+    private void closeTick1(Object c) {
         int res = resourceCountUpdater.decrementAndGet(this);
         if (res == CLOSED_FLAG) {
             // this was the last phase 1 resource.
@@ -208,11 +169,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         } else if ((res & CLOSED_FLAG) != 0) {
             // shutdown is currently in progress.
             if (log.isTraceEnabled()) {
-                log.tracef("Phase 1 shutdown count %d of %s (closed %s)", Integer.valueOf(res & COUNT_MASK), this, c);
+                log.logf(EndpointImpl.class.getName(), Logger.Level.TRACE, null, "Phase 1 shutdown count %08x of %s (closed %s)", Integer.valueOf(res & COUNT_MASK), this, c);
             }
         } else {
             if (log.isTraceEnabled()) {
-                log.tracef("Resource closed count %d of %s (closed %s)", Integer.valueOf(res & COUNT_MASK), this, c);
+                log.logf(EndpointImpl.class.getName(), Logger.Level.TRACE, null, "Resource closed count %08x of %s (closed %s)", Integer.valueOf(res & COUNT_MASK), this, c);
             }
         }
     }
@@ -220,38 +181,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private void finishPhase1() {
         // all our original resources were closed; now move on to stage two (thread pools)
         log.tracef("Finished phase 1 shutdown of %s", this);
-        closeUntick();
-        final ChannelThread.Listener listener = new ChannelThread.Listener() {
-            public void handleTerminationInitiated(final ChannelThread thread) {
-            }
-
-            public void handleTerminationComplete(final ChannelThread thread) {
-                closeTick2();
-            }
-        };
-        for (ReadChannelThread thread : readPool.getCurrentPool()) {
-            closeUntick();
-            thread.addTerminationListener(listener);
-            thread.shutdown();
-        }
-        for (WriteChannelThread thread : writePool.getCurrentPool()) {
-            closeUntick();
-            thread.addTerminationListener(listener);
-            thread.shutdown();
-        }
-        closeTick2();
+        IoUtils.safeClose(worker);
+        executor.shutdown();
         return;
-    }
-
-    void closeTick2() {
-        final int res = resourceCountUpdater.decrementAndGet(this);
-        if (res == CLOSED_FLAG) {
-            log.tracef("Finished phase 2 shutdown of %s", this);
-            // all our phase 2 resources were closed; just one left
-            executor.shutdown();
-        } else if (log.isTraceEnabled()) {
-            log.tracef("Phase 2 shutdown count %d of %s", Integer.valueOf(res & COUNT_MASK), this);
-        }
     }
 
     void resourceUntick(Object opened) throws NotOpenException {
@@ -265,10 +197,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (log.isTraceEnabled()) {
             log.tracef("Allocated tick to %d of %s (opened %s)", Integer.valueOf(old + 1), this, opened);
         }
-    }
-
-    void closeUntick() {
-        resourceCountUpdater.incrementAndGet(this);
     }
 
     protected void closeAction() throws IOException {
@@ -357,11 +285,16 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             if (connectionProvider == null) {
                 throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
             }
-            final FutureResult<Connection> futureResult = new FutureResult<Connection>(writePool);
+            final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
             // Mark the stack because otherwise debugging connect problems can be incredibly tough
             final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
             final Cancellable connect = connectionProvider.connect(destination, connectOptions, new Result<ConnectionHandlerFactory>() {
+                private final AtomicBoolean called = new AtomicBoolean();
+
                 public boolean setResult(final ConnectionHandlerFactory result) {
+                    if (called.getAndSet(true)) {
+                        return false;
+                    }
                     final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext);
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
@@ -371,12 +304,18 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 }
 
                 public boolean setException(final IOException exception) {
+                    if (called.getAndSet(true)) {
+                        return false;
+                    }
                     closeTick1("a failed connection (2)");
                     SpiUtils.glueStackTraces(exception, mark, 1, "asynchronous invocation");
                     return futureResult.setException(exception);
                 }
 
                 public boolean setCancelled() {
+                    if (called.getAndSet(true)) {
+                        return false;
+                    }
                     closeTick1("a cancelled connection");
                     return futureResult.setCancelled();
                 }
@@ -552,7 +491,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         private final T value;
 
         private MapRegistration(final ConcurrentMap<String, T> map, final String key, final T value) {
-            super(writePool, false);
+            super(executor, false);
             this.map = map;
             this.key = key;
             this.value = value;
@@ -634,16 +573,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             return xnio;
         }
 
-        public ChannelThreadPool<ReadChannelThread> getReadThreadPool() {
-            return readPool;
-        }
-
-        public ChannelThreadPool<WriteChannelThread> getWriteThreadPool() {
-            return writePool;
-        }
-
         public Executor getExecutor() {
             return executor;
+        }
+
+        public XnioWorker getXnioWorker() {
+            return worker;
         }
     }
 
@@ -659,7 +594,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public Thread newThread(final Runnable r) {
-            final Thread thread = new Thread(r, String.format("Remoting \"%s\" task-%d", name, Integer.valueOf(threadIdUpdater.getAndIncrement(this))));
+            final int id = threadIdUpdater.getAndIncrement(this);
+            final String threadName = name == null ? String.format("Remoting (anonymous) task-%d", Integer.valueOf(id)) : String.format("Remoting \"%s\" task-%d", name, Integer.valueOf(id));
+            final Thread thread = new Thread(r, threadName);
             thread.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
                 public void uncaughtException(final Thread t, final Throwable e) {
                     log.errorf(e, "Uncaught exception in thread %s", t);

@@ -44,16 +44,14 @@ import org.xnio.BufferAllocator;
 import org.xnio.ByteBufferSlicePool;
 import org.xnio.Cancellable;
 import org.xnio.ChannelListener;
-import org.xnio.ChannelThreadPool;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pool;
-import org.xnio.ReadChannelThread;
 import org.xnio.Result;
-import org.xnio.WriteChannelThread;
 import org.xnio.Xnio;
+import org.xnio.XnioWorker;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
@@ -71,8 +69,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     private final ProviderInterface providerInterface = new ProviderInterface();
     private final Xnio xnio;
     private final XnioSsl xnioSsl;
-    private final ChannelThreadPool<ReadChannelThread> readThreadPool;
-    private final ChannelThreadPool<WriteChannelThread> writeThreadPool;
+    private final XnioWorker xnioWorker;
     private final ConnectionProviderContext connectionProviderContext;
     private final Pool<ByteBuffer> messageBufferPool;
     private final Pool<ByteBuffer> framingBufferPool;
@@ -89,8 +86,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         } catch (GeneralSecurityException e) {
             throw new IOException("Failed to configure SSL", e);
         }
-        readThreadPool = connectionProviderContext.getReadThreadPool();
-        writeThreadPool = connectionProviderContext.getWriteThreadPool();
+        xnioWorker = connectionProviderContext.getXnioWorker();
         this.connectionProviderContext = connectionProviderContext;
         final int messageBufferSize = optionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, 8192);
         messageBufferPool = new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, messageBufferSize * 2));
@@ -127,13 +123,11 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                 openListener.handleEvent(messageChannel);
             }
         };
-        final WriteChannelThread writeThread = writeThreadPool.getThread();
-        final ReadChannelThread readThread = readThreadPool.getThread();
         final IoFuture<? extends ConnectedStreamChannel> future;
         if (useSsl) {
-            future = xnioSsl.connectSsl(destination, writeThread, readThread, writeThread, openListener, connectOptions);
+            future = xnioSsl.connectSsl(xnioWorker, destination, openListener, connectOptions);
         } else {
-            future = xnio.connectStream(destination, writeThread, readThread, writeThread, openListener, connectOptions);
+            future = xnioWorker.connectStream(destination, openListener, connectOptions);
         }
         future.addNotifier(new IoFuture.HandlingNotifier<ConnectedStreamChannel, Result<ConnectionHandlerFactory>>() {
             public void handleCancelled(final Result<ConnectionHandlerFactory> attachment) {
@@ -160,19 +154,19 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) throws IOException {
             final AccessControlContext accessControlContext = AccessController.getContext();
             final boolean sslCapable = xnioSsl != null;
-            final WriteChannelThread writeThread = writeThreadPool.getThread();
             final AcceptListener acceptListener = new AcceptListener(optionMap, authenticationProvider, accessControlContext);
             final AcceptingChannel<? extends ConnectedStreamChannel> result;
             if (sslCapable && optionMap.get(Options.SSL_ENABLED, true)) {
-                result = xnioSsl.createSslTcpServer((InetSocketAddress) bindAddress, writeThread, acceptListener, optionMap);
+                result = xnioSsl.createSslTcpServer(xnioWorker, (InetSocketAddress) bindAddress, acceptListener, optionMap);
             } else {
-                result = xnio.createStreamServer(bindAddress, writeThread, acceptListener, optionMap);
+                result = xnioWorker.createStreamServer(bindAddress, acceptListener, optionMap);
             }
             addCloseHandler(new CloseHandler<ConnectionProvider>() {
                 public void handleClose(final ConnectionProvider closed, final IOException exception) {
                     IoUtils.safeClose(result);
                 }
             });
+            result.resumeAccepts();
             return result;
         }
     }
@@ -192,7 +186,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         public void handleEvent(final AcceptingChannel<? extends ConnectedStreamChannel> channel) {
             final ConnectedStreamChannel accepted;
             try {
-                accepted = channel.accept(readThreadPool.getThread(), writeThreadPool.getThread());
+                accepted = channel.accept();
                 if (accepted == null) {
                     return;
                 }

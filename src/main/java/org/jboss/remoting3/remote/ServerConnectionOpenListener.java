@@ -91,11 +91,6 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             ByteBuffer sendBuffer = pooled.getResource();
             sendBuffer.put(Protocol.GREETING);
             ProtocolUtils.writeString(sendBuffer, Protocol.GRT_SERVER_NAME, serverName);
-            final String localEndpointName = connectionProviderContext.getEndpoint().getName();
-            if (localEndpointName != null) {
-                // don't send a name if we're anonymous
-                ProtocolUtils.writeString(sendBuffer, Protocol.CAP_ENDPOINT_NAME, localEndpointName);
-            }
             sendBuffer.flip();
             connection.setReadListener(new Initial());
             connection.send(pooled);
@@ -352,6 +347,11 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 ByteBuffer sendBuffer = pooled.getResource();
                 sendBuffer.put(Protocol.CAPABILITIES);
                 ProtocolUtils.writeByte(sendBuffer, Protocol.CAP_VERSION, version);
+                final String localEndpointName = connectionProviderContext.getEndpoint().getName();
+                if (localEndpointName != null) {
+                    // don't send a name if we're anonymous
+                    ProtocolUtils.writeString(sendBuffer, Protocol.CAP_ENDPOINT_NAME, localEndpointName);
+                }
                 if (starttls) {
                     ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_STARTTLS);
                 }
