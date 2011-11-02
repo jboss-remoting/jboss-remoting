@@ -408,6 +408,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     }
                     case Protocol.AUTH_RESPONSE: {
                         server.tracef("Server received authentication response");
+                        connection.getChannel().suspendReads();
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
                                 boolean ok = false;
@@ -448,7 +449,6 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                 }
                             }
                         });
-                        connection.getChannel().suspendReads();
                         return;
                     }
                     case Protocol.CAPABILITIES: {

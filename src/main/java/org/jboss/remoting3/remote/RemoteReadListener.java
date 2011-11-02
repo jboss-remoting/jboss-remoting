@@ -74,6 +74,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                         }
                         return;
                     } else if (res == 0) {
+                        log.trace("No message ready; returning");
                         return;
                     }
                     buffer.flip();
@@ -81,6 +82,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                     try {
                         switch (protoId) {
                             case Protocol.CONNECTION_ALIVE: {
+                                log.trace("Received connection alive request");
                                 break;
                             }
                             case Protocol.CONNECTION_CLOSE: {
@@ -89,6 +91,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 return;
                             }
                             case Protocol.CHANNEL_OPEN_REQUEST: {
+                                log.trace("Received channel open request");
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 int inboundWindow = Protocol.DEFAULT_WINDOW_SIZE;
                                 int inboundMessages = Protocol.DEFAULT_MESSAGE_COUNT;
@@ -189,6 +192,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 }
                             }
                             case Protocol.MESSAGE_DATA: {
+                                log.trace("Received message data");
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
                                 if (connectionChannel == null) {
@@ -203,6 +207,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 break;
                             }
                             case Protocol.MESSAGE_WINDOW_OPEN: {
+                                log.trace("Received message window open");
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
                                 if (connectionChannel == null) {
@@ -214,6 +219,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 break;
                             }
                             case Protocol.MESSAGE_ASYNC_CLOSE: {
+                                log.trace("Received message async close");
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
                                 if (connectionChannel == null) {
@@ -223,6 +229,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 break;
                             }
                             case Protocol.CHANNEL_CLOSED: {
+                                log.trace("Received channel closed");
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
                                 if (connectionChannel == null) {
@@ -232,6 +239,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 break;
                             }
                             case Protocol.CHANNEL_SHUTDOWN_WRITE: {
+                                log.trace("Received channel shutdown write");
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);
                                 if (connectionChannel == null) {
@@ -241,6 +249,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 break;
                             }
                             case Protocol.CHANNEL_OPEN_ACK: {
+                                log.trace("Received channel open ack");
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 if ((channelId & 0x80000000) == 0) {
                                     // invalid

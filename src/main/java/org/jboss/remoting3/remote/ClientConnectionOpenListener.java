@@ -313,8 +313,8 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         sendBuffer.put(Protocol.AUTH_REQUEST);
                         Buffers.putModifiedUtf8(sendBuffer, mechanismName);
                         sendBuffer.flip();
-                        connection.send(pooledSendBuffer);
                         connection.setReadListener(new Authentication(saslClient, remoteServerName, userName, remoteEndpointName));
+                        connection.send(pooledSendBuffer);
                         return;
                     }
                     default: {
@@ -449,6 +449,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                     case Protocol.AUTH_CHALLENGE: {
                         client.trace("Client received authentication challenge");
+                        connection.getChannel().suspendReads();
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
                                 final boolean clientComplete = saslClient.isComplete();
@@ -481,11 +482,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 return;
                             }
                         });
-                        connection.getChannel().suspendReads();
                         return;
                     }
                     case Protocol.AUTH_COMPLETE: {
                         client.trace("Client received authentication complete");
+                        connection.getChannel().suspendReads();
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
                                 final boolean clientComplete = saslClient.isComplete();
@@ -520,7 +521,6 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 return;
                             }
                         });
-                        connection.getChannel().suspendReads();
                         return;
                     }
                     case Protocol.AUTH_REJECTED: {

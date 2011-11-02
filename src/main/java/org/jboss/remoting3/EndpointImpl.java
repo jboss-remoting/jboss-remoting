@@ -78,6 +78,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private static final RemotingPermission GET_CONNECTION_PROVIDER_INTERFACE_PERM = new RemotingPermission("getConnectionProviderInterface");
     private static final int CLOSED_FLAG = 0x80000000;
     private static final int COUNT_MASK = ~(CLOSED_FLAG);
+    private static final String FQCN = EndpointImpl.class.getName();
 
     private final Set<ConnectionImpl> connections = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<ConnectionImpl, Boolean>()));
 
@@ -131,13 +132,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         this.xnio = xnio;
         this.name = name;
         final String workerName = name == null ? "Remoting (anonymous)" : "Remoting \"" + name + "\"";
-        this.optionMap = OptionMap.builder().addAll(optionMap).set(Options.WORKER_NAME, workerName).getMap();
+        this.optionMap = optionMap;
         // initialize CPC
         connectionProviderContext = new ConnectionProviderContextImpl();
         // add default connection providers
         connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, executor));
         // get XNIO worker
-        worker = xnio.createWorker(optionMap);
+        worker = xnio.createWorker(OptionMap.builder().addAll(optionMap).set(Options.WORKER_NAME, workerName).getMap());
         log.tracef("Completed open of %s", this);
     }
 
@@ -169,11 +170,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         } else if ((res & CLOSED_FLAG) != 0) {
             // shutdown is currently in progress.
             if (log.isTraceEnabled()) {
-                log.logf(EndpointImpl.class.getName(), Logger.Level.TRACE, null, "Phase 1 shutdown count %08x of %s (closed %s)", Integer.valueOf(res & COUNT_MASK), this, c);
+                log.logf(FQCN, Logger.Level.TRACE, null, "Phase 1 shutdown count %08x of %s (closed %s)", Integer.valueOf(res & COUNT_MASK), this, c);
             }
         } else {
             if (log.isTraceEnabled()) {
-                log.logf(EndpointImpl.class.getName(), Logger.Level.TRACE, null, "Resource closed count %08x of %s (closed %s)", Integer.valueOf(res & COUNT_MASK), this, c);
+                log.logf(FQCN, Logger.Level.TRACE, null, "Resource closed count %08x of %s (closed %s)", Integer.valueOf(res & COUNT_MASK), this, c);
             }
         }
     }
@@ -293,8 +294,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
                 public boolean setResult(final ConnectionHandlerFactory result) {
                     if (called.getAndSet(true)) {
+                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Got redundant complete result %s", result);
                         return false;
                     }
+                    log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", result);
                     final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext);
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
@@ -305,8 +308,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
                 public boolean setException(final IOException exception) {
                     if (called.getAndSet(true)) {
+                        log.logf(getClass().getName(), Logger.Level.TRACE, exception, "Got redundant exception result");
                         return false;
                     }
+                    log.logf(getClass().getName(), Logger.Level.TRACE, exception, "Registered exception result");
                     closeTick1("a failed connection (2)");
                     SpiUtils.glueStackTraces(exception, mark, 1, "asynchronous invocation");
                     return futureResult.setException(exception);
@@ -314,8 +319,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
                 public boolean setCancelled() {
                     if (called.getAndSet(true)) {
+                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Got redundant cancellation result");
                         return false;
                     }
+                    log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered cancellation result");
                     closeTick1("a cancelled connection");
                     return futureResult.setCancelled();
                 }
@@ -596,7 +603,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         public Thread newThread(final Runnable r) {
             final int id = threadIdUpdater.getAndIncrement(this);
             final String threadName = name == null ? String.format("Remoting (anonymous) task-%d", Integer.valueOf(id)) : String.format("Remoting \"%s\" task-%d", name, Integer.valueOf(id));
-            final Thread thread = new Thread(r, threadName);
+            final Thread thread = new EndpointThread(r, threadName);
             thread.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
                 public void uncaughtException(final Thread t, final Throwable e) {
                     log.errorf(e, "Uncaught exception in thread %s", t);
@@ -606,11 +613,42 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
+    static final class EndpointThread extends Thread {
+
+        EndpointThread(final Runnable target, final String name) {
+            super(target, name);
+        }
+
+        public void run() {
+            try {
+                super.run();
+            } finally {
+                log.tracef("Endpoint thread %s exiting", this);
+            }
+        }
+    }
+
     static final class Pool extends ThreadPoolExecutor {
+
+        private static final String FQCN = Pool.class.getName();
+
         volatile Runnable stopTask;
 
         Pool(final int corePoolSize, final int maximumPoolSize, final long keepAliveTime, final TimeUnit unit, final BlockingQueue<Runnable> workQueue, final ThreadFactory threadFactory) {
             super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory);
+        }
+
+        public void execute(final Runnable command) {
+            super.execute(command);
+            log.logf(FQCN, Logger.Level.TRACE, null, "Accepted %s for execution", command);
+        }
+
+        protected void beforeExecute(final Thread t, final Runnable r) {
+            log.tracef("Initiating execution of %s", r);
+        }
+
+        protected void afterExecute(final Runnable r, final Throwable t) {
+            log.tracef(t, "Completed execution of %s", r);
         }
 
         protected void terminated() {
