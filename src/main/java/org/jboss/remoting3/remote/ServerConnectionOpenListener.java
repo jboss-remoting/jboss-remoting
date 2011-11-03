@@ -53,8 +53,10 @@ import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.SslChannel;
 import org.xnio.sasl.SaslUtils;
+import org.xnio.sasl.SaslWrapper;
 
 import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslServerFactory;
@@ -423,6 +425,10 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                             server.tracef("Server sending authentication complete");
                                             connectionProviderContext.accept(new ConnectionHandlerFactory() {
                                                 public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
+                                                    final Object qop = saslServer.getNegotiatedProperty(Sasl.QOP);
+                                                    if (qop.equals("auth-int") || qop.equals("auth-conf")) {
+                                                        connection.setSaslWrapper(SaslWrapper.create(saslServer));
+                                                    }
                                                     final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, saslServer.getAuthorizationID(), remoteEndpointName);
                                                     connection.setReadListener(new RemoteReadListener(connectionHandler, connection));
                                                     return connectionHandler;
@@ -443,7 +449,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                     ok = true;
                                     return;
                                 } finally {
-                                    if (! ok) {
+                                    if (!ok) {
                                         pooled.free();
                                     }
                                 }

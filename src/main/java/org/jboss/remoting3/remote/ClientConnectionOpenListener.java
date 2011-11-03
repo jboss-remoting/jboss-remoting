@@ -51,6 +51,7 @@ import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.SslChannel;
 import org.xnio.sasl.SaslUtils;
+import org.xnio.sasl.SaslWrapper;
 
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.Sasl;
@@ -491,13 +492,13 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             public void run() {
                                 final boolean clientComplete = saslClient.isComplete();
                                 final byte[] challenge = Buffers.take(buffer, buffer.remaining());
-                                if (! clientComplete) try {
+                                if (!clientComplete) try {
                                     final byte[] response = saslClient.evaluateChallenge(challenge);
                                     if (response != null && response.length > 0) {
                                         connection.handleException(new SaslException("Received extra auth message after completion"));
                                         return;
                                     }
-                                    if (! saslClient.isComplete()) {
+                                    if (!saslClient.isComplete()) {
                                         connection.handleException(new SaslException("Client not complete after processing auth complete message"));
                                         return;
                                     }
@@ -506,6 +507,10 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     failedMechs.add(saslClient.getMechanismName());
                                     sendCapRequest(serverName);
                                     return;
+                                }
+                                final Object qop = saslClient.getNegotiatedProperty(Sasl.QOP);
+                                if (qop.equals("auth-int") || qop.equals("auth-conf")) {
+                                    connection.setSaslWrapper(SaslWrapper.create(saslClient));
                                 }
                                 // auth complete.
                                 final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {

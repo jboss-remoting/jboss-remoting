@@ -32,6 +32,7 @@ import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
+import org.xnio.sasl.SaslWrapper;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
 
@@ -59,6 +60,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
 
     public void handleEvent(final ConnectedMessageChannel channel) {
         int res;
+        SaslWrapper saslWrapper = connection.getSaslWrapper();
         try {
             Pooled<ByteBuffer> pooled = connection.allocate();
             ByteBuffer buffer = pooled.getResource();
@@ -78,6 +80,12 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                         return;
                     }
                     buffer.flip();
+                    if (saslWrapper != null) {
+                        final ByteBuffer source = buffer.duplicate();
+                        buffer.clear();
+                        saslWrapper.unwrap(buffer, source);
+                        buffer.flip();
+                    }
                     final byte protoId = buffer.get();
                     try {
                         switch (protoId) {

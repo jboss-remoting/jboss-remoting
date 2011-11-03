@@ -38,6 +38,7 @@ import org.xnio.Result;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.SslChannel;
+import org.xnio.sasl.SaslWrapper;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -52,6 +53,7 @@ final class RemoteConnection {
     private final RemoteWriteListener writeListener = new RemoteWriteListener();
     private final Executor executor;
     private volatile Result<ConnectionHandlerFactory> result;
+    private volatile SaslWrapper saslWrapper;
 
     RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedStreamChannel underlyingChannel, final ConnectedMessageChannel channel, final OptionMap optionMap, final Executor executor) {
         this.messageBufferPool = messageBufferPool;
@@ -138,6 +140,14 @@ final class RemoteConnection {
         return underlyingChannel instanceof SslChannel ? (SslChannel) underlyingChannel : null;
     }
 
+    SaslWrapper getSaslWrapper() {
+        return saslWrapper;
+    }
+
+    void setSaslWrapper(final SaslWrapper saslWrapper) {
+        this.saslWrapper = saslWrapper;
+    }
+
     void handlePreAuthCloseRequest() {
         try {
             channel.close();
@@ -217,13 +227,21 @@ final class RemoteConnection {
             }
         }
 
-        public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
+        public void send(Pooled<ByteBuffer> pooled, final boolean close) {
             synchronized (RemoteConnection.this) {
                 if (closed) { pooled.free(); return; }
                 if (close) { closed = true; }
                 final ConnectedMessageChannel channel = getChannel();
                 boolean free = true;
                 try {
+                    final SaslWrapper wrapper = saslWrapper;
+                    if (wrapper != null) {
+                        final ByteBuffer buffer = pooled.getResource();
+                        final ByteBuffer source = buffer.duplicate();
+                        buffer.clear();
+                        wrapper.wrap(buffer, source);
+                        buffer.flip();
+                    }
                     if (queue.isEmpty()) {
                         final ByteBuffer buffer = pooled.getResource();
                         if (! channel.send(buffer)) {
