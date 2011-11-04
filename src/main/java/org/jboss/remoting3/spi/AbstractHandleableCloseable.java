@@ -56,6 +56,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
 
     private final Object closeLock = new Object();
     private State state = State.OPEN;
+    private IOException failure = null;
     private Map<Key, CloseHandler<? super T>> closeHandlers = null;
 
     enum State {
@@ -65,7 +66,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     }
 
     static {
-        boolean b = false;
+        boolean b;
         try {
             b = Boolean.parseBoolean(AccessController.doPrivileged(new PrivilegedAction<String>() {
                 public String run() {
@@ -171,40 +172,23 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             throw new IllegalStateException(t);
         }
 
-        final SyncCloseHandler<T> syncCloseHandler;
-        final Key key;
+        final IOException failure;
         synchronized (closeLock) {
-            //if this is already closed we don't want to register an async task
-            //to listen for closure
-            //we can just return
-            if (state == State.CLOSED) {
-                return;
+            while (state != State.CLOSED) try {
+                closeLock.wait();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new InterruptedIOException("Interrupted while waiting for close to complete");
             }
-            syncCloseHandler = new SyncCloseHandler<T>();
-            key = addCloseHandler(syncCloseHandler);
+            failure = this.failure;
+            this.failure = null;
         }
-        try {
-            synchronized (syncCloseHandler) {
-                while (!syncCloseHandler.done) {
-                    try {
-                        syncCloseHandler.wait();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new InterruptedIOException("Interrupted while waiting for close to complete");
-                    }
-                }
-                IOException cause = syncCloseHandler.cause;
-                if (cause != null) {
-                    final IOException clone = clone(cause);
-                    if (cause != clone) {
-                        SpiUtils.glueStackTraces(cause, Thread.currentThread().getStackTrace(), 1, "asynchronous close");
-                    }
-                    throw clone;
-                }
-                return;
+        if (failure != null) {
+            final IOException clone = clone(failure);
+            if (failure != clone) {
+                SpiUtils.glueStackTraces(failure, Thread.currentThread().getStackTrace(), 1, "asynchronous close");
             }
-        } finally {
-            key.remove();
+            throw clone;
         }
     }
 
@@ -213,7 +197,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         @SuppressWarnings("unchecked")
         final Class<T> originalClass = (Class<T>) original.getClass();
         // try a few constructors
-        Constructor<T> constructor = null;
+        Constructor<T> constructor;
         try {
             constructor = originalClass.getConstructor(String.class, Throwable.class);
             final T clone = constructor.newInstance(original.getMessage(), cause);
@@ -308,6 +292,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                 case CLOSING: {
                     log.tracef(cause, "Completed close of %s with failure", this);
                     state = State.CLOSED;
+                    failure = cause;
                     closeHandlers = this.closeHandlers;
                     this.closeHandlers = null;
                     break;
@@ -358,7 +343,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     /** {@inheritDoc} */
     public void closeAsync() {
         log.tracef("Closing %s asynchronously", this);
-        boolean first = false;
+        boolean first;
         synchronized (closeLock) {
             switch (state) {
                 case OPEN: {
@@ -519,20 +504,6 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         @SuppressWarnings("unchecked")
         public void run() {
             SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this, exception);
-        }
-    }
-
-    private class SyncCloseHandler<T extends HandleableCloseable<T>> implements CloseHandler<T> {
-
-        boolean done;
-        IOException cause;
-
-        public void handleClose(final T closed, final IOException exception) {
-            synchronized (this) {
-                done = true;
-                cause = exception;
-                notifyAll();
-            }
         }
     }
 }

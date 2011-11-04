@@ -28,13 +28,8 @@ import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.regex.Pattern;
@@ -50,7 +45,6 @@ import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Cancellable;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
-import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Result;
@@ -90,8 +84,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final Xnio xnio;
     private final XnioWorker worker;
 
-    private final ThreadPoolExecutor executor;
-
     private static final AtomicIntegerFieldUpdater<EndpointImpl> resourceCountUpdater = AtomicIntegerFieldUpdater.newUpdater(EndpointImpl.class, "resourceCount");
 
     @SuppressWarnings("unused")
@@ -113,45 +105,29 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     };
     private final EndpointImpl.ConnectionCloseHandler connectionCloseHandler = new EndpointImpl.ConnectionCloseHandler();
 
-    private EndpointImpl(final Pool executor, final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
-        super(executor);
-        executor.stopTask = new Runnable() {
+    private EndpointImpl(final Xnio xnio, final XnioWorker xnioWorker, final String name, final OptionMap optionMap, final HoldingRunnable holdingRunnable) throws IOException {
+        super(xnioWorker);
+        holdingRunnable.setTask(new Runnable() {
             public void run() {
-                log.tracef("Finished final shutdown of %s", EndpointImpl.this);
                 closeComplete();
             }
-        };
-        executor.allowCoreThreadTimeOut(true);
-        this.executor = executor;
-        if (xnio == null) {
-            throw new IllegalArgumentException("xnio is null");
-        }
-        if (optionMap == null) {
-            throw new IllegalArgumentException("optionMap is null");
-        }
+        });
+        worker = xnioWorker;
         this.xnio = xnio;
         this.name = name;
-        final String workerName = name == null ? "Remoting (anonymous)" : "Remoting \"" + name + "\"";
         this.optionMap = optionMap;
         // initialize CPC
         connectionProviderContext = new ConnectionProviderContextImpl();
         // add default connection providers
-        connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, executor));
+        connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, worker));
         // get XNIO worker
-        worker = xnio.createWorker(OptionMap.builder().addAll(optionMap).set(Options.WORKER_NAME, workerName).getMap());
         log.tracef("Completed open of %s", this);
     }
 
-    private EndpointImpl(final int poolSize, final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
-        this(new Pool(poolSize, poolSize, 30L, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new EndpointThreadFactory(name)), xnio, name, optionMap);
-    }
-
-    EndpointImpl(final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
-        this(optionMap.get(RemotingOptions.TASK_THREAD_POOL_SIZE, 4), xnio, name, optionMap);
-    }
-
-    protected Executor getExecutor() {
-        return executor;
+    static EndpointImpl construct(final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
+        final HoldingRunnable holdingRunnable = new HoldingRunnable();
+        final XnioWorker xnioWorker = xnio.createWorker(null, OptionMap.builder().addAll(optionMap).set(Options.WORKER_NAME, name == null ? "Remoting (anonymous)" : "Remoting \"" + name + "\"").getMap(), holdingRunnable);
+        return new EndpointImpl(xnio, xnioWorker, name, optionMap, holdingRunnable);
     }
 
     public Attachments getAttachments() {
@@ -160,6 +136,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     public String getName() {
         return name;
+    }
+
+    public Executor getExecutor() {
+        return worker;
     }
 
     private void closeTick1(Object c) {
@@ -182,8 +162,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private void finishPhase1() {
         // all our original resources were closed; now move on to stage two (thread pools)
         log.tracef("Finished phase 1 shutdown of %s", this);
-        IoUtils.safeClose(worker);
-        executor.shutdown();
+        worker.shutdown();
         return;
     }
 
@@ -498,7 +477,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         private final T value;
 
         private MapRegistration(final ConcurrentMap<String, T> map, final String key, final T value) {
-            super(executor, false);
+            super(worker, false);
             this.map = map;
             this.key = key;
             this.value = value;
@@ -581,7 +560,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public Executor getExecutor() {
-            return executor;
+            return worker;
         }
 
         public XnioWorker getXnioWorker() {
@@ -589,78 +568,26 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
-    static final class EndpointThreadFactory implements ThreadFactory {
-        private final String name;
-        @SuppressWarnings("unused")
-        private volatile int threadId = 1;
-
-        private static final AtomicIntegerFieldUpdater<EndpointThreadFactory> threadIdUpdater = AtomicIntegerFieldUpdater.newUpdater(EndpointThreadFactory.class, "threadId");
-
-        EndpointThreadFactory(final String name) {
-            this.name = name;
-        }
-
-        public Thread newThread(final Runnable r) {
-            final int id = threadIdUpdater.getAndIncrement(this);
-            final String threadName = name == null ? String.format("Remoting (anonymous) task-%d", Integer.valueOf(id)) : String.format("Remoting \"%s\" task-%d", name, Integer.valueOf(id));
-            final Thread thread = new EndpointThread(r, threadName);
-            thread.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
-                public void uncaughtException(final Thread t, final Throwable e) {
-                    log.errorf(e, "Uncaught exception in thread %s", t);
-                }
-            });
-            return thread;
-        }
-    }
-
-    static final class EndpointThread extends Thread {
-
-        EndpointThread(final Runnable target, final String name) {
-            super(target, name);
-        }
-
-        public void run() {
-            try {
-                super.run();
-            } finally {
-                log.tracef("Endpoint thread %s exiting", this);
-            }
-        }
-    }
-
-    static final class Pool extends ThreadPoolExecutor {
-
-        private static final String FQCN = Pool.class.getName();
-
-        volatile Runnable stopTask;
-
-        Pool(final int corePoolSize, final int maximumPoolSize, final long keepAliveTime, final TimeUnit unit, final BlockingQueue<Runnable> workQueue, final ThreadFactory threadFactory) {
-            super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory);
-        }
-
-        public void execute(final Runnable command) {
-            super.execute(command);
-            log.logf(FQCN, Logger.Level.TRACE, null, "Accepted %s for execution", command);
-        }
-
-        protected void beforeExecute(final Thread t, final Runnable r) {
-            log.tracef("Initiating execution of %s", r);
-        }
-
-        protected void afterExecute(final Runnable r, final Throwable t) {
-            log.tracef(t, "Completed execution of %s", r);
-        }
-
-        protected void terminated() {
-            final Runnable task = stopTask;
-            if (task != null) task.run();
-        }
-    }
-
     private class ConnectionCloseHandler implements CloseHandler<Connection> {
 
         public void handleClose(final Connection closed, final IOException exception) {
             connections.remove(closed);
+        }
+    }
+
+    private static class HoldingRunnable implements Runnable {
+        private volatile Runnable task;
+
+        private HoldingRunnable() {
+        }
+
+        public void setTask(final Runnable task) {
+            this.task = task;
+        }
+
+        public void run() {
+            final Runnable task = this.task;
+            if (task != null) task.run();
         }
     }
 }

@@ -57,7 +57,7 @@ public final class Remoting {
         if (sm != null) {
             sm.checkPermission(CREATE_ENDPOINT_PERM);
         }
-        return new EndpointImpl(xnio, endpointName, optionMap);
+        return EndpointImpl.construct(xnio, endpointName, optionMap);
     }
 
     /**
