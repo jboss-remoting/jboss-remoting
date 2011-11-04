@@ -69,24 +69,16 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
 
     private final ProviderInterface providerInterface = new ProviderInterface();
     private final Xnio xnio;
-    private final XnioSsl xnioSsl;
     private final XnioWorker xnioWorker;
     private final ConnectionProviderContext connectionProviderContext;
     private final Pool<ByteBuffer> messageBufferPool;
     private final Pool<ByteBuffer> framingBufferPool;
+    private final boolean sslEnabled;
 
     RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
         super(connectionProviderContext.getExecutor());
         xnio = connectionProviderContext.getXnio();
-        try {
-            if (optionMap.get(Options.SSL_ENABLED, true)) {
-                xnioSsl = xnio.getSslProvider(optionMap);
-            } else {
-                xnioSsl = null;
-            }
-        } catch (GeneralSecurityException e) {
-            throw new IOException("Failed to configure SSL", e);
-        }
+        sslEnabled = optionMap.get(Options.SSL_ENABLED, true);
         xnioWorker = connectionProviderContext.getXnioWorker();
         this.connectionProviderContext = connectionProviderContext;
         final int messageBufferSize = optionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, 8192);
@@ -95,13 +87,12 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         framingBufferPool = false ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, framingBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
     }
 
-    public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
+    public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IllegalArgumentException {
         if (! isOpen()) {
             throw new IllegalStateException("Connection provider is closed");
         }
         log.tracef("Attempting to connect to \"%s\" with options %s", uri, connectOptions);
-        final boolean sslCapable = xnioSsl != null;
-        boolean useSsl = sslCapable && ! connectOptions.get(Options.SECURE, false);
+        boolean useSsl = sslEnabled && ! connectOptions.get(Options.SECURE, false);
         final InetSocketAddress destination;
         try {
             destination = new InetSocketAddress(InetAddress.getByName(uri.getHost()), uri.getPort());
@@ -126,7 +117,12 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         };
         final IoFuture<? extends ConnectedStreamChannel> future;
         if (useSsl) {
-            future = xnioSsl.connectSsl(xnioWorker, destination, openListener, connectOptions);
+            try {
+                future = xnio.getSslProvider(connectOptions).connectSsl(xnioWorker, destination, openListener, connectOptions);
+            } catch (GeneralSecurityException e) {
+                result.setException(sslConfigFailure(e));
+                return IoUtils.nullCancellable();
+            }
         } else {
             future = xnioWorker.connectStream(destination, openListener, connectOptions);
         }
@@ -152,12 +148,19 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
 
     final class ProviderInterface implements NetworkServerProvider {
 
-        public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) throws IOException {
+        public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider, XnioSsl xnioSsl) throws IOException {
             final AccessControlContext accessControlContext = AccessController.getContext();
-            final boolean sslCapable = xnioSsl != null;
+            final boolean sslCapable = sslEnabled;
             final AcceptListener acceptListener = new AcceptListener(optionMap, authenticationProvider, accessControlContext);
             final AcceptingChannel<? extends ConnectedStreamChannel> result;
             if (sslCapable && optionMap.get(Options.SSL_ENABLED, true)) {
+                if (xnioSsl == null) {
+                    try {
+                        xnioSsl = xnio.getSslProvider(optionMap);
+                    } catch (GeneralSecurityException e) {
+                        throw sslConfigFailure(e);
+                    }
+                }
                 result = xnioSsl.createSslTcpServer(xnioWorker, (InetSocketAddress) bindAddress, acceptListener, optionMap);
             } else {
                 result = xnioWorker.createStreamServer(bindAddress, acceptListener, optionMap);
@@ -170,6 +173,11 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             result.resumeAccepts();
             return result;
         }
+
+    }
+
+    private static IOException sslConfigFailure(final GeneralSecurityException e) {
+        return new IOException("Failed to configure SSL", e);
     }
 
     private final class AcceptListener implements ChannelListener<AcceptingChannel<? extends ConnectedStreamChannel>> {

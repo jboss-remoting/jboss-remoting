@@ -37,6 +37,7 @@ import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
+import org.xnio.ssl.XnioSsl;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -53,7 +54,7 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
         this.executor = executor;
     }
 
-    public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler) throws IllegalArgumentException {
+    public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler, final XnioSsl xnioSsl) throws IllegalArgumentException {
         context.accept(new ConnectionHandlerFactory() {
             public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                 return new LoopbackConnectionHandler(connectionContext);

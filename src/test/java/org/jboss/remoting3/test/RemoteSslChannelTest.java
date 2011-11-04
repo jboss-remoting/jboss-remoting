@@ -54,7 +54,6 @@ import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Sequence;
-import org.xnio.Xnio;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
@@ -100,13 +99,12 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
     public static void create() throws IOException, NoSuchProviderException, NoSuchAlgorithmException {
         setKeyStoreAndTrustStore();
         endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
-        Xnio xnio = Xnio.getInstance();
         registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
         streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123),
-                OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE, Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider);
+                OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE, Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
     }
 
     @Before

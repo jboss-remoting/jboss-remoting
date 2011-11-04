@@ -51,7 +51,10 @@ import org.xnio.Result;
 import org.jboss.logging.Logger;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
+import org.xnio.ssl.JsseXnioSsl;
+import org.xnio.ssl.XnioSsl;
 
+import javax.net.ssl.SSLContext;
 import javax.security.auth.callback.CallbackHandler;
 
 /**
@@ -237,7 +240,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (uriUserName != null) builder.set(RemotingOptions.AUTHORIZE_ID, uriUserName);
         if (uriUserRealm != null) builder.set(RemotingOptions.AUTH_REALM, uriUserRealm);
         finalMap = builder.getMap();
-        return doConnect(destination, finalMap, new PasswordClientCallbackHandler(finalMap.get(RemotingOptions.AUTHORIZE_ID), finalMap.get(RemotingOptions.AUTH_REALM), null));
+        return doConnect(destination, finalMap, new PasswordClientCallbackHandler(finalMap.get(RemotingOptions.AUTHORIZE_ID), finalMap.get(RemotingOptions.AUTH_REALM), null), null);
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
@@ -249,10 +252,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (uriUserName != null) builder.set(RemotingOptions.AUTHORIZE_ID, uriUserName);
         if (uriUserRealm != null) builder.set(RemotingOptions.AUTH_REALM, uriUserRealm);
         finalMap = builder.getMap();
-        return doConnect(destination, finalMap, new PasswordClientCallbackHandler(finalMap.get(RemotingOptions.AUTHORIZE_ID), finalMap.get(RemotingOptions.AUTH_REALM), null));
+        return doConnect(destination, finalMap, new PasswordClientCallbackHandler(finalMap.get(RemotingOptions.AUTHORIZE_ID), finalMap.get(RemotingOptions.AUTH_REALM), null), null);
     }
 
-    private IoFuture<Connection> doConnect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
+    private IoFuture<Connection> doConnect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler, final SSLContext sslContext) throws IOException {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(CONNECT_PERM);
@@ -268,6 +271,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
             // Mark the stack because otherwise debugging connect problems can be incredibly tough
             final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
+            XnioSsl xnioSsl = sslContext == null ? null : new JsseXnioSsl(xnio, optionMap, sslContext);
             final Cancellable connect = connectionProvider.connect(destination, connectOptions, new Result<ConnectionHandlerFactory>() {
                 private final AtomicBoolean called = new AtomicBoolean();
 
@@ -305,7 +309,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     closeTick1("a cancelled connection");
                     return futureResult.setCancelled();
                 }
-            }, callbackHandler);
+            }, callbackHandler, xnioSsl);
             ok = true;
             futureResult.addCancelHandler(connect);
             return futureResult.getIoFuture();
@@ -317,6 +321,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException {
+        return connect(destination, connectOptions, callbackHandler, null);
+    }
+
+    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler, final SSLContext sslContext) throws IOException {
         final UserAndRealm userRealm = getUserAndRealm(destination);
         final String uriUserName = userRealm.getUser();
         final String uriUserRealm = userRealm.getRealm();
@@ -325,10 +333,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (uriUserName != null) builder.set(RemotingOptions.AUTHORIZE_ID, uriUserName);
         if (uriUserRealm != null) builder.set(RemotingOptions.AUTH_REALM, uriUserRealm);
         finalMap = builder.getMap();
-        return doConnect(destination, finalMap, callbackHandler);
+        return doConnect(destination, finalMap, callbackHandler, sslContext);
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final String userName, final String realmName, final char[] password) throws IOException {
+        return connect(destination, connectOptions, userName, realmName, password, null);
+    }
+
+    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final String userName, final String realmName, final char[] password, final SSLContext sslContext) throws IOException {
         final UserAndRealm userRealm = getUserAndRealm(destination);
         final String uriUserName = userRealm.getUser();
         final String uriUserRealm = userRealm.getRealm();
@@ -338,7 +350,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (actualUserName != null) builder.set(RemotingOptions.AUTHORIZE_ID, actualUserName);
         if (actualUserRealm != null) builder.set(RemotingOptions.AUTH_REALM, actualUserRealm);
         final OptionMap finalMap = builder.getMap();
-        return doConnect(destination, finalMap, new PasswordClientCallbackHandler(actualUserName, actualUserRealm, password));
+        return doConnect(destination, finalMap, new PasswordClientCallbackHandler(actualUserName, actualUserRealm, password), sslContext);
     }
 
     public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory, final OptionMap optionMap) throws IOException {

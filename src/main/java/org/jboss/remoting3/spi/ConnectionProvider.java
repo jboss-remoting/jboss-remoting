@@ -27,6 +27,7 @@ import org.jboss.remoting3.HandleableCloseable;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
+import org.xnio.ssl.XnioSsl;
 
 import javax.security.auth.callback.CallbackHandler;
 
@@ -44,10 +45,11 @@ public interface ConnectionProvider extends HandleableCloseable<ConnectionProvid
      * @param connectOptions the options to use for this connection
      * @param result the result which should receive the connection
      * @param callbackHandler the callback handler to use for authentication
+     * @param xnioSsl the XNIO SSL context to use
      * @return a handle which may be used to cancel the connect attempt
      * @throws IllegalArgumentException if the URI is not valid
      */
-    Cancellable connect(URI uri, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, CallbackHandler callbackHandler) throws IllegalArgumentException;
+    Cancellable connect(URI uri, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IllegalArgumentException;
 
     /**
      * Get the user data associated with this connection provider.  This object should implement all of the
