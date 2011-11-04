@@ -95,7 +95,7 @@ public final class SpiUtils {
      */
     public static void glueStackTraces(final Throwable exception, final StackTraceElement[] userStackTrace, final int trimCount, final String msg) {
         final StackTraceElement[] est = exception.getStackTrace();
-        final StackTraceElement[] fst = Arrays.copyOf(est, est.length + userStackTrace.length);
+        final StackTraceElement[] fst = Arrays.copyOf(est, est.length + userStackTrace.length - trimCount + 1);
         fst[est.length] = new StackTraceElement("..." + msg + "..", "", null, -1);
         System.arraycopy(userStackTrace, trimCount, fst, est.length + 1, userStackTrace.length - trimCount);
         exception.setStackTrace(fst);
