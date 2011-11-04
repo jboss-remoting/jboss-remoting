@@ -92,4 +92,10 @@ public final class RemotingOptions {
      * The maximum number of consecutive inbound messages on a channel.
      */
     public static final Option<Integer> MAX_INBOUND_MESSAGES = Option.simple(RemotingOptions.class, "MAX_INBOUND_MESSAGES", Integer.class);
+
+    /**
+     * The interval to use for connection heartbeat, in milliseconds.  If the connection is idle in the outbound direction
+     * for this amount of time, a ping message will be sent, which will trigger a corresponding reply message.
+     */
+    public static final Option<Integer> HEARTBEAT_INTERVAL = Option.simple(RemotingOptions.class, "HEARTBEAT_INTERVAL", Integer.class);
 }

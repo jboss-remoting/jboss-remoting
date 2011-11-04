@@ -139,6 +139,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 switch (msgType) {
                     case Protocol.CONNECTION_ALIVE: {
                         client.trace("Client received connection alive");
+                        connection.sendAliveResponse();
+                        return;
+                    }
+                    case Protocol.CONNECTION_ALIVE_ACK: {
+                        client.trace("Client received connection alive ack");
                         return;
                     }
                     case Protocol.CONNECTION_CLOSE: {
@@ -224,6 +229,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 switch (msgType) {
                     case Protocol.CONNECTION_ALIVE: {
                         client.trace("Client received connection alive");
+                        connection.sendAliveResponse();
+                        return;
+                    }
+                    case Protocol.CONNECTION_ALIVE_ACK: {
+                        client.trace("Client received connection alive ack");
                         return;
                     }
                     case Protocol.CONNECTION_CLOSE: {
@@ -368,6 +378,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 switch (msgType) {
                     case Protocol.CONNECTION_ALIVE: {
                         client.trace("Client received connection alive");
+                        connection.sendAliveResponse();
+                        return;
+                    }
+                    case Protocol.CONNECTION_ALIVE_ACK: {
+                        client.trace("Client received connection alive ack");
                         return;
                     }
                     case Protocol.CONNECTION_CLOSE: {
@@ -441,6 +456,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 switch (msgType) {
                     case Protocol.CONNECTION_ALIVE: {
                         client.trace("Client received connection alive");
+                        connection.sendAliveResponse();
+                        return;
+                    }
+                    case Protocol.CONNECTION_ALIVE_ACK: {
+                        client.trace("Client received connection alive ack");
                         return;
                     }
                     case Protocol.CONNECTION_CLOSE: {

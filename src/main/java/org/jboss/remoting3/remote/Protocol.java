@@ -181,6 +181,11 @@ final class Protocol {
      */
     static final byte CONNECTION_ALIVE = (byte) 0xF0;
     /**
+     * byte 0: CONNECTION_ALIVE
+     * byte 1..n: random padding (optional)
+     */
+    static final byte CONNECTION_ALIVE_ACK = (byte) 0xF1;
+    /**
      * byte 0: CONNECTION_CLOSE
      *
      * No packets may be sent afterwards.  Connection is closed when message is sent and received.

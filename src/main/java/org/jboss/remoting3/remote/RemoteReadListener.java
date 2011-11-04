@@ -90,8 +90,13 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                     try {
                         switch (protoId) {
                             case Protocol.CONNECTION_ALIVE: {
-                                log.trace("Received connection alive request");
-                                break;
+                                log.trace("Received connection alive");
+                                connection.sendAliveResponse();
+                                return;
+                            }
+                            case Protocol.CONNECTION_ALIVE_ACK: {
+                                log.trace("Received connection alive ack");
+                                return;
                             }
                             case Protocol.CONNECTION_CLOSE: {
                                 log.trace("Received connection close request");

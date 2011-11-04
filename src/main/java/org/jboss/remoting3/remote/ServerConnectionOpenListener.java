@@ -200,6 +200,11 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     }
                     case Protocol.CONNECTION_ALIVE: {
                         server.trace("Server received connection alive");
+                        connection.sendAliveResponse();
+                        return;
+                    }
+                    case Protocol.CONNECTION_ALIVE_ACK: {
+                        server.trace("Server received connection alive ack");
                         return;
                     }
                     case Protocol.CAPABILITIES: {

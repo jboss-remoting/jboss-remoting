@@ -27,14 +27,18 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
+import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
+import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Pool;
 import org.xnio.Pooled;
 import org.xnio.Result;
+import org.xnio.XnioExecutor;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.SslChannel;
@@ -52,6 +56,7 @@ final class RemoteConnection {
     private final OptionMap optionMap;
     private final RemoteWriteListener writeListener = new RemoteWriteListener();
     private final Executor executor;
+    private final int heartbeatInterval;
     private volatile Result<ConnectionHandlerFactory> result;
     private volatile SaslWrapper saslWrapper;
 
@@ -60,6 +65,7 @@ final class RemoteConnection {
         this.underlyingChannel = underlyingChannel;
         this.channel = channel;
         this.optionMap = optionMap;
+        heartbeatInterval = optionMap.get(RemotingOptions.HEARTBEAT_INTERVAL, Integer.MAX_VALUE);
         this.executor = executor;
     }
 
@@ -156,9 +162,30 @@ final class RemoteConnection {
         }
     }
 
+    void sendAlive() {
+        final Pooled<ByteBuffer> pooled = allocate();
+        final ByteBuffer buffer = pooled.getResource();
+        buffer.put(Protocol.CONNECTION_ALIVE);
+        buffer.limit(80);
+        Buffers.addRandom(buffer);
+        buffer.flip();
+        send(pooled);
+    }
+
+    void sendAliveResponse() {
+        final Pooled<ByteBuffer> pooled = allocate();
+        final ByteBuffer buffer = pooled.getResource();
+        buffer.put(Protocol.CONNECTION_ALIVE_ACK);
+        buffer.limit(80);
+        Buffers.addRandom(buffer);
+        buffer.flip();
+        send(pooled);
+    }
+
     final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {
 
         private final Queue<Pooled<ByteBuffer>> queue = new ArrayDeque<Pooled<ByteBuffer>>();
+        private XnioExecutor.Key heartKey;
         private boolean closed;
 
         RemoteWriteListener() {
@@ -229,6 +256,8 @@ final class RemoteConnection {
 
         public void send(Pooled<ByteBuffer> pooled, final boolean close) {
             synchronized (RemoteConnection.this) {
+                XnioExecutor.Key heartKey = this.heartKey;
+                if (heartKey != null) heartKey.remove();
                 if (closed) { pooled.free(); return; }
                 if (close) { closed = true; }
                 final ConnectedMessageChannel channel = getChannel();
@@ -264,6 +293,8 @@ final class RemoteConnection {
                                 channel.resumeWrites();
                                 return;
                             }
+                        } else {
+                            this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
                         }
                     } else {
                         queue.add(pooled);
@@ -283,6 +314,12 @@ final class RemoteConnection {
             }
         }
     }
+
+    private final Runnable heartbeatCommand = new Runnable() {
+        public void run() {
+            sendAlive();
+        }
+    };
 
     public String toString() {
         return String.format("Remoting connection %08x to %s", Integer.valueOf(hashCode()), channel.getPeerAddress());
