@@ -31,8 +31,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
@@ -47,7 +45,6 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -63,7 +60,6 @@ import org.xnio.channels.ConnectedStreamChannel;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  * @author <a href="mailto:flavia.rainone@jboss.com">Flavia Rainone</a>
  */
-@Ignore
 public final class RemoteSslChannelTest extends ChannelTestBase {
     private static final String KEY_STORE_PROPERTY = "javax.net.ssl.keyStore";
     private static final String KEY_STORE_PASSWORD_PROPERTY = "javax.net.ssl.keyStorePassword";
@@ -73,7 +69,6 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
     private static final String DEFAULT_KEY_STORE_PASSWORD = "jboss-remoting-test";
 
     protected static Endpoint endpoint;
-    protected static ExecutorService executorService;
     private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
     private static Registration registration;
     private Connection connection;
@@ -139,8 +134,5 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
         IoUtils.safeClose(streamServer);
         IoUtils.safeClose(endpoint);
         IoUtils.safeClose(registration);
-        executorService.shutdown();
-        executorService.awaitTermination(1L, TimeUnit.DAYS);
-        executorService.shutdownNow();
     }
 }
