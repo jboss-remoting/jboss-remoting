@@ -316,6 +316,10 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             connection.handleException(se);
                             return;
                         }
+                        if (saslClient == null) {
+                            connection.handleException(new SaslException("No more authentication mechanisms to try"));
+                            return;
+                        }
                         final String mechanismName = saslClient.getMechanismName();
                         client.tracef("Client initiating authentication using mechanism %s", mechanismName);
                         // Prepare the request message body
