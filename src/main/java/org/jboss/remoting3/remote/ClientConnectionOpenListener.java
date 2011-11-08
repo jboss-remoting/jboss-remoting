@@ -533,7 +533,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     return;
                                 }
                                 final Object qop = saslClient.getNegotiatedProperty(Sasl.QOP);
-                                if (qop.equals("auth-int") || qop.equals("auth-conf")) {
+                                if ("auth-int".equals(qop) || "auth-conf".equals(qop)) {
                                     connection.setSaslWrapper(SaslWrapper.create(saslClient));
                                 }
                                 // auth complete.

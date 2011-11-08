@@ -431,7 +431,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                             connectionProviderContext.accept(new ConnectionHandlerFactory() {
                                                 public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                                     final Object qop = saslServer.getNegotiatedProperty(Sasl.QOP);
-                                                    if (qop.equals("auth-int") || qop.equals("auth-conf")) {
+                                                    if ("auth-int".equals(qop) || "auth-conf".equals(qop)) {
                                                         connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                                     }
                                                     final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, saslServer.getAuthorizationID(), remoteEndpointName);
