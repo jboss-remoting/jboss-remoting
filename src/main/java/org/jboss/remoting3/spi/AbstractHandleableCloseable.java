@@ -31,7 +31,6 @@ import java.security.PrivilegedAction;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.HandleableCloseable;
 import org.jboss.remoting3.NotOpenException;
@@ -163,7 +162,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             }
             if (closeHandlers != null) {
                 for (final CloseHandler<? super T> handler : closeHandlers.values()) {
-                    runCloseTask(executor, new CloseHandlerTask(handler, e));
+                    runCloseTask(new CloseHandlerTask(handler, e));
                 }
             }
             throw e;
@@ -275,7 +274,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         }
         if (closeHandlers != null) {
             for (final CloseHandler<? super T> handler : closeHandlers.values()) {
-                runCloseTask(executor, new CloseHandlerTask(handler, null));
+                runCloseTask(new CloseHandlerTask(handler, null));
             }
         }
     }
@@ -308,7 +307,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
         }
         if (closeHandlers != null) {
             for (final CloseHandler<? super T> handler : closeHandlers.values()) {
-                runCloseTask(executor, new CloseHandlerTask(handler, cause));
+                runCloseTask(new CloseHandlerTask(handler, cause));
             }
         }
     }
@@ -369,7 +368,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             }
             if (closeHandlers != null) {
                 for (final CloseHandler<? super T> handler : closeHandlers.values()) {
-                    runCloseTask(executor, new CloseHandlerTask(handler, e));
+                    runCloseTask(new CloseHandlerTask(handler, e));
                 }
             }
         } catch (Throwable t) {
@@ -398,19 +397,15 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                 return key;
             }
         }
-        runCloseTask(executor, new CloseHandlerTask(handler, null));
+        runCloseTask(new CloseHandlerTask(handler, null));
         return new NullKey();
     }
 
-    private static void runCloseTask(final Executor executor, final Runnable task) {
+    private static void runCloseTask(final Runnable task) {
         try {
-            try {
-                executor.execute(task);
-            } catch (RejectedExecutionException ree) {
-                task.run();
-            }
+            task.run();
         } catch (Throwable t) {
-            log.tracef(t, "Got exception running close task directly");
+            log.tracef(t, "Got exception running close task %s", task);
         }
     }
 
