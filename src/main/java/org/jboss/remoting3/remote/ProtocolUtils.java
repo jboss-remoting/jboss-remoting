@@ -48,6 +48,13 @@ final class ProtocolUtils {
         buffer.put(bytes, 0, length);
     }
 
+    static void writeString(ByteBuffer buffer, String data) {
+        final byte[] bytes = data.getBytes(UTF_8);
+        final int length = Math.min(255, bytes.length);
+        buffer.put((byte) length);
+        buffer.put(bytes, 0, length);
+    }
+
     static void writeByte(ByteBuffer buffer, int type, int value) {
         buffer.put((byte) type);
         buffer.put((byte) 1);

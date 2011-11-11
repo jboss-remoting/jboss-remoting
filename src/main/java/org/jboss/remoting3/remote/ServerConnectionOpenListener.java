@@ -264,7 +264,8 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             connection.handleException(new SaslException("Too many authentication failures; connection terminated"), false);
                             return;
                         }
-                        final String mechName = Buffers.getModifiedUtf8(receiveBuffer);
+
+                        final String mechName = ProtocolUtils.readString(receiveBuffer);
                         final SaslServerFactory saslServerFactory = allowedMechanisms.get(mechName);
                         final CallbackHandler callbackHandler = serverAuthenticationProvider.getCallbackHandler(mechName);
                         if (saslServerFactory == null || callbackHandler == null) {

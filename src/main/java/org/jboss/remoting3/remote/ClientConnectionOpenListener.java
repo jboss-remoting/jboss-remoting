@@ -59,6 +59,7 @@ import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
 
 import static org.jboss.remoting3.remote.RemoteLogger.client;
+import static org.xnio.sasl.SaslUtils.EMPTY_BYTES;
 
 final class ClientConnectionOpenListener implements ChannelListener<ConnectedMessageChannel> {
     private final RemoteConnection connection;
@@ -322,11 +323,24 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         }
                         final String mechanismName = saslClient.getMechanismName();
                         client.tracef("Client initiating authentication using mechanism %s", mechanismName);
+
+                        final byte[] response;
+                        try {
+                            response = saslClient.hasInitialResponse() ? saslClient.evaluateChallenge(EMPTY_BYTES) : null;
+                        } catch (SaslException e) {
+                            connection.handleException(e);
+                            return;
+                        }
+
                         // Prepare the request message body
                         final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
                         final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
                         sendBuffer.put(Protocol.AUTH_REQUEST);
-                        Buffers.putModifiedUtf8(sendBuffer, mechanismName);
+                        ProtocolUtils.writeString(sendBuffer, mechanismName);
+                        if (response != null) {
+                            sendBuffer.put(response);
+                        }
+
                         sendBuffer.flip();
                         connection.setReadListener(new Authentication(saslClient, remoteServerName, userName, remoteEndpointName));
                         connection.send(pooledSendBuffer);
