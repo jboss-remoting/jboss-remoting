@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3;
 
-import java.net.URI;
+import java.net.SocketAddress;
 import java.security.Principal;
 import java.util.Collection;
 import java.util.Collections;
@@ -54,7 +54,7 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
         this.executor = executor;
     }
 
-    public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler, final XnioSsl xnioSsl) throws IllegalArgumentException {
+    public Cancellable connect(final SocketAddress bindAddress, final SocketAddress destination, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler, final XnioSsl xnioSsl) throws IllegalArgumentException {
         context.accept(new ConnectionHandlerFactory() {
             public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                 return new LoopbackConnectionHandler(connectionContext);

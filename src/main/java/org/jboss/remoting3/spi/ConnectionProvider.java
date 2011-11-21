@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3.spi;
 
-import java.net.URI;
+import java.net.SocketAddress;
 import org.jboss.remoting3.HandleableCloseable;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
@@ -38,18 +38,19 @@ import javax.security.auth.callback.CallbackHandler;
 public interface ConnectionProvider extends HandleableCloseable<ConnectionProvider> {
 
     /**
-     * Open an outbound connection to the given URI.  This method is expected to be non-blocking, with the result
-     * stored in the result variable possibly asynchronously.
+     * Open an outbound connection, using the (optionally) given socket addresses as source and destination.
+     * This method is expected to be non-blocking, with the result stored in the result variable possibly asynchronously.
      *
-     * @param uri the URI to connect to
+     * @param bindAddress the local address to bind to for this outbound connection, or {@code null} to choose one automatically
+     * @param destination the destination socket address, or {@code null} if none is given
      * @param connectOptions the options to use for this connection
      * @param result the result which should receive the connection
      * @param callbackHandler the callback handler to use for authentication
      * @param xnioSsl the XNIO SSL context to use
      * @return a handle which may be used to cancel the connect attempt
-     * @throws IllegalArgumentException if the URI is not valid
+     * @throws IllegalArgumentException if any of the given arguments are not valid for this protocol
      */
-    Cancellable connect(URI uri, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IllegalArgumentException;
+    Cancellable connect(SocketAddress bindAddress, SocketAddress destination, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IllegalArgumentException;
 
     /**
      * Get the user data associated with this connection provider.  This object should implement all of the

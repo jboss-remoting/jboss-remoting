@@ -23,11 +23,8 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.net.URI;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.AccessControlContext;
 import java.security.AccessController;
@@ -87,19 +84,18 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         framingBufferPool = false ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, framingBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
     }
 
-    public Cancellable connect(final URI uri, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IllegalArgumentException {
+    public Cancellable connect(final SocketAddress bindAddress, final SocketAddress destination, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IllegalArgumentException {
         if (! isOpen()) {
             throw new IllegalStateException("Connection provider is closed");
         }
-        log.tracef("Attempting to connect to \"%s\" with options %s", uri, connectOptions);
-        boolean useSsl = sslEnabled && ! connectOptions.get(Options.SECURE, false);
-        final InetSocketAddress destination;
-        try {
-            destination = new InetSocketAddress(InetAddress.getByName(uri.getHost()), uri.getPort());
-        } catch (UnknownHostException e) {
-            result.setException(e);
-            return IoUtils.nullCancellable();
+        if (destination == null) {
+            throw new IllegalArgumentException("destination address may not be null");
         }
+        if (bindAddress != null && destination != null && bindAddress.getClass() != destination.getClass()) {
+            throw new IllegalArgumentException("bind and destination addresses must be of the same type");
+        }
+        log.tracef("Attempting to connect to \"%s\" with options %s", destination, connectOptions);
+        boolean useSsl = sslEnabled && ! connectOptions.get(Options.SECURE, false);
         ChannelListener<ConnectedStreamChannel> openListener = new ChannelListener<ConnectedStreamChannel>() {
             public void handleEvent(final ConnectedStreamChannel channel) {
                 try {
@@ -116,15 +112,18 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             }
         };
         final IoFuture<? extends ConnectedStreamChannel> future;
-        if (useSsl) {
-            try {
-                future = xnio.getSslProvider(connectOptions).connectSsl(xnioWorker, destination, openListener, connectOptions);
-            } catch (GeneralSecurityException e) {
-                result.setException(sslConfigFailure(e));
-                return IoUtils.nullCancellable();
+        if (useSsl && destination instanceof InetSocketAddress) {
+            if (xnioSsl == null) {
+                try {
+                    xnioSsl = xnio.getSslProvider(connectOptions);
+                } catch (GeneralSecurityException e) {
+                    result.setException(sslConfigFailure(e));
+                    return IoUtils.nullCancellable();
+                }
             }
+            future = bindAddress == null ? xnioSsl.connectSsl(xnioWorker, (InetSocketAddress) destination, openListener, connectOptions) : xnioSsl.connectSsl(xnioWorker, (InetSocketAddress) bindAddress, (InetSocketAddress) destination, openListener, connectOptions);
         } else {
-            future = xnioWorker.connectStream(destination, openListener, connectOptions);
+            future = bindAddress == null ? xnioWorker.connectStream(destination, openListener, connectOptions) : xnioWorker.connectStream(bindAddress, destination, openListener, null, connectOptions);
         }
         future.addNotifier(new IoFuture.HandlingNotifier<ConnectedStreamChannel, Result<ConnectionHandlerFactory>>() {
             public void handleCancelled(final Result<ConnectionHandlerFactory> attachment) {
@@ -173,7 +172,6 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             result.resumeAccepts();
             return result;
         }
-
     }
 
     private static IOException sslConfigFailure(final GeneralSecurityException e) {
