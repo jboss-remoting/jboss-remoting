@@ -324,26 +324,38 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         final String mechanismName = saslClient.getMechanismName();
                         client.tracef("Client initiating authentication using mechanism %s", mechanismName);
 
-                        final byte[] response;
-                        try {
-                            response = saslClient.hasInitialResponse() ? saslClient.evaluateChallenge(EMPTY_BYTES) : null;
-                        } catch (SaslException e) {
-                            connection.handleException(e);
-                            return;
-                        }
+                        final String theRemoteEndpointName = remoteEndpointName;
+                        connection.getChannel().suspendReads();
+                        connection.getExecutor().execute(new Runnable() {
+                            public void run() {
+                                byte[] response;
+                                try {
+                                    response = saslClient.hasInitialResponse() ? saslClient.evaluateChallenge(EMPTY_BYTES)
+                                            : null;
 
-                        // Prepare the request message body
-                        final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
-                        final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
-                        sendBuffer.put(Protocol.AUTH_REQUEST);
-                        ProtocolUtils.writeString(sendBuffer, mechanismName);
-                        if (response != null) {
-                            sendBuffer.put(response);
-                        }
+                                } catch (Exception e) {
+                                    client.tracef("Client authentication failed: %s", e);
+                                    failedMechs.add(mechanismName);
+                                    sendCapRequest(remoteServerName);
+                                    return;
+                                }
+                                // Prepare the request message body
+                                final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
+                                final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
+                                sendBuffer.put(Protocol.AUTH_REQUEST);
+                                ProtocolUtils.writeString(sendBuffer, mechanismName);
+                                if (response != null) {
+                                    sendBuffer.put(response);
+                                }
 
-                        sendBuffer.flip();
-                        connection.setReadListener(new Authentication(saslClient, remoteServerName, userName, remoteEndpointName));
-                        connection.send(pooledSendBuffer);
+                                sendBuffer.flip();
+                                connection.setReadListener(new Authentication(saslClient, remoteServerName, userName,
+                                        theRemoteEndpointName));
+                                connection.send(pooledSendBuffer);
+                                connection.getChannel().resumeReads();
+                                return;
+                            }
+                        });
                         return;
                     }
                     default: {
