@@ -298,7 +298,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         }
 
                         if (saslMechs.isEmpty()) {
-                            connection.handleException(new SaslException("No more authentication mechanisms to try"));
+                            connection.handleException(new SaslException("Authentication failed: No authentication mechanisms are available"));
                             return;
                         }
                         // OK now send our authentication request
@@ -318,7 +318,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             return;
                         }
                         if (saslClient == null) {
-                            connection.handleException(new SaslException("No more authentication mechanisms to try"));
+                            connection.handleException(new SaslException("Authentication failed: all available authentication mechanisms failed"));
                             return;
                         }
                         final String mechanismName = saslClient.getMechanismName();
@@ -516,10 +516,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                         connection.handleException(new SaslException("Received extra auth message after completion"));
                                         return;
                                     }
-                                } catch (Exception e) {
-                                    client.tracef("Client authentication failed: %s", e);
-                                    failedMechs.add(saslClient.getMechanismName());
+                                } catch (Throwable e) {
+                                    final String mechanismName = saslClient.getMechanismName();
+                                    client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
+                                    failedMechs.add(mechanismName);
                                     sendCapRequest(serverName);
+                                    connection.getChannel().resumeReads();
                                     return;
                                 }
                                 client.trace("Client sending authentication response");
@@ -552,9 +554,10 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                         connection.handleException(new SaslException("Client not complete after processing auth complete message"));
                                         return;
                                     }
-                                } catch (SaslException e) {
-                                    // todo log message
-                                    failedMechs.add(saslClient.getMechanismName());
+                                } catch (Throwable e) {
+                                    final String mechanismName = saslClient.getMechanismName();
+                                    client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
+                                    failedMechs.add(mechanismName);
                                     sendCapRequest(serverName);
                                     return;
                                 }
@@ -579,8 +582,9 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         return;
                     }
                     case Protocol.AUTH_REJECTED: {
-                        client.trace("Client received authentication rejected");
-                        failedMechs.add(saslClient.getMechanismName());
+                        final String mechanismName = saslClient.getMechanismName();
+                        client.debugf("Client received authentication rejected for mechanism %s", mechanismName);
+                        failedMechs.add(mechanismName);
                         sendCapRequest(serverName);
                         return;
                     }
