@@ -131,7 +131,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             final Set<String> restrictions = saslMechs == null ? null : new HashSet<String>(saslMechs);
             final Sequence<String> saslNoMechs = optionMap.get(Options.SASL_DISALLOWED_MECHANISMS);
             final Set<String> disallowed = saslNoMechs == null ? Collections.<String>emptySet() : new HashSet<String>(saslNoMechs);
-            final Iterator<SaslServerFactory> factories = SaslUtils.getSaslServerFactories();
+            final Iterator<SaslServerFactory> factories = SaslUtils.getSaslServerFactories(getClass().getClassLoader(), true);
             try {
                 if ((restrictions == null || restrictions.contains("EXTERNAL")) && ! disallowed.contains("EXTERNAL")) {
                     // only enable external if there is indeed an external auth layer to be had

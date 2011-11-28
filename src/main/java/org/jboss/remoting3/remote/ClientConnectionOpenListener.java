@@ -33,6 +33,7 @@ import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +57,7 @@ import org.xnio.sasl.SaslWrapper;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
+import javax.security.sasl.SaslClientFactory;
 import javax.security.sasl.SaslException;
 
 import static org.jboss.remoting3.remote.RemoteLogger.client;
@@ -305,13 +307,20 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         final OptionMap optionMap = connection.getOptionMap();
                         final String userName = optionMap.get(RemotingOptions.AUTHORIZE_ID);
                         final Map<String, ?> propertyMap = SaslUtils.createPropertyMap(optionMap, Channels.getOption(channel, Options.SECURE, false));
-                        final SaslClient saslClient;
+                        SaslClient saslClient = null;
                         try {
-                            saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
-                                public SaslClient run() throws SaslException {
-                                    return Sasl.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", remoteServerName, propertyMap, callbackHandler);
+                            final Iterator<SaslClientFactory> iterator = SaslUtils.getSaslClientFactories(getClass().getClassLoader(), true);
+                            while (iterator.hasNext()) {
+                                final SaslClientFactory factory = iterator.next();
+                                saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
+                                    public SaslClient run() throws SaslException {
+                                        return factory.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", remoteServerName, propertyMap, callbackHandler);
+                                    }
+                                }, accessControlContext);
+                                if (saslClient != null) {
+                                    break;
                                 }
-                            }, accessControlContext);
+                            }
                         } catch (PrivilegedActionException e) {
                             final SaslException se = (SaslException) e.getCause();
                             connection.handleException(se);
@@ -327,11 +336,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         final String theRemoteEndpointName = remoteEndpointName;
                         connection.getChannel().suspendReads();
                         final int negotiatedVersion = version;
+                        final SaslClient usedSaslClient = saslClient;
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
                                 byte[] response;
                                 try {
-                                    response = saslClient.hasInitialResponse() && negotiatedVersion >= 1 ? saslClient.evaluateChallenge(EMPTY_BYTES)
+                                    response = usedSaslClient.hasInitialResponse() && negotiatedVersion >= 1 ? usedSaslClient.evaluateChallenge(EMPTY_BYTES)
                                             : null;
 
                                 } catch (Exception e) {
@@ -354,7 +364,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 }
 
                                 sendBuffer.flip();
-                                connection.setReadListener(new Authentication(saslClient, remoteServerName, userName,
+                                connection.setReadListener(new Authentication(usedSaslClient, remoteServerName, userName,
                                         theRemoteEndpointName));
                                 connection.send(pooledSendBuffer);
                                 connection.getChannel().resumeReads();
