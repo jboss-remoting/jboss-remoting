@@ -61,6 +61,7 @@ import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslServerFactory;
 
+import static java.lang.Math.min;
 import static org.jboss.remoting3.remote.RemoteAuthLogger.authLog;
 import static org.jboss.remoting3.remote.RemoteLogger.log;
 import static org.jboss.remoting3.remote.RemoteLogger.server;
@@ -110,15 +111,15 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
     }
 
     final class Initial implements ChannelListener<ConnectedMessageChannel> {
-        private final int version;
         private final boolean starttls;
         private final Map<String, ?> propertyMap;
         private final Map<String, SaslServerFactory> allowedMechanisms;
+        private int version;
         private String remoteEndpointName;
 
         Initial() {
             // Calculate our capabilities
-            version = 0;
+            version = Protocol.VERSION;
             final SslChannel sslChannel = connection.getSslChannel();
             final boolean channelSecure = Channels.getOption(connection.getChannel(), Options.SECURE, false);
             starttls = ! (sslChannel == null || channelSecure);
@@ -217,7 +218,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                 case Protocol.CAP_VERSION: {
                                     final byte version = data.get();
                                     server.tracef("Server received capability: version %d", Integer.valueOf(version & 0xff));
-                                    // We only support version zero, so knowing the other side's version is not useful presently
+                                    this.version = min(Protocol.VERSION, version & 0xff);
                                     break;
                                 }
                                 case Protocol.CAP_ENDPOINT_NAME: {
@@ -265,7 +266,12 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             return;
                         }
 
-                        final String mechName = ProtocolUtils.readString(receiveBuffer);
+                        final String mechName;
+                        if (version < 1) {
+                            mechName = Buffers.getModifiedUtf8(receiveBuffer);
+                        } else {
+                            mechName = ProtocolUtils.readString(receiveBuffer);
+                        }
                         final SaslServerFactory saslServerFactory = allowedMechanisms.get(mechName);
                         final CallbackHandler callbackHandler = serverAuthenticationProvider.getCallbackHandler(mechName);
                         if (saslServerFactory == null || callbackHandler == null) {

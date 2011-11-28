@@ -95,7 +95,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
         try {
             final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
             sendBuffer.put(Protocol.CAPABILITIES);
-            ProtocolUtils.writeByte(sendBuffer, Protocol.CAP_VERSION, 0);
+            ProtocolUtils.writeByte(sendBuffer, Protocol.CAP_VERSION, Protocol.VERSION);
             final String localEndpointName = connectionProviderContext.getEndpoint().getName();
             if (localEndpointName != null) {
                 ProtocolUtils.writeString(sendBuffer, Protocol.CAP_ENDPOINT_NAME, localEndpointName);
@@ -245,15 +245,15 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     case Protocol.CAPABILITIES: {
                         client.trace("Client received capabilities response");
                         String remoteEndpointName = null;
+                        int version = Protocol.VERSION;
                         while (receiveBuffer.hasRemaining()) {
                             final byte type = receiveBuffer.get();
                             final int len = receiveBuffer.get() & 0xff;
                             final ByteBuffer data = Buffers.slice(receiveBuffer, len);
                             switch (type) {
                                 case Protocol.CAP_VERSION: {
-                                    final byte version = data.get();
+                                    version = data.get() & 0xff;
                                     client.tracef("Client received capability: version %d", Integer.valueOf(version & 0xff));
-                                    // We only support version zero, so knowing the other side's version is not useful presently
                                     break;
                                 }
                                 case Protocol.CAP_SASL_MECH: {
@@ -326,11 +326,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
                         final String theRemoteEndpointName = remoteEndpointName;
                         connection.getChannel().suspendReads();
+                        final int negotiatedVersion = version;
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
                                 byte[] response;
                                 try {
-                                    response = saslClient.hasInitialResponse() ? saslClient.evaluateChallenge(EMPTY_BYTES)
+                                    response = saslClient.hasInitialResponse() && negotiatedVersion >= 1 ? saslClient.evaluateChallenge(EMPTY_BYTES)
                                             : null;
 
                                 } catch (Exception e) {
@@ -343,9 +344,13 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
                                 final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
                                 sendBuffer.put(Protocol.AUTH_REQUEST);
-                                ProtocolUtils.writeString(sendBuffer, mechanismName);
-                                if (response != null) {
-                                    sendBuffer.put(response);
+                                if (negotiatedVersion < 1) {
+                                    sendBuffer.put(mechanismName.getBytes(Protocol.UTF_8));
+                                } else {
+                                    ProtocolUtils.writeString(sendBuffer, mechanismName);
+                                    if (response != null) {
+                                        sendBuffer.put(response);
+                                    }
                                 }
 
                                 sendBuffer.flip();

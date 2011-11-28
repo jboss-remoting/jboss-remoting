@@ -32,7 +32,7 @@ final class Protocol {
     /**
      * The highest-supported version of the remote protocol supported by this implementation.
      */
-    static final byte VERSION = 0;
+    static final byte VERSION = 1;
 
     // Message types
 
