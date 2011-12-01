@@ -31,10 +31,13 @@ import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jboss.remoting3.RemotingOptions;
@@ -227,7 +230,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 }
                 receiveBuffer.flip();
                 boolean starttls = false;
-                final Set<String> saslMechs = new LinkedHashSet<String>();
+                final Set<String> serverSaslMechs = new LinkedHashSet<String>();
                 final byte msgType = receiveBuffer.get();
                 switch (msgType) {
                     case Protocol.CONNECTION_ALIVE: {
@@ -263,7 +266,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     client.tracef("Client received capability: SASL mechanism %s", mechName);
                                     if (! failedMechs.contains(mechName) && ! disallowedMechs.contains(mechName) && (allowedMechs == null || allowedMechs.contains(mechName))) {
                                         client.tracef("SASL mechanism %s added to allowed set", mechName);
-                                        saslMechs.add(mechName);
+                                        serverSaslMechs.add(mechName);
                                     }
                                     break;
                                 }
@@ -299,10 +302,19 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             }
                         }
 
-                        if (saslMechs.isEmpty()) {
-                            connection.handleException(new SaslException("Authentication failed: No authentication mechanisms are available"));
+                        if (serverSaslMechs.isEmpty()) {
+                            connection.handleException(new SaslException("Authentication failed: all available authentication mechanisms failed"));
                             return;
                         }
+
+                        final List<String> saslMechs = new ArrayList<String>(serverSaslMechs.size());
+                        if (allowedMechs != null) {
+                            saslMechs.addAll(allowedMechs);
+                            saslMechs.retainAll(serverSaslMechs);
+                        } else {
+                            saslMechs.addAll(serverSaslMechs);
+                        }
+
                         // OK now send our authentication request
                         final OptionMap optionMap = connection.getOptionMap();
                         final String userName = optionMap.get(RemotingOptions.AUTHORIZE_ID);
@@ -310,16 +322,28 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         SaslClient saslClient = null;
                         try {
                             final Iterator<SaslClientFactory> iterator = SaslUtils.getSaslClientFactories(getClass().getClassLoader(), true);
+                            final LinkedHashMap<String, Set<SaslClientFactory>> factories = new LinkedHashMap<String, Set<SaslClientFactory>>();
                             while (iterator.hasNext()) {
                                 final SaslClientFactory factory = iterator.next();
-                                saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
-                                    public SaslClient run() throws SaslException {
-                                        return factory.createSaslClient(saslMechs.toArray(new String[saslMechs.size()]), userName, "remote", remoteServerName, propertyMap, callbackHandler);
+                                for (String name : factory.getMechanismNames(propertyMap)) {
+                                    if (! factories.containsKey(name)) {
+                                        factories.put(name, new LinkedHashSet<SaslClientFactory>(Collections.singleton(factory)));
+                                    } else {
+                                        factories.get(name).add(factory);
                                     }
-                                }, accessControlContext);
-                                if (saslClient != null) {
-                                    break;
                                 }
+                            }
+                            FOUND: for (String mechanism : saslMechs) {
+                                final String[] strings = new String[] { mechanism };
+                                for (final SaslClientFactory factory : factories.get(mechanism)) {
+                                    saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
+                                        public SaslClient run() throws SaslException {
+                                            return factory.createSaslClient(strings, userName, "remote", remoteServerName, propertyMap, callbackHandler);
+                                        }
+                                    }, accessControlContext);
+                                    if (saslClient != null) break FOUND;
+                                }
+                                failedMechs.add(mechanism);
                             }
                         } catch (PrivilegedActionException e) {
                             final SaslException se = (SaslException) e.getCause();
