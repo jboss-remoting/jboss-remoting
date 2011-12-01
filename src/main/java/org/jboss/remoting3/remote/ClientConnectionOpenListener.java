@@ -334,8 +334,10 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 }
                             }
                             FOUND: for (String mechanism : saslMechs) {
+                                final Set<SaslClientFactory> factorySet = factories.get(mechanism);
+                                if (factorySet == null) continue;
                                 final String[] strings = new String[] { mechanism };
-                                for (final SaslClientFactory factory : factories.get(mechanism)) {
+                                for (final SaslClientFactory factory : factorySet) {
                                     saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
                                         public SaslClient run() throws SaslException {
                                             return factory.createSaslClient(strings, userName, "remote", remoteServerName, propertyMap, callbackHandler);
