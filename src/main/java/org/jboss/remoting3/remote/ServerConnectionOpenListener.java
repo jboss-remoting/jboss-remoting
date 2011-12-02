@@ -124,8 +124,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             final boolean channelSecure = Channels.getOption(connection.getChannel(), Options.SECURE, false);
             starttls = ! (sslChannel == null || channelSecure);
             final Map<String, ?> propertyMap;
-            final Map<String, SaslServerFactory> allowedMechanisms;
-            allowedMechanisms = new LinkedHashMap<String, SaslServerFactory>();
+            final Map<String, SaslServerFactory> foundMechanisms = new LinkedHashMap<String, SaslServerFactory>();
             propertyMap = SaslUtils.createPropertyMap(optionMap, channelSecure);
             final Sequence<String> saslMechs = optionMap.get(Options.SASL_MECHANISMS);
             final Set<String> restrictions = saslMechs == null ? null : new HashSet<String>(saslMechs);
@@ -139,7 +138,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         final Principal principal = sslChannel.getSslSession().getPeerPrincipal();
                         // only enable external auth if there's a peer principal (else it's just ANONYMOUS)
                         if (principal != null) {
-                            allowedMechanisms.put("EXTERNAL", new ExternalSaslServerFactory(principal));
+                            foundMechanisms.put("EXTERNAL", new ExternalSaslServerFactory(principal));
                         } else {
                             server.trace("No EXTERNAL mechanism due to lack of peer principal");
                         }
@@ -160,16 +159,29 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         server.tracef("Excluding mechanism %s because it is not in the allowed list", mechName);
                     } else if (disallowed.contains(mechName)) {
                         server.tracef("Excluding mechanism %s because it is in the disallowed list", mechName);
-                    } else if (allowedMechanisms.containsKey(mechName)) {
+                    } else if (foundMechanisms.containsKey(mechName)) {
                         server.tracef("Excluding repeated occurrence of mechanism %s", mechName);
                     } else {
                         server.tracef("Added mechanism %s", mechName);
-                        allowedMechanisms.put(mechName, factory);
+                        foundMechanisms.put(mechName, factory);
                     }
                 }
             }
             this.propertyMap = propertyMap;
-            this.allowedMechanisms = allowedMechanisms;
+            if (restrictions == null) {
+                // No need to re-order as an initial order was not passed in.
+                this.allowedMechanisms = foundMechanisms;
+            } else {
+                final Map<String, SaslServerFactory> allowedMechanisms = new LinkedHashMap<String, SaslServerFactory>();
+                for (String name : restrictions) {
+                    if (foundMechanisms.containsKey(name)) {
+                        allowedMechanisms.put(name, foundMechanisms.get(name));
+                    }
+                }
+
+                this.allowedMechanisms = allowedMechanisms;
+            }
+
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
