@@ -27,6 +27,7 @@ import java.net.InetSocketAddress;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
@@ -54,6 +55,7 @@ import org.xnio.Sequence;
 import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.SslChannel;
+import org.xnio.channels.WrappedChannel;
 import org.xnio.sasl.SaslUtils;
 import org.xnio.sasl.SaslWrapper;
 
@@ -463,14 +465,25 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                     case Protocol.STARTTLS: {
                         client.trace("Client received STARTTLS response");
-                        try {
-                            ((SslChannel)channel).startHandshake();
-                        } catch (IOException e) {
-                            connection.handleException(e, false);
-                            return;
+                        Channel c = channel;
+                        for (;;) {
+                            if (c instanceof SslChannel) {
+                                try {
+                                    ((SslChannel)c).startHandshake();
+                                } catch (IOException e) {
+                                    connection.handleException(e, false);
+                                    return;
+                                }
+                                sendCapRequest(remoteServerName);
+                                return;
+                            } else if (c instanceof WrappedChannel) {
+                                c = ((WrappedChannel<?>)c).getChannel();
+                            } else {
+                                // this should never happen
+                                connection.handleException(new IOException("Client starting STARTTLS but channel doesn't support SSL"));
+                                return;
+                            }
                         }
-                        sendCapRequest(remoteServerName);
-                        return;
                     }
                     default: {
                         client.unknownProtocolId(msgType);
