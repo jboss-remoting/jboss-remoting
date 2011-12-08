@@ -95,7 +95,8 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             throw new IllegalArgumentException("bind and destination addresses must be of the same type");
         }
         log.tracef("Attempting to connect to \"%s\" with options %s", destination, connectOptions);
-        boolean useSsl = sslEnabled && ! connectOptions.get(Options.SECURE, false);
+        final boolean sslCapable = sslEnabled;
+        boolean useSsl = sslCapable && connectOptions.get(Options.SSL_ENABLED, true) && !connectOptions.get(Options.SECURE, false);
         ChannelListener<ConnectedStreamChannel> openListener = new ChannelListener<ConnectedStreamChannel>() {
             public void handleEvent(final ConnectedStreamChannel channel) {
                 try {
