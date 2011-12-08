@@ -52,6 +52,7 @@ import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.SslChannel;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
 
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
 
@@ -98,10 +99,13 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         final SslChannel sslChannel = remoteConnection.getSslChannel();
         final Set<Principal> principals = new LinkedHashSet<Principal>();
         if (sslChannel != null) {
-            try {
-                final Principal peerPrincipal = sslChannel.getSslSession().getPeerPrincipal();
-                principals.add(peerPrincipal);
-            } catch (SSLPeerUnverifiedException ignored) {
+            // It might be STARTTLS, in which case we can still opt out of SSL
+            final SSLSession session = sslChannel.getSslSession();
+            if (session != null) {
+                try {
+                    principals.add(session.getPeerPrincipal());
+                } catch (SSLPeerUnverifiedException ignored) {
+                }
             }
         }
         if (authorizationId != null) {
