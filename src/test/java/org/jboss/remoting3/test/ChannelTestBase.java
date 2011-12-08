@@ -162,6 +162,10 @@ public abstract class ChannelTestBase {
         MessageOutputStream messageOutputStream = sendChannel.writeMessage();
         messageOutputStream.write(data);
         messageOutputStream.close();
+        messageOutputStream.close(); // close should be idempotent
+        messageOutputStream.flush(); // no effect expected, since message is closed
+        messageOutputStream.flush();
+        messageOutputStream.flush();
         latch.await();
         IOException exception = exRef.get();
         if (exception != null) {
@@ -273,6 +277,8 @@ public abstract class ChannelTestBase {
         messageOutputStream.write(data);
         messageOutputStream.cancel();
         messageOutputStream.close();
+        messageOutputStream.close(); // close should be idempotent
+        messageOutputStream.flush(); // no effect expected, since message is closed
         latch.await();
         IOException exception = exRef.get();
         if (exception != null) {
@@ -469,6 +475,8 @@ public abstract class ChannelTestBase {
                         }
                     } finally {
                         out.close();
+                        out.close(); // close should be idempotent
+                        out.flush(); // no effect expected, since message is closed
                     }
                     System.out.println("Done writing");
                 } catch (IOException e) {
@@ -555,6 +563,8 @@ public abstract class ChannelTestBase {
         for (int i = 0 ; i < 100 ; i++) {
             MessageOutputStream messageOutputStream = sendChannel.writeMessage();
             messageOutputStream.close();
+            messageOutputStream.close(); // close should be idempotent
+            messageOutputStream.flush(); // no effect expected, since message is closed
         }
         latch.await();
         IOException exception = exRef.get();
