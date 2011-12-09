@@ -253,6 +253,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                 }
                             }
                             ok = true;
+                            connection.setReadListener(new Initial());
                             return;
                         } finally {
                             if (! ok) pooled.free();
