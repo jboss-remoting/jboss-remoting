@@ -29,6 +29,7 @@ import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
+import org.xnio.XnioWorker;
 import org.xnio.ssl.XnioSsl;
 
 import javax.net.ssl.SSLContext;
@@ -365,6 +366,13 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @return {@code true} if the URI scheme is valid at the time this method is called
      */
     boolean isValidUriScheme(String uriScheme);
+
+    /**
+     * Get the XNIO worker configured for this endpoint.
+     *
+     * @return the XNIO worker
+     */
+    XnioWorker getXnioWorker();
 
     /**
      * Flags which can be passed in to listener registration methods.

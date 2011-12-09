@@ -474,6 +474,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return connectionProviders.containsKey(uriScheme);
     }
 
+    public XnioWorker getXnioWorker() {
+        return worker;
+    }
+
     public String toString() {
         StringBuilder b = new StringBuilder();
         b.append("endpoint ");
