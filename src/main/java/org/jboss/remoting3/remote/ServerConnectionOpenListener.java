@@ -55,6 +55,7 @@ import org.xnio.channels.SslChannel;
 import org.xnio.sasl.SaslUtils;
 import org.xnio.sasl.SaslWrapper;
 
+import javax.net.ssl.SSLSession;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslException;
@@ -134,8 +135,9 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             try {
                 if ((restrictions == null || restrictions.contains("EXTERNAL")) && ! disallowed.contains("EXTERNAL")) {
                     // only enable external if there is indeed an external auth layer to be had
-                    if (sslChannel != null) {
-                        final Principal principal = sslChannel.getSslSession().getPeerPrincipal();
+                    SSLSession sslSession;
+                    if (sslChannel != null && (sslSession = sslChannel.getSslSession()) != null) {
+                        final Principal principal = sslSession.getPeerPrincipal();
                         // only enable external auth if there's a peer principal (else it's just ANONYMOUS)
                         if (principal != null) {
                             foundMechanisms.put("EXTERNAL", new ExternalSaslServerFactory(principal));
