@@ -112,15 +112,18 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
     }
 
     final class Initial implements ChannelListener<ConnectedMessageChannel> {
-        private final boolean starttls;
-        private final Map<String, ?> propertyMap;
-        private final Map<String, SaslServerFactory> allowedMechanisms;
+        private boolean starttls;
+        private Map<String, ?> propertyMap;
+        private Map<String, SaslServerFactory> allowedMechanisms;
         private int version;
         private String remoteEndpointName;
 
         Initial() {
             // Calculate our capabilities
             version = Protocol.VERSION;
+        }
+
+        void initialiseCapabilities() {
             final SslChannel sslChannel = connection.getSslChannel();
             final boolean channelSecure = Channels.getOption(connection.getChannel(), Options.SECURE, false);
             starttls = ! (sslChannel == null || channelSecure);
@@ -183,8 +186,9 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
 
                 this.allowedMechanisms = allowedMechanisms;
             }
-
         }
+
+
 
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledBuffer = connection.allocate();
@@ -377,6 +381,10 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         }
 
         void sendCapabilities() {
+            if (allowedMechanisms == null) {
+                initialiseCapabilities();
+            }
+
             final Pooled<ByteBuffer> pooled = connection.allocate();
             boolean ok = false;
             try {
