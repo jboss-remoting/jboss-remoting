@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -112,15 +113,18 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
     }
 
     final class Initial implements ChannelListener<ConnectedMessageChannel> {
-        private final boolean starttls;
-        private final Map<String, ?> propertyMap;
-        private final Map<String, SaslServerFactory> allowedMechanisms;
+        private boolean starttls;
+        private Map<String, ?> propertyMap;
+        private Map<String, SaslServerFactory> allowedMechanisms;
         private int version;
         private String remoteEndpointName;
 
         Initial() {
             // Calculate our capabilities
             version = Protocol.VERSION;
+        }
+
+        void initialiseCapabilities() {
             final SslChannel sslChannel = connection.getSslChannel();
             final boolean channelSecure = Channels.getOption(connection.getChannel(), Options.SECURE, false);
             starttls = ! (sslChannel == null || channelSecure);
@@ -128,7 +132,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             final Map<String, SaslServerFactory> foundMechanisms = new LinkedHashMap<String, SaslServerFactory>();
             propertyMap = SaslUtils.createPropertyMap(optionMap, channelSecure);
             final Sequence<String> saslMechs = optionMap.get(Options.SASL_MECHANISMS);
-            final Set<String> restrictions = saslMechs == null ? null : new HashSet<String>(saslMechs);
+            final Set<String> restrictions = saslMechs == null ? null : new LinkedHashSet<String>(saslMechs);
             final Sequence<String> saslNoMechs = optionMap.get(Options.SASL_DISALLOWED_MECHANISMS);
             final Set<String> disallowed = saslNoMechs == null ? Collections.<String>emptySet() : new HashSet<String>(saslNoMechs);
             final Iterator<SaslServerFactory> factories = SaslUtils.getSaslServerFactories(getClass().getClassLoader(), true);
@@ -183,8 +187,9 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
 
                 this.allowedMechanisms = allowedMechanisms;
             }
-
         }
+
+
 
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledBuffer = connection.allocate();
@@ -377,6 +382,10 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         }
 
         void sendCapabilities() {
+            if (allowedMechanisms == null) {
+                initialiseCapabilities();
+            }
+
             final Pooled<ByteBuffer> pooled = connection.allocate();
             boolean ok = false;
             try {

@@ -60,9 +60,17 @@ final class ExternalSaslServer implements SaslServer {
         } catch (UnsupportedEncodingException e) {
             throw new SaslException("Cannot convert user name from UTF-8", e);
         }
+        if (userName.length() == 0) {
+            userName = peerPrincipal.getName();
+        }
         final AuthorizeCallback authorizeCallback = new AuthorizeCallback(peerPrincipal.getName(), userName);
         handleCallback(callbackHandler, authorizeCallback);
-        authorizationID = userName;
+        if (authorizeCallback.isAuthorized()) {
+            authorizationID = authorizeCallback.getAuthorizedID();
+        } else {
+            throw new SaslException("EXTERNAL: " + peerPrincipal.getName() + " is not authorized to act as " + userName);
+        }
+
         return EMPTY;
     }
 
