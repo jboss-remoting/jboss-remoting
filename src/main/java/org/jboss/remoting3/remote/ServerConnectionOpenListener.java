@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -131,7 +132,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             final Map<String, SaslServerFactory> foundMechanisms = new LinkedHashMap<String, SaslServerFactory>();
             propertyMap = SaslUtils.createPropertyMap(optionMap, channelSecure);
             final Sequence<String> saslMechs = optionMap.get(Options.SASL_MECHANISMS);
-            final Set<String> restrictions = saslMechs == null ? null : new HashSet<String>(saslMechs);
+            final Set<String> restrictions = saslMechs == null ? null : new LinkedHashSet<String>(saslMechs);
             final Sequence<String> saslNoMechs = optionMap.get(Options.SASL_DISALLOWED_MECHANISMS);
             final Set<String> disallowed = saslNoMechs == null ? Collections.<String>emptySet() : new HashSet<String>(saslNoMechs);
             final Iterator<SaslServerFactory> factories = SaslUtils.getSaslServerFactories(getClass().getClassLoader(), true);
