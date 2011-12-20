@@ -91,7 +91,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
     }
 
     public void handleEvent(final ConnectedMessageChannel channel) {
-        connection.setReadListener(new Greeting());
+        connection.setReadListener(new Greeting(), true);
     }
 
     void sendCapRequest(final String remoteServerName) {
@@ -108,7 +108,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 ProtocolUtils.writeString(sendBuffer, Protocol.CAP_ENDPOINT_NAME, localEndpointName);
             }
             sendBuffer.flip();
-            connection.setReadListener(new Capabilities(remoteServerName));
+            connection.setReadListener(new Capabilities(remoteServerName), true);
             connection.send(pooledSendBuffer);
             ok = true;
             // all set
@@ -297,7 +297,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
                                 sendBuffer.put(Protocol.STARTTLS);
                                 sendBuffer.flip();
-                                connection.setReadListener(new StartTls(remoteServerName));
+                                connection.setReadListener(new StartTls(remoteServerName), true);
                                 connection.send(pooledSendBuffer);
                                 // all set
                                 return;
@@ -392,10 +392,8 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 }
 
                                 sendBuffer.flip();
-                                connection.setReadListener(new Authentication(usedSaslClient, remoteServerName, userName,
-                                        theRemoteEndpointName));
                                 connection.send(pooledSendBuffer);
-                                connection.getChannel().resumeReads();
+                                connection.setReadListener(new Authentication(usedSaslClient, remoteServerName, userName, theRemoteEndpointName), true);
                                 return;
                             }
                         });
@@ -624,7 +622,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                         // this happens immediately.
                                         final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, authorizationID, remoteEndpointName);
-                                        connection.setReadListener(new RemoteReadListener(connectionHandler, connection));
+                                        connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                         return connectionHandler;
                                     }
                                 };

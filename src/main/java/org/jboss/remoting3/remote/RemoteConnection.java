@@ -73,10 +73,10 @@ final class RemoteConnection {
         return messageBufferPool.allocate();
     }
 
-    void setReadListener(ChannelListener<? super ConnectedMessageChannel> listener) {
+    void setReadListener(ChannelListener<? super ConnectedMessageChannel> listener, final boolean resume) {
         RemoteLogger.log.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, null, "Setting read listener to %s", listener);
         channel.getReadSetter().set(listener);
-        if (listener != null) {
+        if (listener != null && resume) {
             channel.resumeReads();
         }
     }
@@ -211,7 +211,6 @@ final class RemoteConnection {
                         RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
                         if (closed) {
                             // either this is successful and no more notifications will come, or not and it will be retried
-                            channel.shutdownWrites();
                             // either way we're done here
                             return;
                         }
@@ -238,7 +237,8 @@ final class RemoteConnection {
                             return;
                         }
                         RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
-                        if (! channel.shutdownWrites()) {
+                        channel.shutdownWrites();
+                        if (! channel.flush()) {
                             channel.resumeWrites();
                             return;
                         }
@@ -287,7 +287,8 @@ final class RemoteConnection {
                         }
                         RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
                         if (close) {
-                            if (channel.shutdownWrites()) {
+                            channel.shutdownWrites();
+                            if (channel.flush()) {
                                 RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
                             } else {
                                 channel.resumeWrites();

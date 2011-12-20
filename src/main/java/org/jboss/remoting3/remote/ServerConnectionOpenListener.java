@@ -97,7 +97,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             sendBuffer.put(Protocol.GREETING);
             ProtocolUtils.writeString(sendBuffer, Protocol.GRT_SERVER_NAME, serverName);
             sendBuffer.flip();
-            connection.setReadListener(new Initial());
+            connection.setReadListener(new Initial(), true);
             connection.send(pooled);
             ok = true;
             return;
@@ -272,7 +272,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                 }
                             }
                             ok = true;
-                            connection.setReadListener(new Initial());
+                            connection.setReadListener(new Initial(), true);
                             return;
                         } finally {
                             if (! ok) pooled.free();
@@ -334,14 +334,14 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                             connectionProviderContext.accept(new ConnectionHandlerFactory() {
                                                 public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                                     final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, saslServer.getAuthorizationID(), remoteEndpointName);
-                                                    connection.setReadListener(new RemoteReadListener(connectionHandler, connection));
+                                                    connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                                     return connectionHandler;
                                                 }
                                             });
                                         } else {
                                             server.tracef("Server sending authentication challenge");
                                             sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
-                                            connection.setReadListener(new Authentication(saslServer, remoteEndpointName));
+                                            connection.setReadListener(new Authentication(saslServer, remoteEndpointName), false);
                                         }
                                     } catch (Throwable e) {
                                         server.tracef("Server sending authentication rejected (%s)", e);
@@ -473,7 +473,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                                         connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                                     }
                                                     final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, saslServer.getAuthorizationID(), remoteEndpointName);
-                                                    connection.setReadListener(new RemoteReadListener(connectionHandler, connection));
+                                                    connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                                     return connectionHandler;
                                                 }
                                             });
@@ -484,7 +484,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                     } catch (Throwable e) {
                                         server.tracef("Server sending authentication rejected (%s)", e);
                                         sendBuffer.put(p, Protocol.AUTH_REJECTED);
-                                        connection.setReadListener(new Initial());
+                                        connection.setReadListener(new Initial(), false);
                                     }
                                     sendBuffer.flip();
                                     connection.send(pooled, close);
@@ -503,7 +503,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     case Protocol.CAPABILITIES: {
                         server.trace("Server received capabilities request (cancelling authentication)");
                         final Initial initial = new Initial();
-                        connection.setReadListener(initial);
+                        connection.setReadListener(initial, true);
                         initial.sendCapabilities();
                         return;
                     }
