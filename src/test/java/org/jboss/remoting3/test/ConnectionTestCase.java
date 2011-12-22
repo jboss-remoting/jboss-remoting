@@ -28,6 +28,7 @@ import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
@@ -52,53 +53,58 @@ import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
 import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public class ConnectionTestCase {
 
-    protected final Endpoint endpoint;
-    protected volatile Connection connection;
+    protected final Endpoint clientEndpoint;
+    protected final Endpoint serverEndpoint;
+    private final Registration clientReg;
+    private final Registration serverReg;
 
     private AcceptingChannel<? extends ConnectedStreamChannel> server;
-    private Registration registration;
 
     public ConnectionTestCase() throws IOException {
-        endpoint = Remoting.createEndpoint("connection-test", OptionMap.create(Options.WORKER_TASK_CORE_THREADS, 80, Options.WORKER_TASK_MAX_THREADS, 80));
+        clientEndpoint = Remoting.createEndpoint("connection-test-client", OptionMap.create(Options.WORKER_TASK_CORE_THREADS, THREAD_POOL_SIZE, Options.WORKER_TASK_MAX_THREADS, THREAD_POOL_SIZE));
+        serverEndpoint = Remoting.createEndpoint("connection-test-server", OptionMap.create(Options.WORKER_TASK_CORE_THREADS, THREAD_POOL_SIZE, Options.WORKER_TASK_MAX_THREADS, THREAD_POOL_SIZE));
+        clientReg = clientEndpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
+        serverReg = serverEndpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
     }
 
     @Before
     public void before() throws IOException {
-        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
-        final NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
+        final NetworkServerProvider networkServerProvider = serverEndpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
         server = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
-        connection = endpoint.connect("remote", new InetSocketAddress("::1", 0), new InetSocketAddress("::1", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
     }
 
     @After
     public void after() {
-        IoUtils.safeClose(connection);
         IoUtils.safeClose(server);
-        IoUtils.safeClose(registration);
-        IoUtils.safeClose(endpoint);
+        IoUtils.safeClose(clientReg);
+        IoUtils.safeClose(serverReg);
+        IoUtils.safeClose(clientEndpoint);
+        IoUtils.safeClose(serverEndpoint);
     }
 
-    private static final int MESSAGE_COUNT = 50;
+    private static final int THREAD_POOL_SIZE = 100;
+    private static final int CONNECTION_COUNT = 20;
+    private static final int MESSAGE_COUNT = 15;
     private static final int CHANNEL_COUNT = 30;
     private static final int BUFFER_SIZE = 8192;
     private static final byte[] junkBuffer = new byte[BUFFER_SIZE];
 
     @Test
     public void testManyChannelsLotsOfData() throws Exception {
-        final XnioWorker worker = endpoint.getXnioWorker();
+        final XnioWorker clientWorker = clientEndpoint.getXnioWorker();
+        final XnioWorker serverWorker = serverEndpoint.getXnioWorker();
         final Queue<Throwable> problems = new ConcurrentLinkedQueue<Throwable>();
-        final CountDownLatch serverChannelCount = new CountDownLatch(CHANNEL_COUNT);
-        final CountDownLatch clientChannelCount = new CountDownLatch(CHANNEL_COUNT);
-        endpoint.registerService("test", new OpenListener() {
+        final CountDownLatch serverChannelCount = new CountDownLatch(CHANNEL_COUNT * CONNECTION_COUNT);
+        final CountDownLatch clientChannelCount = new CountDownLatch(CHANNEL_COUNT * CONNECTION_COUNT);
+        serverEndpoint.registerService("test", new OpenListener() {
             public void channelOpened(final Channel channel) {
                 channel.receiveMessage(new Channel.Receiver() {
                     public void handleError(final Channel channel, final IOException error) {
@@ -128,43 +134,51 @@ public class ConnectionTestCase {
             public void registrationTerminated() {
             }
         }, OptionMap.EMPTY);
-        for (int i = 0; i < CHANNEL_COUNT; i ++) {
-            worker.execute(new Runnable() {
-                public void run() {
-                    final Random random = new Random();
-                    final IoFuture<Channel> future = connection.openChannel("test", OptionMap.EMPTY);
-                    try {
-                        final Channel channel = future.get();
+        final AtomicReferenceArray<Connection> connections = new AtomicReferenceArray<Connection>(CONNECTION_COUNT);
+        for (int h = 0; h < CONNECTION_COUNT; h ++) {
+            final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("::1", 0), new InetSocketAddress("::1", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
+            connections.set(h, connection);
+            for (int i = 0; i < CHANNEL_COUNT; i ++) {
+                clientWorker.execute(new Runnable() {
+                    public void run() {
+                        final Random random = new Random();
+                        final IoFuture<Channel> future = connection.openChannel("test", OptionMap.EMPTY);
                         try {
-                            final byte[] bytes = new byte[BUFFER_SIZE];
-                            for (int j = 0; j < MESSAGE_COUNT; j ++) {
-                                final MessageOutputStream stream = channel.writeMessage();
-                                try {
-                                    for (int k = 0; k < 100; k ++) {
-                                        random.nextBytes(bytes);
-                                        stream.write(bytes, 0, random.nextInt(BUFFER_SIZE - 1) + 1);
+                            final Channel channel = future.get();
+                            try {
+                                final byte[] bytes = new byte[BUFFER_SIZE];
+                                for (int j = 0; j < MESSAGE_COUNT; j++) {
+                                    final MessageOutputStream stream = channel.writeMessage();
+                                    try {
+                                        for (int k = 0; k < 100; k++) {
+                                            random.nextBytes(bytes);
+                                            stream.write(bytes, 0, random.nextInt(BUFFER_SIZE - 1) + 1);
+                                        }
+                                        stream.close();
+                                    } finally {
+                                        IoUtils.safeClose(stream);
                                     }
                                     stream.close();
-                                } finally {
-                                    IoUtils.safeClose(stream);
                                 }
-                                stream.close();
+                            } finally {
+                                IoUtils.safeClose(channel);
                             }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            problems.add(e);
                         } finally {
-                            IoUtils.safeClose(channel);
+                            clientChannelCount.countDown();
                         }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        problems.add(e);
-                    } finally {
-                        clientChannelCount.countDown();
                     }
-                }
-            });
+                });
+            }
         }
         Thread.sleep(500);
         serverChannelCount.await();
         clientChannelCount.await();
+        for (int h = 0; h < CONNECTION_COUNT; h ++) {
+            connections.get(h).close();
+        }
         assertArrayEquals(new Object[0], problems.toArray());
     }
 
