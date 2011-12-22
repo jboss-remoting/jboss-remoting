@@ -210,6 +210,12 @@ final class RemoteConnection {
                     if (channel.flush()) {
                         RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
                         if (closed) {
+                            // End of queue reached; shut down and try to flush the remainder
+                            channel.shutdownWrites();
+                            if (channel.flush()) {
+                                RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
+                                return;
+                            }
                             // either this is successful and no more notifications will come, or not and it will be retried
                             // either way we're done here
                             return;
@@ -228,15 +234,11 @@ final class RemoteConnection {
 
         public void shutdownWrites() {
             synchronized (RemoteConnection.this) {
+                if (closed) return;
                 closed = true;
                 final ConnectedMessageChannel channel = getChannel();
                 try {
                     if (queue.isEmpty()) {
-                        if (! channel.flush()) {
-                            channel.resumeWrites();
-                            return;
-                        }
-                        RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
                         channel.shutdownWrites();
                         if (! channel.flush()) {
                             channel.resumeWrites();
