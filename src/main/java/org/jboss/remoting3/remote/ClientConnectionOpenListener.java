@@ -552,7 +552,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                     case Protocol.AUTH_CHALLENGE: {
                         client.trace("Client received authentication challenge");
-                        connection.getChannel().suspendReads();
+                        channel.suspendReads();
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
                                 final boolean clientComplete = saslClient.isComplete();
@@ -564,16 +564,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 final byte[] challenge = Buffers.take(buffer, buffer.remaining());
                                 try {
                                     response = saslClient.evaluateChallenge(challenge);
-                                    if (msgType == Protocol.AUTH_COMPLETE && response != null && response.length > 0) {
-                                        connection.handleException(new SaslException("Received extra auth message after completion"));
-                                        return;
-                                    }
                                 } catch (Throwable e) {
                                     final String mechanismName = saslClient.getMechanismName();
                                     client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
                                     failedMechs.add(mechanismName);
                                     sendCapRequest(serverName);
-                                    connection.getChannel().resumeReads();
                                     return;
                                 }
                                 client.trace("Client sending authentication response");
@@ -583,7 +578,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 sendBuffer.put(response);
                                 sendBuffer.flip();
                                 connection.send(pooled);
-                                connection.getChannel().resumeReads();
+                                channel.resumeReads();
                                 return;
                             }
                         });
@@ -591,7 +586,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                     case Protocol.AUTH_COMPLETE: {
                         client.trace("Client received authentication complete");
-                        connection.getChannel().suspendReads();
+                        channel.suspendReads();
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
                                 final boolean clientComplete = saslClient.isComplete();
@@ -627,7 +622,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     }
                                 };
                                 connection.getResult().setResult(connectionHandlerFactory);
-                                connection.getChannel().resumeReads();
+                                channel.resumeReads();
                                 return;
                             }
                         });

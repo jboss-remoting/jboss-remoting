@@ -81,14 +81,6 @@ final class RemoteConnection {
         }
     }
 
-    void setWriteListener(ChannelListener<? super ConnectedMessageChannel> listener) {
-        RemoteLogger.log.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, null, "Setting write listener to %s", listener);
-        channel.getWriteSetter().set(listener);
-        if (listener != null) {
-            channel.resumeWrites();
-        }
-    }
-
     Result<ConnectionHandlerFactory> getResult() {
         return result;
     }
@@ -283,20 +275,17 @@ final class RemoteConnection {
                             return;
                         }
                         RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (direct)", buffer);
+                        if (close) {
+                            channel.shutdownWrites();
+                            RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel (direct)");
+                            // fall thru to flush
+                        }
                         if (! channel.flush()) {
                             channel.resumeWrites();
                             return;
                         }
-                        RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
-                        if (close) {
-                            channel.shutdownWrites();
-                            if (channel.flush()) {
-                                RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
-                            } else {
-                                channel.resumeWrites();
-                                return;
-                            }
-                        } else {
+                        RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel (direct)");
+                        if (! close) {
                             this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
                         }
                     } else {

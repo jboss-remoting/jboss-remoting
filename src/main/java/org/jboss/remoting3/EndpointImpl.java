@@ -89,6 +89,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final Xnio xnio;
     private final XnioWorker worker;
 
+    private final Object connectionLock = new Object();
+
     private static final AtomicIntegerFieldUpdater<EndpointImpl> resourceCountUpdater = AtomicIntegerFieldUpdater.newUpdater(EndpointImpl.class, "resourceCount");
 
     @SuppressWarnings("unused")
@@ -185,19 +187,21 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     protected void closeAction() throws IOException {
-        // Commence phase one shutdown actions
-        int res;
-        do {
-            res = resourceCount;
-        } while (! resourceCountUpdater.compareAndSet(this, res, res | CLOSED_FLAG));
-        if (res == 0) {
-            finishPhase1();
-        } else {
-            for (Object connection : connections.toArray()) {
-                ((ConnectionImpl)connection).closeAsync();
-            }
-            for (ConnectionProvider connectionProvider : connectionProviders.values()) {
-                connectionProvider.closeAsync();
+        synchronized (connectionLock) {
+            // Commence phase one shutdown actions
+            int res;
+            do {
+                res = resourceCount;
+            } while (! resourceCountUpdater.compareAndSet(this, res, res | CLOSED_FLAG));
+            if (res == 0) {
+                finishPhase1();
+            } else {
+                for (Object connection : connections.toArray()) {
+                    ((ConnectionImpl)connection).closeAsync();
+                }
+                for (ConnectionProvider connectionProvider : connectionProviders.values()) {
+                    connectionProvider.closeAsync();
+                }
             }
         }
     }
@@ -251,60 +255,62 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(CONNECT_PERM);
         }
-        boolean ok = false;
-        resourceUntick("Connection to " + destination);
-        try {
-            final ConnectionProvider connectionProvider = connectionProviders.get(scheme);
-            if (connectionProvider == null) {
-                throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
-            }
-            final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
-            // Mark the stack because otherwise debugging connect problems can be incredibly tough
-            final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
-            final Cancellable connect = connectionProvider.connect(bindAddress, destination, connectOptions, new Result<ConnectionHandlerFactory>() {
-                private final AtomicBoolean called = new AtomicBoolean();
-
-                public boolean setResult(final ConnectionHandlerFactory result) {
-                    if (called.getAndSet(true)) {
-                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Got redundant complete result %s", result);
-                        return false;
-                    }
-                    log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", result);
-                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext);
-                    connections.add(connection);
-                    connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
-                    connection.addCloseHandler(resourceCloseHandler);
-                    connection.addCloseHandler(connectionCloseHandler);
-                    return futureResult.setResult(connection);
+        synchronized (connectionLock) {
+            boolean ok = false;
+            resourceUntick("Connection to " + destination);
+            try {
+                final ConnectionProvider connectionProvider = connectionProviders.get(scheme);
+                if (connectionProvider == null) {
+                    throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
                 }
+                final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
+                // Mark the stack because otherwise debugging connect problems can be incredibly tough
+                final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
+                final Cancellable connect = connectionProvider.connect(bindAddress, destination, connectOptions, new Result<ConnectionHandlerFactory>() {
+                    private final AtomicBoolean called = new AtomicBoolean();
 
-                public boolean setException(final IOException exception) {
-                    if (called.getAndSet(true)) {
-                        log.logf(getClass().getName(), Logger.Level.TRACE, exception, "Got redundant exception result");
-                        return false;
+                    public boolean setResult(final ConnectionHandlerFactory result) {
+                        if (called.getAndSet(true)) {
+                            log.logf(getClass().getName(), Logger.Level.TRACE, null, "Got redundant complete result %s", result);
+                            return false;
+                        }
+                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", result);
+                        final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext);
+                        connections.add(connection);
+                        connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
+                        connection.addCloseHandler(resourceCloseHandler);
+                        connection.addCloseHandler(connectionCloseHandler);
+                        return futureResult.setResult(connection);
                     }
-                    log.logf(getClass().getName(), Logger.Level.TRACE, exception, "Registered exception result");
-                    closeTick1("a failed connection (2)");
-                    SpiUtils.glueStackTraces(exception, mark, 1, "asynchronous invocation");
-                    return futureResult.setException(exception);
-                }
 
-                public boolean setCancelled() {
-                    if (called.getAndSet(true)) {
-                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Got redundant cancellation result");
-                        return false;
+                    public boolean setException(final IOException exception) {
+                        if (called.getAndSet(true)) {
+                            log.logf(getClass().getName(), Logger.Level.TRACE, exception, "Got redundant exception result");
+                            return false;
+                        }
+                        log.logf(getClass().getName(), Logger.Level.TRACE, exception, "Registered exception result");
+                        closeTick1("a failed connection (2)");
+                        SpiUtils.glueStackTraces(exception, mark, 1, "asynchronous invocation");
+                        return futureResult.setException(exception);
                     }
-                    log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered cancellation result");
-                    closeTick1("a cancelled connection");
-                    return futureResult.setCancelled();
+
+                    public boolean setCancelled() {
+                        if (called.getAndSet(true)) {
+                            log.logf(getClass().getName(), Logger.Level.TRACE, null, "Got redundant cancellation result");
+                            return false;
+                        }
+                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered cancellation result");
+                        closeTick1("a cancelled connection");
+                        return futureResult.setCancelled();
+                    }
+                }, callbackHandler, xnioSsl);
+                ok = true;
+                futureResult.addCancelHandler(connect);
+                return futureResult.getIoFuture();
+            } finally {
+                if (! ok) {
+                    closeTick1("a failed connection (1)");
                 }
-            }, callbackHandler, xnioSsl);
-            ok = true;
-            futureResult.addCancelHandler(connect);
-            return futureResult.getIoFuture();
-        } finally {
-            if (! ok) {
-                closeTick1("a failed connection (1)");
             }
         }
     }
@@ -606,21 +612,23 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory) {
-            try {
-                resourceUntick("an inbound connection");
-            } catch (NotOpenException e) {
-                throw new IllegalStateException("Accept after endpoint close", e);
-            }
-            boolean ok = false;
-            try {
-                final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this);
-                connections.add(connection);
-                connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
-                connection.addCloseHandler(connectionCloseHandler);
-                connection.addCloseHandler(resourceCloseHandler);
-                ok = true;
-            } finally {
-                if (! ok) closeTick1("a failed inbound connection");
+            synchronized (connectionLock) {
+                try {
+                    resourceUntick("an inbound connection");
+                } catch (NotOpenException e) {
+                    throw new IllegalStateException("Accept after endpoint close", e);
+                }
+                boolean ok = false;
+                try {
+                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this);
+                    connections.add(connection);
+                    connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
+                    connection.addCloseHandler(connectionCloseHandler);
+                    connection.addCloseHandler(resourceCloseHandler);
+                    ok = true;
+                } finally {
+                    if (! ok) closeTick1("a failed inbound connection");
+                }
             }
         }
 

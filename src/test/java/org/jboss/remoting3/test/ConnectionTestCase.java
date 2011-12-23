@@ -91,9 +91,9 @@ public class ConnectionTestCase {
     }
 
     private static final int THREAD_POOL_SIZE = 100;
-    private static final int CONNECTION_COUNT = 20;
-    private static final int MESSAGE_COUNT = 15;
-    private static final int CHANNEL_COUNT = 30;
+    private static final int CONNECTION_COUNT = 10;
+    private static final int MESSAGE_COUNT = 8;
+    private static final int CHANNEL_COUNT = 10;
     private static final int BUFFER_SIZE = 8192;
     private static final byte[] junkBuffer = new byte[BUFFER_SIZE];
 
