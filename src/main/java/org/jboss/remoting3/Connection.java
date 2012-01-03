@@ -54,4 +54,11 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * @return the remote endpoint name or {@code null} if it is anonymous
      */
     String getRemoteEndpointName();
+
+    /**
+     * Get the local endpoint.
+     *
+     * @return the local endpoint
+     */
+    Endpoint getEndpoint();
 }
