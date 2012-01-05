@@ -1,0 +1,55 @@
+#
+# JBoss, Home of Professional Open Source.
+# Copyright 2012, Red Hat, Inc., and individual contributors
+# as indicated by the @author tags. See the copyright.txt file in the
+# distribution for a full listing of individual contributors.
+#
+# This is free software; you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 2.1 of
+# the License, or (at your option) any later version.
+#
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this software; if not, write to the Free
+# Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+#
+RULE Endpoint.closeAction
+CLASS org.jboss.remoting3.EndpointImpl
+METHOD closeAction
+AT ENTRY
+IF TRUE
+DO
+    debug("Waiting for doConnect to call resourceUntick before proceeding"),
+    waitFor("resourceUntick for connection"),
+    debug("Proceeding with closeAction")
+ENDRULE
+
+RULE doConnect calls resourceUntick
+CLASS org.jboss.remoting3.EndpointImpl
+METHOD doConnect
+AFTER INVOKE org.jboss.remoting3.EndpointImpl.resourceUntick
+IF TRUE
+DO
+    debug("ResourceUntick invoked by doConnect... waking closeAction"),
+    signalWake("resourceUntick for connection", true),
+    debug("ResourceUntick waiting for closeAction to complete before proceeding"),
+    # waitFor should expire if connect and closeAction are correctly synchronized, otherwise this test will hang
+    waitFor("connections to Array", 100)
+ENDRULE
+
+RULE closeAction invokes connections toArray
+CLASS org.jboss.reomting3.EndpointImpl
+METHOD closeAction
+AFTER INVOKE java.util.Set.toArray
+IF TRUE
+DO
+    debug("Endpoint.closeAction invoked connections.toArray, proceeding with doConnect"),
+    signalWake("connections to Array", false),
+    debug("Proceeding with closeAction")
+ENDRULE
