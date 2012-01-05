@@ -47,6 +47,7 @@
         <logging-tools.version>1.0.0.Final</logging-tools.version>
         <logmanager.version>1.2.0.GA</logmanager.version>
         <junit.version>4.8.2</junit.version>
+        <byteman-version>2.0.0</byteman-version>
         <test.level>INFO</test.level>
     </properties>
 
@@ -96,6 +97,30 @@
             <groupId>org.jboss.logmanager</groupId>
             <artifactId>jboss-logmanager</artifactId>
             <version>${logmanager.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.byteman</groupId>
+            <artifactId>byteman</artifactId>
+            <version>${byteman-version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.byteman</groupId>
+            <artifactId>byteman-bmunit</artifactId>
+            <version>${byteman-version}</version>
+            <scope>test</scope>
+             <exclusions>
+                <exclusion>
+                    <artifactId>testng</artifactId>
+                    <groupId>org.testng</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.byteman</groupId>
+            <artifactId>byteman-install</artifactId>
+            <version>${byteman-version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
