@@ -27,6 +27,7 @@ import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 
 import org.jboss.remoting3.MessageOutputStream;
+import org.jboss.remoting3.NotOpenException;
 import org.xnio.IoUtils;
 import org.xnio.Pooled;
 import org.xnio.channels.Channels;
@@ -70,21 +71,27 @@ final class OutboundMessage extends MessageOutputStream {
                 final ConnectedMessageChannel messageChannel = channel.getRemoteConnection().getChannel();
                 if (eof) {
                     // EOF flag (sync close)
-                    buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_EOF));
+                    buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_EOF));
                     log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
                 }
-                if (cancelled) {
-                    buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
-                    buffer.limit(8); // discard everything in the buffer
-                    log.trace("Message includes cancel flag");
-                }
                 synchronized (OutboundMessage.this) {
+                    if (closed) {
+                        throw new NotOpenException("Message was closed asynchronously");
+                    }
+                    if (cancelled) {
+                        buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
+                        buffer.limit(8); // discard everything in the buffer
+                        log.trace("Message includes cancel flag");
+                    }
                     int msgSize = buffer.remaining();
                     window -= msgSize;
                     while (window < msgSize) {
                         try {
                             log.trace("Message window is closed, waiting");
                             OutboundMessage.this.wait();
+                            if (closed) {
+                                throw new NotOpenException("Message was closed asynchronously");
+                            }
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                             throw new InterruptedIOException("Interrupted on write");
