@@ -319,49 +319,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             return;
                         }
                         connection.getChannel().suspendReads();
-                        connection.getExecutor().execute(new Runnable() {
-                            public void run() {
-                                boolean ok = false;
-                                boolean close = false;
-                                final Pooled<ByteBuffer> pooled = connection.allocate();
-                                try {
-                                    final ByteBuffer sendBuffer = pooled.getResource();
-                                    int p = sendBuffer.position();
-                                    try {
-                                        sendBuffer.put(Protocol.AUTH_COMPLETE);
-                                        if (SaslUtils.evaluateResponse(saslServer, sendBuffer, receiveBuffer)) {
-                                            server.tracef("Server sending authentication complete");
-                                            connectionProviderContext.accept(new ConnectionHandlerFactory() {
-                                                public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, saslServer.getAuthorizationID(), remoteEndpointName);
-                                                    connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
-                                                    return connectionHandler;
-                                                }
-                                            });
-                                        } else {
-                                            server.tracef("Server sending authentication challenge");
-                                            sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
-                                            connection.setReadListener(new Authentication(saslServer, remoteEndpointName), false);
-                                        }
-                                    } catch (Throwable e) {
-                                        server.tracef("Server sending authentication rejected (%s)", e);
-                                        sendBuffer.put(p, Protocol.AUTH_REJECTED);
-                                        if (retryCount.decrementAndGet() <= 0) {
-                                            close = true;
-                                        }
-                                    }
-                                    sendBuffer.flip();
-                                    connection.send(pooled, close);
-                                    connection.getChannel().resumeReads();
-                                    ok = true;
-                                    return;
-                                } finally {
-                                    if (! ok) {
-                                        pooled.free();
-                                    }
-                                }
-                            }
-                        });
+                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, receiveBuffer, remoteEndpointName));                    
                         return;
                     }
                     default: {
@@ -412,6 +370,76 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             }
         }
     }
+    
+    final class AuthStepRunnable implements Runnable {
+        
+        private final boolean isInitial;
+        private final SaslServer saslServer;
+        private final ByteBuffer buffer;
+        private final String remoteEndpointName;
+    
+
+        AuthStepRunnable(final boolean isInitial, final SaslServer saslServer, final ByteBuffer buffer, final String remoteEndpointName) {
+            this.isInitial = isInitial;
+            this.saslServer = saslServer;
+            this.buffer = buffer;
+            this.remoteEndpointName = remoteEndpointName;            
+        }
+        
+        @Override
+        public void run() {
+            boolean ok = false;
+            boolean close = false;
+            final Pooled<ByteBuffer> pooled = connection.allocate();
+            try {
+                final ByteBuffer sendBuffer = pooled.getResource();
+                int p = sendBuffer.position();
+                try {
+                    sendBuffer.put(Protocol.AUTH_COMPLETE);
+                    if (SaslUtils.evaluateResponse(saslServer, sendBuffer, buffer)) {
+                        server.tracef("Server sending authentication complete");
+                        connectionProviderContext.accept(new ConnectionHandlerFactory() {
+                            public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
+                                final Object qop = saslServer.getNegotiatedProperty(Sasl.QOP);
+                                if (!isInitial && ("auth-int".equals(qop) || "auth-conf".equals(qop))) {
+                                    connection.setSaslWrapper(SaslWrapper.create(saslServer));
+                                }
+                                final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
+                                        connectionContext, connection, saslServer.getAuthorizationID(), remoteEndpointName);
+                                connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
+                                return connectionHandler;
+                            }
+                        });
+                    } else {
+                        server.tracef("Server sending authentication challenge");
+                        sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
+                        if (isInitial) {
+                            connection.setReadListener(new Authentication(saslServer, remoteEndpointName), false);
+                        }
+                    }
+                } catch (Throwable e) {
+                    server.tracef("Server sending authentication rejected (%s)", e);
+                    sendBuffer.put(p, Protocol.AUTH_REJECTED);
+                    if (isInitial) {
+                        if (retryCount.decrementAndGet() <= 0) {
+                            close = true;
+                        }
+                    } else {
+                        connection.setReadListener(new Initial(), false);
+                    }
+                }
+                sendBuffer.flip();
+                connection.send(pooled, close);
+                connection.getChannel().resumeReads();
+                ok = true;
+                return;
+            } finally {
+                if (!ok) {
+                    pooled.free();
+                }
+            }            
+        }                                   
+    }
 
     final class Authentication implements ChannelListener<ConnectedMessageChannel> {
 
@@ -454,50 +482,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     case Protocol.AUTH_RESPONSE: {
                         server.tracef("Server received authentication response");
                         connection.getChannel().suspendReads();
-                        connection.getExecutor().execute(new Runnable() {
-                            public void run() {
-                                boolean ok = false;
-                                boolean close = false;
-                                final Pooled<ByteBuffer> pooled = connection.allocate();
-                                try {
-                                    final ByteBuffer sendBuffer = pooled.getResource();
-                                    int p = sendBuffer.position();
-                                    try {
-                                        sendBuffer.put(Protocol.AUTH_COMPLETE);
-                                        if (SaslUtils.evaluateResponse(saslServer, sendBuffer, buffer)) {
-                                            server.tracef("Server sending authentication complete");
-                                            connectionProviderContext.accept(new ConnectionHandlerFactory() {
-                                                public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                                                    final Object qop = saslServer.getNegotiatedProperty(Sasl.QOP);
-                                                    if ("auth-int".equals(qop) || "auth-conf".equals(qop)) {
-                                                        connection.setSaslWrapper(SaslWrapper.create(saslServer));
-                                                    }
-                                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, saslServer.getAuthorizationID(), remoteEndpointName);
-                                                    connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
-                                                    return connectionHandler;
-                                                }
-                                            });
-                                        } else {
-                                            server.tracef("Server sending authentication challenge");
-                                            sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
-                                        }
-                                    } catch (Throwable e) {
-                                        server.tracef("Server sending authentication rejected (%s)", e);
-                                        sendBuffer.put(p, Protocol.AUTH_REJECTED);
-                                        connection.setReadListener(new Initial(), false);
-                                    }
-                                    sendBuffer.flip();
-                                    connection.send(pooled, close);
-                                    connection.getChannel().resumeReads();
-                                    ok = true;
-                                    return;
-                                } finally {
-                                    if (!ok) {
-                                        pooled.free();
-                                    }
-                                }
-                            }
-                        });
+                        connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, buffer, remoteEndpointName));
                         return;
                     }
                     case Protocol.CAPABILITIES: {
