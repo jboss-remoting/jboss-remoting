@@ -24,11 +24,12 @@ package org.jboss.remoting3.security;
 
 import java.io.IOException;
 import java.security.KeyPair;
+import java.security.Principal;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 import javax.security.auth.callback.Callback;
-import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.callback.NameCallback;
 import javax.security.auth.callback.PasswordCallback;
 import javax.security.auth.callback.UnsupportedCallbackException;
@@ -47,8 +48,8 @@ public final class SimpleServerAuthenticationProvider implements ServerAuthentic
 
     /** {@inheritDoc}
      * @param mechanismName*/
-    public CallbackHandler getCallbackHandler(final String mechanismName) {
-        return new CallbackHandler() {
+    public AuthorizingCallbackHandler getCallbackHandler(final String mechanismName) {
+        return new AuthorizingCallbackHandler() {
             public void handle(final Callback[] callbacks) throws IOException, UnsupportedCallbackException {
                 String userName = null;
                 String realmName = null;
@@ -99,6 +100,18 @@ public final class SimpleServerAuthenticationProvider implements ServerAuthentic
                     }
                 }
             }
+
+            public UserInfo createUserInfo(final Collection<Principal> remotingPrincipals) {
+                return new UserInfo() {
+
+                    @Override
+                    public Collection<Principal> getPrincipals() {
+                        return remotingPrincipals;
+                    }
+
+                };
+            }
+
         };
     }
 

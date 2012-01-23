@@ -30,9 +30,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.security.AccessControlContext;
 import java.security.AccessController;
+import java.security.Principal;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -42,6 +44,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3.security.InetAddressPrincipal;
+import org.jboss.remoting3.security.UserInfo;
+import org.jboss.remoting3.security.UserPrincipal;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
@@ -59,6 +64,8 @@ import org.xnio.channels.WrappedChannel;
 import org.xnio.sasl.SaslUtils;
 import org.xnio.sasl.SaslWrapper;
 
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
@@ -616,7 +623,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {
                                     public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                         // this happens immediately.
-                                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, authorizationID, remoteEndpointName);
+                                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, createClientUserInfo(), remoteEndpointName);
                                         connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                         return connectionHandler;
                                     }
@@ -645,5 +652,41 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 pooledBuffer.free();
             }
         }
+        
+        private UserInfo createClientUserInfo() {
+
+            final Set<Principal> principals = new LinkedHashSet<Principal>();
+
+            final SslChannel sslChannel = connection.getSslChannel();
+            if (sslChannel != null) {
+                // It might be STARTTLS, in which case we can still opt out of SSL
+                final SSLSession session = sslChannel.getSslSession();
+                if (session != null) {
+                    try {
+                        principals.add(session.getPeerPrincipal());
+                    } catch (SSLPeerUnverifiedException ignored) {
+                    }
+                }
+            }
+            if (authorizationID != null) {
+                principals.add(new UserPrincipal(authorizationID));
+            }
+            final ConnectedMessageChannel channel = connection.getChannel();
+            final InetSocketAddress address = channel.getPeerAddress(InetSocketAddress.class);
+            if (address != null) {
+                principals.add(new InetAddressPrincipal(address.getAddress()));
+            }
+
+            final Collection<Principal> finalPrincipals = Collections.unmodifiableCollection(principals);
+            return new UserInfo() {
+
+                @Override
+                public Collection<Principal> getPrincipals() {
+                    return finalPrincipals;
+                }
+            };
+
+        }
+
     }
 }

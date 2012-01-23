@@ -23,22 +23,19 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.security.Principal;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.ProtocolException;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.ServiceOpenException;
-import org.jboss.remoting3.security.InetAddressPrincipal;
-import org.jboss.remoting3.security.UserPrincipal;
+import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -49,10 +46,6 @@ import org.xnio.Pooled;
 import org.xnio.Result;
 import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
-import org.xnio.channels.SslChannel;
-
-import javax.net.ssl.SSLPeerUnverifiedException;
-import javax.net.ssl.SSLSession;
 
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
 
@@ -91,32 +84,13 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final String authorizationId, final String remoteEndpointName) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final UserInfo userInfo, final String remoteEndpointName) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
         this.remoteEndpointName = remoteEndpointName;
-        final SslChannel sslChannel = remoteConnection.getSslChannel();
-        final Set<Principal> principals = new LinkedHashSet<Principal>();
-        if (sslChannel != null) {
-            // It might be STARTTLS, in which case we can still opt out of SSL
-            final SSLSession session = sslChannel.getSslSession();
-            if (session != null) {
-                try {
-                    principals.add(session.getPeerPrincipal());
-                } catch (SSLPeerUnverifiedException ignored) {
-                }
-            }
-        }
-        if (authorizationId != null) {
-            principals.add(new UserPrincipal(authorizationId));
-        }
-        final ConnectedMessageChannel channel = remoteConnection.getChannel();
-        final InetSocketAddress address = channel.getPeerAddress(InetSocketAddress.class);
-        if (address != null) {
-            principals.add(new InetAddressPrincipal(address.getAddress()));
-        }
-        this.principals = Collections.unmodifiableSet(principals);
+
+        this.principals = Collections.unmodifiableCollection(userInfo.getPrincipals());
     }
 
     /**

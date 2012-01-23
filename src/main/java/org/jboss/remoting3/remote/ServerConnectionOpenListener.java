@@ -22,6 +22,11 @@
 
 package org.jboss.remoting3.remote;
 
+import static java.lang.Math.min;
+import static org.jboss.remoting3.remote.RemoteAuthLogger.authLog;
+import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.jboss.remoting3.remote.RemoteLogger.server;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.BufferOverflowException;
@@ -31,6 +36,7 @@ import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.Principal;
 import java.security.PrivilegedAction;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -39,7 +45,18 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
+import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslServer;
+import javax.security.sasl.SaslServerFactory;
+
+import org.jboss.remoting3.security.AuthorizingCallbackHandler;
+import org.jboss.remoting3.security.InetAddressPrincipal;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
+import org.jboss.remoting3.security.UserPrincipal;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
@@ -55,18 +72,6 @@ import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.SslChannel;
 import org.xnio.sasl.SaslUtils;
 import org.xnio.sasl.SaslWrapper;
-
-import javax.net.ssl.SSLSession;
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.sasl.Sasl;
-import javax.security.sasl.SaslException;
-import javax.security.sasl.SaslServer;
-import javax.security.sasl.SaslServerFactory;
-
-import static java.lang.Math.min;
-import static org.jboss.remoting3.remote.RemoteAuthLogger.authLog;
-import static org.jboss.remoting3.remote.RemoteLogger.log;
-import static org.jboss.remoting3.remote.RemoteLogger.server;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -293,7 +298,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             mechName = ProtocolUtils.readString(receiveBuffer);
                         }
                         final SaslServerFactory saslServerFactory = allowedMechanisms.get(mechName);
-                        final CallbackHandler callbackHandler = serverAuthenticationProvider.getCallbackHandler(mechName);
+                        final AuthorizingCallbackHandler callbackHandler = serverAuthenticationProvider.getCallbackHandler(mechName);
                         if (saslServerFactory == null || callbackHandler == null) {
                             // reject
                             authLog.rejectedInvalidMechanism(mechName);
@@ -319,7 +324,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             return;
                         }
                         connection.getChannel().suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, receiveBuffer, remoteEndpointName));                    
+                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, callbackHandler, receiveBuffer, remoteEndpointName));                    
                         return;
                     }
                     default: {
@@ -375,13 +380,15 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         
         private final boolean isInitial;
         private final SaslServer saslServer;
+        private final AuthorizingCallbackHandler authorizingCallbackHandler;
         private final ByteBuffer buffer;
         private final String remoteEndpointName;
     
 
-        AuthStepRunnable(final boolean isInitial, final SaslServer saslServer, final ByteBuffer buffer, final String remoteEndpointName) {
+        AuthStepRunnable(final boolean isInitial, final SaslServer saslServer, final AuthorizingCallbackHandler authorizingCallbackHandler, final ByteBuffer buffer, final String remoteEndpointName) {
             this.isInitial = isInitial;
             this.saslServer = saslServer;
+            this.authorizingCallbackHandler = authorizingCallbackHandler;
             this.buffer = buffer;
             this.remoteEndpointName = remoteEndpointName;            
         }
@@ -405,7 +412,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                     connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                 }
                                 final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                        connectionContext, connection, saslServer.getAuthorizationID(), remoteEndpointName);
+                                        connectionContext, connection, authorizingCallbackHandler.createUserInfo(createPrincipals()), remoteEndpointName);
                                 connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                 return connectionHandler;
                             }
@@ -414,7 +421,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         server.tracef("Server sending authentication challenge");
                         sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
                         if (isInitial) {
-                            connection.setReadListener(new Authentication(saslServer, remoteEndpointName), false);
+                            connection.setReadListener(new Authentication(saslServer, authorizingCallbackHandler, remoteEndpointName), false);
                         }
                     }
                 } catch (Throwable e) {
@@ -438,16 +445,49 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     pooled.free();
                 }
             }            
-        }                                   
+        }
+        
+        
+        private Collection<Principal> createPrincipals() {
+            final Set<Principal> principals = new LinkedHashSet<Principal>();
+
+            final SslChannel sslChannel = connection.getSslChannel();
+            if (sslChannel != null) {
+                // It might be STARTTLS, in which case we can still opt out of SSL
+                final SSLSession session = sslChannel.getSslSession();
+                if (session != null) {
+                    try {
+                        principals.add(session.getPeerPrincipal());
+                    } catch (SSLPeerUnverifiedException ignored) {
+                    }
+                }
+            }
+            String authorizationId = saslServer.getAuthorizationID();
+            if (authorizationId != null) {
+                principals.add(new UserPrincipal(authorizationId));
+            }
+            final ConnectedMessageChannel channel = connection.getChannel();
+            final InetSocketAddress address = channel.getPeerAddress(InetSocketAddress.class);
+            if (address != null) {
+                principals.add(new InetAddressPrincipal(address.getAddress()));
+            }
+
+            return Collections.unmodifiableCollection(principals);
+        }
+
     }
+    
+    
 
     final class Authentication implements ChannelListener<ConnectedMessageChannel> {
 
         private final SaslServer saslServer;
+        private final AuthorizingCallbackHandler authorizingCallbackHandler;
         private final String remoteEndpointName;
 
-        Authentication(final SaslServer saslServer, final String remoteEndpointName) {
+        Authentication(final SaslServer saslServer, final AuthorizingCallbackHandler authorizingCallbackHandler, final String remoteEndpointName) {
             this.saslServer = saslServer;
+            this.authorizingCallbackHandler = authorizingCallbackHandler;
             this.remoteEndpointName = remoteEndpointName;
         }
 
@@ -482,7 +522,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     case Protocol.AUTH_RESPONSE: {
                         server.tracef("Server received authentication response");
                         connection.getChannel().suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, buffer, remoteEndpointName));
+                        connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, authorizingCallbackHandler, buffer, remoteEndpointName));
                         return;
                     }
                     case Protocol.CAPABILITIES: {
