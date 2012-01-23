@@ -27,6 +27,8 @@ import java.security.Principal;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.Executor;
+
+import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -94,6 +96,15 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
 
         public Collection<Principal> getPrincipals() {
             return Collections.emptySet();
+        }
+        
+        public UserInfo getUserInfo() {
+            return new UserInfo() {
+
+                public Collection<Principal> getPrincipals() {
+                    return getPrincipals();
+                }
+            };
         }
 
         public String getRemoteEndpointName() {

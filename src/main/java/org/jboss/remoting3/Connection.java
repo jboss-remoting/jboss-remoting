@@ -24,6 +24,8 @@ package org.jboss.remoting3;
 
 import java.security.Principal;
 import java.util.Collection;
+
+import org.jboss.remoting3.security.UserInfo;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 
@@ -38,6 +40,13 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * @return the authenticated principals
      */
     Collection<Principal> getPrincipals();
+    
+    /**
+     * Get the UserInfo for this connection.
+     * 
+     * @return the authenticated UserInfo
+     */
+    UserInfo getUserInfo();
 
     /**
      * Open a channel to a remote service on this connection.

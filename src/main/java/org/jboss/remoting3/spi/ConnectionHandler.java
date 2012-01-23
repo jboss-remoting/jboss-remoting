@@ -26,6 +26,7 @@ import java.security.Principal;
 import java.util.Collection;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.HandleableCloseable;
+import org.jboss.remoting3.security.UserInfo;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
@@ -51,6 +52,13 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
      * @return the authenticated principals
      */
     Collection<Principal> getPrincipals();
+    
+    /**
+     * Get the authenticated UserInfo for this connection.
+     * 
+     * @return the authenticated UserInfo
+     */
+    UserInfo getUserInfo();
 
     /**
      * Get the name of the remote endpoint.

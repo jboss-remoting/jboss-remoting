@@ -65,6 +65,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
      */
     private final IntIndexMap<PendingChannel> pendingChannels = new IntIndexHashMap<PendingChannel>(PendingChannel.INDEXER, Equaller.IDENTITY);
     private final Collection<Principal> principals;
+    private final UserInfo userInfo;
 
     private final int maxInboundChannels = 40;
     private final int maxOutboundChannels = 40;
@@ -91,6 +92,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         this.remoteEndpointName = remoteEndpointName;
 
         this.principals = Collections.unmodifiableCollection(userInfo.getPrincipals());
+        this.userInfo = userInfo;
     }
 
     /**
@@ -344,6 +346,10 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     public Collection<Principal> getPrincipals() {
         return principals;
+    }
+        
+    public UserInfo getUserInfo() {
+        return userInfo;
     }
 
     public String getRemoteEndpointName() {
