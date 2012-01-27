@@ -22,6 +22,7 @@
 
 package org.jboss.remoting3.security;
 
+import java.io.IOException;
 import java.security.Principal;
 import java.util.Collection;
 
@@ -46,6 +47,6 @@ public interface AuthorizingCallbackHandler extends CallbackHandler {
      * @param remotingPrincipals - The principals already created based on the authentication.
      * @return The new UserInfo instance.
      */    
-    public UserInfo createUserInfo(final Collection<Principal> remotingPrincipals);
+    public UserInfo createUserInfo(final Collection<Principal> remotingPrincipals) throws IOException;
 
 }

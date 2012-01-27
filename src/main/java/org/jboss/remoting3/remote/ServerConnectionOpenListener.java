@@ -56,6 +56,7 @@ import javax.security.sasl.SaslServerFactory;
 import org.jboss.remoting3.security.AuthorizingCallbackHandler;
 import org.jboss.remoting3.security.InetAddressPrincipal;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
+import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remoting3.security.UserPrincipal;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -405,6 +406,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     sendBuffer.put(Protocol.AUTH_COMPLETE);
                     if (SaslUtils.evaluateResponse(saslServer, sendBuffer, buffer)) {
                         server.tracef("Server sending authentication complete");
+                        final UserInfo userInfo = authorizingCallbackHandler.createUserInfo(createPrincipals());
                         connectionProviderContext.accept(new ConnectionHandlerFactory() {
                             public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                 final Object qop = saslServer.getNegotiatedProperty(Sasl.QOP);
@@ -412,7 +414,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                     connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                 }
                                 final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                        connectionContext, connection, authorizingCallbackHandler.createUserInfo(createPrincipals()), remoteEndpointName);
+                                        connectionContext, connection, userInfo, remoteEndpointName);
                                 connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                 return connectionHandler;
                             }
