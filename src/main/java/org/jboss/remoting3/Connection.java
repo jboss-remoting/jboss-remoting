@@ -40,10 +40,10 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * @return the authenticated principals
      */
     Collection<Principal> getPrincipals();
-    
+
     /**
      * Get the UserInfo for this connection.
-     * 
+     *
      * @return the authenticated UserInfo
      */
     UserInfo getUserInfo();

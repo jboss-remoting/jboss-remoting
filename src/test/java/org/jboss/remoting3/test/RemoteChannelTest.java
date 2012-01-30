@@ -23,6 +23,7 @@
 package org.jboss.remoting3.test;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -90,6 +91,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
         sendChannel = futureChannel.get();
         recvChannel = passer.getIoFuture().get();
         assertNotNull(recvChannel);
+        assertEquals("bob",recvChannel.getConnection().getUserInfo().getUserName());        
     }
 
     @After
@@ -106,4 +108,5 @@ public final class RemoteChannelTest extends ChannelTestBase {
         IoUtils.safeClose(endpoint);
         IoUtils.safeClose(registration);
     }
+        
 }

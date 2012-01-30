@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.Set;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.InetAddressPrincipal;
-import org.jboss.remoting3.security.UserInfo;
+import org.jboss.remoting3.security.SimpleUserInfo;
 import org.jboss.remoting3.security.UserPrincipal;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -622,8 +622,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 // auth complete.
                                 final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {
                                     public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
+                                        Collection<Principal> principals = definePrincipals();
+
                                         // this happens immediately.
-                                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, createClientUserInfo(), remoteEndpointName);
+                                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
+                                                connectionContext, connection, principals, new SimpleUserInfo(principals),
+                                                remoteEndpointName);
                                         connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                         return connectionHandler;
                                     }
@@ -652,8 +656,8 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 pooledBuffer.free();
             }
         }
-        
-        private UserInfo createClientUserInfo() {
+
+        private Collection<Principal> definePrincipals() {
 
             final Set<Principal> principals = new LinkedHashSet<Principal>();
 
@@ -677,15 +681,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 principals.add(new InetAddressPrincipal(address.getAddress()));
             }
 
-            final Collection<Principal> finalPrincipals = Collections.unmodifiableCollection(principals);
-            return new UserInfo() {
-
-                @Override
-                public Collection<Principal> getPrincipals() {
-                    return finalPrincipals;
-                }
-            };
-
+            return principals;
         }
 
     }

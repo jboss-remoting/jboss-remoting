@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2010, JBoss Inc., and individual contributors as indicated
+ * Copyright 2012, JBoss Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -19,24 +19,34 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-
 package org.jboss.remoting3.security;
 
+import java.security.Principal;
+import java.util.Collection;
+import java.util.Iterator;
+
 /**
+ * A simple UserInfo implementation that takes the the supplied Prinicpals to extract the user name for the user.
  *
+ * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public interface ServerAuthenticationProvider {
+public class SimpleUserInfo implements UserInfo {
+    final String userName;
 
-    /**
-     * Get a callback handler for the given mechanism name.
-     *
-     * This method is called each time a mechanism is selected for the connection and the resulting
-     * AuthorizingCallbackHandler will be cached and used multiple times for this connection, AuthorizingCallbackHandler
-     * should either be thread safe or the ServerAuthenticationProvider should provide a new instance each time called.
-     *
-     * @param mechanismName the SASL mechanism to get a callback handler for
-     * @return the callback handler or {@code null} if the mechanism is not supported
-     */
-    AuthorizingCallbackHandler getCallbackHandler(String mechanismName);
+    public SimpleUserInfo(Collection<Principal> remotingPrincipals) {
+        String userName = null;
+        Iterator<Principal> principals = remotingPrincipals.iterator();
+        while (userName == null && principals.hasNext()) {
+            Principal next = principals.next();
+            if (next instanceof UserPrincipal) {
+                userName = ((UserPrincipal) next).getName();
+            }
+        }
+        this.userName = userName;
 
+    }
+
+    public String getUserName() {
+        return userName;
+    }
 }

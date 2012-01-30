@@ -122,7 +122,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
      * This method should not expect the {@link #closeComplete()} call to be made from another thread from the same thread pool
      * that may cause {@link #close()}. As close will block, this can result in situations where all threads in the pool are
      * blocked on {@link #close()} method calls, which means the {@link #closeComplete()} will never be run.
-     * 
+     *
      * @throws RemotingException if the close failed
      */
     protected void closeAction() throws IOException {

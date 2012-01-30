@@ -85,13 +85,13 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final UserInfo userInfo, final String remoteEndpointName) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final Collection<Principal> principals, final UserInfo userInfo, final String remoteEndpointName) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
         this.remoteEndpointName = remoteEndpointName;
 
-        this.principals = Collections.unmodifiableCollection(userInfo.getPrincipals());
+        this.principals = Collections.unmodifiableCollection(principals);
         this.userInfo = userInfo;
     }
 
@@ -347,7 +347,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     public Collection<Principal> getPrincipals() {
         return principals;
     }
-        
+
     public UserInfo getUserInfo() {
         return userInfo;
     }

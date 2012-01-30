@@ -22,24 +22,21 @@
 
 package org.jboss.remoting3.security;
 
-import java.security.Principal;
-import java.util.Collection;
-
 /**
  * The basic UserInfo definition.
- * 
- * By default the UserInfo makes available a Collection or Principals that relate to the current
- * user, custom extensions can also be created to return additional information.
+ *
+ * By default the UserInfo makes available the name of the current user, custom
+ * extensions can also be created to return additional information.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public interface UserInfo {
-    
+
     /**
-     * Get the principals for this user.
+     * Get the name for this user.
      *
-     * @return the principals
+     * @return the name
      */
-    Collection<Principal> getPrincipals();    
+    String getUserName();
 
 }

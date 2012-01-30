@@ -325,7 +325,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             return;
                         }
                         connection.getChannel().suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, callbackHandler, receiveBuffer, remoteEndpointName));                    
+                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, callbackHandler, receiveBuffer, remoteEndpointName));
                         return;
                     }
                     default: {
@@ -376,24 +376,24 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             }
         }
     }
-    
+
     final class AuthStepRunnable implements Runnable {
-        
+
         private final boolean isInitial;
         private final SaslServer saslServer;
         private final AuthorizingCallbackHandler authorizingCallbackHandler;
         private final ByteBuffer buffer;
         private final String remoteEndpointName;
-    
+
 
         AuthStepRunnable(final boolean isInitial, final SaslServer saslServer, final AuthorizingCallbackHandler authorizingCallbackHandler, final ByteBuffer buffer, final String remoteEndpointName) {
             this.isInitial = isInitial;
             this.saslServer = saslServer;
             this.authorizingCallbackHandler = authorizingCallbackHandler;
             this.buffer = buffer;
-            this.remoteEndpointName = remoteEndpointName;            
+            this.remoteEndpointName = remoteEndpointName;
         }
-        
+
         @Override
         public void run() {
             boolean ok = false;
@@ -406,7 +406,8 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     sendBuffer.put(Protocol.AUTH_COMPLETE);
                     if (SaslUtils.evaluateResponse(saslServer, sendBuffer, buffer)) {
                         server.tracef("Server sending authentication complete");
-                        final UserInfo userInfo = authorizingCallbackHandler.createUserInfo(createPrincipals());
+                        final Collection<Principal> principals = createPrincipals();
+                        final UserInfo userInfo = authorizingCallbackHandler.createUserInfo(principals);
                         connectionProviderContext.accept(new ConnectionHandlerFactory() {
                             public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                 final Object qop = saslServer.getNegotiatedProperty(Sasl.QOP);
@@ -414,7 +415,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                     connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                 }
                                 final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                        connectionContext, connection, userInfo, remoteEndpointName);
+                                        connectionContext, connection, principals, userInfo, remoteEndpointName);
                                 connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                 return connectionHandler;
                             }
@@ -446,10 +447,10 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 if (!ok) {
                     pooled.free();
                 }
-            }            
+            }
         }
-        
-        
+
+
         private Collection<Principal> createPrincipals() {
             final Set<Principal> principals = new LinkedHashSet<Principal>();
 
@@ -478,8 +479,8 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         }
 
     }
-    
-    
+
+
 
     final class Authentication implements ChannelListener<ConnectedMessageChannel> {
 

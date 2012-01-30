@@ -102,14 +102,7 @@ public final class SimpleServerAuthenticationProvider implements ServerAuthentic
             }
 
             public UserInfo createUserInfo(final Collection<Principal> remotingPrincipals) {
-                return new UserInfo() {
-
-                    @Override
-                    public Collection<Principal> getPrincipals() {
-                        return remotingPrincipals;
-                    }
-
-                };
+                return new SimpleUserInfo(remotingPrincipals);
             }
 
         };

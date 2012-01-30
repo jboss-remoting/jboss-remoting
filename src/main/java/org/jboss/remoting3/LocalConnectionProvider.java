@@ -97,13 +97,14 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
         public Collection<Principal> getPrincipals() {
             return Collections.emptySet();
         }
-        
+
         public UserInfo getUserInfo() {
             return new UserInfo() {
 
-                public Collection<Principal> getPrincipals() {
-                    return getPrincipals();
+                public String getUserName() {
+                    return null;
                 }
+
             };
         }
 

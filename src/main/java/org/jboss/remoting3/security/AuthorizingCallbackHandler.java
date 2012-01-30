@@ -31,22 +31,22 @@ import javax.security.auth.callback.CallbackHandler;
 /**
  * An extension so the CallbackHandler interface to allow for additional UserInfo to
  * be loaded to be associated with the current request.
- * 
- * The AuthorizingCallbackHandler returned from the ServerAuthenticationProvider will be 
- * retained with the connection and after the SASL based authentication has completed the 
+ *
+ * The AuthorizingCallbackHandler returned from the ServerAuthenticationProvider will be
+ * retained with the connection and after the SASL based authentication has completed the
  * createUserInfo method will be called in the same instance.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public interface AuthorizingCallbackHandler extends CallbackHandler {
-    
+
     /**
-     * Create and return the UserInfo instance for the user identified by the 
-     * provided remoting principals. 
-     * 
+     * Create and return the UserInfo instance for the user identified by the
+     * provided remoting principals.
+     *
      * @param remotingPrincipals - The principals already created based on the authentication.
      * @return The new UserInfo instance.
-     */    
+     */
     public UserInfo createUserInfo(final Collection<Principal> remotingPrincipals) throws IOException;
 
 }

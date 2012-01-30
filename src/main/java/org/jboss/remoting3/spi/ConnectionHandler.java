@@ -52,10 +52,10 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
      * @return the authenticated principals
      */
     Collection<Principal> getPrincipals();
-    
+
     /**
      * Get the authenticated UserInfo for this connection.
-     * 
+     *
      * @return the authenticated UserInfo
      */
     UserInfo getUserInfo();

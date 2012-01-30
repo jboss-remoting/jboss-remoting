@@ -64,7 +64,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     public Collection<Principal> getPrincipals() {
         return connectionHandler.getPrincipals();
     }
-        
+
     @Override
     public UserInfo getUserInfo() {
         return connectionHandler.getUserInfo();

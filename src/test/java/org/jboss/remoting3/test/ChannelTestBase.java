@@ -49,7 +49,6 @@ import org.xnio.IoUtils;
  */
 public abstract class ChannelTestBase {
 
-    private static final int TEST_TWO_BUFFER_LENGTH = 8201;
     private static final int TEST_FILE_LENGTH = 20480;
     protected Channel sendChannel;
     protected Channel recvChannel;

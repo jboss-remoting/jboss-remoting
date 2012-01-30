@@ -92,7 +92,7 @@ final class RemoteConnection {
     void handleException(IOException e) {
         handleException(e, true);
     }
-    
+
     void handleException(IOException e, boolean log) {
         RemoteLogger.log.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, e, "Connection error detail");
         if (log) {

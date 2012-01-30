@@ -122,7 +122,7 @@ final class InboundMessage {
         return pooled;
     }
 
-    
+
     void openInboundWindow(int consumed) {
         synchronized (this) {
             inboundWindow += consumed;
@@ -159,7 +159,7 @@ final class InboundMessage {
             closeInboundWindow(buffer.remaining() - 8);
             buffer.position(buffer.position() - 1);
             byte flags = buffer.get();
-            
+
             eof = (flags & Protocol.MSG_FLAG_EOF) != 0;
             if (eof) {
                 closed = true;

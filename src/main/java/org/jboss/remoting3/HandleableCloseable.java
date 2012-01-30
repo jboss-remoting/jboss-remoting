@@ -24,7 +24,6 @@ package org.jboss.remoting3;
 
 import java.io.Closeable;
 import java.io.IOException;
-import org.xnio.IoFuture;
 
 /**
  * A Remoting resource that can be closed.

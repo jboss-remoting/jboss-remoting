@@ -54,7 +54,7 @@ final class OutboundMessage extends MessageOutputStream {
 
             //Reserve room for the transmit data which is 4 bytes
             buffer.limit(buffer.limit() - 4);
-            
+
             buffer.put(firstBuffer ? Protocol.MSG_FLAG_NEW : 0); // flags
             // header size plus window size
             int windowPlusHeader = maximumWindow + 8;
