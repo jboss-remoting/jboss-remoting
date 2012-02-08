@@ -457,7 +457,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
                 } else {
                     log.tracef("Leaked a %s instance: %s", getClass().getName(), this);
                 }
-                IoUtils.safeClose(this);
+                closeAsync();
             }
         }
     }

@@ -51,7 +51,7 @@ final class LocalChannel extends AbstractHandleableCloseable<Channel> implements
     private boolean closed;
 
     LocalChannel(final Executor executor, final LocalChannel otherSide, final ConnectionHandlerContext connectionHandlerContext) {
-        super(executor);
+        super(executor, true);
         this.otherSide = otherSide;
         this.connectionHandlerContext = connectionHandlerContext;
         queueLength = 8;
@@ -60,7 +60,7 @@ final class LocalChannel extends AbstractHandleableCloseable<Channel> implements
     }
 
     LocalChannel(final Executor executor, final ConnectionHandlerContext connectionHandlerContext) {
-        super(executor);
+        super(executor, true);
         this.connectionHandlerContext = connectionHandlerContext;
         otherSide = new LocalChannel(executor, this, connectionHandlerContext);
         queueLength = 8;
