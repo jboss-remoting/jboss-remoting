@@ -113,7 +113,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final EndpointImpl.ConnectionCloseHandler connectionCloseHandler = new EndpointImpl.ConnectionCloseHandler();
 
     private EndpointImpl(final Xnio xnio, final XnioWorker xnioWorker, final String name, final OptionMap optionMap, final HoldingRunnable holdingRunnable) throws IOException {
-        super(xnioWorker);
+        super(xnioWorker, true);
         holdingRunnable.setTask(new Runnable() {
             public void run() {
                 closeComplete();

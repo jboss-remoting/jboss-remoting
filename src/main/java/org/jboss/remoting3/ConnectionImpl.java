@@ -43,7 +43,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     private final Endpoint endpoint;
 
     ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext) {
-        super(endpoint.getExecutor());
+        super(endpoint.getExecutor(), true);
         this.endpoint = endpoint;
         connectionHandler = connectionHandlerFactory.createInstance(endpoint.new LocalConnectionContext(connectionProviderContext, this));
     }
