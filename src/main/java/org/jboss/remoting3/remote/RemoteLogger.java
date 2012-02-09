@@ -43,6 +43,7 @@ import static org.jboss.logging.Logger.Level.*;
 @MessageLogger(projectCode = "JBREM")
 interface RemoteLogger extends BasicLogger {
     RemoteLogger log = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote");
+    RemoteLogger conn = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote.connection");
     RemoteLogger server = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote.server");
     RemoteLogger client = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote.client");
 
