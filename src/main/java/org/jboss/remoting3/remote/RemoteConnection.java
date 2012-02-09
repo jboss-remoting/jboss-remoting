@@ -94,9 +94,9 @@ final class RemoteConnection {
     }
 
     void handleException(IOException e, boolean log) {
-        RemoteLogger.log.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, e, "Connection error detail");
+        RemoteLogger.conn.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, e, "Connection error detail");
         if (log) {
-            RemoteLogger.log.connectionError(e);
+            RemoteLogger.conn.connectionError(e);
         }
         IoUtils.safeClose(channel);
         final Result<ConnectionHandlerFactory> result = this.result;
@@ -150,7 +150,7 @@ final class RemoteConnection {
         try {
             channel.close();
         } catch (IOException e) {
-            RemoteLogger.log.debug("Error closing remoting channel", e);
+            RemoteLogger.conn.debug("Error closing remoting channel", e);
         }
     }
 
@@ -192,7 +192,7 @@ final class RemoteConnection {
                     while ((pooled = queue.peek()) != null) {
                         final ByteBuffer buffer = pooled.getResource();
                         if (channel.send(buffer)) {
-                            RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
+                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
                             queue.poll().free();
                         } else {
                             // try again later
@@ -200,12 +200,12 @@ final class RemoteConnection {
                         }
                     }
                     if (channel.flush()) {
-                        RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
+                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
                         if (closed) {
                             // End of queue reached; shut down and try to flush the remainder
                             channel.shutdownWrites();
                             if (channel.flush()) {
-                                RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
+                                RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
                                 return;
                             }
                             // either this is successful and no more notifications will come, or not and it will be retried
@@ -236,7 +236,7 @@ final class RemoteConnection {
                             channel.resumeWrites();
                             return;
                         }
-                        RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
+                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
                     }
                 } catch (IOException e) {
                     handleException(e, false);
@@ -268,23 +268,23 @@ final class RemoteConnection {
                     if (queue.isEmpty()) {
                         final ByteBuffer buffer = pooled.getResource();
                         if (! channel.send(buffer)) {
-                            RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
+                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
                             queue.add(pooled);
                             free = false;
                             channel.resumeWrites();
                             return;
                         }
-                        RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (direct)", buffer);
+                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (direct)", buffer);
                         if (close) {
                             channel.shutdownWrites();
-                            RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel (direct)");
+                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel (direct)");
                             // fall thru to flush
                         }
                         if (! channel.flush()) {
                             channel.resumeWrites();
                             return;
                         }
-                        RemoteLogger.log.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel (direct)");
+                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel (direct)");
                         if (! close) {
                             this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
                         }
