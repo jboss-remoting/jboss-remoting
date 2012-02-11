@@ -23,6 +23,8 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import org.xnio.Option;
+import org.xnio.channels.Configurable;
 
 /**
  * The most basic level of communications in a Remoting connection.  A channel simply sends and receives
@@ -32,7 +34,7 @@ import java.io.IOException;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public interface Channel extends Attachable, HandleableCloseable<Channel> {
+public interface Channel extends Attachable, HandleableCloseable<Channel>, Configurable {
 
     /**
      * Get the connection associated with this channel.
@@ -64,6 +66,38 @@ public interface Channel extends Attachable, HandleableCloseable<Channel> {
      * @param handler the handler for the next incoming message
      */
     void receiveMessage(Receiver handler);
+
+    /**
+     * Determine whether an option is supported on this channel.
+     *
+     * @param option the option
+     *
+     * @return {@code true} if it is supported
+     */
+    boolean supportsOption(Option<?> option);
+
+    /**
+     * Get the value of a channel option.
+     *
+     * @param <T> the type of the option value
+     * @param option the option to get
+     *
+     * @return the value of the option, or {@code null} if it is not set
+     */
+    <T> T getOption(Option<T> option);
+
+    /**
+     * Set an option for this channel.  Unsupported options are ignored.
+     *
+     * @param <T> the type of the option value
+     * @param option the option to set
+     * @param value the value of the option to set
+     *
+     * @return the previous option value, if any
+     *
+     * @throws IllegalArgumentException if the value is not acceptable for this option
+     */
+    <T> T setOption(Option<T> option, T value) throws IllegalArgumentException;
 
     /**
      * Close this channel.  No more messages may be sent or received after this method is called.

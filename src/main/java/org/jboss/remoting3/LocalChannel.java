@@ -32,6 +32,7 @@ import java.util.concurrent.Executor;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.xnio.IoUtils;
+import org.xnio.Option;
 import org.xnio.streams.Pipe;
 
 /**
@@ -137,6 +138,18 @@ final class LocalChannel extends AbstractHandleableCloseable<Channel> implements
                 }
             }
         }
+    }
+
+    public boolean supportsOption(final Option<?> option) {
+        return false;
+    }
+
+    public <T> T getOption(final Option<T> option) {
+        return null;
+    }
+
+    public <T> T setOption(final Option<T> option, final T value) throws IllegalArgumentException {
+        return null;
     }
 
     private void executeEndTask(final Receiver handler) {

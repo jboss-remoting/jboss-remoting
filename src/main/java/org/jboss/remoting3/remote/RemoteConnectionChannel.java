@@ -30,6 +30,7 @@ import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.Random;
 
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
@@ -38,8 +39,10 @@ import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.NotOpenException;
+import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
+import org.xnio.Option;
 import org.xnio.Pooled;
 import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
@@ -376,6 +379,29 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             }
             connection.notify();
         }
+    }
+
+    private static Set<Option<?>> SUPPORTED_OPTIONS = Option.setBuilder()
+            .add(RemotingOptions.MAX_INBOUND_MESSAGES)
+            .add(RemotingOptions.MAX_OUTBOUND_MESSAGES)
+            .create();
+
+    public boolean supportsOption(final Option<?> option) {
+        return SUPPORTED_OPTIONS.contains(option);
+    }
+
+    public <T> T getOption(final Option<T> option) {
+        if (option == RemotingOptions.MAX_INBOUND_MESSAGES) {
+            return option.cast(maxInboundMessages);
+        } else if (option == RemotingOptions.MAX_OUTBOUND_MESSAGES) {
+            return option.cast(maxOutboundMessages);
+        } else {
+            return null;
+        }
+    }
+
+    public <T> T setOption(final Option<T> option, final T value) throws IllegalArgumentException {
+        return null;
     }
 
     void handleMessageData(final Pooled<ByteBuffer> message) {
