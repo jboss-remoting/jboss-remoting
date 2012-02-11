@@ -43,6 +43,7 @@ import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
+import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Cancellable;
 import org.xnio.FutureResult;
@@ -84,7 +85,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final Attachments attachments = new Attachments();
 
     private final ConcurrentMap<String, ConnectionProvider> connectionProviders = new UnlockedReadHashMap<String, ConnectionProvider>();
-    private final ConcurrentMap<String, OpenListener> registeredServices = new UnlockedReadHashMap<String, OpenListener>();
+    private final ConcurrentMap<String, RegisteredServiceImpl> registeredServices = new UnlockedReadHashMap<String, RegisteredServiceImpl>();
 
     private final Xnio xnio;
     private final XnioWorker worker;
@@ -214,11 +215,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(REGISTER_SERVICE_PERM);
         }
-        final OpenListener existing = registeredServices.putIfAbsent(serviceType, openListener);
-        if (existing != null) {
+        final RegisteredServiceImpl registeredService = new RegisteredServiceImpl(openListener, optionMap);
+        if (registeredServices.putIfAbsent(serviceType, registeredService) != null) {
             throw new ServiceRegistrationException("Service type '" + serviceType + "' is already registered");
         }
-        final MapRegistration<OpenListener> registration = new MapRegistration<OpenListener>(registeredServices, serviceType, openListener) {
+        final MapRegistration<RegisteredServiceImpl> registration = new MapRegistration<RegisteredServiceImpl>(registeredServices, serviceType, registeredService) {
             protected void closeAction() throws IOException {
                 try {
                     openListener.registrationTerminated();
@@ -593,7 +594,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             return connectionProviderContext;
         }
 
+        @Deprecated
         public OpenListener getServiceOpenListener(final String serviceType) {
+            final RegisteredServiceImpl registeredService = registeredServices.get(serviceType);
+            return registeredService == null ? null : registeredService.getOpenListener();
+        }
+
+        public RegisteredServiceImpl getRegisteredService(final String serviceType) {
             return registeredServices.get(serviceType);
         }
 
@@ -669,6 +676,24 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         public void run() {
             final Runnable task = this.task;
             if (task != null) task.run();
+        }
+    }
+
+    private static class RegisteredServiceImpl implements RegisteredService {
+        private final OpenListener openListener;
+        private final OptionMap optionMap;
+
+        private RegisteredServiceImpl(final OpenListener openListener, final OptionMap optionMap) {
+            this.openListener = openListener;
+            this.optionMap = optionMap;
+        }
+
+        public OpenListener getOpenListener() {
+            return openListener;
+        }
+
+        public OptionMap getOptionMap() {
+            return optionMap;
         }
     }
 }
