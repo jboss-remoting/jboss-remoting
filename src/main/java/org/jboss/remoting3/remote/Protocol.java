@@ -99,8 +99,10 @@ final class Protocol {
      * byte n+1..m: requested parameters
      *    00 = end of parameters
      *    01 = service type (arg = UTF8) (required)
-     *    80 = max inbound (responder->requester) message window size (arg = uint31)
-     *    81 = max inbound (responder->requester) message count (arg = uint16)
+     *    80 = max inbound (responder->requester) message window size limit (arg = uint31)
+     *    81 = max inbound (responder->requester) message count limit (arg = uint16)
+     *    82 = max outbound (requester->responder) requested message window size (arg = uint31)
+     *    83 = max outbound (requester->responder) requested message count (arg = uint16)
      */
     static final byte CHANNEL_OPEN_REQUEST = 0x10;
     /**
@@ -108,8 +110,10 @@ final class Protocol {
      * byte 1..4: channel ID (MSb = 0)
      * byte 5..n: agreed parameters
      *    00 = end of parameters
-     *    80 = max outbound (requester->responder) message window size (arg = uint31)
-     *    81 = max outbound (requester->responder) message count (arg = uint16)
+     *    80 = max outbound (requester->responder) message window size limit (arg = uint31)
+     *    81 = max outbound (requester->responder) message count limit (arg = uint16)
+     *    82 = max inbound (responder->requester) requested message window size (arg = uint31)
+     *    83 = max inbound (responder->requester) requested message count (arg = uint16)
      */
     static final byte CHANNEL_OPEN_ACK = 0x11;
     /**

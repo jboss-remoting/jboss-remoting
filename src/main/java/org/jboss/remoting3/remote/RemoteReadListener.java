@@ -27,9 +27,12 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 import org.jboss.remoting3.OpenListener;
+import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
+import org.xnio.OptionMap;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.sasl.SaslWrapper;
@@ -106,10 +109,11 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                             case Protocol.CHANNEL_OPEN_REQUEST: {
                                 log.trace("Received channel open request");
                                 int channelId = buffer.getInt() ^ 0x80000000;
-                                int inboundWindow = Protocol.DEFAULT_WINDOW_SIZE;
-                                int inboundMessages = Protocol.DEFAULT_MESSAGE_COUNT;
-                                int outboundWindow = Protocol.DEFAULT_WINDOW_SIZE;
-                                int outboundMessages = Protocol.DEFAULT_MESSAGE_COUNT;
+                                // todo: get this from the service registration options
+                                int inboundWindow = Integer.MAX_VALUE;
+                                int inboundMessages = 0xffff;
+                                int outboundWindow = Integer.MAX_VALUE;
+                                int outboundMessages = 0xffff;
                                 // parse out request
                                 int b;
                                 String serviceType = null;
@@ -122,11 +126,19 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                             break;
                                         }
                                         case 0x80: {
-                                            outboundWindow = ProtocolUtils.readInt(buffer);
+                                            outboundWindow = Math.min(outboundWindow, ProtocolUtils.readInt(buffer));
                                             break;
                                         }
                                         case 0x81: {
-                                            outboundMessages = ProtocolUtils.readUnsignedShort(buffer);
+                                            outboundMessages = Math.min(outboundMessages, ProtocolUtils.readUnsignedShort(buffer));
+                                            break;
+                                        }
+                                        case 0x82: {
+                                            inboundWindow = Math.min(inboundWindow, ProtocolUtils.readInt(buffer));
+                                            break;
+                                        }
+                                        case 0x83: {
+                                            inboundMessages = Math.min(inboundMessages, ProtocolUtils.readUnsignedShort(buffer));
                                             break;
                                         }
                                         default: {
@@ -147,12 +159,18 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     break;
                                 }
 
-                                final OpenListener openListener = handler.getConnectionContext().getServiceOpenListener(serviceType);
-                                if (openListener == null) {
+                                final RegisteredService registeredService = handler.getConnectionContext().getRegisteredService(serviceType);
+                                if (registeredService == null) {
                                     refuseService(channelId, "Unknown service name");
                                     break;
                                 }
+                                final OptionMap serviceOptionMap = registeredService.getOptionMap();
+                                outboundWindow = Math.min(outboundWindow, serviceOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
+                                outboundMessages = Math.min(outboundMessages, serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
+                                inboundWindow = Math.min(inboundWindow, serviceOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
+                                inboundMessages = Math.min(inboundMessages, serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
 
+                                final OpenListener openListener = registeredService.getOpenListener();
                                 if (! handler.handleInboundChannelOpen()) {
                                     // refuse
                                     refuseService(channelId, "Channel refused");
@@ -280,11 +298,19 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 OUT: for (;;) {
                                     switch (buffer.get() & 0xff) {
                                         case 0x80: {
-                                            outboundWindow = ProtocolUtils.readInt(buffer);
+                                            outboundWindow = Math.min(outboundWindow, ProtocolUtils.readInt(buffer));
                                             break;
                                         }
                                         case 0x81: {
-                                            outboundMessageCount = ProtocolUtils.readUnsignedShort(buffer);
+                                            outboundMessageCount = Math.min(outboundMessageCount, ProtocolUtils.readUnsignedShort(buffer));
+                                            break;
+                                        }
+                                        case 0x82: {
+                                            inboundWindow = Math.min(inboundWindow, ProtocolUtils.readInt(buffer));
+                                            break;
+                                        }
+                                        case 0x83: {
+                                            inboundMessageCount = Math.min(inboundMessageCount, ProtocolUtils.readUnsignedShort(buffer));
                                             break;
                                         }
                                         case 0x00: {

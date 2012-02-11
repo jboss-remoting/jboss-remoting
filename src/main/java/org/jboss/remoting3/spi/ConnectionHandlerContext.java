@@ -43,7 +43,16 @@ public interface ConnectionHandlerContext {
      * @param serviceType the service type string
      * @return the open listener
      */
+    @Deprecated
     OpenListener getServiceOpenListener(String serviceType);
+
+    /**
+     * Get a registered service.  This method will return immediately.
+     *
+     * @param serviceType the service type string
+     * @return the service information, or {@code null} if no such service is currently registered
+     */
+    RegisteredService getRegisteredService(String serviceType);
 
     /**
      * Indicate that the remote side has terminated the connection, so the local side should be closed as well.

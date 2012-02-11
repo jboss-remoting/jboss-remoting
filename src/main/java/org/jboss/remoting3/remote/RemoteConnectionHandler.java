@@ -292,9 +292,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         int id;
         final OptionMap connectionOptionMap = remoteConnection.getOptionMap();
 
-        final int outboundWindowSize = optionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, connectionOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
+        // Request the maximum outbound value if none was specified.
+        final int outboundWindowSize = optionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, connectionOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, Integer.MAX_VALUE));
+        final int outboundMessageCount = optionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, 0xffff));
+        // Restrict the inbound value to defaults if none was specified.
         final int inboundWindowSize = optionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, connectionOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
-        final int outboundMessageCount = optionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
         final int inboundMessageCount = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
         final IntIndexMap<PendingChannel> pendingChannels = this.pendingChannels;
         try {
@@ -320,6 +322,8 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                             ProtocolUtils.writeBytes(buffer, 1, serviceTypeBytes);
                             ProtocolUtils.writeInt(buffer, 0x80, inboundWindowSize);
                             ProtocolUtils.writeShort(buffer, 0x81, inboundMessageCount);
+                            ProtocolUtils.writeInt(buffer, 0x82, outboundWindowSize);
+                            ProtocolUtils.writeShort(buffer, 0x83, outboundMessageCount);
                             buffer.put((byte) 0);
                             buffer.flip();
                             try {
