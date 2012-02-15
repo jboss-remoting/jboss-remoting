@@ -101,14 +101,12 @@ public class CloseConnectingEndpointTestCase {
                         c.close();
                     }
                 }
-            } catch (SaslException e) {
+            } catch (CancellationException e) {
                 // exception expected, because server will send an AUTH_REJECTED as soon as it realizes the connection is closed
                 failed = true;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             } catch (URISyntaxException e) {
-                throw new RuntimeException(e);
-            } catch (CancellationException e) {
                 throw new RuntimeException(e);
             }
         }
