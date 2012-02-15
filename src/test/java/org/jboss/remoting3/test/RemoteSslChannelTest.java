@@ -61,38 +61,15 @@ import org.xnio.channels.ConnectedStreamChannel;
  * @author <a href="mailto:flavia.rainone@jboss.com">Flavia Rainone</a>
  */
 public final class RemoteSslChannelTest extends ChannelTestBase {
-    private static final String KEY_STORE_PROPERTY = "javax.net.ssl.keyStore";
-    private static final String KEY_STORE_PASSWORD_PROPERTY = "javax.net.ssl.keyStorePassword";
-    private static final String TRUST_STORE_PROPERTY = "javax.net.ssl.trustStore";
-    private static final String TRUST_STORE_PASSWORD_PROPERTY = "javax.net.ssl.trustStorePassword";
-    private static final String DEFAULT_KEY_STORE = "keystore.jks";
-    private static final String DEFAULT_KEY_STORE_PASSWORD = "jboss-remoting-test";
-
     protected static Endpoint endpoint;
     private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
     private static Registration registration;
     private Connection connection;
     private Registration serviceRegistration;
 
-    private static void setKeyStoreAndTrustStore() {
-        final URL storePath = RemoteSslChannelTest.class.getClassLoader().getResource(DEFAULT_KEY_STORE);
-        if (System.getProperty(KEY_STORE_PROPERTY) == null) {
-            System.setProperty(KEY_STORE_PROPERTY, storePath.getFile());
-        }
-        if (System.getProperty(KEY_STORE_PASSWORD_PROPERTY) == null) {
-            System.setProperty(KEY_STORE_PASSWORD_PROPERTY, DEFAULT_KEY_STORE_PASSWORD);
-        }
-        if (System.getProperty(TRUST_STORE_PROPERTY) == null) {
-            System.setProperty(TRUST_STORE_PROPERTY, storePath.getFile());
-        }
-        if (System.getProperty(TRUST_STORE_PASSWORD_PROPERTY) == null) {
-            System.setProperty(TRUST_STORE_PASSWORD_PROPERTY, DEFAULT_KEY_STORE_PASSWORD);
-        }
-    }
-
     @BeforeClass
     public static void create() throws IOException, NoSuchProviderException, NoSuchAlgorithmException {
-        setKeyStoreAndTrustStore();
+        SslHelper.setKeyStoreAndTrustStore();
         endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
         registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);

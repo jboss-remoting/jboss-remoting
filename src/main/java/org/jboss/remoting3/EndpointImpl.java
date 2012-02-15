@@ -32,9 +32,13 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.regex.Pattern;
+
+import javax.net.ssl.SSLContext;
+import javax.security.auth.callback.CallbackHandler;
+
+import org.jboss.logging.Logger;
 import org.jboss.remoting3.security.PasswordClientCallbackHandler;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
@@ -48,17 +52,13 @@ import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Cancellable;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
+import org.xnio.IoFuture.HandlingNotifier;
 import org.xnio.OptionMap;
 import org.xnio.Options;
-import org.xnio.Result;
-import org.jboss.logging.Logger;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 import org.xnio.ssl.JsseXnioSsl;
 import org.xnio.ssl.XnioSsl;
-
-import javax.net.ssl.SSLContext;
-import javax.security.auth.callback.CallbackHandler;
 
 /**
  *
@@ -265,46 +265,35 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
                 }
                 final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
+                final FutureResult<ConnectionHandlerFactory> connHandlerFuture = new FutureResult<ConnectionHandlerFactory>();
                 // Mark the stack because otherwise debugging connect problems can be incredibly tough
                 final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
-                final Cancellable connect = connectionProvider.connect(bindAddress, destination, connectOptions, new Result<ConnectionHandlerFactory>() {
-                    private final AtomicBoolean called = new AtomicBoolean();
+                connHandlerFuture.getIoFuture().addNotifier(new HandlingNotifier<ConnectionHandlerFactory, Void>() {
 
-                    public boolean setResult(final ConnectionHandlerFactory result) {
-                        if (called.getAndSet(true)) {
-                            log.logf(getClass().getName(), Logger.Level.TRACE, null, "Got redundant complete result %s", result);
-                            return false;
-                        }
-                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", result);
-                        final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, result, connectionProviderContext);
+                    public void handleCancelled(final Void attachment) {
+                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered cancellation result");
+                        closeTick1("a cancelled connection");
+                        futureResult.setCancelled();
+                    }
+
+                    public void handleFailed(final IOException exception, final Void attachment) {
+                        log.logf(getClass().getName(), Logger.Level.TRACE, exception, "Registered exception result");
+                        closeTick1("a failed connection (2)");
+                        SpiUtils.glueStackTraces(exception, mark, 1, "asynchronous invocation");
+                        futureResult.setException(exception);
+                    }
+
+                    public void handleDone(final ConnectionHandlerFactory connHandlerFactory, final Void attachment) {
+                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
+                        final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext);
                         connections.add(connection);
                         connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                         connection.addCloseHandler(resourceCloseHandler);
                         connection.addCloseHandler(connectionCloseHandler);
-                        return futureResult.setResult(connection);
+                        futureResult.setResult(connection);
                     }
-
-                    public boolean setException(final IOException exception) {
-                        if (called.getAndSet(true)) {
-                            log.logf(getClass().getName(), Logger.Level.TRACE, exception, "Got redundant exception result");
-                            return false;
-                        }
-                        log.logf(getClass().getName(), Logger.Level.TRACE, exception, "Registered exception result");
-                        closeTick1("a failed connection (2)");
-                        SpiUtils.glueStackTraces(exception, mark, 1, "asynchronous invocation");
-                        return futureResult.setException(exception);
-                    }
-
-                    public boolean setCancelled() {
-                        if (called.getAndSet(true)) {
-                            log.logf(getClass().getName(), Logger.Level.TRACE, null, "Got redundant cancellation result");
-                            return false;
-                        }
-                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered cancellation result");
-                        closeTick1("a cancelled connection");
-                        return futureResult.setCancelled();
-                    }
-                }, callbackHandler, xnioSsl);
+                }, null);
+                final Cancellable connect = connectionProvider.connect(bindAddress, destination, connectOptions,  connHandlerFuture, callbackHandler, xnioSsl);
                 ok = true;
                 futureResult.addCancelHandler(connect);
                 return futureResult.getIoFuture();

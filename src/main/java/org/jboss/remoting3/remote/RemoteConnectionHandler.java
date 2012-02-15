@@ -263,6 +263,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     private void sendCloseRequestBody() {
+        sendCloseRequestBody(remoteConnection);
+        log.tracef("Sent close request on %s", this);
+    }
+
+    static void sendCloseRequestBody(RemoteConnection remoteConnection) {
         final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
         boolean ok = false;
         try {
@@ -270,7 +275,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             buffer.put(Protocol.CONNECTION_CLOSE);
             buffer.flip();
             remoteConnection.send(pooled, true);
-            log.tracef("Sent close request on %s", this);
             ok = true;
         } finally {
             if (! ok) {
