@@ -1,0 +1,109 @@
+#
+# JBoss, Home of Professional Open Source.
+# Copyright 2012, Red Hat, Inc., and individual contributors
+# as indicated by the @author tags. See the copyright.txt file in the
+# distribution for a full listing of individual contributors.
+#
+# This is free software; you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as
+# published by the Free Software Foundation; either version 2.1 of
+# the License, or (at your option) any later version.
+#
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this software; if not, write to the Free
+# Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+#
+RULE Hold connectionFuture.cancel
+CLASS org.jboss.remoting3.test.racecondition.AbstractCancelOpeningConnectionTest
+METHOD cancelFutureConnection
+AT INVOKE org.xnio.IoFuture.cancel
+IF TRUE
+DO
+    debug("Holding call to cancel"),
+    waitFor("cancel"),
+    debug("Resuming cancel")
+ENDRULE
+
+RULE connectionFuture.cancel concluded
+CLASS org.jboss.remoting3.test.racecondition.AbstractCancelOpeningConnectionTest
+METHOD cancelFutureConnection
+AFTER INVOKE org.xnio.IoFuture.cancel
+IF TRUE
+DO
+    debug("Waking up waiting thread"),
+    signalWake("canceled", true),
+    debug("Woke up waiting thread")
+ENDRULE
+
+RULE retrieve ConnectedStreamChannel Future
+CLASS org.xnio.nio.NioXnioWorker
+METHOD connectTcpStream
+HELPER org.jboss.remoting3.test.racecondition.OpeningConnectionTestHelper
+AT EXIT
+IF TRUE
+DO
+    debug("retrieving ConnectStreamChannel"),
+    trackConnectedStreamChannelFuture($!)
+ENDRULE
+
+RULE retrieve ConnectionHandlerFactory Future
+CLASS org.jboss.remoting3.EndpointImpl
+METHOD doConnect
+HELPER org.jboss.remoting3.test.racecondition.OpeningConnectionTestHelper
+AFTER INVOKE org.xnio.FutureResult.getIoFuture 1
+IF TRUE
+DO
+    debug("retrieving ConnectionHandlerFactory"),
+    trackConnectionHandlerFactoryFuture($!)
+ENDRULE
+
+# see https://community.jboss.org/message/719417#719417
+#RULE retrieve ConnectionHandlerFactory Future
+#CLASS org.jboss.remoting3.EndpointImpl
+#METHOD doConnect
+#HELPER org.jboss.remoting3.test.racecondition.OpeningConnectionTestHelper
+#AT INVOKE org.jboss.remoting3.spi.ConnectionProvider.connect
+#IF TRUE
+#DO
+#    debug("retrieving ConnectionHandlerFactory"),
+#    trackConnectionHandlerFactoryFuture($connHandlerFuture.getIoFuture())
+#ENDRULE
+
+RULE retrieve ConnectedStreamChannel
+INTERFACE org.xnio.channels.CloseableChannel
+METHOD <init>
+HELPER org.jboss.remoting3.test.racecondition.OpeningConnectionTestHelper
+AT EXIT
+IF TRUE
+DO
+    debug("retrieving CloseableChannel"),
+    trackChannel($0)
+ENDRULE
+
+RULE hold check for channels closed
+CLASS org.xnio.nio.WorkerThread
+METHOD run
+AFTER INVOKE java.nio.channels.Selector.select
+IF TRUE
+HELPER org.jboss.remoting3.test.racecondition.OpeningConnectionTestHelper
+DO
+    debug("setting selector time"),
+    notifyWorkerThreadAwake();
+ENDRULE
+
+RULE track if ClientConnectionOpenListener is created
+CLASS org.jboss.remoting3.remote.ClientConnectionOpenListener
+METHOD <init>
+AT ENTRY
+IF TRUE
+HELPER org.jboss.remoting3.test.racecondition.OpeningConnectionTestHelper
+DO
+    debug("ClientConnectionOpenListener being created"),
+    notifyClientConnectionOpenListenerCreated()
+ENDRULE
