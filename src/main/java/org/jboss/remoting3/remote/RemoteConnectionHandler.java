@@ -154,11 +154,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             oldState = channelState;
             int oldCount = oldState & INBOUND_CHANNELS_MASK;
             if (oldCount == maxInboundChannels) {
-                log.tracef("Refused inbound channel request on %s because too many inbound channels are open");
+                log.tracef("Refused inbound channel request on %s because too many inbound channels are open", this);
                 return false;
             }
             if ((oldState & SENT_CLOSE_REQ) != 0) {
-                log.tracef("Refused inbound channel request on %s because close request was sent");
+                log.tracef("Refused inbound channel request on %s because close request was sent", this);
                 return false;
             }
             newState = oldState + ONE_INBOUND_CHANNEL;
@@ -173,11 +173,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             oldState = channelState;
             int oldCount = oldState & OUTBOUND_CHANNELS_MASK;
             if (oldCount == maxOutboundChannels) {
-                log.tracef("Refused outbound channel open on %s because too many outbound channels are open");
+                log.tracef("Refused outbound channel open on %s because too many outbound channels are open", this);
                 throw new ProtocolException("Too many channels open");
             }
             if ((oldState & SENT_CLOSE_REQ) != 0) {
-                log.tracef("Refused outbound channel open on %s because close request was sent");
+                log.tracef("Refused outbound channel open on %s because close request was sent", this);
                 throw new NotOpenException("Cannot open new channel because close was initiated");
             }
             newState = oldState + ONE_OUTBOUND_CHANNEL;
