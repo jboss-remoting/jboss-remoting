@@ -33,7 +33,7 @@ final class ProtocolUtils {
 
     static final ThreadLocal<Random> randomHolder = new ThreadLocal<Random>() {
         protected Random initialValue() {
-            return new Random();
+            return new Random(System.nanoTime() * 1024L + Thread.currentThread().getId());
         }
     };
 

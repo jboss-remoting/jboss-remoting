@@ -301,9 +301,11 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 final int id = random.nextInt() & 0xfffe;
                 if (! outboundMessages.containsKey(id)) {
                     OutboundMessage message = new OutboundMessage((short) id, this, outboundWindow);
-                    outboundMessages.put(message);
-                    ok = true;
-                    return message;
+                    OutboundMessage existing = outboundMessages.putIfAbsent(message);
+                    if (existing == null) {
+                        ok = true;
+                        return message;
+                    }
                 }
                 tries --;
             }
