@@ -57,7 +57,7 @@ final class InboundMessage {
         this.inboundWindow = inboundWindow;
     }
 
-    BufferPipeInputStream inputStream = new BufferPipeInputStream(new BufferPipeInputStream.InputHandler() {
+    final BufferPipeInputStream inputStream = new BufferPipeInputStream(new BufferPipeInputStream.InputHandler() {
         public void acknowledge(final Pooled<ByteBuffer> acked) throws IOException {
             int consumed = acked.getResource().position();
             openInboundWindow(consumed);
@@ -77,7 +77,7 @@ final class InboundMessage {
         }
     });
 
-    MessageInputStream messageInputStream = new MessageInputStream() {
+    final MessageInputStream messageInputStream = new MessageInputStream() {
         public int read() throws IOException {
             return inputStream.read();
         }
@@ -95,7 +95,7 @@ final class InboundMessage {
         }
 
         public void close() throws IOException {
-            synchronized (InboundMessage.this) {
+            synchronized (inputStream) {
                 if (cancelled) {
                     throw new MessageCancelledException();
                 }
@@ -124,13 +124,13 @@ final class InboundMessage {
 
 
     void openInboundWindow(int consumed) {
-        synchronized (this) {
+        synchronized (inputStream) {
             inboundWindow += consumed;
         }
     }
 
     void closeInboundWindow(int produced) {
-        synchronized (this) {
+        synchronized (inputStream) {
             if ((inboundWindow -= produced) < 0) {
                 channel.getRemoteConnection().handleException(new IOException("Input overrun"));
             }
@@ -139,7 +139,7 @@ final class InboundMessage {
 
     void handleIncoming(Pooled<ByteBuffer> pooledBuffer) {
         boolean eof;
-        synchronized (this) {
+        synchronized (inputStream) {
             if (closed) {
                 // ignore
                 pooledBuffer.free();
@@ -177,7 +177,7 @@ final class InboundMessage {
     }
 
     void cancel() {
-        synchronized (this) {
+        synchronized (inputStream) {
             if (closed) {
                 return;
             }
