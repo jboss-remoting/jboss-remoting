@@ -522,7 +522,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             message.inputStream.pushException(new MessageCancelledException());
         }
         for (OutboundMessage message : outboundMessages) {
-            message.cancel();
+            message.closeAsync();
         }
     }
 

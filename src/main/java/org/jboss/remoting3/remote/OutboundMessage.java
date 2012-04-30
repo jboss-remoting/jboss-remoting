@@ -74,31 +74,30 @@ final class OutboundMessage extends MessageOutputStream {
                     buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_EOF));
                     log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
                 }
-                synchronized (OutboundMessage.this) {
-                    if (closed) {
-                        throw new NotOpenException("Message was closed asynchronously");
-                    }
-                    if (cancelled) {
-                        buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
-                        buffer.limit(8); // discard everything in the buffer
-                        log.trace("Message includes cancel flag");
-                    }
-                    int msgSize = buffer.remaining();
-                    window -= msgSize;
-                    while (window < msgSize) {
-                        try {
-                            log.trace("Message window is closed, waiting");
-                            OutboundMessage.this.wait();
-                            if (closed) {
-                                throw new NotOpenException("Message was closed asynchronously");
-                            }
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            throw new InterruptedIOException("Interrupted on write");
-                        }
-                    }
-                    log.trace("Message window is open, proceeding with send");
+                assert Thread.holdsLock(pipeOutputStream);
+                if (closed) {
+                    throw new NotOpenException("Message was closed asynchronously");
                 }
+                if (cancelled) {
+                    buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
+                    buffer.limit(8); // discard everything in the buffer
+                    log.trace("Message includes cancel flag");
+                }
+                int msgSize = buffer.remaining();
+                window -= msgSize;
+                while (window < msgSize) {
+                    try {
+                        log.trace("Message window is closed, waiting");
+                        pipeOutputStream.wait();
+                        if (closed) {
+                            throw new NotOpenException("Message was closed asynchronously");
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new InterruptedIOException("Interrupted on write");
+                    }
+                }
+                log.trace("Message window is open, proceeding with send");
                 Channels.sendBlocking(messageChannel, buffer);
             } finally {
                 pooledBuffer.free();
@@ -144,24 +143,24 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     void acknowledge(int count) {
-        synchronized (this) {
+        synchronized (pipeOutputStream) {
             if (log.isTraceEnabled()) {
                 // do trace enabled check because of boxing here
                 log.tracef("Acknowledged %d bytes on %s", Integer.valueOf(count), this);
             }
             window += count;
-            notifyAll();
+            pipeOutputStream.notifyAll();
         }
     }
 
     void closeAsync() {
-        IoUtils.safeClose(pipeOutputStream);
-        synchronized (this) {
+        synchronized (pipeOutputStream) {
             channel.free(this);
             closed = true;
             // wake up waiters
-            notifyAll();
+            pipeOutputStream.notifyAll();
         }
+        IoUtils.safeClose(pipeOutputStream);
     }
 
     public void write(final int b) throws IOException {

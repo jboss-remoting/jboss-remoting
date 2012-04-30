@@ -38,11 +38,11 @@
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>7</version>
+        <version>9</version>
     </parent>
 
     <properties>
-        <xnio.version>3.0.0.GA</xnio.version>
+        <xnio.version>3.0.3.GA</xnio.version>
         <logging.version>3.1.0.GA</logging.version>
         <logging-tools.version>1.0.0.Final</logging-tools.version>
         <logmanager.version>1.2.0.GA</logmanager.version>
