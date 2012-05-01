@@ -76,35 +76,27 @@ final class OutboundMessage extends MessageOutputStream {
                     log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
                 }
                 assert Thread.holdsLock(pipeOutputStream);
-                if (closed) {
-                    throw new NotOpenException("Message was closed asynchronously");
-                }
-                if (cancelled) {
-                    if (cancelSent) {
-                        return;
-                    }
-                    buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
-                    buffer.limit(8); // discard everything in the buffer
-                    log.trace("Message includes cancel flag");
-                }
-                int msgSize = buffer.remaining();
+                final int msgSize = buffer.remaining();
                 window -= msgSize;
-                while (window < msgSize) {
+                for (;;) {
+                    if (closed) {
+                        throw new NotOpenException("Message was closed asynchronously");
+                    }
+                    if (cancelled) {
+                        if (cancelSent) {
+                            return;
+                        }
+                        buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
+                        buffer.limit(8); // discard everything in the buffer
+                        log.trace("Message includes cancel flag");
+                        break;
+                    }
+                    if (window >= msgSize) {
+                        break;
+                    }
                     try {
                         log.trace("Message window is closed, waiting");
                         pipeOutputStream.wait();
-                        if (closed) {
-                            throw new NotOpenException("Message was closed asynchronously");
-                        }
-                        if (cancelled) {
-                            if (cancelSent) {
-                                return;
-                            }
-                            buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
-                            buffer.limit(8); // discard everything in the buffer
-                            log.trace("Message includes cancel flag");
-                            break;
-                        }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         throw new InterruptedIOException("Interrupted on write");
