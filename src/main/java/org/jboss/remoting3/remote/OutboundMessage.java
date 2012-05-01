@@ -47,6 +47,7 @@ final class OutboundMessage extends MessageOutputStream {
     int window;
     boolean closed;
     boolean cancelled;
+    boolean cancelSent;
     final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
         public Pooled<ByteBuffer> getBuffer(boolean firstBuffer) throws IOException {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
@@ -79,6 +80,9 @@ final class OutboundMessage extends MessageOutputStream {
                     throw new NotOpenException("Message was closed asynchronously");
                 }
                 if (cancelled) {
+                    if (cancelSent) {
+                        return;
+                    }
                     buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
                     buffer.limit(8); // discard everything in the buffer
                     log.trace("Message includes cancel flag");
@@ -92,12 +96,24 @@ final class OutboundMessage extends MessageOutputStream {
                         if (closed) {
                             throw new NotOpenException("Message was closed asynchronously");
                         }
+                        if (cancelled) {
+                            if (cancelSent) {
+                                return;
+                            }
+                            buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
+                            buffer.limit(8); // discard everything in the buffer
+                            log.trace("Message includes cancel flag");
+                            break;
+                        }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         throw new InterruptedIOException("Interrupted on write");
                     }
                 }
                 log.trace("Message window is open, proceeding with send");
+                if (cancelled) {
+                    cancelSent = true;
+                }
                 Channels.sendBlocking(messageChannel, buffer);
             } finally {
                 pooledBuffer.free();
@@ -159,8 +175,8 @@ final class OutboundMessage extends MessageOutputStream {
             closed = true;
             // wake up waiters
             pipeOutputStream.notifyAll();
+            IoUtils.safeClose(pipeOutputStream);
         }
-        IoUtils.safeClose(pipeOutputStream);
     }
 
     public void write(final int b) throws IOException {
@@ -180,13 +196,19 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     public void close() throws IOException {
-        pipeOutputStream.close();
+        synchronized (pipeOutputStream) {
+            pipeOutputStream.notifyAll();
+            pipeOutputStream.close();
+        }
     }
 
     public MessageOutputStream cancel() {
-        cancelled = true;
-        IoUtils.safeClose(pipeOutputStream);
-        return this;
+        synchronized (pipeOutputStream) {
+            cancelled = true;
+            pipeOutputStream.notifyAll();
+            IoUtils.safeClose(pipeOutputStream);
+            return this;
+        }
     }
 
     public String toString() {
