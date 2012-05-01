@@ -79,19 +79,39 @@ final class InboundMessage {
 
     final MessageInputStream messageInputStream = new MessageInputStream() {
         public int read() throws IOException {
-            return inputStream.read();
+            synchronized (inputStream) {
+                if (cancelled) {
+                    throw new MessageCancelledException();
+                }
+                return inputStream.read();
+            }
         }
 
         public int read(final byte[] bytes, final int offs, final int length) throws IOException {
-            return inputStream.read(bytes, offs, length);
+            synchronized (inputStream) {
+                if (cancelled) {
+                    throw new MessageCancelledException();
+                }
+                return inputStream.read(bytes, offs, length);
+            }
         }
 
         public long skip(final long l) throws IOException {
-            return inputStream.skip(l);
+            synchronized (inputStream) {
+                if (cancelled) {
+                    throw new MessageCancelledException();
+                }
+                return inputStream.skip(l);
+            }
         }
 
         public int available() throws IOException {
-            return inputStream.available();
+            synchronized (inputStream) {
+                if (cancelled) {
+                    throw new MessageCancelledException();
+                }
+                return inputStream.available();
+            }
         }
 
         public void close() throws IOException {
@@ -99,8 +119,8 @@ final class InboundMessage {
                 if (cancelled) {
                     throw new MessageCancelledException();
                 }
+                inputStream.close();
             }
-            inputStream.close();
         }
     };
 
@@ -169,16 +189,16 @@ final class InboundMessage {
             if (cancelled) {
                 this.cancelled = true;
             }
-        }
-        inputStream.push(pooledBuffer);
-        if (eof) {
-            inputStream.pushEof();
+            inputStream.push(pooledBuffer);
+            if (eof) {
+                inputStream.pushEof();
+            }
         }
     }
 
     void cancel() {
         synchronized (inputStream) {
-            if (closed) {
+            if (closed || cancelled) {
                 return;
             }
             this.cancelled = true;
