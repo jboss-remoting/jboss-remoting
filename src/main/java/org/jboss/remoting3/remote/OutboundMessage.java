@@ -171,11 +171,11 @@ final class OutboundMessage extends MessageOutputStream {
 
     void closeAsync() {
         synchronized (pipeOutputStream) {
+            IoUtils.safeClose(pipeOutputStream);
             channel.free(this);
             closed = true;
             // wake up waiters
             pipeOutputStream.notifyAll();
-            IoUtils.safeClose(pipeOutputStream);
         }
     }
 
