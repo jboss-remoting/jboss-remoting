@@ -162,6 +162,7 @@ final class RemoteConnection {
         Buffers.addRandom(buffer);
         buffer.flip();
         send(pooled);
+        channel.wakeupReads();
     }
 
     void sendAliveResponse() {
