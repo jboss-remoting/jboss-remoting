@@ -328,6 +328,18 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 pendingChannel.getResult().setResult(newChannel);
                                 break;
                             }
+                            case Protocol.SERVICE_ERROR: {
+                                log.trace("Received service error");
+                                int channelId = buffer.getInt() ^ 0x80000000;
+                                PendingChannel pendingChannel = handler.removePendingChannel(channelId);
+                                if (pendingChannel == null) {
+                                    // invalid
+                                    break;
+                                }
+                                String reason = new String(Buffers.take(buffer), Protocol.UTF_8);
+                                pendingChannel.getResult().setException(new IOException(reason));
+                                break;
+                            }
                             default: {
                                 log.unknownProtocolId(protoId);
                                 break;
