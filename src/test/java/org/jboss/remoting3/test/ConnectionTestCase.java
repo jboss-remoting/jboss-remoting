@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Queue;
 import java.util.Random;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -41,6 +42,7 @@ import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
+import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 import org.xnio.IoFuture;
@@ -181,5 +183,20 @@ public class ConnectionTestCase {
         }
         assertArrayEquals(new Object[0], problems.toArray());
     }
+
+    @Test
+    public void rejectUnknownService() throws IOException {
+        final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("::1", 0), new InetSocketAddress("::1", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
+        final IoFuture<Channel> channelFuture = connection.openChannel("unknown", OptionMap.EMPTY);
+        try {
+            channelFuture.get();
+            fail();
+        } catch (CancellationException e) {
+            throw e;
+        } catch (IOException e) {
+            // ok
+        }
+    }
+
 
 }
