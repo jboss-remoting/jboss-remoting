@@ -38,10 +38,12 @@ import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.Remoting;
+import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
+import org.junit.Assert;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
@@ -195,6 +197,48 @@ public class ConnectionTestCase {
             throw e;
         } catch (IOException e) {
             // ok
+        }
+    }
+
+    private static final int MAX_SERVER_RECEIVE = 0x18000;
+    private static final int MAX_SERVER_TRANSMIT = 0x14000;
+
+    @Test
+    public void testChannelOptions() throws IOException {
+        serverEndpoint.registerService("test", new OpenListener() {
+            @Override
+            public void channelOpened(Channel channel) {
+                //
+                Assert.assertTrue(channel.getOption(RemotingOptions.RECEIVE_WINDOW_SIZE) <= MAX_SERVER_RECEIVE);
+                Assert.assertTrue(channel.getOption(RemotingOptions.TRANSMIT_WINDOW_SIZE) <= MAX_SERVER_TRANSMIT);
+            }
+
+            @Override
+            public void registrationTerminated() {
+                //
+            }
+        }, OptionMap.create(RemotingOptions.RECEIVE_WINDOW_SIZE, MAX_SERVER_RECEIVE, RemotingOptions.TRANSMIT_WINDOW_SIZE, MAX_SERVER_TRANSMIT));
+
+        final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("localhost", 0), new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
+        IoFuture<Channel> future = connection.openChannel("test", OptionMap.create(RemotingOptions.RECEIVE_WINDOW_SIZE, 0x8000, RemotingOptions.TRANSMIT_WINDOW_SIZE, 0x12000));
+        Channel channel = future.get();
+        try {
+            Assert.assertEquals("transmit", 0x12000, (int) channel.getOption(RemotingOptions.TRANSMIT_WINDOW_SIZE));
+            Assert.assertEquals("receive", 0x8000, (int) channel.getOption(RemotingOptions.RECEIVE_WINDOW_SIZE));
+        } finally {
+            if(channel != null) {
+                channel.close();
+            }
+        }
+        future = connection.openChannel("test", OptionMap.create(RemotingOptions.RECEIVE_WINDOW_SIZE, 0x24000, RemotingOptions.TRANSMIT_WINDOW_SIZE, 0x24000));
+        channel = future.get();
+        try {
+            Assert.assertEquals("transmit", MAX_SERVER_RECEIVE, (int) channel.getOption(RemotingOptions.TRANSMIT_WINDOW_SIZE));
+            Assert.assertEquals("receive", MAX_SERVER_TRANSMIT, (int) channel.getOption(RemotingOptions.RECEIVE_WINDOW_SIZE));
+        } finally {
+            if(channel != null) {
+                channel.close();
+            }
         }
     }
 
