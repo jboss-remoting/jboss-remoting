@@ -57,7 +57,7 @@ public class TimeOutConnectionTestCase {
     private void doTest(OptionMap connectionProviderOptions) throws Exception {
         final ServerSocketChannel channel = ServerSocketChannel.open();
         channel.configureBlocking(true);
-        channel.socket().bind(new InetSocketAddress("::1", 30123));
+        channel.socket().bind(new InetSocketAddress("localhost", 30123));
         Thread acceptThread = new Thread(new Accept(channel));
         acceptThread.start();
         // create endpoint, auth provider, etc, create server
@@ -66,7 +66,7 @@ public class TimeOutConnectionTestCase {
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
         // create connect and close endpoint threads
-        final IoFuture<Connection> futureConnection = endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.EMPTY, "bob", "test", "pass".toCharArray());
+        final IoFuture<Connection> futureConnection = endpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY, "bob", "test", "pass".toCharArray());
         assertEquals(Status.WAITING, futureConnection.await(500, TimeUnit.MILLISECONDS));
         endpoint.close();
         assertEquals(Status.CANCELLED, futureConnection.getStatus());
