@@ -67,7 +67,7 @@ public class CloseConnectingEndpointTestCase {
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
-        networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
+        networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
         // create connect and close endpoint threads
         Connect connectRunnable = new Connect(endpoint);
         Thread connectThread = new Thread(connectRunnable);
@@ -94,7 +94,7 @@ public class CloseConnectingEndpointTestCase {
         public void run() {
             final IoFuture<Connection> futureConnection;
             try {
-                futureConnection = endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.EMPTY, "bob", "test", "pass".toCharArray());
+                futureConnection = endpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY, "bob", "test", "pass".toCharArray());
                 if (futureConnection != null) {
                     Connection c = futureConnection.get();
                     if (c != null) {

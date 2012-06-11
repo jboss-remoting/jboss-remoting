@@ -80,7 +80,7 @@ public class ConnectionTestCase {
         final NetworkServerProvider networkServerProvider = serverEndpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
-        server = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
+        server = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
     }
 
     @After
@@ -138,7 +138,7 @@ public class ConnectionTestCase {
         }, OptionMap.EMPTY);
         final AtomicReferenceArray<Connection> connections = new AtomicReferenceArray<Connection>(CONNECTION_COUNT);
         for (int h = 0; h < CONNECTION_COUNT; h ++) {
-            final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("::1", 0), new InetSocketAddress("::1", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
+            final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("localhost", 0), new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
             connections.set(h, connection);
             for (int i = 0; i < CHANNEL_COUNT; i ++) {
                 clientWorker.execute(new Runnable() {
@@ -186,7 +186,7 @@ public class ConnectionTestCase {
 
     @Test
     public void rejectUnknownService() throws IOException {
-        final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("::1", 0), new InetSocketAddress("::1", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
+        final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("localhost", 0), new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
         final IoFuture<Channel> channelFuture = connection.openChannel("unknown", OptionMap.EMPTY);
         try {
             channelFuture.get();
