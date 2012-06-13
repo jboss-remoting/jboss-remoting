@@ -163,7 +163,10 @@ final class OutboundMessage extends MessageOutputStream {
 
     void closeAsync() {
         synchronized (pipeOutputStream) {
-            IoUtils.safeClose(pipeOutputStream);
+            Pooled<ByteBuffer> pooled = pipeOutputStream.breakPipe();
+            if (pooled != null) {
+                pooled.free();
+            }
             channel.free(this);
             closed = true;
             // wake up waiters
