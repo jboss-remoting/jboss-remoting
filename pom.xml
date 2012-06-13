@@ -42,7 +42,7 @@
     </parent>
 
     <properties>
-        <xnio.version>3.0.3.GA</xnio.version>
+        <xnio.version>3.1.0.Beta1</xnio.version>
         <logging.version>3.1.0.GA</logging.version>
         <logging-tools.version>1.0.0.Final</logging-tools.version>
         <logmanager.version>1.2.0.GA</logmanager.version>
