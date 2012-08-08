@@ -71,8 +71,10 @@ import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslClientFactory;
 import javax.security.sasl.SaslException;
+import javax.security.sasl.SaslServer;
 
 import static org.jboss.remoting3.remote.RemoteLogger.client;
+import static org.jboss.remoting3.remote.RemoteLogger.server;
 import static org.xnio.sasl.SaslUtils.EMPTY_BYTES;
 
 final class ClientConnectionOpenListener implements ChannelListener<ConnectedMessageChannel> {
@@ -126,6 +128,16 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             }
         }
     }
+    
+    private void saslDispose(final SaslClient saslClient) {
+        if (saslClient != null) {
+            try {
+                saslClient.dispose();
+            } catch (SaslException e) {
+                client.trace("Failure disposing of SaslClient", e);
+            }
+        }
+    }    
 
     final class Greeting implements ChannelListener<ConnectedMessageChannel> {
 
@@ -381,6 +393,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
                                 } catch (Exception e) {
                                     client.tracef("Client authentication failed: %s", e);
+                                    saslDispose(usedSaslClient);
                                     failedMechs.add(mechanismName);
                                     sendCapRequest(remoteServerName);
                                     return;
@@ -531,6 +544,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     res = channel.receive(buffer);
                 } catch (IOException e) {
                     connection.handleException(e);
+                    saslDispose(saslClient);
                     return;
                 }
                 if (res == 0) {
@@ -538,6 +552,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 }
                 if (res == -1) {
                     connection.handleException(client.abruptClose(connection));
+                    saslDispose(saslClient);
                     return;
                 }
                 buffer.flip();
@@ -555,6 +570,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     case Protocol.CONNECTION_CLOSE: {
                         client.trace("Client received connection close request");
                         connection.handlePreAuthCloseRequest();
+                        saslDispose(saslClient);
                         return;
                     }
                     case Protocol.AUTH_CHALLENGE: {
@@ -575,6 +591,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     final String mechanismName = saslClient.getMechanismName();
                                     client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
                                     failedMechs.add(mechanismName);
+                                    saslDispose(saslClient);
                                     sendCapRequest(serverName);
                                     return;
                                 }
@@ -602,16 +619,19 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     final byte[] response = saslClient.evaluateChallenge(challenge);
                                     if (response != null && response.length > 0) {
                                         connection.handleException(new SaslException("Received extra auth message after completion"));
+                                        saslDispose(saslClient);
                                         return;
                                     }
                                     if (!saslClient.isComplete()) {
                                         connection.handleException(new SaslException("Client not complete after processing auth complete message"));
+                                        saslDispose(saslClient);
                                         return;
                                     }
                                 } catch (Throwable e) {
                                     final String mechanismName = saslClient.getMechanismName();
                                     client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
                                     failedMechs.add(mechanismName);
+                                    saslDispose(saslClient);
                                     sendCapRequest(serverName);
                                     return;
                                 }
@@ -643,12 +663,14 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         final String mechanismName = saslClient.getMechanismName();
                         client.debugf("Client received authentication rejected for mechanism %s", mechanismName);
                         failedMechs.add(mechanismName);
+                        saslDispose(saslClient);
                         sendCapRequest(serverName);
                         return;
                     }
                     default: {
                         client.unknownProtocolId(msgType);
                         connection.handleException(client.invalidMessage(connection));
+                        saslDispose(saslClient);
                         return;
                     }
                 }
