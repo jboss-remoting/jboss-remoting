@@ -117,6 +117,16 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             if (! ok) pooled.free();
         }
     }
+    
+    private void saslDispose(final SaslServer saslServer) {
+        if (saslServer != null) {
+            try {
+                saslServer.dispose();
+            } catch (SaslException e) {
+                server.trace("Failure disposing of SaslServer", e);
+            }
+        }
+    }
 
     final class Initial implements ChannelListener<ConnectedMessageChannel> {
         private boolean starttls;
@@ -428,8 +438,9 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         }
                     }
                 } catch (Throwable e) {
-                    server.tracef("Server sending authentication rejected (%s)", e);
+                    server.tracef("Server sending authentication rejected (%s)", e);                    
                     sendBuffer.put(p, Protocol.AUTH_REJECTED);
+                    saslDispose(saslServer);
                     if (isInitial) {
                         if (retryCount.decrementAndGet() <= 0) {
                             close = true;
@@ -480,8 +491,6 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
 
     }
 
-
-
     final class Authentication implements ChannelListener<ConnectedMessageChannel> {
 
         private final SaslServer saslServer;
@@ -503,11 +512,13 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     res = channel.receive(buffer);
                 } catch (IOException e) {
                     connection.handleException(e);
+                    saslDispose(saslServer);
                     return;
                 }
                 if (res == -1) {
                     log.trace("Received connection end-of-stream");
                     connection.handlePreAuthCloseRequest();
+                    saslDispose(saslServer);
                     return;
                 }
                 if (res == 0) {
@@ -520,6 +531,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     case Protocol.CONNECTION_CLOSE: {
                         server.trace("Server received connection close request");
                         connection.handlePreAuthCloseRequest();
+                        saslDispose(saslServer);
                         return;
                     }
                     case Protocol.AUTH_RESPONSE: {
@@ -530,6 +542,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     }
                     case Protocol.CAPABILITIES: {
                         server.trace("Server received capabilities request (cancelling authentication)");
+                        saslDispose(saslServer);
                         final Initial initial = new Initial();
                         connection.setReadListener(initial, true);
                         initial.sendCapabilities();
@@ -538,14 +551,17 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     default: {
                         server.unknownProtocolId(msgType);
                         connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                        saslDispose(saslServer);
                         break;
                     }
                 }
             } catch (BufferUnderflowException e) {
                 connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                saslDispose(saslServer);
                 return;
             } catch (BufferOverflowException e) {
                 connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                saslDispose(saslServer);
                 return;
             } finally {
                 pooledBuffer.free();
