@@ -205,6 +205,7 @@ final class InboundMessage {
             this.cancelled = true;
             this.closed = true;
             inputStream.pushEof();
+            channel.freeInboundMessage(messageId);
         }
     }
 
