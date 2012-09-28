@@ -223,6 +223,7 @@ final class RemoteConnection {
                     }
                 } catch (IOException e) {
                     handleException(e, false);
+                    channel.wakeupReads();
                     while ((pooled = queue.poll()) != null) {
                         pooled.free();
                     }
@@ -247,6 +248,7 @@ final class RemoteConnection {
                     }
                 } catch (IOException e) {
                     handleException(e, false);
+                    channel.wakeupReads();
                     Pooled<ByteBuffer> unqueued;
                     while ((unqueued = queue.poll()) != null) {
                         unqueued.free();
@@ -301,6 +303,7 @@ final class RemoteConnection {
                     }
                 } catch (IOException e) {
                     handleException(e, false);
+                    channel.wakeupReads();
                     Pooled<ByteBuffer> unqueued;
                     while ((unqueued = queue.poll()) != null) {
                         unqueued.free();
