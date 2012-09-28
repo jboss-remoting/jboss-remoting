@@ -32,6 +32,7 @@ import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
+import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
@@ -358,6 +359,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
             }
         } catch (IOException e) {
             connection.handleException(e);
+            handler.handleConnectionClose();
         }
     }
 
