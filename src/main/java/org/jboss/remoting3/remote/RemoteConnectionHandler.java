@@ -23,6 +23,7 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.security.Principal;
 import java.util.Collection;
@@ -39,6 +40,7 @@ import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
+import org.xnio.Bits;
 import org.xnio.Cancellable;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
@@ -107,6 +109,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         } catch (IOException ignored) {
             log.tracef(ignored, "Failure to close after forced connection close");
         }
+        remoteConnection.getRemoteConnectionProvider().removeConnectionHandler(this);
         closeComplete();
     }
 
@@ -406,5 +409,30 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     public String toString() {
         return String.format("Connection handler for %s", remoteConnection);
+    }
+
+    void dumpState(final StringBuilder b) {
+        synchronized (remoteConnection) {
+            final int state = this.channelState;
+            final boolean sentCloseReq = Bits.allAreSet(state, SENT_CLOSE_REQ);
+            final boolean receivedCloseReq = Bits.allAreSet(state, RECEIVED_CLOSE_REQ);
+            final int inboundChannels = (state & INBOUND_CHANNELS_MASK) >>> Integer.numberOfTrailingZeros(ONE_INBOUND_CHANNEL);
+            final int outboundChannels = (state & OUTBOUND_CHANNELS_MASK) >>> Integer.numberOfTrailingZeros(ONE_OUTBOUND_CHANNEL);
+            final ConnectedMessageChannel channel = remoteConnection.getChannel();
+            final SocketAddress localAddress = channel.getLocalAddress();
+            final SocketAddress peerAddress = channel.getPeerAddress();
+            b.append("    ").append("Connection ").append(localAddress).append(" <-> ").append(peerAddress).append('\n');
+            b.append("    ").append("Channel: ").append(channel).append('\n');
+            b.append("    ").append("* Flags: ");
+            if (receivedCloseReq) b.append("received-close-req ");
+            if (sentCloseReq) b.append("set-close-req ");
+            b.append('\n');
+            b.append("    ").append("* ").append(inboundChannels).append(" (max ").append(maxInboundChannels).append(") inbound channels\n");
+            b.append("    ").append("* ").append(outboundChannels).append(" (max ").append(maxOutboundChannels).append(") outbound channels\n");
+            b.append("    ").append("* Channels:\n");
+            for (RemoteConnectionChannel connectionChannel : channels) {
+                connectionChannel.dumpState(b);
+            }
+        }
     }
 }

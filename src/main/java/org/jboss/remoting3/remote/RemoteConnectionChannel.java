@@ -42,6 +42,7 @@ import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
+import org.xnio.Bits;
 import org.xnio.Option;
 import org.xnio.Pooled;
 import org.xnio.channels.Channels;
@@ -549,5 +550,31 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     public String toString() {
         return String.format("Channel ID %08x (%s) of %s", Integer.valueOf(channelId), (channelId & 0x80000000) == 0 ? "inbound" : "outbound", connection);
+    }
+
+    void dumpState(final StringBuilder b) {
+        final int state = channelState;
+        final int inboundMessageCnt = (state & INBOUND_MESSAGES_MASK) >>> (Integer.numberOfTrailingZeros(ONE_INBOUND_MESSAGE));
+        final int outboundMessageCnt = (state & OUTBOUND_MESSAGES_MASK) >>> (Integer.numberOfTrailingZeros(ONE_OUTBOUND_MESSAGE));
+        b.append("        ").append(String.format("%s channel ID %08x summary:\n", (channelId & 0x80000000) == 0 ? "Inbound" : "Outbound", channelId));
+        b.append("        ").append("* Flags: ");
+        if (Bits.allAreSet(state, READ_CLOSED)) b.append("read-closed ");
+        if (Bits.allAreSet(state, WRITE_CLOSED)) b.append("write-closed ");
+        b.append('\n');
+        b.append("        ").append("* ").append(inboundMessageQueue.size()).append(" pending inbound messages\n");
+        b.append("        ").append("* ").append(inboundMessageCnt).append(" (max ").append(maxInboundMessages).append(") inbound messages\n");
+        b.append("        ").append("* ").append(outboundMessageCnt).append(" (max ").append(maxOutboundMessages).append(") outbound messages\n");
+        b.append("        ").append("* Pending inbound messages:\n");
+        for (InboundMessage inboundMessage : inboundMessageQueue) {
+            inboundMessage.dumpState(b);
+        }
+        b.append("        ").append("* Inbound messages:\n");
+        for (InboundMessage inboundMessage : inboundMessages) {
+            inboundMessage.dumpState(b);
+        }
+        b.append("        ").append("* Outbound messages:\n");
+        for (OutboundMessage outboundMessage : outboundMessages) {
+            outboundMessage.dumpState(b);
+        }
     }
 }

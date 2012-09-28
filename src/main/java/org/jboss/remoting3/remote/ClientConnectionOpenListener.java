@@ -71,10 +71,8 @@ import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslClientFactory;
 import javax.security.sasl.SaslException;
-import javax.security.sasl.SaslServer;
 
 import static org.jboss.remoting3.remote.RemoteLogger.client;
-import static org.jboss.remoting3.remote.RemoteLogger.server;
 import static org.xnio.sasl.SaslUtils.EMPTY_BYTES;
 
 final class ClientConnectionOpenListener implements ChannelListener<ConnectedMessageChannel> {
@@ -649,6 +647,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                                 connectionContext, connection, principals, new SimpleUserInfo(principals),
                                                 remoteEndpointName);
                                         connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
+                                        connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                         return connectionHandler;
                                     }
                                 };
