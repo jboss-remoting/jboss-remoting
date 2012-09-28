@@ -59,14 +59,16 @@ final class RemoteConnection {
     private final int heartbeatInterval;
     private volatile Result<ConnectionHandlerFactory> result;
     private volatile SaslWrapper saslWrapper;
+    private final RemoteConnectionProvider remoteConnectionProvider;
 
-    RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedStreamChannel underlyingChannel, final ConnectedMessageChannel channel, final OptionMap optionMap, final Executor executor) {
+    RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedStreamChannel underlyingChannel, final ConnectedMessageChannel channel, final OptionMap optionMap, final RemoteConnectionProvider remoteConnectionProvider) {
         this.messageBufferPool = messageBufferPool;
         this.underlyingChannel = underlyingChannel;
         this.channel = channel;
         this.optionMap = optionMap;
         heartbeatInterval = optionMap.get(RemotingOptions.HEARTBEAT_INTERVAL, Integer.MAX_VALUE);
-        this.executor = executor;
+        this.executor = remoteConnectionProvider.getExecutor();
+        this.remoteConnectionProvider = remoteConnectionProvider;
     }
 
     Pooled<ByteBuffer> allocate() {
@@ -79,6 +81,10 @@ final class RemoteConnection {
         if (listener != null && resume) {
             channel.resumeReads();
         }
+    }
+
+    RemoteConnectionProvider getRemoteConnectionProvider() {
+        return remoteConnectionProvider;
     }
 
     Result<ConnectionHandlerFactory> getResult() {

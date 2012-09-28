@@ -426,6 +426,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                 }
                                 final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
                                         connectionContext, connection, principals, userInfo, remoteEndpointName);
+                                connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                 connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                 return connectionHandler;
                             }

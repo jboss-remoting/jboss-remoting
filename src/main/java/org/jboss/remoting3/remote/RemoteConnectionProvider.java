@@ -25,6 +25,7 @@ package org.jboss.remoting3.remote;
 import static org.jboss.remoting3.remote.RemoteLogger.log;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -35,8 +36,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 import javax.security.auth.callback.CallbackHandler;
 
+import java.util.Set;
+import java.util.concurrent.Executor;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
@@ -77,6 +82,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     private final Pool<ByteBuffer> framingBufferPool;
     private final boolean sslEnabled;
     private final Collection<Cancellable> pendingInboundConnections = Collections.synchronizedSet(new HashSet<Cancellable>());
+    private final Set<RemoteConnectionHandler> handlers = Collections.synchronizedSet(new HashSet<RemoteConnectionHandler>());
 
     RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
         super(connectionProviderContext.getExecutor());
@@ -88,6 +94,41 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         messageBufferPool = false ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, messageBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
         final int framingBufferSize = messageBufferSize + 4;
         framingBufferPool = false ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, framingBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
+        try {
+            final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+            server.registerMBean(new RemoteConnectionProviderMXBean() {
+                public void dumpConnectionState() {
+                    doDumpConnectionState();
+                }
+
+                public String dumpConnectionStateToString() {
+                    return doGetConnectionState();
+                }
+            }, new ObjectName("jboss.remoting.handler", "name", connectionProviderContext.getEndpoint().getName() + "-" + hashCode()));
+        } catch (Exception e) {
+            // ignore
+        }
+    }
+
+    private void doDumpConnectionState() {
+        final StringBuilder b = new StringBuilder();
+        doGetConnectionState(b);
+        RemoteLogger.log.info(b);
+    }
+
+    private void doGetConnectionState(final StringBuilder b) {
+        b.append("Connection state for ").append(this).append(':').append('\n');
+        synchronized (handlers) {
+            for (RemoteConnectionHandler handler : handlers) {
+                handler.dumpState(b);
+            }
+        }
+    }
+
+    private String doGetConnectionState() {
+        final StringBuilder b = new StringBuilder();
+        doGetConnectionState(b);
+        return b.toString();
     }
 
     public Cancellable connect(final SocketAddress bindAddress, final SocketAddress destination, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IllegalArgumentException {
@@ -121,7 +162,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                     // ignore
                 }
                 final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
-                final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, getExecutor());
+                final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, RemoteConnectionProvider.this);
                 cancellableResult.addCancelHandler(new Cancellable() {
                     @Override
                     public Cancellable cancel() {
@@ -189,6 +230,14 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         closeComplete();
     }
 
+    void addConnectionHandler(final RemoteConnectionHandler connectionHandler) {
+        handlers.add(connectionHandler);
+    }
+
+    void removeConnectionHandler(final RemoteConnectionHandler connectionHandler) {
+        handlers.remove(connectionHandler);
+    }
+
     final class ProviderInterface implements NetworkServerProvider {
 
         public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider, XnioSsl xnioSsl) throws IOException {
@@ -216,6 +265,10 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             result.resumeAccepts();
             return result;
         }
+    }
+
+    protected Executor getExecutor() {
+        return super.getExecutor();
     }
 
     private static IOException sslConfigFailure(final GeneralSecurityException e) {
@@ -252,7 +305,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             }
 
             final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, framingBufferPool.allocate(), framingBufferPool.allocate());
-            final RemoteConnection connection = new RemoteConnection(messageBufferPool, accepted, messageChannel, serverOptionMap, getExecutor());
+            final RemoteConnection connection = new RemoteConnection(messageBufferPool, accepted, messageChannel, serverOptionMap, RemoteConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, serverAuthenticationProvider, serverOptionMap, accessControlContext);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
             RemoteLogger.log.tracef("Accepted connection from %s to %s", accepted.getPeerAddress(), accepted.getLocalAddress());

@@ -209,4 +209,13 @@ final class OutboundMessage extends MessageOutputStream {
     public String toString() {
         return String.format("Outbound message ID %04x on %s", Short.valueOf(messageId), channel);
     }
+
+    void dumpState(final StringBuilder b) {
+        b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", messageId & 0xFFFF, window, maximumWindow));
+        b.append("            ").append("* flags: ");
+        if (cancelled) b.append("cancelled ");
+        if (cancelSent) b.append("cancel-sent ");
+        if (closed) b.append("closed ");
+        b.append('\n');
+    }
 }

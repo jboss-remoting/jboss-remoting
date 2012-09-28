@@ -206,4 +206,12 @@ final class InboundMessage {
             inputStream.pushEof();
         }
     }
+
+    void dumpState(final StringBuilder b) {
+        b.append("            ").append(String.format("Inbound message ID %04x, window %d\n", messageId & 0xFFFF, inboundWindow));
+        b.append("            ").append("* flags: ");
+        if (cancelled) b.append("cancelled ");
+        if (closed) b.append("closed ");
+        b.append('\n');
+    }
 }
