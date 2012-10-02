@@ -107,6 +107,7 @@ final class OutboundMessage extends MessageOutputStream {
                     cancelSent = true;
                 }
                 Channels.sendBlocking(messageChannel, buffer);
+                Channels.flushBlocking(messageChannel);
             } finally {
                 pooledBuffer.free();
                 if (eof) {
