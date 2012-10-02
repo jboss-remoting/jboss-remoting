@@ -106,8 +106,13 @@ final class OutboundMessage extends MessageOutputStream {
                 if (cancelled) {
                     cancelSent = true;
                 }
-                Channels.sendBlocking(messageChannel, buffer);
-                Channels.flushBlocking(messageChannel);
+                try {
+                    Channels.sendBlocking(messageChannel, buffer);
+                    Channels.flushBlocking(messageChannel);
+                } catch (IOException e) {
+                    channel.getRemoteConnection().handleException(e, false);
+                    throw e;
+                }
             } finally {
                 pooledBuffer.free();
                 if (eof) {
