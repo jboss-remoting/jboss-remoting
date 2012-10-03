@@ -335,6 +335,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                             buffer.flip();
                             try {
                                 Channels.sendBlocking(channel, buffer);
+                                Channels.flushBlocking(channel);
                             } catch (IOException e) {
                                 result.setException(e);
                                 pendingChannels.removeKey(id);
