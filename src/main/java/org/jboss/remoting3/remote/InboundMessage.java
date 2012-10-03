@@ -126,6 +126,7 @@ final class InboundMessage {
 
     void sendAsyncClose() throws IOException {
         Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_ASYNC_CLOSE);
+        channel.freeInboundMessage(messageId);
         try {
             ByteBuffer buffer = pooled.getResource();
             buffer.flip();
