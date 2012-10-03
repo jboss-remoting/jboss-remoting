@@ -449,7 +449,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                         }
                     }
                 } finally {
-                    if (! ok2) closeInboundMessage();
+                    if (! ok2) freeInboundMessage((short) id);
                 }
             } else {
                 inboundMessage = inboundMessages.get(id);
@@ -536,8 +536,9 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     void freeInboundMessage(final short id) {
-        closeInboundMessage();
-        inboundMessages.removeKey(id & 0xffff);
+        if (inboundMessages.removeKey(id & 0xffff) != null) {
+            closeInboundMessage();
+        }
     }
 
     Pooled<ByteBuffer> allocate(final byte protoId) {
