@@ -191,7 +191,7 @@ final class RemoteConnection {
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
-            synchronized (RemoteConnection.this) {
+            synchronized (queue) {
                 assert channel == getChannel();
                 Pooled<ByteBuffer> pooled;
                 final Queue<Pooled<ByteBuffer>> queue = this.queue;
@@ -233,7 +233,7 @@ final class RemoteConnection {
         }
 
         public void shutdownWrites() {
-            synchronized (RemoteConnection.this) {
+            synchronized (queue) {
                 if (closed) return;
                 closed = true;
                 final ConnectedMessageChannel channel = getChannel();
@@ -258,7 +258,7 @@ final class RemoteConnection {
         }
 
         public void send(Pooled<ByteBuffer> pooled, final boolean close) {
-            synchronized (RemoteConnection.this) {
+            synchronized (queue) {
                 XnioExecutor.Key heartKey = this.heartKey;
                 if (heartKey != null) heartKey.remove();
                 if (closed) { pooled.free(); return; }
