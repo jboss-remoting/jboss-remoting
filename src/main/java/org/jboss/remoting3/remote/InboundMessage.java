@@ -60,7 +60,7 @@ final class InboundMessage {
     final BufferPipeInputStream inputStream = new BufferPipeInputStream(new BufferPipeInputStream.InputHandler() {
         public void acknowledge(final Pooled<ByteBuffer> acked) throws IOException {
             int consumed = acked.getResource().position();
-            openInboundWindow(consumed);
+            openInboundWindow(consumed - 8); // Subtract header size
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_WINDOW_OPEN);
             try {
                 ByteBuffer buffer = pooled.getResource();
