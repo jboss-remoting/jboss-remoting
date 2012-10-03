@@ -64,7 +64,7 @@ final class InboundMessage {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_WINDOW_OPEN);
             try {
                 ByteBuffer buffer = pooled.getResource();
-                buffer.putInt(consumed); // Open window by buffer size
+                buffer.putInt(consumed - 8); // Open window by buffer size
                 buffer.flip();
                 Channels.sendBlocking(channel.getRemoteConnection().getChannel(), buffer);
             } finally {
