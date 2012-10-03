@@ -62,14 +62,10 @@ final class InboundMessage {
             int consumed = acked.getResource().position();
             openInboundWindow(consumed - 8); // Subtract header size
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_WINDOW_OPEN);
-            try {
-                ByteBuffer buffer = pooled.getResource();
-                buffer.putInt(consumed - 8); // Open window by buffer size
-                buffer.flip();
-                Channels.sendBlocking(channel.getRemoteConnection().getChannel(), buffer);
-            } finally {
-                pooled.free();
-            }
+            ByteBuffer buffer = pooled.getResource();
+            buffer.putInt(consumed - 8); // Open window by buffer size
+            buffer.flip();
+            channel.getRemoteConnection().send(pooled);
         }
 
         public void close() throws IOException {
@@ -127,14 +123,9 @@ final class InboundMessage {
     void sendAsyncClose() throws IOException {
         Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_ASYNC_CLOSE);
         channel.freeInboundMessage(messageId);
-        try {
-            ByteBuffer buffer = pooled.getResource();
-            buffer.flip();
-            Channels.sendBlocking(channel.getRemoteConnection().getChannel(), buffer);
-            Channels.flushBlocking(channel.getRemoteConnection().getChannel());
-        } finally {
-            pooled.free();
-        }
+        ByteBuffer buffer = pooled.getResource();
+        buffer.flip();
+        channel.getRemoteConnection().send(pooled);
     }
 
     Pooled<ByteBuffer> allocate(byte protoId) {

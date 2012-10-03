@@ -30,7 +30,6 @@ import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.NotOpenException;
 import org.xnio.IoUtils;
 import org.xnio.Pooled;
-import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.streams.BufferPipeOutputStream;
 
@@ -106,15 +105,8 @@ final class OutboundMessage extends MessageOutputStream {
                 if (cancelled) {
                     cancelSent = true;
                 }
-                try {
-                    Channels.sendBlocking(messageChannel, buffer);
-                    Channels.flushBlocking(messageChannel);
-                } catch (IOException e) {
-                    channel.getRemoteConnection().handleException(e, false);
-                    throw e;
-                }
+                channel.getRemoteConnection().send(pooledBuffer);
             } finally {
-                pooledBuffer.free();
                 if (eof) {
                     channel.free(OutboundMessage.this);
                 }
@@ -123,7 +115,7 @@ final class OutboundMessage extends MessageOutputStream {
 
         public void flush() throws IOException {
             log.trace("Flushing message channel");
-            Channels.flushBlocking(channel.getRemoteConnection().getChannel());
+            // no op
         }
     };
 
