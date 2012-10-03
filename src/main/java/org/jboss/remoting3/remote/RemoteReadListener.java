@@ -32,7 +32,6 @@ import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
-import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
@@ -250,7 +249,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 connectionChannel.handleWindowOpen(pooled);
                                 break;
                             }
-                            case Protocol.MESSAGE_ASYNC_CLOSE: {
+                            case Protocol.MESSAGE_CLOSE: {
                                 log.trace("Received message async close");
                                 int channelId = buffer.getInt() ^ 0x80000000;
                                 RemoteConnectionChannel connectionChannel = handler.getChannel(channelId);

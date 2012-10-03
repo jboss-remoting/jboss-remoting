@@ -114,6 +114,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             if (localEndpointName != null) {
                 ProtocolUtils.writeString(sendBuffer, Protocol.CAP_ENDPOINT_NAME, localEndpointName);
             }
+            ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
             sendBuffer.flip();
             connection.setReadListener(new Capabilities(remoteServerName), true);
             connection.send(pooledSendBuffer);
@@ -224,6 +225,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
     final class Capabilities implements ChannelListener<ConnectedMessageChannel> {
 
         private final String remoteServerName;
+        private boolean messageClose = false;
 
         Capabilities(final String remoteServerName) {
             this.remoteServerName = remoteServerName;
@@ -297,6 +299,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 case Protocol.CAP_ENDPOINT_NAME: {
                                     remoteEndpointName = Buffers.getModifiedUtf8(data);
                                     client.tracef("Client received capability: remote endpoint name \"%s\"", remoteEndpointName);
+                                    break;
+                                }
+                                case Protocol.CAP_MESSAGE_CLOSE: {
+                                    messageClose = true;
+                                    client.tracef("Client received capability: message close protocol supported", remoteEndpointName);
                                     break;
                                 }
                                 default: {
@@ -411,7 +418,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
                                 sendBuffer.flip();
                                 connection.send(pooledSendBuffer);
-                                connection.setReadListener(new Authentication(usedSaslClient, remoteServerName, userName, theRemoteEndpointName), true);
+                                connection.setReadListener(new Authentication(usedSaslClient, remoteServerName, userName, theRemoteEndpointName, messageClose), true);
                                 return;
                             }
                         });
@@ -525,12 +532,14 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
         private final String serverName;
         private final String authorizationID;
         private final String remoteEndpointName;
+        private final boolean messageClose;
 
-        Authentication(final SaslClient saslClient, final String serverName, final String authorizationID, final String remoteEndpointName) {
+        Authentication(final SaslClient saslClient, final String serverName, final String authorizationID, final String remoteEndpointName, final boolean messageClose) {
             this.saslClient = saslClient;
             this.serverName = serverName;
             this.authorizationID = authorizationID;
             this.remoteEndpointName = remoteEndpointName;
+            this.messageClose = messageClose;
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
@@ -645,7 +654,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                         // this happens immediately.
                                         final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
                                                 connectionContext, connection, principals, new SimpleUserInfo(principals),
-                                                remoteEndpointName);
+                                                remoteEndpointName, messageClose);
                                         connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                         connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                         return connectionHandler;

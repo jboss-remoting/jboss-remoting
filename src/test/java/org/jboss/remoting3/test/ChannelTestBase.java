@@ -527,7 +527,7 @@ public abstract class ChannelTestBase {
     public void testSeveralWriteMessage() throws Exception {
         final AtomicBoolean wasEmpty = new AtomicBoolean();
         final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
-        final CountDownLatch latch = new CountDownLatch(100);
+        final CountDownLatch latch = new CountDownLatch(50);
         final AtomicInteger count = new AtomicInteger();
         recvChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
@@ -553,13 +553,13 @@ public abstract class ChannelTestBase {
                 } finally {
                     IoUtils.safeClose(message);
                     latch.countDown();
-                    if (count.getAndIncrement() < 100) {
+                    if (count.getAndIncrement() < 50) {
                         recvChannel.receiveMessage(this);
                     }
                 }
             }
         });
-        for (int i = 0 ; i < 100 ; i++) {
+        for (int i = 0 ; i < 50 ; i++) {
             MessageOutputStream messageOutputStream = sendChannel.writeMessage();
             messageOutputStream.close();
             messageOutputStream.close(); // close should be idempotent
