@@ -24,6 +24,7 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.net.SocketAddress;
 import org.jboss.logging.BasicLogger;
 import org.jboss.logging.Cause;
 import org.jboss.logging.LogMessage;
@@ -82,9 +83,17 @@ interface RemoteLogger extends BasicLogger {
     @Message(id = 209, value = "An exception occurred in a message handler")
     void exceptionInUserHandler(@Cause Throwable throwable);
 
+    // these two are a pair at id = 210
+
+    @LogMessage(level = FATAL)
+    @Message(id = 210, value = "Internal Error: received a message with duplicate ID %d from %s")
+    void duplicateMessageId(short messageId, SocketAddress peerAddress);
+
+    @Message(/* id = 210, */value = "Internal Error: received a message with a duplicate ID")
+    IOException duplicateMessageIdException();
+
     // non i18n
     @LogMessage(level = TRACE)
     @Message(value = "Message with unknown protocol ID %d received")
     void unknownProtocolId(int id);
-
 }

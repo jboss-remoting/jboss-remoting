@@ -153,7 +153,7 @@ final class Protocol {
      * byte 0: MESSAGE_DATA
      * byte 1..4: channel ID
      * byte 5..6: message ID
-     * byte 7: flags: - - - - - - N E  N = New E = EOF
+     * byte 7: flags: - - - - - C N E  C = Cancelled N = New E = EOF
      * byte 8..n: message content
      *
      * Always flows from message sender to message recipient.
@@ -169,13 +169,13 @@ final class Protocol {
      */
     static final byte MESSAGE_WINDOW_OPEN = 0x31;
     /**
-     * byte 0: MESSAGE_ASYNC_CLOSE
+     * byte 0: MESSAGE_CLOSE
      * byte 1..4: channel ID
      * byte 5..6: message ID
      *
      * Always flows from message recipient to message sender.
      */
-    static final byte MESSAGE_ASYNC_CLOSE = 0x32;
+    static final byte MESSAGE_CLOSE = 0x32;
 
     // Messages for handling connection status
 
@@ -202,6 +202,7 @@ final class Protocol {
     static final byte CAP_SASL_MECH = 1; // sent by server; content = mechanism name (utf-8)
     static final byte CAP_STARTTLS = 2;  // sent by server; content = empty
     static final byte CAP_ENDPOINT_NAME = 3; // sent by client & server - our endpoint name if not anonymous
+    static final byte CAP_MESSAGE_CLOSE = 4; // sent by client & server - if present, use message close protocol
 
     static final byte GRT_SERVER_NAME = 0; // greeting server name
 

@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 
+import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.NotOpenException;
 import org.xnio.IoUtils;
@@ -33,6 +34,7 @@ import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.streams.BufferPipeOutputStream;
 
+import static java.lang.Thread.holdsLock;
 import static org.jboss.remoting3.remote.RemoteLogger.log;
 
 /**
@@ -44,7 +46,8 @@ final class OutboundMessage extends MessageOutputStream {
     final BufferPipeOutputStream pipeOutputStream;
     final int maximumWindow;
     int window;
-    boolean closed;
+    boolean closeCalled;
+    boolean closeReceived;
     boolean cancelled;
     boolean cancelSent;
     final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
@@ -66,50 +69,66 @@ final class OutboundMessage extends MessageOutputStream {
         }
 
         public void accept(final Pooled<ByteBuffer> pooledBuffer, final boolean eof) throws IOException {
-            try {
-                final ByteBuffer buffer = pooledBuffer.getResource();
-                final ConnectedMessageChannel messageChannel = channel.getRemoteConnection().getChannel();
-                if (eof) {
-                    // EOF flag (sync close)
-                    buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_EOF));
-                    log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
-                }
-                assert Thread.holdsLock(pipeOutputStream);
-                final int msgSize = buffer.remaining() - 8;
-                window -= msgSize;
+            assert holdsLock(pipeOutputStream);
+            if (closeCalled) {
+                throw new NotOpenException("Message was closed asynchronously by another thread");
+            }
+            if (cancelSent) {
+                throw new MessageCancelledException("Message was cancelled");
+            }
+            if (eof) {
+                closeCalled = true;
+                // make sure other waiters know about it
+                pipeOutputStream.notifyAll();
+            }
+            final ByteBuffer buffer = pooledBuffer.getResource();
+            final ConnectedMessageChannel messageChannel = channel.getRemoteConnection().getChannel();
+            final int msgSize = buffer.remaining() - 8;
+            boolean sendCancel = cancelled && ! cancelSent;
+            boolean intr = false;
+            if (msgSize > 0 && ! sendCancel) {
+                // empty messages and cancellation both bypass the transmit window check
                 for (;;) {
-                    if (closed) {
-                        throw new NotOpenException("Message was closed asynchronously");
-                    }
-                    if (cancelled) {
-                        if (cancelSent) {
-                            return;
-                        }
-                        buffer.put(7, (byte)(buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
-                        buffer.limit(8); // discard everything in the buffer
-                        log.trace("Message includes cancel flag");
-                        break;
-                    }
-                    if (window >= msgSize) {
+                    if (window > msgSize) {
+                        window -= msgSize;
+                        log.trace("Message window is open, proceeding with send");
                         break;
                     }
                     try {
                         log.trace("Message window is closed, waiting");
                         pipeOutputStream.wait();
                     } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        throw new InterruptedIOException("Interrupted on write");
+                        cancelled = true;
+                        intr = true;
+                        break;
+                    }
+                    if (closeCalled && ! eof) {
+                        throw new NotOpenException("Message was closed asynchronously by another thread");
+                    }
+                    if (cancelSent) {
+                        throw new MessageCancelledException("Message was cancelled");
                     }
                 }
-                log.trace("Message window is open, proceeding with send");
-                if (cancelled) {
-                    cancelSent = true;
-                }
-                channel.getRemoteConnection().send(pooledBuffer);
-            } finally {
-                if (eof) {
+            }
+            if (eof || sendCancel || intr) {
+                // EOF flag (sync close)
+                buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_EOF));
+                log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
+                if (! channel.getConnectionHandler().isMessageClose()) {
+                    // free now, because we may never receive a close message
                     channel.free(OutboundMessage.this);
                 }
+            }
+            if (sendCancel || intr) {
+                cancelSent = true;
+                buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
+                buffer.limit(8); // discard everything in the buffer so we can send even if there is no window
+                log.trace("Message includes cancel flag");
+            }
+            channel.getRemoteConnection().send(pooledBuffer);
+            if (intr) {
+                Thread.currentThread().interrupt();
+                throw new InterruptedIOException("Interrupted on write (message cancelled)");
             }
         }
 
@@ -159,14 +178,18 @@ final class OutboundMessage extends MessageOutputStream {
         }
     }
 
-    void closeAsync() {
+    void remoteClosed() {
         synchronized (pipeOutputStream) {
+            // safe to free now; remote side has cleared this ID for sure
+            // if the peer is new, then they send this to free the message either way
+            // if the peer is old, then they only send this if they're using the broken async close protocol, and they've already dropped the ID
+            // either way if this was already freed then it's OK as this is idempotent
+            channel.free(this);
             Pooled<ByteBuffer> pooled = pipeOutputStream.breakPipe();
             if (pooled != null) {
                 pooled.free();
             }
-            channel.free(this);
-            closed = true;
+            closeReceived = true;
             // wake up waiters
             pipeOutputStream.notifyAll();
         }
@@ -213,7 +236,8 @@ final class OutboundMessage extends MessageOutputStream {
         b.append("            ").append("* flags: ");
         if (cancelled) b.append("cancelled ");
         if (cancelSent) b.append("cancel-sent ");
-        if (closed) b.append("closed ");
+        if (closeReceived) b.append("close-received ");
+        if (closeCalled) b.append("closed-called ");
         b.append('\n');
     }
 }

@@ -28,8 +28,9 @@ import java.nio.ByteBuffer;
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
 import org.xnio.Pooled;
-import org.xnio.channels.Channels;
 import org.xnio.streams.BufferPipeInputStream;
+
+import static java.lang.Thread.holdsLock;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -38,7 +39,9 @@ final class InboundMessage {
     final short messageId;
     final RemoteConnectionChannel channel;
     int inboundWindow;
-    boolean closed;
+    boolean streamClosed;
+    boolean closeSent;
+    boolean eofReceived;
     boolean cancelled;
 
     static final IntIndexer<InboundMessage> INDEXER = new IntIndexer<InboundMessage>() {
@@ -59,19 +62,56 @@ final class InboundMessage {
 
     final BufferPipeInputStream inputStream = new BufferPipeInputStream(new BufferPipeInputStream.InputHandler() {
         public void acknowledge(final Pooled<ByteBuffer> acked) throws IOException {
-            int consumed = acked.getResource().position();
-            openInboundWindow(consumed - 8); // Subtract header size
-            Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_WINDOW_OPEN);
-            ByteBuffer buffer = pooled.getResource();
-            buffer.putInt(consumed - 8); // Open window by buffer size
-            buffer.flip();
-            channel.getRemoteConnection().send(pooled);
+            doAcknowledge(acked);
         }
 
         public void close() throws IOException {
-            sendAsyncClose();
+            doClose();
         }
     });
+
+    private void doClose() {
+        assert holdsLock(inputStream);
+        if (streamClosed) {
+            // idempotent
+            return;
+        }
+        streamClosed = true;
+        // on close, send close message
+        doSendCloseMessage();
+        // but keep the mapping around until we receive our EOF
+        // else just keep discarding data until the EOF comes in.
+    }
+
+    private void doSendCloseMessage() {
+        assert holdsLock(inputStream);
+        if (closeSent || ! channel.getConnectionHandler().isMessageClose()) {
+            // we don't send a MESSAGE_CLOSE because broken versions will simply stop sending packets, and we won't know when the message is really gone.
+            // the risk is that the remote side could have started a new message in the meantime, and our MESSAGE_CLOSE would kill the wrong message.
+            // so this behavior is better than the alternative.
+            return;
+        }
+        Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_CLOSE);
+        ByteBuffer buffer = pooled.getResource();
+        buffer.flip();
+        channel.getRemoteConnection().send(pooled);
+        closeSent = true;
+    }
+
+    private void doAcknowledge(final Pooled<ByteBuffer> acked) {
+        assert holdsLock(inputStream);
+        if (eofReceived) {
+            // no ack needed; also a best-effort to work around broken peers
+            return;
+        }
+        int consumed = acked.getResource().position() - 8; // position minus header length (not including framing size)
+        inboundWindow += consumed;
+        Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_WINDOW_OPEN);
+        ByteBuffer buffer = pooled.getResource();
+        buffer.putInt(consumed); // Open window by buffer size
+        buffer.flip();
+        channel.getRemoteConnection().send(pooled);
+    }
 
     final MessageInputStream messageInputStream = new MessageInputStream() {
         public int read() throws IOException {
@@ -120,14 +160,6 @@ final class InboundMessage {
         }
     };
 
-    void sendAsyncClose() throws IOException {
-        Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_ASYNC_CLOSE);
-        channel.freeInboundMessage(messageId);
-        ByteBuffer buffer = pooled.getResource();
-        buffer.flip();
-        channel.getRemoteConnection().send(pooled);
-    }
-
     Pooled<ByteBuffer> allocate(byte protoId) {
         Pooled<ByteBuffer> pooled = channel.allocate(protoId);
         ByteBuffer buffer = pooled.getResource();
@@ -135,69 +167,56 @@ final class InboundMessage {
         return pooled;
     }
 
-
-    void openInboundWindow(int consumed) {
-        synchronized (inputStream) {
-            inboundWindow += consumed;
-        }
-    }
-
-    void closeInboundWindow(int produced) {
-        synchronized (inputStream) {
-            if ((inboundWindow -= produced) < 0) {
-                channel.getRemoteConnection().handleException(new IOException("Input overrun"));
-            }
-        }
-    }
-
     void handleIncoming(Pooled<ByteBuffer> pooledBuffer) {
         boolean eof;
         synchronized (inputStream) {
-            if (closed) {
-                // ignore
-                pooledBuffer.free();
-                return;
-            }
-            if (inboundWindow == 0) {
-                pooledBuffer.free();
-                // TODO log window overrun
-                try {
-                    sendAsyncClose();
-                } catch (IOException e) {
-                    // todo log it
-                }
-                return;
-            }
             ByteBuffer buffer = pooledBuffer.getResource();
-            closeInboundWindow(buffer.remaining() - 8);
+            if ((inboundWindow -= buffer.remaining() - 8) < 0) {
+                channel.getRemoteConnection().handleException(new IOException("Input overrun"));
+            }
             buffer.position(buffer.position() - 1);
             byte flags = buffer.get();
 
             eof = (flags & Protocol.MSG_FLAG_EOF) != 0;
-            if (eof) {
-                closed = true;
-                channel.freeInboundMessage(messageId);
-            }
             boolean cancelled = (flags & Protocol.MSG_FLAG_CANCELLED) != 0;
             if (cancelled) {
                 this.cancelled = true;
             }
-            inputStream.push(pooledBuffer);
+            if (streamClosed) {
+                // ignore, but keep the bits flowing
+                if (! eof && ! closeSent) {
+                    // we don't need to acknowledge if it's EOF or if we sent a close msg since no more data is coming anyway
+                    buffer.position(buffer.limit()); // "consume" everything
+                    doAcknowledge(pooledBuffer);
+                }
+                pooledBuffer.free();
+            } else {
+                inputStream.push(pooledBuffer);
+            }
             if (eof) {
-                inputStream.pushEof();
+                eofReceived = true;
+                if (!streamClosed) {
+                    inputStream.pushEof();
+                }
+                channel.freeInboundMessage(messageId);
+                // if the peer is old, they might reuse the ID now regardless of us; if new, we have to send the close message to acknowledge the remainder
+                doSendCloseMessage();
             }
         }
     }
 
-    void cancel() {
+    void handleDuplicate() {
+        // this method is called when the remote side forgot about us.  Our mapping will have been already replaced.
+        // We must not send anything to the peer from here on because things may be in a broken state.
+        // Though this is a best-effort strategy as everything is screwed up in this case anyway.
+        RemoteLogger.conn.duplicateMessageId(messageId, channel.getRemoteConnection().getChannel().getPeerAddress());
         synchronized (inputStream) {
-            if (closed || cancelled) {
-                return;
+            if (! streamClosed) {
+                eofReceived = true; // it wasn't really, but we should act like it was
+                closeSent = true; // we didn't really, but we should act like we did
+                cancelled = true; // just not the usual way...
+                inputStream.pushException(RemoteLogger.conn.duplicateMessageIdException());
             }
-            this.cancelled = true;
-            this.closed = true;
-            inputStream.pushEof();
-            channel.freeInboundMessage(messageId);
         }
     }
 
@@ -205,7 +224,9 @@ final class InboundMessage {
         b.append("            ").append(String.format("Inbound message ID %04x, window %d\n", messageId & 0xFFFF, inboundWindow));
         b.append("            ").append("* flags: ");
         if (cancelled) b.append("cancelled ");
-        if (closed) b.append("closed ");
+        if (closeSent) b.append("close-sent ");
+        if (streamClosed) b.append("stream-closed ");
+        if (eofReceived) b.append("eof-received ");
         b.append('\n');
     }
 }

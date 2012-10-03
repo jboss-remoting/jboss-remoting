@@ -134,6 +134,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         private Map<String, SaslServerFactory> allowedMechanisms;
         private int version;
         private String remoteEndpointName;
+        private boolean messageClose = false;
 
         Initial() {
             // Calculate our capabilities
@@ -261,6 +262,11 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                     server.tracef("Server received capability: remote endpoint name \"%s\"", remoteEndpointName);
                                     break;
                                 }
+                                case Protocol.CAP_MESSAGE_CLOSE: {
+                                    messageClose = true;
+                                    server.tracef("Server received capability: message close protocol supported", remoteEndpointName);
+                                    break;
+                                }
                                 default: {
                                     server.tracef("Server received unknown capability %02x", Integer.valueOf(type & 0xff));
                                     // unknown, skip it for forward compatibility.
@@ -335,7 +341,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             return;
                         }
                         connection.getChannel().suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, callbackHandler, receiveBuffer, remoteEndpointName));
+                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, callbackHandler, receiveBuffer, remoteEndpointName, messageClose));
                         return;
                     }
                     default: {
@@ -377,6 +383,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 for (String mechName : allowedMechanisms.keySet()) {
                     ProtocolUtils.writeString(sendBuffer, Protocol.CAP_SASL_MECH, mechName);
                 }
+                ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
                 sendBuffer.flip();
                 connection.send(pooled);
                 ok = true;
@@ -394,14 +401,15 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         private final AuthorizingCallbackHandler authorizingCallbackHandler;
         private final ByteBuffer buffer;
         private final String remoteEndpointName;
+        private final boolean messageClose;
 
-
-        AuthStepRunnable(final boolean isInitial, final SaslServer saslServer, final AuthorizingCallbackHandler authorizingCallbackHandler, final ByteBuffer buffer, final String remoteEndpointName) {
+        AuthStepRunnable(final boolean isInitial, final SaslServer saslServer, final AuthorizingCallbackHandler authorizingCallbackHandler, final ByteBuffer buffer, final String remoteEndpointName, final boolean messageClose) {
             this.isInitial = isInitial;
             this.saslServer = saslServer;
             this.authorizingCallbackHandler = authorizingCallbackHandler;
             this.buffer = buffer;
             this.remoteEndpointName = remoteEndpointName;
+            this.messageClose = messageClose;
         }
 
         @Override
@@ -425,7 +433,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                     connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                 }
                                 final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                        connectionContext, connection, principals, userInfo, remoteEndpointName);
+                                        connectionContext, connection, principals, userInfo, remoteEndpointName, messageClose);
                                 connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                 connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                 return connectionHandler;
@@ -435,7 +443,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         server.tracef("Server sending authentication challenge");
                         sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
                         if (isInitial) {
-                            connection.setReadListener(new Authentication(saslServer, authorizingCallbackHandler, remoteEndpointName), false);
+                            connection.setReadListener(new Authentication(saslServer, authorizingCallbackHandler, remoteEndpointName, messageClose), false);
                         }
                     }
                 } catch (Throwable e) {
@@ -497,11 +505,13 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         private final SaslServer saslServer;
         private final AuthorizingCallbackHandler authorizingCallbackHandler;
         private final String remoteEndpointName;
+        private final boolean messageClose;
 
-        Authentication(final SaslServer saslServer, final AuthorizingCallbackHandler authorizingCallbackHandler, final String remoteEndpointName) {
+        Authentication(final SaslServer saslServer, final AuthorizingCallbackHandler authorizingCallbackHandler, final String remoteEndpointName, final boolean messageClose) {
             this.saslServer = saslServer;
             this.authorizingCallbackHandler = authorizingCallbackHandler;
             this.remoteEndpointName = remoteEndpointName;
+            this.messageClose = messageClose;
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
@@ -538,7 +548,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     case Protocol.AUTH_RESPONSE: {
                         server.tracef("Server received authentication response");
                         connection.getChannel().suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, authorizingCallbackHandler, buffer, remoteEndpointName));
+                        connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, authorizingCallbackHandler, buffer, remoteEndpointName, messageClose));
                         return;
                     }
                     case Protocol.CAPABILITIES: {

@@ -74,6 +74,8 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     private final String remoteEndpointName;
 
+    private final boolean messageClose;
+
     private volatile int channelState = 0;
 
     private static final AtomicIntegerFieldUpdater<RemoteConnectionHandler> channelStateUpdater = AtomicIntegerFieldUpdater.newUpdater(RemoteConnectionHandler.class, "channelState");
@@ -87,11 +89,12 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final Collection<Principal> principals, final UserInfo userInfo, final String remoteEndpointName) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final Collection<Principal> principals, final UserInfo userInfo, final String remoteEndpointName, final boolean messageClose) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
         this.remoteEndpointName = remoteEndpointName;
+        this.messageClose = messageClose;
 
         this.principals = Collections.unmodifiableCollection(principals);
         this.userInfo = userInfo;
@@ -409,6 +412,10 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         channels.put(channel);
     }
 
+    boolean isMessageClose() {
+        return messageClose;
+    }
+
     public String toString() {
         return String.format("Connection handler for %s", remoteConnection);
     }
@@ -426,6 +433,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             b.append("    ").append("Connection ").append(localAddress).append(" <-> ").append(peerAddress).append('\n');
             b.append("    ").append("Channel: ").append(channel).append('\n');
             b.append("    ").append("* Flags: ");
+            if (messageClose) b.append("supports-message-close ");
             if (receivedCloseReq) b.append("received-close-req ");
             if (sentCloseReq) b.append("set-close-req ");
             b.append('\n');

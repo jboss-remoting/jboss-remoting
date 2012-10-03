@@ -424,9 +424,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                     inboundMessage = new InboundMessage((short) id, this, inboundWindow);
                     final InboundMessage existing = inboundMessages.putIfAbsent(inboundMessage);
                     if (existing != null) {
-                        existing.cancel();
-                        asyncCloseMessage(id);
-                        return;
+                        existing.handleDuplicate();
                     }
                     synchronized(connection) {
                         if (nextReceiver != null) {
@@ -470,7 +468,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         boolean ok = false;
         try {
             ByteBuffer byteBuffer = pooled.getResource();
-            byteBuffer.put(Protocol.MESSAGE_ASYNC_CLOSE);
+            byteBuffer.put(Protocol.MESSAGE_CLOSE);
             byteBuffer.putInt(channelId);
             byteBuffer.putShort((short) id);
             byteBuffer.flip();
@@ -500,7 +498,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             // ignore; probably harmless...?
             return;
         }
-        outboundMessage.closeAsync();
+        outboundMessage.remoteClosed();
     }
 
     public Attachments getAttachments() {
@@ -529,6 +527,10 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     RemoteConnection getRemoteConnection() {
         return connection;
+    }
+
+    RemoteConnectionHandler getConnectionHandler() {
+        return connectionHandler;
     }
 
     int getChannelId() {
