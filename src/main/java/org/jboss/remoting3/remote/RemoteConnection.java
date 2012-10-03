@@ -234,18 +234,19 @@ final class RemoteConnection {
 
         public void shutdownWrites() {
             synchronized (queue) {
-                if (closed) return;
                 closed = true;
                 final ConnectedMessageChannel channel = getChannel();
                 try {
-                    if (queue.isEmpty()) {
-                        channel.shutdownWrites();
-                        if (! channel.flush()) {
-                            channel.resumeWrites();
-                            return;
-                        }
-                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
+                    if (! queue.isEmpty()) {
+                        channel.resumeWrites();
+                        return;
                     }
+                    channel.shutdownWrites();
+                    if (! channel.flush()) {
+                        channel.resumeWrites();
+                        return;
+                    }
+                    RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
                 } catch (IOException e) {
                     handleException(e, false);
                     channel.wakeupReads();

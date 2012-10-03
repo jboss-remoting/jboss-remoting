@@ -104,6 +104,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         closePendingChannels();
         closeAllChannels();
         remoteConnection.shutdownWrites();
+        IoUtils.safeShutdownReads(remoteConnection.getChannel());
         try {
             closeAction();
         } catch (IOException ignored) {
