@@ -76,7 +76,7 @@ final class OutboundMessage extends MessageOutputStream {
                     log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
                 }
                 assert Thread.holdsLock(pipeOutputStream);
-                final int msgSize = buffer.remaining();
+                final int msgSize = buffer.remaining() - 8;
                 window -= msgSize;
                 for (;;) {
                     if (closed) {
