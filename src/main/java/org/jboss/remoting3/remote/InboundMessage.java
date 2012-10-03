@@ -131,6 +131,7 @@ final class InboundMessage {
             ByteBuffer buffer = pooled.getResource();
             buffer.flip();
             Channels.sendBlocking(channel.getRemoteConnection().getChannel(), buffer);
+            Channels.flushBlocking(channel.getRemoteConnection().getChannel());
         } finally {
             pooled.free();
         }
