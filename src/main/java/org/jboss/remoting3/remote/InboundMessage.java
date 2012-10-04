@@ -181,6 +181,8 @@ final class InboundMessage {
             boolean cancelled = (flags & Protocol.MSG_FLAG_CANCELLED) != 0;
             if (cancelled) {
                 this.cancelled = true;
+                // make sure it goes through
+                inputStream.pushException(new MessageCancelledException());
             }
             if (streamClosed) {
                 // ignore, but keep the bits flowing
@@ -190,7 +192,7 @@ final class InboundMessage {
                     doAcknowledge(pooledBuffer);
                 }
                 pooledBuffer.free();
-            } else {
+            } else if (! cancelled) {
                 inputStream.push(pooledBuffer);
             }
             if (eof) {
