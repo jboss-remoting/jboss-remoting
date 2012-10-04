@@ -156,7 +156,8 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
     }
 
     public V removeKey(final int index) {
-        return doRemove(index, table);
+        final V result = doRemove(index, table);
+        return result == NONEXISTENT ? null : result;
     }
 
     @SuppressWarnings({ "unchecked" })
