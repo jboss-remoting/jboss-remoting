@@ -50,6 +50,7 @@ final class OutboundMessage extends MessageOutputStream {
     boolean closeReceived;
     boolean cancelled;
     boolean cancelSent;
+    boolean eofSent;
     final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
         public Pooled<ByteBuffer> getBuffer(boolean firstBuffer) throws IOException {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
@@ -112,6 +113,7 @@ final class OutboundMessage extends MessageOutputStream {
             }
             if (eof || sendCancel || intr) {
                 // EOF flag (sync close)
+                eofSent = true;
                 buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_EOF));
                 log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
                 if (! channel.getConnectionHandler().isMessageClose()) {
@@ -180,16 +182,24 @@ final class OutboundMessage extends MessageOutputStream {
 
     void remoteClosed() {
         synchronized (pipeOutputStream) {
+            closeReceived = true;
+            Pooled<ByteBuffer> pooled = pipeOutputStream.breakPipe();
+            if (pooled != null) {
+                pooled.free();
+            }
+            if (! eofSent && channel.getConnectionHandler().isMessageClose()) {
+                eofSent = true;
+                pooled = allocate(Protocol.MESSAGE_DATA);
+                final ByteBuffer buffer = pooled.getResource();
+                buffer.put(Protocol.MSG_FLAG_EOF); // flags
+                buffer.flip();
+                channel.getRemoteConnection().send(pooled);
+            }
             // safe to free now; remote side has cleared this ID for sure
             // if the peer is new, then they send this to free the message either way
             // if the peer is old, then they only send this if they're using the broken async close protocol, and they've already dropped the ID
             // either way if this was already freed then it's OK as this is idempotent
             channel.free(this);
-            Pooled<ByteBuffer> pooled = pipeOutputStream.breakPipe();
-            if (pooled != null) {
-                pooled.free();
-            }
-            closeReceived = true;
             // wake up waiters
             pipeOutputStream.notifyAll();
         }
@@ -238,6 +248,7 @@ final class OutboundMessage extends MessageOutputStream {
         if (cancelSent) b.append("cancel-sent ");
         if (closeReceived) b.append("close-received ");
         if (closeCalled) b.append("closed-called ");
+        if (eofSent) b.append("eof-sent ");
         b.append('\n');
     }
 }
