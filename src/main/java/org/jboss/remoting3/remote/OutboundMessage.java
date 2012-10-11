@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.NotOpenException;
+import org.xnio.BrokenPipeException;
 import org.xnio.IoUtils;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
@@ -77,6 +78,9 @@ final class OutboundMessage extends MessageOutputStream {
             if (cancelSent) {
                 throw new MessageCancelledException("Message was cancelled");
             }
+            if (closeReceived) {
+                throw new BrokenPipeException("Remote side closed the message stream");
+            }
             if (eof) {
                 closeCalled = true;
                 // make sure other waiters know about it
@@ -102,6 +106,9 @@ final class OutboundMessage extends MessageOutputStream {
                         cancelled = true;
                         intr = true;
                         break;
+                    }
+                    if (closeReceived) {
+                        throw new BrokenPipeException("Remote side closed the message stream");
                     }
                     if (closeCalled && ! eof) {
                         throw new NotOpenException("Message was closed asynchronously by another thread");
