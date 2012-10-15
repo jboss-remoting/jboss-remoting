@@ -104,6 +104,10 @@ final class RemoteConnection {
         if (log) {
             RemoteLogger.conn.connectionError(e);
         }
+        final XnioExecutor.Key key = writeListener.heartKey;
+        if (key != null) {
+            key.remove();
+        }
         IoUtils.safeClose(channel);
         final Result<ConnectionHandlerFactory> result = this.result;
         if (result != null) {
@@ -154,6 +158,7 @@ final class RemoteConnection {
 
     void handlePreAuthCloseRequest() {
         try {
+            terminateHeartbeat();
             channel.close();
         } catch (IOException e) {
             RemoteLogger.conn.debug("Error closing remoting channel", e);
@@ -179,6 +184,13 @@ final class RemoteConnection {
         Buffers.addRandom(buffer);
         buffer.flip();
         send(pooled);
+    }
+
+    void terminateHeartbeat() {
+        final XnioExecutor.Key key = writeListener.heartKey;
+        if (key != null) {
+            key.remove();
+        }
     }
 
     final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {
@@ -235,6 +247,7 @@ final class RemoteConnection {
         public void shutdownWrites() {
             synchronized (queue) {
                 closed = true;
+                terminateHeartbeat();
                 final ConnectedMessageChannel channel = getChannel();
                 try {
                     if (! queue.isEmpty()) {
