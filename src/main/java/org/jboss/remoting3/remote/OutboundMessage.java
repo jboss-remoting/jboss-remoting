@@ -52,6 +52,7 @@ final class OutboundMessage extends MessageOutputStream {
     boolean cancelled;
     boolean cancelSent;
     boolean eofSent;
+    boolean released;
     final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
         public Pooled<ByteBuffer> getBuffer(boolean firstBuffer) throws IOException {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
@@ -126,6 +127,10 @@ final class OutboundMessage extends MessageOutputStream {
                 if (! channel.getConnectionHandler().isMessageClose()) {
                     // free now, because we may never receive a close message
                     channel.free(OutboundMessage.this);
+                }
+                if (! released) {
+                    released = true;
+                    channel.closeOutboundMessage();
                 }
             }
             if (sendCancel || intr) {
@@ -207,6 +212,10 @@ final class OutboundMessage extends MessageOutputStream {
             // if the peer is old, then they only send this if they're using the broken async close protocol, and they've already dropped the ID
             // either way if this was already freed then it's OK as this is idempotent
             channel.free(this);
+            if (! released) {
+                released = true;
+                channel.closeOutboundMessage();
+            }
             // wake up waiters
             pipeOutputStream.notifyAll();
         }
