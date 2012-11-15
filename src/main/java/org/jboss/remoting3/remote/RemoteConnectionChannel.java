@@ -321,7 +321,6 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     void free(OutboundMessage outboundMessage) {
         if (outboundMessages.remove(outboundMessage)) {
             log.tracef("Removed %s", outboundMessage);
-            closeOutboundMessage();
         } else {
             log.tracef("Got redundant free for %s", outboundMessage);
         }
