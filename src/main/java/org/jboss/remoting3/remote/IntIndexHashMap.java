@@ -425,11 +425,11 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
 
         for (int i = 0; i < origCapacity; i ++) {
             // for each row, try to resize into two new rows
-            V[] origRow, newRow0 = null, newRow1 = null;
+            V[] origRow, newRow0, newRow1;
+            int count0 = 0, count1 = 0;
             do {
                 origRow = origArray.get(i);
                 if (origRow != null) {
-                    int count0 = 0, count1 = 0;
                     for (V item : origRow) {
                         if ((indexer.getKey(item) & origCapacity) == 0) {
                             count0++;
@@ -459,7 +459,7 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
                     }
                 }
             } while (! origArray.compareAndSet(i, origRow, IntIndexHashMap.<V>resized()));
-            sizeUpdater.getAndAdd(newTable, origRow.length);
+            sizeUpdater.getAndAdd(newTable, count0 + count1);
         }
 
         int size;
