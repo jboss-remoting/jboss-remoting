@@ -377,7 +377,7 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
             }
             if (oldRow != null) {
                 // Find the matching Item in the row.
-                V oldItem = null;
+                V oldItem;
                 for (int i = 0, length = oldRow.length; i < length; i++) {
                     if (hashCode == indexer.getKey(oldRow[i])) {
                         if (ifAbsent) {
@@ -401,11 +401,13 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
                 // Up the table size.
                 final int threshold = table.threshold;
                 int newSize = sizeUpdater.incrementAndGet(table);
-                // >= 0 is really a sign-bit check
-                while (newSize >= 0 && (newSize & 0x7fffffff) > threshold) {
+                // if the sign bit is set the value will be < 0 meaning if a resize is in progress this condition is false
+                while (newSize > threshold) {
                     if (sizeUpdater.compareAndSet(table, newSize, newSize | 0x80000000)) {
                         resize(table);
-                        return nonexistent();
+                        break;
+                    } else {
+                        newSize = table.size;
                     }
                 }
                 // Success.
