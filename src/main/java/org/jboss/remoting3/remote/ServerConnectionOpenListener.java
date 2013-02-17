@@ -246,34 +246,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     }
                     case Protocol.CAPABILITIES: {
                         server.trace("Server received capabilities request");
-                        while (receiveBuffer.hasRemaining()) {
-                            final byte type = receiveBuffer.get();
-                            final int len = receiveBuffer.get() & 0xff;
-                            final ByteBuffer data = Buffers.slice(receiveBuffer, len);
-                            switch (type) {
-                                case Protocol.CAP_VERSION: {
-                                    final byte version = data.get();
-                                    server.tracef("Server received capability: version %d", Integer.valueOf(version & 0xff));
-                                    this.version = min(Protocol.VERSION, version & 0xff);
-                                    break;
-                                }
-                                case Protocol.CAP_ENDPOINT_NAME: {
-                                    remoteEndpointName = Buffers.getModifiedUtf8(data);
-                                    server.tracef("Server received capability: remote endpoint name \"%s\"", remoteEndpointName);
-                                    break;
-                                }
-                                case Protocol.CAP_MESSAGE_CLOSE: {
-                                    messageClose = true;
-                                    server.tracef("Server received capability: message close protocol supported", remoteEndpointName);
-                                    break;
-                                }
-                                default: {
-                                    server.tracef("Server received unknown capability %02x", Integer.valueOf(type & 0xff));
-                                    // unknown, skip it for forward compatibility.
-                                    break;
-                                }
-                            }
-                        }
+                        handleClientCapabilities(receiveBuffer);
                         sendCapabilities();
                         return;
                     }
@@ -360,6 +333,38 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 pooledBuffer.free();
             }
         }
+
+        void handleClientCapabilities(final ByteBuffer receiveBuffer) {
+            while (receiveBuffer.hasRemaining()) {
+                final byte type = receiveBuffer.get();
+                final int len = receiveBuffer.get() & 0xff;
+                final ByteBuffer data = Buffers.slice(receiveBuffer, len);
+                switch (type) {
+                    case Protocol.CAP_VERSION: {
+                        final byte version = data.get();
+                        server.tracef("Server received capability: version %d", Integer.valueOf(version & 0xff));
+                        this.version = min(Protocol.VERSION, version & 0xff);
+                        break;
+                    }
+                    case Protocol.CAP_ENDPOINT_NAME: {
+                        remoteEndpointName = Buffers.getModifiedUtf8(data);
+                        server.tracef("Server received capability: remote endpoint name \"%s\"", remoteEndpointName);
+                        break;
+                    }
+                    case Protocol.CAP_MESSAGE_CLOSE: {
+                        messageClose = true;
+                        server.tracef("Server received capability: message close protocol supported", remoteEndpointName);
+                        break;
+                    }
+                    default: {
+                        server.tracef("Server received unknown capability %02x", Integer.valueOf(type & 0xff));
+                        // unknown, skip it for forward compatibility.
+                        break;
+                    }
+                }
+            }
+        }
+
 
         void sendCapabilities() {
             if (allowedMechanisms == null) {
@@ -556,6 +561,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         saslDispose(saslServer);
                         final Initial initial = new Initial();
                         connection.setReadListener(initial, true);
+                        initial.handleClientCapabilities(buffer);
                         initial.sendCapabilities();
                         return;
                     }
