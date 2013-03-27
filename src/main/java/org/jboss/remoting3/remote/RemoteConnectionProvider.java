@@ -65,6 +65,7 @@ import org.xnio.Result;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 import org.xnio.channels.AcceptingChannel;
+import org.xnio.channels.ConnectedSslStreamChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
 import org.xnio.ssl.XnioSsl;
@@ -72,7 +73,7 @@ import org.xnio.ssl.XnioSsl;
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-final class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionProvider> implements ConnectionProvider {
+class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionProvider> implements ConnectionProvider {
 
     private final ProviderInterface providerInterface = new ProviderInterface();
     private final Xnio xnio;
@@ -189,12 +190,12 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                     return IoUtils.nullCancellable();
                 }
             }
-            future = bindAddress == null ? xnioSsl.connectSsl(xnioWorker, (InetSocketAddress) destination, openListener, connectOptions) : xnioSsl.connectSsl(xnioWorker, (InetSocketAddress) bindAddress, (InetSocketAddress) destination, openListener, connectOptions);
+            future = createSslConnection(bindAddress, (InetSocketAddress) destination, connectOptions, xnioSsl, openListener);
         } else {
-            future = bindAddress == null ? xnioWorker.connectStream(destination, openListener, connectOptions) : xnioWorker.connectStream(bindAddress, destination, openListener, null, connectOptions);
+            future = createConnection(bindAddress, destination, connectOptions, openListener);
         }
         pendingInboundConnections.add(cancellableResult.getIoFuture());
-        // if future stream channel is canceled, we need to cancel the connection handler result 
+        // if future stream channel is canceled, we need to cancel the connection handler result
         cancellableResult.getIoFuture().addNotifier(new IoFuture.HandlingNotifier<ConnectionHandlerFactory, IoFuture<ConnectionHandlerFactory>>() {
             public void handleCancelled(IoFuture<ConnectionHandlerFactory> attachment) {
                 if (isOpen()) {
@@ -216,6 +217,14 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             }
         }, cancellableResult.getIoFuture());
         return cancellableResult.getIoFuture();
+    }
+
+    protected IoFuture<ConnectedStreamChannel> createConnection(final SocketAddress bindAddress, final SocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
+        return bindAddress == null ? xnioWorker.connectStream(destination, openListener, connectOptions) : xnioWorker.connectStream(bindAddress, destination, openListener, null, connectOptions);
+    }
+
+    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final SocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final XnioSsl xnioSsl, final ChannelListener<ConnectedStreamChannel> openListener) {
+        return bindAddress == null ? xnioSsl.connectSsl(xnioWorker, (InetSocketAddress) destination, openListener, connectOptions) : xnioSsl.connectSsl(xnioWorker, (InetSocketAddress) bindAddress, (InetSocketAddress) destination, openListener, connectOptions);
     }
 
     public Object getProviderInterface() {
@@ -315,5 +324,21 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
 
     public String toString() {
         return String.format("Remoting remote connection provider %x for %s", Integer.valueOf(hashCode()), connectionProviderContext.getEndpoint());
+    }
+
+    protected XnioWorker getXnioWorker() {
+        return xnioWorker;
+    }
+
+    public Pool<ByteBuffer> getFramingBufferPool() {
+        return framingBufferPool;
+    }
+
+    public ConnectionProviderContext getConnectionProviderContext() {
+        return connectionProviderContext;
+    }
+
+    public Pool<ByteBuffer> getMessageBufferPool() {
+        return messageBufferPool;
     }
 }
