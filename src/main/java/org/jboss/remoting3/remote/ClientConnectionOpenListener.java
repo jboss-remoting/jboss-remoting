@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3.Version;
 import org.jboss.remoting3.security.InetAddressPrincipal;
 import org.jboss.remoting3.security.SimpleUserInfo;
 import org.jboss.remoting3.security.UserPrincipal;
@@ -115,6 +116,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 ProtocolUtils.writeString(sendBuffer, Protocol.CAP_ENDPOINT_NAME, localEndpointName);
             }
             ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
+            ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.VERSION);
             sendBuffer.flip();
             connection.setReadListener(new Capabilities(remoteServerName), true);
             connection.send(pooledSendBuffer);
