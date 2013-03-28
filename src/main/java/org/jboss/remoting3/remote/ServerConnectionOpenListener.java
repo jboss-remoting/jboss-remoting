@@ -53,6 +53,7 @@ import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslServerFactory;
 
+import org.jboss.remoting3.Version;
 import org.jboss.remoting3.security.AuthorizingCallbackHandler;
 import org.jboss.remoting3.security.InetAddressPrincipal;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
@@ -389,6 +390,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     ProtocolUtils.writeString(sendBuffer, Protocol.CAP_SASL_MECH, mechName);
                 }
                 ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
+                ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.VERSION);
                 sendBuffer.flip();
                 connection.send(pooled);
                 ok = true;
