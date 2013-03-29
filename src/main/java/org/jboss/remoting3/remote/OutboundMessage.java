@@ -89,7 +89,8 @@ final class OutboundMessage extends MessageOutputStream {
             }
             final ByteBuffer buffer = pooledBuffer.getResource();
             final ConnectedMessageChannel messageChannel = channel.getRemoteConnection().getChannel();
-            final int msgSize = buffer.remaining() - 8;
+            final boolean badMsgSize = channel.getConnectionHandler().isFaultyMessageSize();
+            final int msgSize = badMsgSize ? buffer.remaining() : buffer.remaining() - 8;
             boolean sendCancel = cancelled && ! cancelSent;
             boolean intr = false;
             if (msgSize > 0 && ! sendCancel) {

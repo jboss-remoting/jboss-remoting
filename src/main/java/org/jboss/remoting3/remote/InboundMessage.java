@@ -104,7 +104,9 @@ final class InboundMessage {
             // no ack needed; also a best-effort to work around broken peers
             return;
         }
-        int consumed = acked.getResource().position() - 8; // position minus header length (not including framing size)
+        final boolean badMsgSize = channel.getConnectionHandler().isFaultyMessageSize();
+        int consumed = acked.getResource().position();
+        if (! badMsgSize) consumed -= 8; // position minus header length (not including framing size)
         inboundWindow += consumed;
         Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_WINDOW_OPEN);
         ByteBuffer buffer = pooled.getResource();

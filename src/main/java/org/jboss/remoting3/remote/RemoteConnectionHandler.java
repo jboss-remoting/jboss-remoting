@@ -74,7 +74,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     private final String remoteEndpointName;
 
-    private final boolean messageClose;
+    private final int behavior;
 
     private volatile int channelState = 0;
 
@@ -89,12 +89,12 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final Collection<Principal> principals, final UserInfo userInfo, final String remoteEndpointName, final boolean messageClose) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final Collection<Principal> principals, final UserInfo userInfo, final String remoteEndpointName, final int behavior) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
         this.remoteEndpointName = remoteEndpointName;
-        this.messageClose = messageClose;
+        this.behavior = behavior;
 
         this.principals = Collections.unmodifiableCollection(principals);
         this.userInfo = userInfo;
@@ -413,7 +413,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     boolean isMessageClose() {
-        return messageClose;
+        return Bits.allAreSet(behavior, Protocol.BH_MESSAGE_CLOSE);
+    }
+
+    boolean isFaultyMessageSize() {
+        return Bits.allAreSet(behavior, Protocol.BH_FAULTY_MSG_SIZE);
     }
 
     public String toString() {
@@ -433,7 +437,8 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             b.append("    ").append("Connection ").append(localAddress).append(" <-> ").append(peerAddress).append('\n');
             b.append("    ").append("Channel: ").append(channel).append('\n');
             b.append("    ").append("* Flags: ");
-            if (messageClose) b.append("supports-message-close ");
+            if (Bits.allAreSet(behavior, Protocol.BH_MESSAGE_CLOSE)) b.append("supports-message-close ");
+            if (Bits.allAreSet(behavior, Protocol.BH_FAULTY_MSG_SIZE)) b.append("remote-faulty-message-size ");
             if (receivedCloseReq) b.append("received-close-req ");
             if (sentCloseReq) b.append("set-close-req ");
             b.append('\n');
