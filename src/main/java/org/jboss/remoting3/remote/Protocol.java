@@ -29,6 +29,30 @@ import java.nio.charset.Charset;
  */
 final class Protocol {
 
+    // Behavior flags
+
+    /**
+     * Message close protocol flag.  If {@code true}, the remote side knows how to participate in proper async
+     * close protocol; if {@code false}, just wing it and hope for the best.
+     */
+    static final int BH_MESSAGE_CLOSE = 1 << 0;
+
+    /**
+     * Bad message size flag.  If {@code true}, we know that the remote side is going to do the following:
+     *
+     * 1) Open the internal inbound window size by 8 bytes too many per acknowledged incoming message... and kill the
+     *    connection if more than 2**29 messages are received due to the window "flipping" to negative values
+     * 2) Send an ack/window open which is sized 8 bytes too large per incoming message
+     * 3) Shrink its internal outbound window size by 8 bytes too many per outgoing message
+     *
+     * To compensate we must:
+     *
+     * 1) Avoid "crashing" the window which will gradually open too much over time
+     * 2) Shrink our internal outbound window counter by an extra 8 bytes per outbound message
+     * 3) Send message ACKs which are oversized by an extra 8 bytes per inbound message to prevent the window from sliding shut over time
+     */
+    static final int BH_FAULTY_MSG_SIZE = 1 << 1;
+
     /**
      * The highest-supported version of the remote protocol supported by this implementation.
      */
