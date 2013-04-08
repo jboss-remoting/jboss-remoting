@@ -98,4 +98,16 @@ public final class RemotingOptions {
      * for this amount of time, a ping message will be sent, which will trigger a corresponding reply message.
      */
     public static final Option<Integer> HEARTBEAT_INTERVAL = Option.simple(RemotingOptions.class, "HEARTBEAT_INTERVAL", Integer.class);
+
+    /**
+     * The maximum inbound message size to be allowed.  Messages exceeding this size will cause an exception to be thrown
+     * on the reading side as well as the writing side.
+     */
+    public static final Option<Long> MAX_INBOUND_MESSAGE_SIZE = Option.simple(RemotingOptions.class, "MAX_INBOUND_MESSAGE_SIZE", Long.class);
+
+    /**
+     * The maximum outbound message size to send.  No messages larger than this well be transmitted; attempting to do
+     * so will cause an exception on the writing side.
+     */
+    public static final Option<Long> MAX_OUTBOUND_MESSAGE_SIZE = Option.simple(RemotingOptions.class, "MAX_OUTBOUND_MESSAGE_SIZE", Long.class);
 }

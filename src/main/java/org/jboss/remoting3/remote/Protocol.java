@@ -120,24 +120,18 @@ final class Protocol {
     /**
      * byte 0: CHANNEL_OPEN_REQUEST
      * byte 1..4: new channel ID (MSb = 1)
-     * byte n+1..m: requested parameters
-     *    00 = end of parameters
-     *    01 = service type (arg = UTF8) (required)
-     *    80 = max inbound (responder->requester) message window size limit (arg = uint31)
-     *    81 = max inbound (responder->requester) message count limit (arg = uint16)
-     *    82 = max outbound (requester->responder) requested message window size (arg = uint31)
-     *    83 = max outbound (requester->responder) requested message count (arg = uint16)
+     * byte n+1..m: requested parameters (see Channel Open Parameters below)
+     *    {@link #O_SERVICE_NAME} is required
+     *    inbound = responder->requester
+     *    outbound = requester->responder
      */
     static final byte CHANNEL_OPEN_REQUEST = 0x10;
     /**
      * byte 0: CHANNEL_OPEN_ACK
      * byte 1..4: channel ID (MSb = 0)
-     * byte 5..n: agreed parameters
-     *    00 = end of parameters
-     *    80 = max outbound (requester->responder) message window size limit (arg = uint31)
-     *    81 = max outbound (requester->responder) message count limit (arg = uint16)
-     *    82 = max inbound (responder->requester) requested message window size (arg = uint31)
-     *    83 = max inbound (responder->requester) requested message count (arg = uint16)
+     * byte 5..n: agreed parameters (see Channel Open Parameters below)
+     *    inbound = responder->requester
+     *    outbound = requester->responder
      */
     static final byte CHANNEL_OPEN_ACK = 0x11;
     /**
@@ -220,6 +214,43 @@ final class Protocol {
      */
     static final byte CONNECTION_CLOSE = (byte) 0xFF;
 
+    // Channel open parameters
+
+    /**
+     * End of parameters; no content.
+     */
+    static final int O_END = 0;
+    /**
+     * Service name; mandatory utf8 content.
+     */
+    static final int O_SERVICE_NAME = 1;
+    /**
+     * Max inbound message window size; mandatory uint31 content.
+     * On channel open requests, this is inbound from the requester (client) viewpoint.
+     * On channel open replies, this is inbound from the requester (client) viewpoint.
+     */
+    static final int O_MAX_INBOUND_MSG_WINDOW_SIZE = 0x80;
+    /**
+     * Max requester-bound message count; mandatory uint16 content.
+     */
+    static final int O_MAX_INBOUND_MSG_COUNT = 0x81;
+    /**
+     * Max responder-bound message window size; mandatory uint31 content.
+     */
+    static final int O_MAX_OUTBOUND_MSG_WINDOW_SIZE = 0x82;
+    /**
+     * Max responder-bound message count; mandatory uint16 content.
+     */
+    static final int O_MAX_OUTBOUND_MSG_COUNT = 0x83;
+    /**
+     * Max requester-bound message size; mandatory uint63 content.
+     */
+    static final int O_MAX_INBOUND_MSG_SIZE = 0x84;
+    /**
+     * Max responder-bound message size; mandatory uint63 content.
+     */
+    static final int O_MAX_OUTBOUND_MSG_SIZE = 0x85;
+
     // Capabilities
 
     static final byte CAP_VERSION = 0;   // sent by client & server - max version supported (must be first)
@@ -229,13 +260,21 @@ final class Protocol {
     static final byte CAP_MESSAGE_CLOSE = 4; // sent by client & server - if present, use message close protocol
     static final byte CAP_VERSION_STRING = 5; // sent by client & server
 
+    // Greeting messages
+
     static final byte GRT_SERVER_NAME = 0; // greeting server name
 
+    // Our charset
+
     static final Charset UTF_8 = Charset.forName("UTF8");
+
+    // Message flags
 
     static final byte MSG_FLAG_EOF = 0x01;
     static final byte MSG_FLAG_NEW = 0x02;
     static final byte MSG_FLAG_CANCELLED = 0x04;
+
+    // Defaults
 
     static final int DEFAULT_WINDOW_SIZE = 0x4000;
     static final int DEFAULT_MESSAGE_COUNT = 80;

@@ -75,6 +75,8 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private final Queue<InboundMessage> inboundMessageQueue = new ArrayDeque<InboundMessage>();
     private final int maxOutboundMessages;
     private final int maxInboundMessages;
+    private final long maxOutboundMessageSize;
+    private final long maxInboundMessageSize;
     private volatile int channelState = 0;
 
     private static final AtomicIntegerFieldUpdater<RemoteConnectionChannel> channelStateUpdater = AtomicIntegerFieldUpdater.newUpdater(RemoteConnectionChannel.class, "channelState");
@@ -88,8 +90,10 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private static final int INBOUND_MESSAGES_MASK = ((1 << 30) - 1) & ~OUTBOUND_MESSAGES_MASK;
     private static final int ONE_INBOUND_MESSAGE = (1 << 15);
 
-    RemoteConnectionChannel(final RemoteConnectionHandler connectionHandler, final RemoteConnection connection, final int channelId, final int outboundWindow, final int inboundWindow, final int maxOutboundMessages, final int maxInboundMessages) {
+    RemoteConnectionChannel(final RemoteConnectionHandler connectionHandler, final RemoteConnection connection, final int channelId, final int outboundWindow, final int inboundWindow, final int maxOutboundMessages, final int maxInboundMessages, final long maxOutboundMessageSize, final long maxInboundMessageSize) {
         super(connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor(), true);
+        this.maxOutboundMessageSize = maxOutboundMessageSize;
+        this.maxInboundMessageSize = maxInboundMessageSize;
         connectionHandlerContext = connectionHandler.getConnectionContext();
         this.connectionHandler = connectionHandler;
         this.connection = connection;
@@ -386,6 +390,10 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private static Set<Option<?>> SUPPORTED_OPTIONS = Option.setBuilder()
             .add(RemotingOptions.MAX_INBOUND_MESSAGES)
             .add(RemotingOptions.MAX_OUTBOUND_MESSAGES)
+            .add(RemotingOptions.TRANSMIT_WINDOW_SIZE)
+            .add(RemotingOptions.RECEIVE_WINDOW_SIZE)
+            .add(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE)
+            .add(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE)
             .create();
 
     public boolean supportsOption(final Option<?> option) {
@@ -397,6 +405,14 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             return option.cast(maxInboundMessages);
         } else if (option == RemotingOptions.MAX_OUTBOUND_MESSAGES) {
             return option.cast(maxOutboundMessages);
+        } else if (option == RemotingOptions.RECEIVE_WINDOW_SIZE) {
+            return option.cast(inboundWindow);
+        } else if (option == RemotingOptions.TRANSMIT_WINDOW_SIZE) {
+            return option.cast(outboundWindow);
+        } else if (option == RemotingOptions.MAX_INBOUND_MESSAGE_SIZE) {
+            return option.cast(maxInboundMessageSize);
+        } else if (option == RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE) {
+            return option.cast(maxOutboundMessageSize);
         } else {
             return null;
         }

@@ -109,36 +109,45 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                             case Protocol.CHANNEL_OPEN_REQUEST: {
                                 log.trace("Received channel open request");
                                 int channelId = buffer.getInt() ^ 0x80000000;
-                                // todo: get this from the service registration options
                                 int inboundWindow = Integer.MAX_VALUE;
                                 int inboundMessages = 0xffff;
                                 int outboundWindow = Integer.MAX_VALUE;
                                 int outboundMessages = 0xffff;
+                                long inboundMessageSize = Long.MAX_VALUE;
+                                long outboundMessageSize = Long.MAX_VALUE;
                                 // parse out request
                                 int b;
                                 String serviceType = null;
                                 OUT: for (;;) {
                                     b = buffer.get() & 0xff;
                                     switch (b) {
-                                        case 0: break OUT;
-                                        case 0x01: {
+                                        case Protocol.O_END: break OUT;
+                                        case Protocol.O_SERVICE_NAME: {
                                             serviceType = ProtocolUtils.readString(buffer);
                                             break;
                                         }
-                                        case 0x80: {
+                                        case Protocol.O_MAX_INBOUND_MSG_WINDOW_SIZE: {
                                             outboundWindow = Math.min(outboundWindow, ProtocolUtils.readInt(buffer));
                                             break;
                                         }
-                                        case 0x81: {
+                                        case Protocol.O_MAX_INBOUND_MSG_COUNT: {
                                             outboundMessages = Math.min(outboundMessages, ProtocolUtils.readUnsignedShort(buffer));
                                             break;
                                         }
-                                        case 0x82: {
+                                        case Protocol.O_MAX_OUTBOUND_MSG_WINDOW_SIZE: {
                                             inboundWindow = Math.min(inboundWindow, ProtocolUtils.readInt(buffer));
                                             break;
                                         }
-                                        case 0x83: {
+                                        case Protocol.O_MAX_OUTBOUND_MSG_COUNT: {
                                             inboundMessages = Math.min(inboundMessages, ProtocolUtils.readUnsignedShort(buffer));
+                                            break;
+                                        }
+                                        case Protocol.O_MAX_INBOUND_MSG_SIZE: {
+                                            outboundMessageSize = Math.min(outboundMessageSize, ProtocolUtils.readLong(buffer));
+                                            break;
+                                        }
+                                        case Protocol.O_MAX_OUTBOUND_MSG_SIZE: {
+                                            inboundMessageSize = Math.min(inboundMessageSize, ProtocolUtils.readLong(buffer));
                                             break;
                                         }
                                         default: {
@@ -169,6 +178,8 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 outboundMessages = Math.min(outboundMessages, serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
                                 inboundWindow = Math.min(inboundWindow, serviceOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
                                 inboundMessages = Math.min(inboundMessages, serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
+                                outboundMessageSize = Math.min(outboundMessageSize, serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, Long.MAX_VALUE));
+                                inboundMessageSize = Math.min(inboundMessageSize, serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, Long.MAX_VALUE));
 
                                 final OpenListener openListener = registeredService.getOpenListener();
                                 if (! handler.handleInboundChannelOpen()) {
@@ -179,7 +190,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 boolean ok1 = false;
                                 try {
                                     // construct the channel
-                                    RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessages, inboundMessages);
+                                    RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessages, inboundMessages, outboundMessageSize, inboundMessageSize);
                                     RemoteConnectionChannel existing = handler.addChannel(connectionChannel);
                                     if (existing != null) {
                                         log.tracef("Encountered open request for duplicate %s", existing);
@@ -201,8 +212,12 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                         replyBuffer.clear();
                                         replyBuffer.put(Protocol.CHANNEL_OPEN_ACK);
                                         replyBuffer.putInt(channelId);
-                                        ProtocolUtils.writeInt(replyBuffer, 0x80, outboundWindow);
-                                        ProtocolUtils.writeShort(replyBuffer, 0x81, outboundMessages);
+                                        ProtocolUtils.writeInt(replyBuffer, Protocol.O_MAX_INBOUND_MSG_WINDOW_SIZE, inboundWindow);
+                                        ProtocolUtils.writeShort(replyBuffer, Protocol.O_MAX_INBOUND_MSG_COUNT, inboundMessages);
+                                        ProtocolUtils.writeLong(replyBuffer, Protocol.O_MAX_INBOUND_MSG_SIZE, inboundMessageSize);
+                                        ProtocolUtils.writeInt(replyBuffer, Protocol.O_MAX_OUTBOUND_MSG_WINDOW_SIZE, outboundWindow);
+                                        ProtocolUtils.writeShort(replyBuffer, Protocol.O_MAX_OUTBOUND_MSG_COUNT, outboundWindow);
+                                        ProtocolUtils.writeLong(replyBuffer, Protocol.O_MAX_OUTBOUND_MSG_COUNT, outboundMessageSize);
                                         replyBuffer.put((byte) 0);
                                         replyBuffer.flip();
                                         ok2 = true;
@@ -295,25 +310,35 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 int inboundWindow = pendingChannel.getInboundWindowSize();
                                 int outboundMessageCount = pendingChannel.getOutboundMessageCount();
                                 int inboundMessageCount = pendingChannel.getInboundMessageCount();
+                                long outboundMessageSize = pendingChannel.getOutboundMessageSize();
+                                long inboundMessageSize = pendingChannel.getInboundMessageSize();
                                 OUT: for (;;) {
                                     switch (buffer.get() & 0xff) {
-                                        case 0x80: {
+                                        case Protocol.O_MAX_INBOUND_MSG_WINDOW_SIZE: {
                                             outboundWindow = Math.min(outboundWindow, ProtocolUtils.readInt(buffer));
                                             break;
                                         }
-                                        case 0x81: {
+                                        case Protocol.O_MAX_INBOUND_MSG_COUNT: {
                                             outboundMessageCount = Math.min(outboundMessageCount, ProtocolUtils.readUnsignedShort(buffer));
                                             break;
                                         }
-                                        case 0x82: {
+                                        case Protocol.O_MAX_OUTBOUND_MSG_WINDOW_SIZE: {
                                             inboundWindow = Math.min(inboundWindow, ProtocolUtils.readInt(buffer));
                                             break;
                                         }
-                                        case 0x83: {
+                                        case Protocol.O_MAX_OUTBOUND_MSG_COUNT: {
                                             inboundMessageCount = Math.min(inboundMessageCount, ProtocolUtils.readUnsignedShort(buffer));
                                             break;
                                         }
-                                        case 0x00: {
+                                        case Protocol.O_MAX_INBOUND_MSG_SIZE: {
+                                            outboundMessageSize = Math.min(outboundMessageSize, ProtocolUtils.readLong(buffer));
+                                            break;
+                                        }
+                                        case Protocol.O_MAX_OUTBOUND_MSG_SIZE: {
+                                            inboundMessageSize = Math.min(inboundMessageSize, ProtocolUtils.readLong(buffer));
+                                            break;
+                                        }
+                                        case Protocol.O_END: {
                                             break OUT;
                                         }
                                         default: {
@@ -323,7 +348,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                         }
                                     }
                                 }
-                                RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount);
+                                RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount, outboundMessageSize, inboundMessageSize);
                                 handler.putChannel(newChannel);
                                 pendingChannel.getResult().setResult(newChannel);
                                 break;

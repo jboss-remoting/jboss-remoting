@@ -73,6 +73,12 @@ final class ProtocolUtils {
         buffer.putInt(value);
     }
 
+    static void writeLong(ByteBuffer buffer, int type, long value) {
+        buffer.put((byte) type);
+        buffer.put((byte) 8);
+        buffer.putLong(value);
+    }
+
     static void writeBytes(ByteBuffer buffer, final int type, final byte[] value) {
         buffer.put((byte) type);
         buffer.put((byte) value.length);
@@ -102,7 +108,7 @@ final class ProtocolUtils {
         }
     }
 
-    public static int readUnsignedShort(final ByteBuffer buffer) {
+    static int readUnsignedShort(final ByteBuffer buffer) {
         int length = buffer.get() & 0xff;
         switch (length) {
             case 0: return 0;
@@ -112,4 +118,22 @@ final class ProtocolUtils {
                 return buffer.getShort() & 0xffff;
         }
     }
+
+    static long readLong(final ByteBuffer buffer) {
+        int length = buffer.get() & 0xff;
+        switch (length) {
+            case 0: return 0;
+            case 1: return buffer.get() & 0xffL;
+            case 2: return buffer.getShort() & 0xffffL;
+            case 3: return ((buffer.get() & 0xffL) << 16) + (buffer.getShort() & 0xffffL);
+            case 4: return buffer.getInt() & 0xffffffffL;
+            case 5: return ((buffer.get() & 0xffL) << 32) + (buffer.getInt() & 0xffffffffL);
+            case 6: return ((buffer.getShort() & 0xffffL) << 32) + (buffer.getInt() & 0xffffffffL);
+            case 7: return ((buffer.get() & 0xffL) << 48) + ((buffer.getShort() & 0xffffL) << 32) + (buffer.getInt() & 0xffffffffL);
+            case 8: return buffer.getLong();
+            default: Buffers.skip(buffer, length - 8);
+                return buffer.getLong();
+        }
+    }
+
 }

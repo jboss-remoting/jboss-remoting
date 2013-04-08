@@ -309,6 +309,9 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         // Restrict the inbound value to defaults if none was specified.
         final int inboundWindowSize = optionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, connectionOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
         final int inboundMessageCount = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
+        // Request the maximum message size to defaults if none was specified.
+        final long outboundMessageSize = optionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, connectionOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, Long.MAX_VALUE));
+        final long inboundMessageSize = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, Long.MAX_VALUE));
         final IntIndexMap<PendingChannel> pendingChannels = this.pendingChannels;
         try {
             handleOutboundChannelOpen();
@@ -322,7 +325,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             for (;;) {
                 id = random.nextInt() | 0x80000000;
                 if (! pendingChannels.containsKey(id)) {
-                    PendingChannel pendingChannel = new PendingChannel(id, outboundWindowSize, inboundWindowSize, outboundMessageCount, inboundMessageCount, result);
+                    PendingChannel pendingChannel = new PendingChannel(id, outboundWindowSize, inboundWindowSize, outboundMessageCount, inboundMessageCount, outboundMessageSize, inboundMessageSize, result);
                     if (pendingChannels.putIfAbsent(pendingChannel) == null) {
                         Pooled<ByteBuffer> pooled = remoteConnection.allocate();
                         try {
@@ -330,11 +333,13 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                             ConnectedMessageChannel channel = remoteConnection.getChannel();
                             buffer.put(Protocol.CHANNEL_OPEN_REQUEST);
                             buffer.putInt(id);
-                            ProtocolUtils.writeBytes(buffer, 1, serviceTypeBytes);
-                            ProtocolUtils.writeInt(buffer, 0x80, inboundWindowSize);
-                            ProtocolUtils.writeShort(buffer, 0x81, inboundMessageCount);
-                            ProtocolUtils.writeInt(buffer, 0x82, outboundWindowSize);
-                            ProtocolUtils.writeShort(buffer, 0x83, outboundMessageCount);
+                            ProtocolUtils.writeBytes(buffer, Protocol.O_SERVICE_NAME, serviceTypeBytes);
+                            ProtocolUtils.writeInt(buffer, Protocol.O_MAX_INBOUND_MSG_WINDOW_SIZE, inboundWindowSize);
+                            ProtocolUtils.writeShort(buffer, Protocol.O_MAX_INBOUND_MSG_COUNT, inboundMessageCount);
+                            ProtocolUtils.writeInt(buffer, Protocol.O_MAX_OUTBOUND_MSG_WINDOW_SIZE, outboundWindowSize);
+                            ProtocolUtils.writeShort(buffer, Protocol.O_MAX_OUTBOUND_MSG_COUNT, outboundMessageCount);
+                            ProtocolUtils.writeLong(buffer, Protocol.O_MAX_INBOUND_MSG_SIZE, inboundMessageSize);
+                            ProtocolUtils.writeLong(buffer, Protocol.O_MAX_OUTBOUND_MSG_SIZE, outboundMessageSize);
                             buffer.put((byte) 0);
                             buffer.flip();
                             try {
