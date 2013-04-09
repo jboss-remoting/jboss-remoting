@@ -22,36 +22,75 @@
 
 package org.jboss.remoting3;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.Enumeration;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
+
 /**
  * The version of Remoting.
  *
  * @apiviz.exclude
  */
+@SuppressWarnings("deprecation")
 public final class Version {
 
     private Version() {
     }
 
+    private static final String JAR_NAME;
     /**
-     * The version.
-     */
-    public static final String VERSION = getVersionString();
-
-    /**
-     * Get the version string.
+     * The version string.
      *
-     * @return the version string
+     * @deprecated Use {@link #getVersionString()} instead.
      */
-    static String getVersionString() {
-        return "TRUNK SNAPSHOT";
+    @Deprecated
+    public static final String VERSION;
+
+    static {
+        final Enumeration<URL> resources;
+        String jarName = "(unknown)";
+        String versionString = "(unknown)";
+        try {
+            final ClassLoader classLoader = Version.class.getClassLoader();
+            resources = classLoader == null ? ClassLoader.getSystemResources("META-INF/MANIFEST.MF") : classLoader.getResources("META-INF/MANIFEST.MF");
+            while (resources.hasMoreElements()) {
+                final URL url = resources.nextElement();
+                final InputStream stream = url.openStream();
+                if (stream != null) try {
+                    final Manifest manifest = new Manifest(stream);
+                    final Attributes mainAttributes = manifest.getMainAttributes();
+                    if (mainAttributes != null && "JBoss Remoting 3".equals(mainAttributes.getValue("Specification-Title"))) {
+                        jarName = mainAttributes.getValue("Jar-Name");
+                        versionString = mainAttributes.getValue("Jar-Version");
+                    }
+                } finally {
+                    try { stream.close(); } catch (Throwable ignored) {}
+                }
+            }
+        } catch (IOException ignored) {
+        }
+        JAR_NAME = jarName;
+        VERSION = versionString;
     }
 
     /**
-     * Print the version to {@code System.out}.
+     * Get the name of the JBoss Modules JAR.
      *
-     * @param args ignored
+     * @return the name
      */
-    public static void main(String[] args) {
-        System.out.print(VERSION);
+    public static String getJarName() {
+        return JAR_NAME;
+    }
+
+    /**
+     * Get the version string of JBoss Modules.
+     *
+     * @return the version string
+     */
+    public static String getVersionString() {
+        return VERSION;
     }
 }

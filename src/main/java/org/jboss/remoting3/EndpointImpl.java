@@ -67,7 +67,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     static {
         // Print Remoting "greeting" message
-        Logger.getLogger("org.jboss.remoting").infof("JBoss Remoting version %s", Version.VERSION);
+        Logger.getLogger("org.jboss.remoting").infof("JBoss Remoting version %s", Version.getVersionString());
     }
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.endpoint");

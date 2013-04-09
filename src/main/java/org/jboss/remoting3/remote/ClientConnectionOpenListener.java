@@ -72,10 +72,8 @@ import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslClientFactory;
 import javax.security.sasl.SaslException;
-import javax.security.sasl.SaslServer;
 
 import static org.jboss.remoting3.remote.RemoteLogger.client;
-import static org.jboss.remoting3.remote.RemoteLogger.server;
 import static org.xnio.sasl.SaslUtils.EMPTY_BYTES;
 
 final class ClientConnectionOpenListener implements ChannelListener<ConnectedMessageChannel> {
@@ -118,7 +116,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 ProtocolUtils.writeString(sendBuffer, Protocol.CAP_ENDPOINT_NAME, localEndpointName);
             }
             ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
-            ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.VERSION);
+            ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.getVersionString());
             sendBuffer.flip();
             connection.setReadListener(new Capabilities(remoteServerName), true);
             connection.send(pooledSendBuffer);

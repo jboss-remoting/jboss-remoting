@@ -400,7 +400,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     ProtocolUtils.writeString(sendBuffer, Protocol.CAP_SASL_MECH, mechName);
                 }
                 ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
-                ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.VERSION);
+                ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.getVersionString());
                 sendBuffer.flip();
                 connection.send(pooled);
                 ok = true;
