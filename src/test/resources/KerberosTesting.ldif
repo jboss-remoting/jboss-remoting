@@ -26,7 +26,7 @@ cn: Remoting
 sn: Service
 uid: Remoting
 userPassword: servicepwd
-krb5PrincipalName: remoting/localhost@JBOSS.ORG
+krb5PrincipalName: remoting/test_server@JBOSS.ORG
 krb5KeyVersionNumber: 0
 
 dn: uid=jduke,ou=Users,dc=jboss,dc=org
