@@ -276,7 +276,7 @@ final class Protocol {
 
     // Defaults
 
-    static final int DEFAULT_WINDOW_SIZE = 0x4000;
+    static final int DEFAULT_WINDOW_SIZE = 0x20000;
     static final int DEFAULT_MESSAGE_COUNT = 80;
     static final int DEFAULT_CHANNEL_COUNT = 24;
 
