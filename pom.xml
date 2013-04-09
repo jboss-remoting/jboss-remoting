@@ -29,7 +29,7 @@
     <name>JBoss Remoting 3</name>
     <description>JBoss Remoting 3</description>
 
-    <groupId>org.jboss.remoting3</groupId>
+    <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting</artifactId>
     <version>3.3.0.Beta1</version>
 
