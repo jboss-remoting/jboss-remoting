@@ -338,8 +338,12 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                             ProtocolUtils.writeShort(buffer, Protocol.O_MAX_INBOUND_MSG_COUNT, inboundMessageCount);
                             ProtocolUtils.writeInt(buffer, Protocol.O_MAX_OUTBOUND_MSG_WINDOW_SIZE, outboundWindowSize);
                             ProtocolUtils.writeShort(buffer, Protocol.O_MAX_OUTBOUND_MSG_COUNT, outboundMessageCount);
-                            ProtocolUtils.writeLong(buffer, Protocol.O_MAX_INBOUND_MSG_SIZE, inboundMessageSize);
-                            ProtocolUtils.writeLong(buffer, Protocol.O_MAX_OUTBOUND_MSG_SIZE, outboundMessageSize);
+                            if (inboundMessageSize != Long.MAX_VALUE) {
+                                ProtocolUtils.writeLong(buffer, Protocol.O_MAX_INBOUND_MSG_SIZE, inboundMessageSize);
+                            }
+                            if (outboundMessageSize != Long.MAX_VALUE) {
+                                ProtocolUtils.writeLong(buffer, Protocol.O_MAX_OUTBOUND_MSG_SIZE, outboundMessageSize);
+                            }
                             buffer.put((byte) 0);
                             buffer.flip();
                             try {

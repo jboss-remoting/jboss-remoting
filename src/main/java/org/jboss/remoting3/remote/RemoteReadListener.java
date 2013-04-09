@@ -214,10 +214,14 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                         replyBuffer.putInt(channelId);
                                         ProtocolUtils.writeInt(replyBuffer, Protocol.O_MAX_INBOUND_MSG_WINDOW_SIZE, inboundWindow);
                                         ProtocolUtils.writeShort(replyBuffer, Protocol.O_MAX_INBOUND_MSG_COUNT, inboundMessages);
-                                        ProtocolUtils.writeLong(replyBuffer, Protocol.O_MAX_INBOUND_MSG_SIZE, inboundMessageSize);
+                                        if (inboundMessageSize != Long.MAX_VALUE) {
+                                            ProtocolUtils.writeLong(replyBuffer, Protocol.O_MAX_INBOUND_MSG_SIZE, inboundMessageSize);
+                                        }
                                         ProtocolUtils.writeInt(replyBuffer, Protocol.O_MAX_OUTBOUND_MSG_WINDOW_SIZE, outboundWindow);
                                         ProtocolUtils.writeShort(replyBuffer, Protocol.O_MAX_OUTBOUND_MSG_COUNT, outboundMessages);
-                                        ProtocolUtils.writeLong(replyBuffer, Protocol.O_MAX_OUTBOUND_MSG_SIZE, outboundMessageSize);
+                                        if (outboundMessageSize != Long.MAX_VALUE) {
+                                            ProtocolUtils.writeLong(replyBuffer, Protocol.O_MAX_OUTBOUND_MSG_SIZE, outboundMessageSize);
+                                        }
                                         replyBuffer.put((byte) 0);
                                         replyBuffer.flip();
                                         ok2 = true;
