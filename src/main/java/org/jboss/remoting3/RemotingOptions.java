@@ -110,4 +110,17 @@ public final class RemotingOptions {
      * so will cause an exception on the writing side.
      */
     public static final Option<Long> MAX_OUTBOUND_MESSAGE_SIZE = Option.simple(RemotingOptions.class, "MAX_OUTBOUND_MESSAGE_SIZE", Long.class);
+
+    /**
+     * The server side of the connection passes it's name to the client in the initial greeting, by default the name is
+     * automatically discovered from the local address of the connection or it can be overridden using this {@code Option}.
+     */
+    public static final Option<String> SERVER_NAME = Option.simple(RemotingOptions.class, "SERVER_NAME", String.class);
+
+    /**
+     * Where a {@code SaslServer} or {@code SaslClient} are created by default the protocol specified it 'remoting', this
+     * {@code Option} can be used to override this.
+     */
+    public static final Option<String> SASL_PROTOCOL = Option.simple(RemotingOptions.class, "SASL_PROTOCOL", String.class);
+
 }

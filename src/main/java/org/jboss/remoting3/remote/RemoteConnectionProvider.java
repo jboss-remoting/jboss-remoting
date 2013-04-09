@@ -154,6 +154,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         cancellableResult.getIoFuture().addNotifier(IoUtils.<ConnectionHandlerFactory>resultNotifier(), result);
         final boolean sslCapable = sslEnabled;
         final boolean useSsl = sslCapable && connectOptions.get(Options.SSL_ENABLED, true) && !connectOptions.get(Options.SECURE, false);
+        final AccessControlContext accessControlContext = AccessController.getContext();
         final ChannelListener<ConnectedStreamChannel> openListener = new ChannelListener<ConnectedStreamChannel>() {
             public void handleEvent(final ConnectedStreamChannel channel) {
                 try {
@@ -174,7 +175,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                 if (messageChannel.isOpen()) {
                     remoteConnection.setResult(result);
                     messageChannel.getWriteSetter().set(remoteConnection.getWriteListener());
-                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, connectionProviderContext, callbackHandler, AccessController.getContext(), connectOptions);
+                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, connectionProviderContext, callbackHandler, accessControlContext , connectOptions);
                     openListener.handleEvent(messageChannel);
                 }
             }

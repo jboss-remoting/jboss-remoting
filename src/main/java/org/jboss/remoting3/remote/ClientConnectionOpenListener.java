@@ -129,7 +129,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             }
         }
     }
-    
+
     private void saslDispose(final SaslClient saslClient) {
         if (saslClient != null) {
             try {
@@ -138,7 +138,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 client.trace("Failure disposing of SaslClient", e);
             }
         }
-    }    
+    }
 
     final class Greeting implements ChannelListener<ConnectedMessageChannel> {
 
@@ -373,12 +373,15 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             }
                             FOUND: for (String mechanism : saslMechs) {
                                 final Set<SaslClientFactory> factorySet = factories.get(mechanism);
+                                final String protocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : "remoting";
+                                // By default we allow the remote server to tell us it's name - config can mandate a specific server name is expected.
+                                final String remoteServerName = optionMap.contains(RemotingOptions.SERVER_NAME) ? optionMap.get(RemotingOptions.SERVER_NAME) : this.remoteServerName;
                                 if (factorySet == null) continue;
                                 final String[] strings = new String[] { mechanism };
                                 for (final SaslClientFactory factory : factorySet) {
                                     saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
                                         public SaslClient run() throws SaslException {
-                                            return factory.createSaslClient(strings, userName, "remote", remoteServerName, propertyMap, callbackHandler);
+                                            return factory.createSaslClient(strings, userName, protocol, remoteServerName, propertyMap, callbackHandler);
                                         }
                                     }, accessControlContext);
                                     if (saslClient != null) break FOUND;
@@ -404,11 +407,19 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, userName, theRemoteEndpointName, behavior);
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
-                                byte[] response;
+                                final byte[] response;
                                 try {
-                                    response = usedSaslClient.hasInitialResponse() && negotiatedVersion >= 1 ? usedSaslClient.evaluateChallenge(EMPTY_BYTES)
-                                            : null;
+                                    if (usedSaslClient.hasInitialResponse()) {
+                                        response = AccessController.doPrivileged(new PrivilegedExceptionAction<byte[]>() {
 
+                                            @Override
+                                            public byte[] run() throws Exception {
+                                                return usedSaslClient.evaluateChallenge(EMPTY_BYTES);
+                                            }
+                                        }, accessControlContext);
+                                    } else {
+                                        response = null;
+                                    }
                                 } catch (Exception e) {
                                     client.tracef("Client authentication failed: %s", e);
                                     saslDispose(usedSaslClient);
