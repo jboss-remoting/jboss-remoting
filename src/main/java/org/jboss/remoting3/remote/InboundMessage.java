@@ -43,6 +43,7 @@ final class InboundMessage {
     boolean closeSent;
     boolean eofReceived;
     boolean cancelled;
+    long remaining;
 
     static final IntIndexer<InboundMessage> INDEXER = new IntIndexer<InboundMessage>() {
         public int getKey(final InboundMessage argument) {
@@ -54,10 +55,11 @@ final class InboundMessage {
         }
     };
 
-    InboundMessage(final short messageId, final RemoteConnectionChannel channel, int inboundWindow) {
+    InboundMessage(final short messageId, final RemoteConnectionChannel channel, int inboundWindow, final long maxInboundMessageSize) {
         this.messageId = messageId;
         this.channel = channel;
         this.inboundWindow = inboundWindow;
+        remaining = maxInboundMessageSize;
     }
 
     final BufferPipeInputStream inputStream = new BufferPipeInputStream(new BufferPipeInputStream.InputHandler() {
@@ -173,7 +175,8 @@ final class InboundMessage {
         boolean eof;
         synchronized (inputStream) {
             ByteBuffer buffer = pooledBuffer.getResource();
-            if ((inboundWindow -= buffer.remaining() - 8) < 0) {
+            final int bufRemaining = buffer.remaining();
+            if ((inboundWindow -= bufRemaining) < 0) {
                 channel.getRemoteConnection().handleException(new IOException("Input overrun"));
             }
             buffer.position(buffer.position() - 1);
@@ -181,6 +184,10 @@ final class InboundMessage {
 
             eof = (flags & Protocol.MSG_FLAG_EOF) != 0;
             boolean cancelled = (flags & Protocol.MSG_FLAG_CANCELLED) != 0;
+            if (bufRemaining > remaining) {
+                cancelled = true;
+                doClose();
+            }
             if (cancelled) {
                 this.cancelled = true;
                 // make sure it goes through
@@ -195,6 +202,7 @@ final class InboundMessage {
                 }
                 pooledBuffer.free();
             } else if (! cancelled) {
+                remaining -= bufRemaining;
                 inputStream.push(pooledBuffer);
             }
             if (eof) {

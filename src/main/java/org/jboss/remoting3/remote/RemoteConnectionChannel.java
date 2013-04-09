@@ -305,7 +305,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             while (tries > 0) {
                 final int id = random.nextInt() & 0xfffe;
                 if (! outboundMessages.containsKey(id)) {
-                    OutboundMessage message = new OutboundMessage((short) id, this, outboundWindow);
+                    OutboundMessage message = new OutboundMessage((short) id, this, outboundWindow, maxOutboundMessageSize);
                     OutboundMessage existing = outboundMessages.putIfAbsent(message);
                     if (existing == null) {
                         ok = true;
@@ -436,7 +436,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 }
                 boolean ok2 = false;
                 try {
-                    inboundMessage = new InboundMessage((short) id, this, inboundWindow);
+                    inboundMessage = new InboundMessage((short) id, this, inboundWindow, maxInboundMessageSize);
                     final InboundMessage existing = inboundMessages.putIfAbsent(inboundMessage);
                     if (existing != null) {
                         existing.handleDuplicate();

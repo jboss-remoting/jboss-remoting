@@ -53,6 +53,7 @@ final class OutboundMessage extends MessageOutputStream {
     boolean cancelSent;
     boolean eofSent;
     boolean released;
+    long remaining;
     final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
         public Pooled<ByteBuffer> getBuffer(boolean firstBuffer) throws IOException {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
@@ -163,10 +164,11 @@ final class OutboundMessage extends MessageOutputStream {
         }
     };
 
-    OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window) {
+    OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window, final long maxOutboundMessageSize) {
         this.messageId = messageId;
         this.channel = channel;
         this.window = maximumWindow = window;
+        this.remaining = maxOutboundMessageSize;
         try {
             pipeOutputStream = new BufferPipeOutputStream(bufferWriter);
         } catch (IOException e) {
@@ -223,15 +225,32 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     public void write(final int b) throws IOException {
-        pipeOutputStream.write(b);
+        if (remaining > 1) {
+            pipeOutputStream.write(b);
+            remaining--;
+        } else {
+            throw overrun();
+        }
+    }
+
+    private IOException overrun() {
+        try {
+            return new IOException("Maximum message size overrun");
+        } finally {
+            cancel();
+        }
     }
 
     public void write(final byte[] b) throws IOException {
-        pipeOutputStream.write(b);
+        write(b, 0, b.length);
     }
 
     public void write(final byte[] b, final int off, final int len) throws IOException {
+        if ((long) len > remaining) {
+            throw overrun();
+        }
         pipeOutputStream.write(b, off, len);
+        remaining -= len;
     }
 
     public void flush() throws IOException {
