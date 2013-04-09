@@ -23,11 +23,15 @@
 package org.jboss.remoting3.test;
 
 import static javax.security.auth.login.AppConfigurationEntry.LoginModuleControlFlag.REQUIRED;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.URL;
+import java.security.PrivilegedExceptionAction;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -57,27 +61,65 @@ import org.apache.directory.server.core.factory.DSAnnotationProcessor;
 import org.apache.directory.server.core.kerberos.KeyDerivationInterceptor;
 import org.apache.directory.server.factory.ServerAnnotationProcessor;
 import org.apache.directory.server.kerberos.kdc.KdcServer;
+import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.Connection;
+import org.jboss.remoting3.Endpoint;
+import org.jboss.remoting3.OpenListener;
+import org.jboss.remoting3.Registration;
+import org.jboss.remoting3.Remoting;
+import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
+import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
+import org.jboss.remoting3.spi.NetworkServerProvider;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Test;
+import org.xnio.FutureResult;
+import org.xnio.IoFuture;
+import org.xnio.IoUtils;
+import org.xnio.OptionMap;
+import org.xnio.Options;
+import org.xnio.Sequence;
+import org.xnio.channels.AcceptingChannel;
 
 /**
  * Test for remote channel communication with Kerberos enabled.
  *
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public class RemoteKerberosChannelTest {
-
-    // extends ChannelTestBase
+public class RemoteKerberosChannelTest extends ChannelTestBase {
 
     private static DirectoryService directoryService;
     private static KdcServer kdcServer;
     private static String originalConfig;
 
+    protected static Endpoint endpoint;
+    private static AcceptingChannel streamServer;
+    private static Registration registration;
+    private Connection connection;
+    private Registration serviceRegistration;
+
     @BeforeClass
     public static void create() throws Exception {
-       directoryService = createDirectoryService();
-       kdcServer = createKDCServer();
+        directoryService = createDirectoryService();
+        kdcServer = createKDCServer();
+
+        endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
+        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(),
+                OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
+        final NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote",
+                NetworkServerProvider.class);
+
+        Subject serverSubject = login("remoting/test_server", "servicepwd".toCharArray());
+        final SimpleServerAuthenticationProvider sap = new SimpleServerAuthenticationProvider();
+        streamServer = Subject.doAs(serverSubject, new PrivilegedExceptionAction<AcceptingChannel>() {
+            @Override
+            public AcceptingChannel run() throws Exception {
+                return networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(
+                        Options.SASL_MECHANISMS, Sequence.of("GSSAPI"), RemotingOptions.SERVER_NAME, "test_server"), sap, null);
+            }
+        });
     }
 
     @CreateDS(
@@ -130,7 +172,7 @@ public class RemoteKerberosChannelTest {
         return kdcServer;
     }
 
-    public Subject login(final String userName, final char[] password) throws LoginException {
+    static Subject login(final String userName, final char[] password) throws LoginException {
         Subject theSubject = new Subject();
         CallbackHandler cbh = new UsernamePasswordCBH(userName, password);
         LoginContext lc = new LoginContext("KDC", theSubject, cbh, createJaasConfiguration(true, true));
@@ -168,6 +210,9 @@ public class RemoteKerberosChannelTest {
 
     @AfterClass
     public static void destroy() throws Exception {
+        IoUtils.safeClose(streamServer);
+        IoUtils.safeClose(endpoint);
+        IoUtils.safeClose(registration);
         if (kdcServer != null) {
             kdcServer.stop();
         }
@@ -179,7 +224,43 @@ public class RemoteKerberosChannelTest {
         }
     }
 
-    private class UsernamePasswordCBH implements CallbackHandler {
+    @Before
+    public void testStart() throws Exception {
+        Subject clientSubject = login("jduke", "theduke".toCharArray());
+        final FutureResult<Channel> passer = new FutureResult<Channel>();
+        serviceRegistration = endpoint.registerService("org.jboss.test", new OpenListener() {
+            public void channelOpened(final Channel channel) {
+                passer.setResult(channel);
+            }
+
+            public void registrationTerminated() {
+            }
+        }, OptionMap.EMPTY);
+        IoFuture<Connection> futureConnection = Subject.doAs(clientSubject,
+                new PrivilegedExceptionAction<IoFuture<Connection>>() {
+
+                    @Override
+                    public IoFuture<Connection> run() throws Exception {
+                        return endpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY);
+                    }
+                });
+        connection = futureConnection.get();
+        IoFuture<Channel> futureChannel = connection.openChannel("org.jboss.test", OptionMap.EMPTY);
+        sendChannel = futureChannel.get();
+        recvChannel = passer.getIoFuture().get();
+        assertNotNull(recvChannel);
+        assertEquals("jduke@JBOSS.ORG", recvChannel.getConnection().getUserInfo().getUserName());
+    }
+
+    @After
+    public void testFinish() {
+        IoUtils.safeClose(sendChannel);
+        IoUtils.safeClose(recvChannel);
+        IoUtils.safeClose(connection);
+        serviceRegistration.close();
+    }
+
+    private static class UsernamePasswordCBH implements CallbackHandler {
 
         /*
          * Note: We use CallbackHandler implementations like this in test cases as test cases need to run unattended, a true
@@ -213,26 +294,6 @@ public class RemoteKerberosChannelTest {
 
         }
 
-    }
-
-    @Test
-    public void test() {
-        assertNotNull(directoryService);
-        assertNotNull(kdcServer);
-    }
-
-    @Test
-    public void testServiceUserAuthentication() throws Exception {
-        Subject authSubject = login("remoting/localhost", "servicepwd".toCharArray());
-        assertNotNull(authSubject);
-        System.out.println(authSubject.toString());
-    }
-
-    @Test
-    public void testClientUserAuthentication() throws Exception {
-        Subject authSubject = login("jduke", "theduke".toCharArray());
-        assertNotNull(authSubject);
-        System.out.println(authSubject.toString());
     }
 
 }
