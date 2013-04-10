@@ -90,6 +90,8 @@ import org.xnio.channels.AcceptingChannel;
  */
 public class RemoteKerberosChannelTest extends ChannelTestBase {
 
+    private static final boolean IS_IBM = System.getProperty("java.vendor").contains("IBM");
+
     private static DirectoryService directoryService;
     private static KdcServer kdcServer;
     private static String originalConfig;
@@ -167,21 +169,22 @@ public class RemoteKerberosChannelTest extends ChannelTestBase {
     public static KdcServer createKDCServer() throws Exception {
         final URL configPath = RemoteKerberosChannelTest.class.getResource("/krb5.conf");
         originalConfig = System.setProperty("java.security.krb5.conf", configPath.getFile());
-        KdcServer kdcServer = ServerAnnotationProcessor.getKdcServer(directoryService, 1024);
-        kdcServer.getConfig().setPaEncTimestampRequired(false);
+        KdcServer kdcServer = KDCServerAnnotationProcessor.getKdcServer(directoryService, 1024, "localhost");
+        // kdcServer.getConfig().setPaEncTimestampRequired(false); - This line will need to be enabled when we can use the
+        // ServerAnnotationProcessor.
         return kdcServer;
     }
 
     static Subject login(final String userName, final char[] password) throws LoginException {
         Subject theSubject = new Subject();
         CallbackHandler cbh = new UsernamePasswordCBH(userName, password);
-        LoginContext lc = new LoginContext("KDC", theSubject, cbh, createJaasConfiguration(true, true));
+        LoginContext lc = new LoginContext("KDC", theSubject, cbh, createJaasConfiguration());
         lc.login();
 
         return theSubject;
     }
 
-    private static Configuration createJaasConfiguration(final boolean storeKey, final boolean isInitiator) {
+    private static Configuration createJaasConfiguration() {
         return new Configuration() {
 
             @Override
@@ -192,15 +195,18 @@ public class RemoteKerberosChannelTest extends ChannelTestBase {
 
                 AppConfigurationEntry[] entries = new AppConfigurationEntry[1];
                 Map<String, Object> options = new HashMap<String, Object>();
-                if (storeKey) {
-                    options.put("storeKey", "true");
-                }
                 options.put("debug", "true");
                 options.put("refreshKrb5Config", "true");
 
-                options.put("isInitiator", Boolean.toString(isInitiator));
-
-                entries[0] = new AppConfigurationEntry("com.sun.security.auth.module.Krb5LoginModule", REQUIRED, options);
+                if (IS_IBM) {
+                    options.put("noAddress", "true");
+                    options.put("credsType", "both");
+                    entries[0] = new AppConfigurationEntry("com.ibm.security.auth.module.Krb5LoginModule", REQUIRED, options);
+                } else {
+                    options.put("storeKey", "true");
+                    options.put("isInitiator", "true");
+                    entries[0] = new AppConfigurationEntry("com.sun.security.auth.module.Krb5LoginModule", REQUIRED, options);
+                }
 
                 return entries;
             }
