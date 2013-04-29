@@ -53,6 +53,7 @@ import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 import javax.security.sasl.SaslServerFactory;
 
+import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
 import org.jboss.remoting3.security.AuthorizingCallbackHandler;
 import org.jboss.remoting3.security.InetAddressPrincipal;
@@ -93,8 +94,14 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         this.serverAuthenticationProvider = serverAuthenticationProvider;
         this.optionMap = optionMap;
         this.accessControlContext = accessControlContext;
-        serverName = connection.getChannel().getLocalAddress(InetSocketAddress.class).getHostName();
+        if (optionMap.contains(RemotingOptions.SERVER_NAME)) {
+            serverName = optionMap.get(RemotingOptions.SERVER_NAME);
+        } else {
+            serverName = connection.getChannel().getLocalAddress(InetSocketAddress.class).getHostName();
+        }
     }
+
+
 
     public void handleEvent(final ConnectedMessageChannel channel) {
         final Pooled<ByteBuffer> pooled = connection.allocate();
@@ -118,7 +125,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             if (! ok) pooled.free();
         }
     }
-    
+
     private void saslDispose(final SaslServer saslServer) {
         if (saslServer != null) {
             try {
@@ -300,10 +307,11 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             connection.send(pooled);
                             return;
                         }
+                        final String protocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : "remoting";
                         final SaslServer saslServer = AccessController.doPrivileged(new PrivilegedAction<SaslServer>() {
                             public SaslServer run() {
                                 try {
-                                    return saslServerFactory.createSaslServer(mechName, "remote", serverName, propertyMap, callbackHandler);
+                                    return saslServerFactory.createSaslServer(mechName, protocol, serverName, propertyMap, callbackHandler);
                                 } catch (SaslException e) {
                                     connection.handleException(e);
                                     return null;
@@ -464,7 +472,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         }
                     }
                 } catch (Throwable e) {
-                    server.tracef("Server sending authentication rejected (%s)", e);                    
+                    server.tracef("Server sending authentication rejected (%s)", e);
                     sendBuffer.put(p, Protocol.AUTH_REJECTED);
                     saslDispose(saslServer);
                     if (isInitial) {

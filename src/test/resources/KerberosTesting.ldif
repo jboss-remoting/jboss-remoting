@@ -1,0 +1,43 @@
+dn: ou=Users,dc=jboss,dc=org
+objectClass: organizationalUnit
+objectClass: top
+ou: Users
+
+dn: uid=krbtgt,ou=Users,dc=jboss,dc=org
+objectClass: top
+objectClass: person
+objectClass: inetOrgPerson
+objectClass: krb5principal
+objectClass: krb5kdcentry
+cn: KDC Service
+sn: Service
+uid: krbtgt
+userPassword: secret
+krb5PrincipalName: krbtgt/JBOSS.ORG@JBOSS.ORG
+krb5KeyVersionNumber: 0
+
+dn: uid=Remoting,ou=Users,dc=jboss,dc=org
+objectClass: top
+objectClass: person
+objectClass: inetOrgPerson
+objectClass: krb5principal
+objectClass: krb5kdcentry
+cn: Remoting
+sn: Service
+uid: Remoting
+userPassword: servicepwd
+krb5PrincipalName: remoting/test_server@JBOSS.ORG
+krb5KeyVersionNumber: 0
+
+dn: uid=jduke,ou=Users,dc=jboss,dc=org
+objectClass: top
+objectClass: person
+objectClass: inetOrgPerson
+objectClass: krb5principal
+objectClass: krb5kdcentry
+cn: Java Duke
+sn: duke
+uid: jduke
+userPassword: theduke
+krb5PrincipalName: jduke@JBOSS.ORG
+krb5KeyVersionNumber: 0
