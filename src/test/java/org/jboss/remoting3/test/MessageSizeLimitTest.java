@@ -52,7 +52,7 @@ public class MessageSizeLimitTest  {
     private Registration serviceRegistration;
 
     public static final Long MY_OUTBOUND_MSG_MAX_SIZE = 10L;
-    public static final Long MY_INBOUND_MSG_MAX_SIZE = 8L;
+    public static final Long MY_INBOUND_MSG_MAX_SIZE = 5L;
 
     @BeforeClass
     public static void create() throws IOException {
@@ -95,13 +95,13 @@ public class MessageSizeLimitTest  {
         assertEquals("bob", serverChannel.getConnection().getUserInfo().getUserName());
     }
 
+
     @Test
     public void testMessageSizeLimitOK() throws Exception {
         MessageOutputStream myOutputStream = null;
         myOutputStream = clientChannel.writeMessage();
-        //Byte[] myMsg = new Byte[] {0,1,2,3,4,5,6,7,8,9};
-        String msg = "01234567";
-        myOutputStream.write(msg.getBytes()); //this has 8 bytes, should pass
+        String msg = "012345678";
+        myOutputStream.write(msg.getBytes());
         myOutputStream.close();
         final CountDownLatch latch = new CountDownLatch(1);
         final ArrayList<Byte> receivedMsg = new ArrayList<Byte>();
@@ -153,27 +153,19 @@ public class MessageSizeLimitTest  {
 
     }
 
-   /* @Test
-    public void testMessageSizeLimitInboundOverflow() {
-        //server: channel bude mit inbound_msg size 8
-        //client posle zpravu delky 10
-        // -> vyjimka server i client, nic se neposle, client zavre zpravu (nedelam to ja, ja jen kontroluju, ze je zavrena), conection zustane
-
-    }*/
-
     @Test
     public void testMessageSizeLimitOutboundOverflow() throws IOException, InterruptedException {
-        // client posle zpravu delky vetsi nez 10
+        // client sends message of size bigger than outbound limit
         MessageOutputStream myOutputStream = null;
         myOutputStream = clientChannel.writeMessage();
         String msg = "012345678911";
         try {
-        myOutputStream.write(msg.getBytes()); //this will throw exception
+        myOutputStream.write(msg.getBytes());
         }
         catch (IOException e) {
            //OK, I have created message overflow
            System.out.println("Caught expected exception when writing msg");
-           //e.printStackTrace();
+
 
         }
         finally {
@@ -223,7 +215,7 @@ public class MessageSizeLimitTest  {
         });
         latch.await();
         assertEquals("I should have received exceptions on the client side.", exceptions.size(), 0);
-        assertEquals(receivedMsg.size(), 0); // no data transfered
+        assertEquals(receivedMsg.size(), 0); // no data should be transfered
         assertNotNull(connection);
 
         }
