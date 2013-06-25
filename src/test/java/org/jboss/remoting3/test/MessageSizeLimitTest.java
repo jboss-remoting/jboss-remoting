@@ -153,9 +153,14 @@ public class MessageSizeLimitTest  {
 
     }
 
+    /**
+     *  Client sends message larger than outbound limit, creating a message overflow
+     * @throws IOException
+     * @throws InterruptedException
+     */
     @Test
     public void testMessageSizeLimitOutboundOverflow() throws IOException, InterruptedException {
-        // client sends message of size bigger than outbound limit
+
         MessageOutputStream myOutputStream = null;
         myOutputStream = clientChannel.writeMessage();
         String msg = "012345678911";
@@ -177,7 +182,6 @@ public class MessageSizeLimitTest  {
         final ArrayList<Byte> receivedMsg = new ArrayList<Byte>();
         final ArrayList<Exception> exceptions = new ArrayList<Exception>();
 
-        // server channel should not get any data,
         serverChannel.receiveMessage(new Channel.Receiver() {
             @Override
             public void handleError(Channel channel, IOException error) {
