@@ -95,7 +95,10 @@ public class MessageSizeLimitTest  {
         assertEquals("bob", serverChannel.getConnection().getUserInfo().getUserName());
     }
 
-
+    /**
+     * Clients sends message shorter than outbound size, it will be truncated on the receiving side.
+     * @throws Exception
+     */
     @Test
     public void testMessageSizeLimitOK() throws Exception {
         MessageOutputStream myOutputStream = null;
