@@ -129,13 +129,14 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
     }
 
     @Override
-    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final SocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final XnioSsl xnioSsl, final ChannelListener<ConnectedStreamChannel> openListener) {
+    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final SocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options, final XnioSsl xnioSsl, final ChannelListener<ConnectedStreamChannel> openListener) {
         final URI uri;
         try {
             uri = new URI("https", "", destination.getHostName(), destination.getPort(), "/", "", "");
         } catch (URISyntaxException e) {
             return new FailedIoFuture<ConnectedSslStreamChannel>(new IOException(e));
         }
+        final OptionMap modifiedOptions = OptionMap.builder().addAll(options).set(Options.SSL_STARTTLS, false).getMap();
         final Map<String, String> headers = new HashMap<String, String>();
         headers.put(UPGRADE, "jboss-remoting");
         final String secKey = createSecKey();
@@ -150,7 +151,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
                 future.setResult(newChannel);
                 ChannelListeners.invokeChannelListener(newChannel, openListener);
             }
-        }, null, connectOptions, new RemotingHandshakeChecker(secKey))
+        }, null, modifiedOptions, new RemotingHandshakeChecker(secKey))
                 .addNotifier(new IoFuture.Notifier<SslConnection, Object>() {
                     @Override
                     public void notify(final IoFuture<? extends SslConnection> ioFuture, final Object attachment) {
