@@ -23,6 +23,7 @@
 package org.jboss.remoting3.remote;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.jboss.remoting3.remote.RemoteLogger.server;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -83,6 +84,8 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     private final boolean sslEnabled;
     private final Collection<Cancellable> pendingInboundConnections = Collections.synchronizedSet(new HashSet<Cancellable>());
     private final Set<RemoteConnectionHandler> handlers = Collections.synchronizedSet(new HashSet<RemoteConnectionHandler>());
+    private final MBeanServer server;
+    private final ObjectName objectName;
 
     RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
         super(connectionProviderContext.getExecutor());
@@ -94,8 +97,11 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         messageBufferPool = false ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, messageBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
         final int framingBufferSize = messageBufferSize + 4;
         framingBufferPool = false ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, framingBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
+        MBeanServer server = null;
+        ObjectName objectName = null;
         try {
-            final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+            server = ManagementFactory.getPlatformMBeanServer();
+            objectName = new ObjectName("jboss.remoting.handler", "name", connectionProviderContext.getEndpoint().getName() + "-" + hashCode());
             server.registerMBean(new RemoteConnectionProviderMXBean() {
                 public void dumpConnectionState() {
                     doDumpConnectionState();
@@ -104,10 +110,12 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                 public String dumpConnectionStateToString() {
                     return doGetConnectionState();
                 }
-            }, new ObjectName("jboss.remoting.handler", "name", connectionProviderContext.getEndpoint().getName() + "-" + hashCode()));
+            }, objectName);
         } catch (Exception e) {
             // ignore
         }
+        this.server = server;
+        this.objectName = objectName;
     }
 
     private void doDumpConnectionState() {
@@ -223,11 +231,20 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     }
 
     protected void closeAction() {
-        for (Cancellable pendingConnection: pendingInboundConnections) {
-            pendingConnection.cancel();
+        try {
+            for (Cancellable pendingConnection: pendingInboundConnections) {
+                pendingConnection.cancel();
+            }
+            pendingInboundConnections.clear();
+            closeComplete();
+        } finally {
+            if (server != null && objectName != null) {
+                try {
+                    server.unregisterMBean(objectName);
+                } catch (Throwable ignored) {
+                }
+            }
         }
-        pendingInboundConnections.clear();
-        closeComplete();
     }
 
     void addConnectionHandler(final RemoteConnectionHandler connectionHandler) {
