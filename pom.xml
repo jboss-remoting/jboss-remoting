@@ -38,7 +38,7 @@
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>9</version>
+        <version>11</version>
     </parent>
 
     <properties>
@@ -49,6 +49,8 @@
         <junit.version>4.8.2</junit.version>
         <byteman-version>2.0.0</byteman-version>
         <test.level>INFO</test.level>
+        <maven.compiler.target>1.6</maven.compiler.target>
+        <maven.compiler.source>1.6</maven.compiler.source>
     </properties>
 
     <licenses>
