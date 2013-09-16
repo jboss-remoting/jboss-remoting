@@ -117,6 +117,8 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             }
             ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
             ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.getVersionString());
+            ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_IN, optionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, 40));
+            ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_OUT, optionMap.get(RemotingOptions.MAX_OUTBOUND_CHANNELS, 40));
             sendBuffer.flip();
             connection.setReadListener(new Capabilities(remoteServerName), true);
             connection.send(pooledSendBuffer);
@@ -274,6 +276,9 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         String remoteEndpointName = null;
                         int version = Protocol.VERSION;
                         int behavior = Protocol.BH_FAULTY_MSG_SIZE;
+                        boolean useDefaultChannels = true;
+                        int channelsIn = 40;
+                        int channelsOut = 40;
                         while (receiveBuffer.hasRemaining()) {
                             final byte type = receiveBuffer.get();
                             final int len = receiveBuffer.get() & 0xff;
@@ -318,12 +323,30 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     client.tracef("Client received capability: remote version is \"%s\"", remoteVersionString);
                                     break;
                                 }
+                                case Protocol.CAP_CHANNELS_IN: {
+                                    useDefaultChannels = false;
+                                    // their channels in is our channels out
+                                    channelsOut = ProtocolUtils.readIntData(data, len);
+                                    client.tracef("Client received capability: remote channels in is \"%d\"", channelsOut);
+                                    break;
+                                }
+                                case Protocol.CAP_CHANNELS_OUT: {
+                                    useDefaultChannels = false;
+                                    // their channels out is our channels in
+                                    channelsIn = ProtocolUtils.readIntData(data, len);
+                                    client.tracef("Client received capability: remote channels out is \"%d\"", channelsIn);
+                                    break;
+                                }
                                 default: {
                                     client.tracef("Client received unknown capability %02x", Integer.valueOf(type & 0xff));
                                     // unknown, skip it for forward compatibility.
                                     break;
                                 }
                             }
+                        }
+                        if (useDefaultChannels) {
+                            channelsIn = 40;
+                            channelsOut = 40;
                         }
                         if (starttls) {
                             // only initiate starttls if not forbidden by config
@@ -404,7 +427,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         connection.getChannel().suspendReads();
                         final int negotiatedVersion = version;
                         final SaslClient usedSaslClient = saslClient;
-                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, userName, theRemoteEndpointName, behavior);
+                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, userName, theRemoteEndpointName, behavior, channelsIn, channelsOut);
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
                                 final byte[] response;
@@ -557,13 +580,17 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
         private final String authorizationID;
         private final String remoteEndpointName;
         private final int behavior;
+        private final int maxInboundChannels;
+        private final int maxOutboundChannels;
 
-        Authentication(final SaslClient saslClient, final String serverName, final String authorizationID, final String remoteEndpointName, final int behavior) {
+        Authentication(final SaslClient saslClient, final String serverName, final String authorizationID, final String remoteEndpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels) {
             this.saslClient = saslClient;
             this.serverName = serverName;
             this.authorizationID = authorizationID;
             this.remoteEndpointName = remoteEndpointName;
             this.behavior = behavior;
+            this.maxInboundChannels = maxInboundChannels;
+            this.maxOutboundChannels = maxOutboundChannels;
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
@@ -677,8 +704,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
                                         // this happens immediately.
                                         final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                                connectionContext, connection, principals, new SimpleUserInfo(principals),
-                                                remoteEndpointName, behavior);
+                                                connectionContext, connection, principals, new SimpleUserInfo(principals), maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
                                         connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                         connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                         return connectionHandler;
