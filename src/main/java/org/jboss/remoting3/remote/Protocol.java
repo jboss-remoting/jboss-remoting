@@ -228,6 +228,8 @@ final class Protocol {
     static final byte CAP_ENDPOINT_NAME = 3; // sent by client & server - our endpoint name if not anonymous
     static final byte CAP_MESSAGE_CLOSE = 4; // sent by client & server - if present, use message close protocol
     static final byte CAP_VERSION_STRING = 5; // sent by client & server
+    static final byte CAP_CHANNELS_IN = 6; // sent by client & server, if missing peer does not support it
+    static final byte CAP_CHANNELS_OUT = 7; // sent by client & server, if missing peer does not support it
 
     static final byte GRT_SERVER_NAME = 0; // greeting server name
 

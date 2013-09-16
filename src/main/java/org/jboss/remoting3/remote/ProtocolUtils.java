@@ -91,6 +91,10 @@ final class ProtocolUtils {
 
     static int readInt(final ByteBuffer buffer) {
         int length = buffer.get() & 0xff;
+        return readIntData(buffer, length);
+    }
+
+    static int readIntData(final ByteBuffer buffer, final int length) {
         switch (length) {
             case 0: return 0;
             case 1: return buffer.get() & 0xff;

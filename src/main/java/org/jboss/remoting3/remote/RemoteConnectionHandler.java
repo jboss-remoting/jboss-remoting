@@ -69,8 +69,8 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private final Collection<Principal> principals;
     private final UserInfo userInfo;
 
-    private final int maxInboundChannels = 40;
-    private final int maxOutboundChannels = 40;
+    private final int maxInboundChannels;
+    private final int maxOutboundChannels;
 
     private final String remoteEndpointName;
 
@@ -89,10 +89,12 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final Collection<Principal> principals, final UserInfo userInfo, final String remoteEndpointName, final int behavior) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final Collection<Principal> principals, final UserInfo userInfo, final int maxInboundChannels, final int maxOutboundChannels, final String remoteEndpointName, final int behavior) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
+        this.maxInboundChannels = maxInboundChannels;
+        this.maxOutboundChannels = maxOutboundChannels;
         this.remoteEndpointName = remoteEndpointName;
         this.behavior = behavior;
 
