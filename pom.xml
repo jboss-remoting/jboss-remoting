@@ -31,18 +31,19 @@
 
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting</artifactId>
-    <version>3.3.0.Beta1</version>
+    <version>3.3.0.Beta1-SNAPSHOT</version>
 
     <packaging>jar</packaging>
 
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>10</version>
+        <version>11</version>
     </parent>
 
     <properties>
         <apiviz.version>1.3.2.GA</apiviz.version>
+
         <apacheds.version>2.0.0-M11</apacheds.version>
         <apacheds.jdbm1.version>2.0.0-M2</apacheds.jdbm1.version>
         <apacheds.shared.version>1.0.0-M13</apacheds.shared.version>
@@ -50,10 +51,15 @@
         <xnio.version>3.0.7.GA</xnio.version>
         <logging.version>3.1.0.GA</logging.version>
         <logging-tools.version>1.0.3.Final</logging-tools.version>
+
         <logmanager.version>1.2.0.GA</logmanager.version>
         <junit.version>4.8.2</junit.version>
         <byteman-version>2.0.0</byteman-version>
+
         <test.level>INFO</test.level>
+
+        <maven.compiler.target>1.7</maven.compiler.target>
+        <maven.compiler.source>1.7</maven.compiler.source>
     </properties>
 
     <licenses>
@@ -63,19 +69,21 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+
     <organization>
         <name>JBoss, a division of Red Hat, Inc.</name>
         <url>http://www.jboss.org/</url>
     </organization>
-    <dependencies>            
-       <dependency>
+
+    <dependencies>
+        <dependency>
             <groupId>org.apache.directory.jdbm</groupId>
             <artifactId>apacheds-jdbm1</artifactId>
             <version>${apacheds.jdbm1.version}</version>
             <type>jar</type>
             <scope>test</scope>
-        </dependency>    
-       <dependency>
+        </dependency>
+        <dependency>
             <groupId>org.apache.directory.server</groupId>
             <artifactId>apacheds-core</artifactId>
             <version>${apacheds.version}</version>
@@ -94,10 +102,10 @@
             <scope>test</scope>
             <exclusions>
                 <exclusion>
-                    <groupId>org.apache.directory.jdbm</groupId>                
-                    <artifactId>apacheds-jdbm1</artifactId>                    
+                    <groupId>org.apache.directory.jdbm</groupId>
+                    <artifactId>apacheds-jdbm1</artifactId>
                 </exclusion>
-            </exclusions>                 
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.directory.server</groupId>
@@ -121,13 +129,13 @@
             <groupId>org.apache.directory.api</groupId>
             <artifactId>api-ldap-codec-standalone</artifactId>
             <version>${apacheds.api.version}</version>
-            <scope>test</scope>  
-        </dependency>        
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.apache.directory.shared</groupId>
             <artifactId>shared-ldap-codec-standalone</artifactId>
             <version>${apacheds.shared.version}</version>
-            <scope>test</scope>  
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.directory.server</groupId>
@@ -135,7 +143,7 @@
             <version>${apacheds.version}</version>
             <scope>test</scope>
         </dependency>
-            
+
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging</artifactId>
@@ -183,7 +191,7 @@
             <artifactId>byteman-bmunit</artifactId>
             <version>${byteman-version}</version>
             <scope>test</scope>
-             <exclusions>
+            <exclusions>
                 <exclusion>
                     <artifactId>testng</artifactId>
                     <groupId>org.testng</groupId>
@@ -197,8 +205,35 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.jboss.seven2six</groupId>
+                <artifactId>seven2six</artifactId>
+                <version>1.1.Final</version>
+                <executions>
+                    <!-- run after "compile", lets your artifact work on 1.6 -->
+                    <execution>
+                        <id>weave</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>transform</goal>
+                        </goals>
+                    </execution>
+                    <!-- run after "test-compile", lets you run your tests on 1.6 -->
+                    <execution>
+                        <id>weave-tests</id>
+                        <phase>process-test-classes</phase>
+                        <goals>
+                            <goal>transform</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.testOutputDirectory}</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
@@ -242,7 +277,6 @@
             </plugin>
             <plugin>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.6.1</version>
                 <configuration>
                     <doclet>net.gleamynode.apiviz.APIviz</doclet>
                     <docletArtifact>
@@ -256,6 +290,7 @@
                 </configuration>
             </plugin>
         </plugins>
+
         <pluginManagement>
             <plugins>
                 <!--TODO TEXT. This plugin's configuration is used in m2e only.-->
