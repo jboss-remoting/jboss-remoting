@@ -23,9 +23,13 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.jboss.remoting3.security.RemotingPermission;
 import org.xnio.OptionMap;
+import org.xnio.Options;
 import org.xnio.Xnio;
+import org.xnio.XnioWorker;
 
 /**
  * The standalone interface into Remoting.  This class contains static methods that are useful to standalone programs
@@ -38,7 +42,30 @@ public final class Remoting {
     private static final RemotingPermission CREATE_ENDPOINT_PERM = new RemotingPermission("createEndpoint");
 
     /**
-     * Create an endpoint with the given configuration.
+     * Create an endpoint with the given configuration and existing worker.
+     *
+     * @param endpointName the name of the endpoint
+     * @param xnioWorker the XNIO worker instance to use
+     * @param optionMap the options to configure the endpoint
+     * @return the new endpoint
+     * @throws IOException if an error occurs
+     */
+    public static Endpoint createEndpoint(final String endpointName, final XnioWorker xnioWorker, final OptionMap optionMap) throws IOException {
+        if (endpointName == null) {
+            throw new IllegalArgumentException("endpointName is null");
+        }
+        if (optionMap == null) {
+            throw new IllegalArgumentException("optionMap is null");
+        }
+        final SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(CREATE_ENDPOINT_PERM);
+        }
+        return EndpointImpl.construct(xnioWorker, false, endpointName, optionMap);
+    }
+
+    /**
+     * Create an endpoint with the given configuration which manages its own worker.
      *
      * @param endpointName the name of the endpoint
      * @param xnio the XNIO instance to use
@@ -57,7 +84,19 @@ public final class Remoting {
         if (sm != null) {
             sm.checkPermission(CREATE_ENDPOINT_PERM);
         }
-        return EndpointImpl.construct(xnio, endpointName, optionMap);
+        final OptionMap modifiedOptionMap = OptionMap.builder().addAll(optionMap).set(Options.WORKER_NAME, endpointName == null ? "Remoting (anonymous)" : "Remoting \"" + endpointName + "\"").getMap();
+        final AtomicReference<EndpointImpl> endpointRef = new AtomicReference<EndpointImpl>();
+        final XnioWorker xnioWorker = xnio.createWorker(null, modifiedOptionMap, new Runnable() {
+            public void run() {
+                final EndpointImpl endpoint = endpointRef.getAndSet(null);
+                if (endpoint != null) {
+                    endpoint.closeComplete();
+                }
+            }
+        });
+        final EndpointImpl endpoint = EndpointImpl.construct(xnioWorker, true, endpointName, optionMap);
+        endpointRef.set(endpoint);
+        return endpoint;
     }
 
     /**

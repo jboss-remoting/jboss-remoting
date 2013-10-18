@@ -54,7 +54,6 @@ import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoFuture.HandlingNotifier;
 import org.xnio.OptionMap;
-import org.xnio.Options;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 import org.xnio.ssl.JsseXnioSsl;
@@ -112,16 +111,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     };
     private final EndpointImpl.ConnectionCloseHandler connectionCloseHandler = new EndpointImpl.ConnectionCloseHandler();
+    private final boolean ourWorker;
 
-    private EndpointImpl(final Xnio xnio, final XnioWorker xnioWorker, final String name, final OptionMap optionMap, final HoldingRunnable holdingRunnable) throws IOException {
+    private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name, final OptionMap optionMap) throws IOException {
         super(xnioWorker, true);
-        holdingRunnable.setTask(new Runnable() {
-            public void run() {
-                closeComplete();
-            }
-        });
         worker = xnioWorker;
-        this.xnio = xnio;
+        this.ourWorker = ourWorker;
+        this.xnio = xnioWorker.getXnio();
         this.name = name;
         this.optionMap = optionMap;
         // initialize CPC
@@ -132,10 +128,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         log.tracef("Completed open of %s", this);
     }
 
-    static EndpointImpl construct(final Xnio xnio, final String name, final OptionMap optionMap) throws IOException {
-        final HoldingRunnable holdingRunnable = new HoldingRunnable();
-        final XnioWorker xnioWorker = xnio.createWorker(null, OptionMap.builder().addAll(optionMap).set(Options.WORKER_NAME, name == null ? "Remoting (anonymous)" : "Remoting \"" + name + "\"").getMap(), holdingRunnable);
-        return new EndpointImpl(xnio, xnioWorker, name, optionMap, holdingRunnable);
+    static EndpointImpl construct(final XnioWorker xnioWorker, final boolean ourWorker, final String name, final OptionMap optionMap) throws IOException {
+        return new EndpointImpl(xnioWorker, ourWorker, name, optionMap);
     }
 
     public Attachments getAttachments() {
@@ -148,6 +142,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     public Executor getExecutor() {
         return worker;
+    }
+
+    protected void closeComplete() {
+        super.closeComplete();
     }
 
     private void closeTick1(Object c) {
@@ -170,7 +168,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private void finishPhase1() {
         // all our original resources were closed; now move on to stage two (thread pools)
         log.tracef("Finished phase 1 shutdown of %s", this);
-        worker.shutdown();
+        if (ourWorker) {
+            worker.shutdown();
+        } else {
+            closeComplete();
+        }
         return;
     }
 
@@ -649,22 +651,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public void handleClose(final Connection closed, final IOException exception) {
             connections.remove(closed);
-        }
-    }
-
-    private static class HoldingRunnable implements Runnable {
-        private volatile Runnable task;
-
-        private HoldingRunnable() {
-        }
-
-        public void setTask(final Runnable task) {
-            this.task = task;
-        }
-
-        public void run() {
-            final Runnable task = this.task;
-            if (task != null) task.run();
         }
     }
 
