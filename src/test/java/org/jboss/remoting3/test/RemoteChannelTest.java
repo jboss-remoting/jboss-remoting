@@ -24,11 +24,15 @@ package org.jboss.remoting3.test;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
@@ -43,6 +47,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Test;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -96,17 +101,36 @@ public final class RemoteChannelTest extends ChannelTestBase {
 
     @After
     public void testFinish() {
-        IoUtils.safeClose(sendChannel);
-        IoUtils.safeClose(recvChannel);
-        IoUtils.safeClose(connection);
+        safeClose(sendChannel);
+        safeClose(recvChannel);
+        safeClose(connection);
         serviceRegistration.close();
     }
 
     @AfterClass
     public static void destroy() throws IOException, InterruptedException {
-        IoUtils.safeClose(streamServer);
-        IoUtils.safeClose(endpoint);
-        IoUtils.safeClose(registration);
+        safeClose(streamServer);
+        safeClose(endpoint);
+        safeClose(registration);
     }
-        
+
+    @Test
+    public void testRefused() throws Exception {
+        IoFuture<Connection> futureConnection = endpoint.connect(new URI("remote://localhost:33123"), OptionMap.EMPTY, "bob", "test", "pass".toCharArray());
+        try {
+            futureConnection.awaitInterruptibly(2L, TimeUnit.SECONDS);
+            if (futureConnection.getStatus() == IoFuture.Status.WAITING) {
+                futureConnection.cancel();
+            } else {
+                safeClose(futureConnection.get());
+            }
+        } catch (IOException expected) {
+            System.out.println("Exception is: " + expected);
+            System.out.flush();
+            if (expected.getMessage().toLowerCase(Locale.US).contains("refused")) {
+                return;
+            }
+        }
+        fail("Expected an IOException with 'refused' in the string");
+    }
 }
