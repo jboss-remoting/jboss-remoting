@@ -203,6 +203,16 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             future = bindAddress == null ? xnioWorker.connectStream(destination, openListener, connectOptions) : xnioWorker.connectStream(bindAddress, destination, openListener, null, connectOptions);
         }
         pendingInboundConnections.add(cancellableResult.getIoFuture());
+        // if the connection fails, we need to propagate that
+        future.addNotifier(new IoFuture.HandlingNotifier<ConnectedStreamChannel, FutureResult<ConnectionHandlerFactory>>() {
+            public void handleFailed(final IOException exception, final FutureResult<ConnectionHandlerFactory> attachment) {
+                attachment.setException(exception);
+            }
+
+            public void handleCancelled(final FutureResult<ConnectionHandlerFactory> attachment) {
+                attachment.setCancelled();
+            }
+        }, cancellableResult);
         // if future stream channel is canceled, we need to cancel the connection handler result 
         cancellableResult.getIoFuture().addNotifier(new IoFuture.HandlingNotifier<ConnectionHandlerFactory, IoFuture<ConnectionHandlerFactory>>() {
             public void handleCancelled(IoFuture<ConnectionHandlerFactory> attachment) {
