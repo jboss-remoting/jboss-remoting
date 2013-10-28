@@ -22,11 +22,9 @@
 
 package org.jboss.remoting3;
 
-import org.xnio.OptionMap;
-
 /**
  * A listener for new channels.  An open listener is registered with an {@code Endpoint}
- * via the {@link Endpoint#registerService(String, OpenListener, OptionMap)} method.
+ * via the {@link Endpoint#registerService(String, OpenListener, org.xnio.OptionMap)} method.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */

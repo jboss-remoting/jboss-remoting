@@ -22,6 +22,9 @@
 
 package org.jboss.remoting3.test;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Queue;
@@ -30,6 +33,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
@@ -44,7 +48,6 @@ import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
 import org.junit.Assert;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 import org.xnio.IoFuture;
@@ -55,8 +58,6 @@ import org.xnio.Sequence;
 import org.xnio.XnioWorker;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
-
-import static org.junit.Assert.assertArrayEquals;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -124,7 +125,7 @@ public class ConnectionTestCase {
                     public void handleMessage(final Channel channel, final MessageInputStream message) {
                         try {
                             channel.receiveMessage(this);
-                            while (message.read(junkBuffer) > -1);
+                            while (message.read(junkBuffer) > -1) { ; }
                         } catch (Exception e) {
                             e.printStackTrace();
                             problems.add(e);
@@ -139,10 +140,10 @@ public class ConnectionTestCase {
             }
         }, OptionMap.EMPTY);
         final AtomicReferenceArray<Connection> connections = new AtomicReferenceArray<Connection>(CONNECTION_COUNT);
-        for (int h = 0; h < CONNECTION_COUNT; h ++) {
+        for (int h = 0; h < CONNECTION_COUNT; h++) {
             final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("localhost", 0), new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
             connections.set(h, connection);
-            for (int i = 0; i < CHANNEL_COUNT; i ++) {
+            for (int i = 0; i < CHANNEL_COUNT; i++) {
                 clientWorker.execute(new Runnable() {
                     public void run() {
                         final Random random = new Random();
@@ -180,7 +181,7 @@ public class ConnectionTestCase {
         Thread.sleep(500);
         serverChannelCount.await();
         clientChannelCount.await();
-        for (int h = 0; h < CONNECTION_COUNT; h ++) {
+        for (int h = 0; h < CONNECTION_COUNT; h++) {
             connections.get(h).close();
         }
         assertArrayEquals(new Object[0], problems.toArray());
@@ -226,7 +227,7 @@ public class ConnectionTestCase {
             Assert.assertEquals("transmit", 0x12000, (int) channel.getOption(RemotingOptions.TRANSMIT_WINDOW_SIZE));
             Assert.assertEquals("receive", 0x8000, (int) channel.getOption(RemotingOptions.RECEIVE_WINDOW_SIZE));
         } finally {
-            if(channel != null) {
+            if (channel != null) {
                 channel.close();
             }
         }
@@ -236,7 +237,7 @@ public class ConnectionTestCase {
             Assert.assertEquals("transmit", MAX_SERVER_RECEIVE, (int) channel.getOption(RemotingOptions.TRANSMIT_WINDOW_SIZE));
             Assert.assertEquals("receive", MAX_SERVER_TRANSMIT, (int) channel.getOption(RemotingOptions.RECEIVE_WINDOW_SIZE));
         } finally {
-            if(channel != null) {
+            if (channel != null) {
                 channel.close();
             }
         }

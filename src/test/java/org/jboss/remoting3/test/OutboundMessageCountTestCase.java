@@ -22,6 +22,18 @@
 
 package org.jboss.remoting3.test;
 
+import static org.junit.Assert.assertNotNull;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
+
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
@@ -49,24 +61,12 @@ import org.xnio.Sequence;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.Semaphore;
-
-import static org.junit.Assert.assertNotNull;
-
 /**
  * Tests that a {@link org.jboss.remoting3.MessageOutputStream#close() closing the message on the channel}
  * synchronously decrements the outbound message count maintained by JBoss Remoting.
  *
  * @author Jaikiran Pai
- * @see https://issues.jboss.org/browse/REM3-165 for more details
+ * @see {@link}https://issues.jboss.org/browse/REM3-165 for more
  *      <p/>
  */
 public class OutboundMessageCountTestCase {

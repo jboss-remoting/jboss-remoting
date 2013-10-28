@@ -22,12 +22,12 @@
 
 package org.jboss.remoting3.remote;
 
-import org.jboss.logging.LogMessage;
-import org.jboss.logging.Logger;
-import org.jboss.logging.Message;
-import org.jboss.logging.MessageLogger;
+import static org.jboss.logging.Logger.Level.TRACE;
 
-import static org.jboss.logging.Logger.Level.*;
+import org.jboss.logging.Logger;
+import org.jboss.logging.annotations.LogMessage;
+import org.jboss.logging.annotations.Message;
+import org.jboss.logging.annotations.MessageLogger;
 
 /**
  * "Remote" protocol authentication logger.  Message codes from 270-299.

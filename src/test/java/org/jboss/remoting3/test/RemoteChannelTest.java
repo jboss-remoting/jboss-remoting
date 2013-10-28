@@ -22,8 +22,8 @@
 
 package org.jboss.remoting3.test;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 import static org.xnio.IoUtils.safeClose;
 
@@ -50,7 +50,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
-import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Sequence;
@@ -59,7 +58,7 @@ import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * Test for remote channel communication.
- * 
+ *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class RemoteChannelTest extends ChannelTestBase {
@@ -96,7 +95,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
         sendChannel = futureChannel.get();
         recvChannel = passer.getIoFuture().get();
         assertNotNull(recvChannel);
-        assertEquals("bob",recvChannel.getConnection().getUserInfo().getUserName());        
+        assertEquals("bob", recvChannel.getConnection().getUserInfo().getUserName());
     }
 
     @After

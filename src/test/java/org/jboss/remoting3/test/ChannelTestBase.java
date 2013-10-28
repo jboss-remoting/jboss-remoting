@@ -201,15 +201,15 @@ public abstract class ChannelTestBase {
         assertNotNull(stream);
         final byte[] data;
         try {
-            data = new byte[TEST_FILE_LENGTH/2];
+            data = new byte[TEST_FILE_LENGTH / 2];
             int c = 0;
             do {
-                int r = stream.read(data, c, TEST_FILE_LENGTH/2 - c);
+                int r = stream.read(data, c, TEST_FILE_LENGTH / 2 - c);
                 if (r == -1) {
                     break;
                 }
                 c += r;
-            } while (c < TEST_FILE_LENGTH/2);
+            } while (c < TEST_FILE_LENGTH / 2);
             stream.close();
         } finally {
             IoUtils.safeClose(stream);
@@ -288,13 +288,13 @@ public abstract class ChannelTestBase {
 
     @Test
     public void testSimpleWriteMethod() throws Exception {
-        Byte[] bytes = new Byte[] {1, 2, 3};
+        Byte[] bytes = new Byte[]{1, 2, 3};
         MessageOutputStream out = sendChannel.writeMessage();
-        for (int i = 0 ; i < bytes.length ; i++) {
+        for (int i = 0; i < bytes.length; i++) {
             out.write(bytes[i]);
         }
         out.close();
-        
+
         final CountDownLatch latch = new CountDownLatch(1);
         final ArrayList<Byte> result = new ArrayList<Byte>();
         final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
@@ -314,7 +314,7 @@ public abstract class ChannelTestBase {
                 try {
                     int i = message.read();
                     while (i != -1) {
-                        result.add((byte)i);
+                        result.add((byte) i);
                         i = message.read();
                     }
                     message.close();
@@ -326,7 +326,7 @@ public abstract class ChannelTestBase {
                 }
             }
         });
-        
+
         latch.await();
         assertNull(exRef.get());
         Byte[] resultBytes = result.toArray(new Byte[result.size()]);
@@ -335,16 +335,16 @@ public abstract class ChannelTestBase {
 
     @Test
     public void testSimpleWriteMethodWithWrappedOuputStream() throws Exception {
-        Byte[] bytes = new Byte[] {1, 2, 3};
-        
+        Byte[] bytes = new Byte[]{1, 2, 3};
+
         FilterOutputStream out = new FilterOutputStream(sendChannel.writeMessage());
-        for (int i = 0 ; i < bytes.length ; i++) {
+        for (int i = 0; i < bytes.length; i++) {
             out.write(bytes[i]);
         }
         //The close() method of FilterOutputStream will flush the underlying output stream before closing it,
         //so we end up with two messages
         out.close();
-        
+
         final CountDownLatch latch = new CountDownLatch(1);
         final ArrayList<Byte> result = new ArrayList<Byte>();
         final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
@@ -364,7 +364,7 @@ public abstract class ChannelTestBase {
                 try {
                     int i = message.read();
                     while (i != -1) {
-                        result.add((byte)i);
+                        result.add((byte) i);
                         i = message.read();
                     }
                     message.close();
@@ -376,7 +376,7 @@ public abstract class ChannelTestBase {
                 }
             }
         });
-        
+
         latch.await();
         assertNull(exRef.get());
         Byte[] resultBytes = result.toArray(new Byte[result.size()]);
@@ -385,16 +385,16 @@ public abstract class ChannelTestBase {
 
     @Test
     public void testSimpleWriteMethodFromNonInitiatingSide() throws Exception {
-        Byte[] bytes = new Byte[] {1, 2, 3};
+        Byte[] bytes = new Byte[]{1, 2, 3};
         MessageOutputStream out = recvChannel.writeMessage();
-        for (int i = 0 ; i < bytes.length ; i++) {
+        for (int i = 0; i < bytes.length; i++) {
             out.write(bytes[i]);
         }
         out.close();
-        
+
         final CountDownLatch latch = new CountDownLatch(1);
         final ArrayList<Byte> result = new ArrayList<Byte>();
-        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();        
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
         sendChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
                 error.printStackTrace();
@@ -411,7 +411,7 @@ public abstract class ChannelTestBase {
                 try {
                     int i = message.read();
                     while (i != -1) {
-                        result.add((byte)i);
+                        result.add((byte) i);
                         i = message.read();
                     }
                     message.close();
@@ -432,18 +432,18 @@ public abstract class ChannelTestBase {
     @Test
     public void testSimpleWriteMethodTwoWay() throws Exception {
 
-        Byte[] bytes = new Byte[] {1, 2, 3};
-        Byte[] manipulatedBytes = new Byte[] {2, 4, 6};
+        Byte[] bytes = new Byte[]{1, 2, 3};
+        Byte[] manipulatedBytes = new Byte[]{2, 4, 6};
         MessageOutputStream out = sendChannel.writeMessage();
-        for (int i = 0 ; i < bytes.length ; i++) {
+        for (int i = 0; i < bytes.length; i++) {
             out.write(bytes[i]);
         }
         out.close();
-        
+
         final CountDownLatch latch = new CountDownLatch(2);
         final ArrayList<Byte> senderResult = new ArrayList<Byte>();
         final ArrayList<Byte> receiverResult = new ArrayList<Byte>();
-        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();        
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
         recvChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
                 error.printStackTrace();
@@ -460,7 +460,7 @@ public abstract class ChannelTestBase {
                 try {
                     int i = message.read();
                     while (i != -1) {
-                        receiverResult.add((byte)i);
+                        receiverResult.add((byte) i);
                         System.out.println("read " + i);
                         i = message.read();
                     }
@@ -468,7 +468,7 @@ public abstract class ChannelTestBase {
                     MessageOutputStream out = channel.writeMessage();
                     try {
                         for (Byte b : receiverResult) {
-                            byte send = (byte)(b * 2);
+                            byte send = (byte) (b * 2);
                             System.out.println("Sending back " + send);
                             out.write(send);
                         }
@@ -502,7 +502,7 @@ public abstract class ChannelTestBase {
                 try {
                     int i = message.read();
                     while (i != -1) {
-                        senderResult.add((byte)i);
+                        senderResult.add((byte) i);
                         i = message.read();
                     }
                     message.close();
@@ -514,7 +514,7 @@ public abstract class ChannelTestBase {
                 }
             }
         });
-        
+
         latch.await();
         assertNull(exRef.get());
         Byte[] receiverBytes = receiverResult.toArray(new Byte[receiverResult.size()]);
@@ -559,7 +559,7 @@ public abstract class ChannelTestBase {
                 }
             }
         });
-        for (int i = 0 ; i < 50 ; i++) {
+        for (int i = 0; i < 50; i++) {
             MessageOutputStream messageOutputStream = sendChannel.writeMessage();
             messageOutputStream.close();
             messageOutputStream.close(); // close should be idempotent

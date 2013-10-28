@@ -47,6 +47,6 @@ public interface AuthorizingCallbackHandler extends CallbackHandler {
      * @param remotingPrincipals - The principals already created based on the authentication.
      * @return The new UserInfo instance.
      */
-    public UserInfo createUserInfo(final Collection<Principal> remotingPrincipals) throws IOException;
+    UserInfo createUserInfo(final Collection<Principal> remotingPrincipals) throws IOException;
 
 }

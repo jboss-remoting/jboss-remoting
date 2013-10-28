@@ -29,8 +29,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.concurrent.CancellationException;
 
-import javax.security.sasl.SaslException;
-
 import org.jboss.byteman.contrib.bmunit.BMScript;
 import org.jboss.byteman.contrib.bmunit.BMUnitRunner;
 import org.jboss.remoting3.Connection;
@@ -50,11 +48,11 @@ import org.xnio.Sequence;
  * At EndpointImpl: closeAction takes place while there is a new connection being made.
  * This test makes sure resourceCount does not get inconsistent (there is a window between a connection being added to
  * resourceCount and being added to connections map, this is the window that will be explored by this test).
- * 
+ *
  * @author <a href="mailto:flavia.rainone@jboss.com">Flavia Rainone</a>
  */
 @RunWith(BMUnitRunner.class)
-@BMScript(dir="src/test/resources")
+@BMScript(dir = "src/test/resources")
 public class CloseConnectingEndpointTestCase {
 
     protected static Endpoint endpoint;

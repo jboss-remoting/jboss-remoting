@@ -34,8 +34,6 @@ import java.util.concurrent.Executor;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.HandleableCloseable;
 import org.jboss.remoting3.NotOpenException;
-import org.jboss.remoting3.RemotingException;
-import org.xnio.IoUtils;
 import org.jboss.logging.Logger;
 
 /**
@@ -123,7 +121,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
      * that may cause {@link #close()}. As close will block, this can result in situations where all threads in the pool are
      * blocked on {@link #close()} method calls, which means the {@link #closeComplete()} will never be run.
      *
-     * @throws RemotingException if the close failed
+     * @throws org.jboss.remoting3.RemotingException if the close failed
      */
     protected void closeAction() throws IOException {
         closeComplete();
