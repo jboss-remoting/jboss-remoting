@@ -39,10 +39,10 @@ import org.apache.mina.util.AvailablePortFinder;
  * Annotation processor for creating Kerberos servers - based on original implementation in
  * {@link org.apache.directory.server.factory.ServerAnnotationProcessor}. This implementation only adds a workaround for
  * https://issues.apache.org/jira/browse/DIRKRB-89<br/>
- *
+ * <p/>
  * Based on code from
- * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  *
+ * @author <a href="mailto:dev@directory.apache.org">Apache Directory Project</a>
  * @author Josef Cacek
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
@@ -54,8 +54,8 @@ class KDCServerAnnotationProcessor {
      * Creates and starts KdcServer based on configuration from {@link ExtCreateKdcServer} annotation.
      *
      * @param directoryService
-     * @param startPort start port number used for searching free ports in case the transport has no port number preconfigured.
-     * @param address if not null, use this bind address instead of the value configured in {@link Transport} annotation.
+     * @param startPort        start port number used for searching free ports in case the transport has no port number preconfigured.
+     * @param address          if not null, use this bind address instead of the value configured in {@link Transport} annotation.
      * @return
      * @throws Exception
      */
@@ -75,7 +75,7 @@ class KDCServerAnnotationProcessor {
      * @return
      */
     private static KdcServer createKdcServer(CreateKdcServer createKdcServer, DirectoryService directoryService,
-            int startPort, String bindAddress) {
+                                             int startPort, String bindAddress) {
         if (createKdcServer == null) {
             return null;
         }

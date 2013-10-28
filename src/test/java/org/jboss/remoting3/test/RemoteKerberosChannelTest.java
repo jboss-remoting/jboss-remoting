@@ -34,7 +34,6 @@ import java.net.URL;
 import java.security.PrivilegedExceptionAction;
 import java.util.HashMap;
 import java.util.Map;
-
 import javax.security.auth.Subject;
 import javax.security.auth.callback.Callback;
 import javax.security.auth.callback.CallbackHandler;
@@ -59,7 +58,6 @@ import org.apache.directory.server.core.annotations.CreatePartition;
 import org.apache.directory.server.core.api.DirectoryService;
 import org.apache.directory.server.core.factory.DSAnnotationProcessor;
 import org.apache.directory.server.core.kerberos.KeyDerivationInterceptor;
-import org.apache.directory.server.factory.ServerAnnotationProcessor;
 import org.apache.directory.server.kerberos.kdc.KdcServer;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
@@ -127,24 +125,24 @@ public class RemoteKerberosChannelTest extends ChannelTestBase {
     @CreateDS(
             name = "JBossDS",
             partitions =
-            {
-                @CreatePartition(
-                    name = "jboss",
-                    suffix = "dc=jboss,dc=org",
-                    contextEntry = @ContextEntry(
-                        entryLdif =
-                            "dn: dc=jboss,dc=org\n" +
-                            "dc: jboss\n" +
-                            "objectClass: top\n" +
-                            "objectClass: domain\n\n" ),
-                    indexes =
                     {
-                        @CreateIndex( attribute = "objectClass" ),
-                        @CreateIndex( attribute = "dc" ),
-                        @CreateIndex( attribute = "ou" )
-                    })
-            },
-            additionalInterceptors = { KeyDerivationInterceptor.class })
+                            @CreatePartition(
+                                    name = "jboss",
+                                    suffix = "dc=jboss,dc=org",
+                                    contextEntry = @ContextEntry(
+                                            entryLdif =
+                                                    "dn: dc=jboss,dc=org\n" +
+                                                            "dc: jboss\n" +
+                                                            "objectClass: top\n" +
+                                                            "objectClass: domain\n\n"),
+                                    indexes =
+                                            {
+                                                    @CreateIndex(attribute = "objectClass"),
+                                                    @CreateIndex(attribute = "dc"),
+                                                    @CreateIndex(attribute = "ou")
+                                            })
+                    },
+            additionalInterceptors = {KeyDerivationInterceptor.class})
     public static DirectoryService createDirectoryService() throws Exception {
         DirectoryService directoryService = DSAnnotationProcessor.getDirectoryService();
 
@@ -163,9 +161,9 @@ public class RemoteKerberosChannelTest extends ChannelTestBase {
             kdcPrincipal = "krbtgt/JBOSS.ORG@JBOSS.ORG",
             searchBaseDn = "dc=jboss,dc=org",
             transports =
-            {
-                @CreateTransport(protocol = "UDP", port = 6088)
-            })
+                    {
+                            @CreateTransport(protocol = "UDP", port = 6088)
+                    })
     public static KdcServer createKDCServer() throws Exception {
         final URL configPath = RemoteKerberosChannelTest.class.getResource("/krb5.conf");
         originalConfig = System.setProperty("java.security.krb5.conf", configPath.getFile());

@@ -22,6 +22,15 @@
 
 package org.jboss.remoting3.test;
 
+import static org.junit.Assert.assertNotNull;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Connection;
@@ -46,15 +55,6 @@ import org.xnio.Options;
 import org.xnio.Sequence;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
-import static org.junit.Assert.assertNotNull;
 
 /**
  * Test that the channel {@link CloseHandler}s are invoked when the channel is closed for whatever reasons

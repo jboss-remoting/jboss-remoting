@@ -24,7 +24,6 @@ package org.jboss.remoting3.test;
 import java.net.URL;
 
 /**
- * 
  * @author <a href="mailto:flavia.rainone@jboss.com">Flavia Rainone</a>
  */
 public class SslHelper {

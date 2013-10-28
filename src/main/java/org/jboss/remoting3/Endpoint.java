@@ -25,7 +25,6 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.URI;
-import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -68,7 +67,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @return the future connection
@@ -80,7 +79,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -94,7 +93,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -109,7 +108,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -125,7 +124,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -141,7 +140,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given user name and password is used as local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -158,7 +157,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given user name and password is used as local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -176,7 +175,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given user name and password is used as local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
@@ -193,7 +192,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param protocol the protocol to use for connection
      * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
@@ -207,7 +206,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param protocol the protocol to use for connection
      * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
@@ -223,7 +222,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param protocol the protocol to use for connection
      * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
@@ -240,7 +239,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param protocol the protocol to use for connection
      * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
@@ -258,7 +257,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param protocol the protocol to use for connection
      * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
@@ -276,7 +275,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given user name and password is used as local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param protocol the protocol to use for connection
      * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
@@ -295,7 +294,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given user name and password is used as local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param protocol the protocol to use for connection
      * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
@@ -315,7 +314,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * The given user name and password is used as local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param protocol the protocol to use for connection
      * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
@@ -334,7 +333,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can
      * be used to accept new connections or terminate the registration.
      * <p/>
-     * You must have the {@link RemotingPermission addConnectionProvider EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission addConnectionProvider EndpointPermission} to invoke this method.
      *
      * @param uriScheme the URI scheme
      * @param providerFactory the provider factory
@@ -348,7 +347,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
     /**
      * Get the interface for a connection provider.
      * <p/>
-     * You must have the {@link RemotingPermission getConnectionProviderInterface EndpointPermission} to invoke this method.
+     * You must have the {@link org.jboss.remoting3.security.RemotingPermission getConnectionProviderInterface EndpointPermission} to invoke this method.
      *
      * @param uriScheme the URI scheme of the registered connection provider
      * @param expectedType the expected type of the interface

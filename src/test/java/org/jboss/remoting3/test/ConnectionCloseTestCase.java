@@ -22,6 +22,14 @@
 
 package org.jboss.remoting3.test;
 
+import static org.junit.Assert.assertNotNull;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
@@ -46,14 +54,6 @@ import org.xnio.Options;
 import org.xnio.Sequence;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
-
-import static org.junit.Assert.assertNotNull;
 
 /**
  * A testcase to ensure that threads don't hang when the client side closes a {@link Connection} while the
