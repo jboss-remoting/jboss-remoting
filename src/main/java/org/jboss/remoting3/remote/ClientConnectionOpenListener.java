@@ -117,8 +117,8 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             }
             ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
             ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.getVersionString());
-            ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_IN, optionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, 40));
-            ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_OUT, optionMap.get(RemotingOptions.MAX_OUTBOUND_CHANNELS, 40));
+            ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_IN, optionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_INBOUND_CHANNELS));
+            ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_OUT, optionMap.get(RemotingOptions.MAX_OUTBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_OUTBOUND_CHANNELS));
             sendBuffer.flip();
             connection.setReadListener(new Capabilities(remoteServerName), true);
             connection.send(pooledSendBuffer);
@@ -396,7 +396,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             }
                             FOUND: for (String mechanism : saslMechs) {
                                 final Set<SaslClientFactory> factorySet = factories.get(mechanism);
-                                final String protocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : "remoting";
+                                final String protocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
                                 // By default we allow the remote server to tell us it's name - config can mandate a specific server name is expected.
                                 final String remoteServerName = optionMap.contains(RemotingOptions.SERVER_NAME) ? optionMap.get(RemotingOptions.SERVER_NAME) : this.remoteServerName;
                                 if (factorySet == null) continue;
