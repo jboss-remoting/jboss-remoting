@@ -66,7 +66,7 @@ final class RemoteConnection {
         this.underlyingChannel = underlyingChannel;
         this.channel = channel;
         this.optionMap = optionMap;
-        heartbeatInterval = optionMap.get(RemotingOptions.HEARTBEAT_INTERVAL, Integer.MAX_VALUE);
+        heartbeatInterval = optionMap.get(RemotingOptions.HEARTBEAT_INTERVAL, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL);
         this.executor = remoteConnectionProvider.getExecutor();
         this.remoteConnectionProvider = remoteConnectionProvider;
     }

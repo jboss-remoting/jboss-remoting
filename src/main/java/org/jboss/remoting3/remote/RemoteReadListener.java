@@ -174,12 +174,12 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     break;
                                 }
                                 final OptionMap serviceOptionMap = registeredService.getOptionMap();
-                                outboundWindow = Math.min(outboundWindow, serviceOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
-                                outboundMessages = Math.min(outboundMessages, serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
-                                inboundWindow = Math.min(inboundWindow, serviceOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, Protocol.DEFAULT_WINDOW_SIZE));
-                                inboundMessages = Math.min(inboundMessages, serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, Protocol.DEFAULT_MESSAGE_COUNT));
-                                outboundMessageSize = Math.min(outboundMessageSize, serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, Long.MAX_VALUE));
-                                inboundMessageSize = Math.min(inboundMessageSize, serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, Long.MAX_VALUE));
+                                outboundWindow = Math.min(outboundWindow, serviceOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, RemotingOptions.INCOMING_CHANNEL_DEFAULT_TRANSMIT_WINDOW_SIZE));
+                                outboundMessages = Math.min(outboundMessages, serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, RemotingOptions.INCOMING_CHANNEL_DEFAULT_MAX_OUTBOUND_MESSAGES));
+                                inboundWindow = Math.min(inboundWindow, serviceOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, RemotingOptions.INCOMING_CHANNEL_DEFAULT_RECEIVE_WINDOW_SIZE));
+                                inboundMessages = Math.min(inboundMessages, serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGES));
+                                outboundMessageSize = Math.min(outboundMessageSize, serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_OUTBOUND_MESSAGE_SIZE));
+                                inboundMessageSize = Math.min(inboundMessageSize, serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGE_SIZE));
 
                                 final OpenListener openListener = registeredService.getOpenListener();
                                 if (! handler.handleInboundChannelOpen()) {
