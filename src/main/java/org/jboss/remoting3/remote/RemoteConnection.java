@@ -221,6 +221,7 @@ final class RemoteConnection {
                     if (channel.flush()) {
                         RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
                         if (closed) {
+                            terminateHeartbeat();
                             // End of queue reached; shut down and try to flush the remainder
                             channel.shutdownWrites();
                             if (channel.flush()) {
