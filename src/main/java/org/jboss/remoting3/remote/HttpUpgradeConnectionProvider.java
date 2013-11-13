@@ -54,7 +54,7 @@ import org.xnio.channels.AssembledConnectedStreamChannel;
 import org.xnio.channels.ConnectedSslStreamChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
-import org.xnio.channels.SslConnection;
+import org.xnio.ssl.SslConnection;
 import org.xnio.http.HandshakeChecker;
 import org.xnio.http.HttpUpgrade;
 import org.xnio.ssl.XnioSsl;
