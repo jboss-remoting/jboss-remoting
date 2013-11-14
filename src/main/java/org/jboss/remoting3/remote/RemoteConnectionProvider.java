@@ -237,10 +237,14 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
 
     protected void closeAction() {
         try {
-            for (Cancellable pendingConnection: pendingInboundConnections) {
+            final Cancellable[] cancellables;
+            synchronized (pendingInboundConnections) {
+                cancellables = pendingInboundConnections.toArray(new Cancellable[pendingInboundConnections.size()]);
+                pendingInboundConnections.clear();
+            }
+            for (Cancellable pendingConnection: cancellables) {
                 pendingConnection.cancel();
             }
-            pendingInboundConnections.clear();
             closeComplete();
         } finally {
             if (server != null && objectName != null) {
