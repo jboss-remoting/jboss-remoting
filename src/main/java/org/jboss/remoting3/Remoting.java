@@ -61,8 +61,8 @@ public final class Remoting {
     }
 
     /**
-     * Create a new endpoint with the given configuration.  The XNIO implementation which is visible from the class
-     * loader of this class will be used.
+     * Create a new endpoint with the given configuration.  This method (starting with 3.3) will use the class loader
+     * of XNIO itself to construct the XNIO implementation.
      *
      * @param endpointName the name of the endpoint
      * @param optionMap the options to configure the endpoint
@@ -70,7 +70,7 @@ public final class Remoting {
      * @throws IOException if an error occurs
      */
     public static Endpoint createEndpoint(final String endpointName, final OptionMap optionMap) throws IOException {
-        return createEndpoint(endpointName, Xnio.getInstance(Remoting.class.getClassLoader()), optionMap);
+        return createEndpoint(endpointName, Xnio.getInstance(), optionMap);
     }
 
     /**
