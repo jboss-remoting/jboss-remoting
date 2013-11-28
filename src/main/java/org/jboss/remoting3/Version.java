@@ -62,7 +62,7 @@ public final class Version {
                 if (stream != null) try {
                     final Manifest manifest = new Manifest(stream);
                     final Attributes mainAttributes = manifest.getMainAttributes();
-                    if (mainAttributes != null && "JBoss Remoting 3".equals(mainAttributes.getValue("Specification-Title"))) {
+                    if (mainAttributes != null && "JBoss Remoting".equals(mainAttributes.getValue("Specification-Title"))) {
                         jarName = mainAttributes.getValue("Jar-Name");
                         versionString = mainAttributes.getValue("Jar-Version");
                     }
@@ -77,7 +77,7 @@ public final class Version {
     }
 
     /**
-     * Get the name of the JBoss Modules JAR.
+     * Get the name of the JBoss Remoting JAR.
      *
      * @return the name
      */
@@ -86,11 +86,20 @@ public final class Version {
     }
 
     /**
-     * Get the version string of JBoss Modules.
+     * Get the version string of JBoss Remoting.
      *
      * @return the version string
      */
     public static String getVersionString() {
         return VERSION;
+    }
+
+    /**
+     * Print out the current version on {@code System.out}.
+     *
+     * @param args ignored
+     */
+    public static void main(String[] args) {
+        System.out.printf("JBoss Remoting version %s\n", getVersionString());
     }
 }
