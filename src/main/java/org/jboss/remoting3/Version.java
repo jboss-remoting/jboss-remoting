@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3;
 
+import static org.xnio.IoUtils.safeClose;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -53,21 +55,24 @@ public final class Version {
         final Enumeration<URL> resources;
         String jarName = "(unknown)";
         String versionString = "(unknown)";
+        final ClassLoader classLoader = Version.class.getClassLoader();
         try {
-            final ClassLoader classLoader = Version.class.getClassLoader();
             resources = classLoader == null ? ClassLoader.getSystemResources("META-INF/MANIFEST.MF") : classLoader.getResources("META-INF/MANIFEST.MF");
             while (resources.hasMoreElements()) {
                 final URL url = resources.nextElement();
-                final InputStream stream = url.openStream();
-                if (stream != null) try {
-                    final Manifest manifest = new Manifest(stream);
-                    final Attributes mainAttributes = manifest.getMainAttributes();
-                    if (mainAttributes != null && "JBoss Remoting".equals(mainAttributes.getValue("Specification-Title"))) {
-                        jarName = mainAttributes.getValue("Jar-Name");
-                        versionString = mainAttributes.getValue("Jar-Version");
+                try {
+                    final InputStream stream = url.openStream();
+                    if (stream != null) try {
+                        final Manifest manifest = new Manifest(stream);
+                        final Attributes mainAttributes = manifest.getMainAttributes();
+                        if (mainAttributes != null && "JBoss Remoting".equals(mainAttributes.getValue("Specification-Title"))) {
+                            jarName = mainAttributes.getValue("Jar-Name");
+                            versionString = mainAttributes.getValue("Jar-Version");
+                        }
+                    } finally {
+                        safeClose(stream);
                     }
-                } finally {
-                    try { stream.close(); } catch (Throwable ignored) {}
+                } catch (IOException ignored) {
                 }
             }
         } catch (IOException ignored) {
