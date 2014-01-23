@@ -66,7 +66,7 @@ interface RemoteLogger extends BasicLogger {
     @Message(id = 204, value = "Buffer underflow parsing message with protocol ID %02x")
     void bufferUnderflow(int id);
 
-    @LogMessage(level = WARN)
+    @LogMessage(level = DEBUG)
     @Message(id = 205, value = "Failed to accept a connection: %s")
     void failedToAccept(/* ! @Cause */ IOException e);
 
