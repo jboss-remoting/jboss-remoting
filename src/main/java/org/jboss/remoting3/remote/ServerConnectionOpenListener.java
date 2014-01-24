@@ -501,7 +501,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         }
                     }
                 } catch (Throwable e) {
-                    server.tracef("Server sending authentication rejected (%s)", e);
+                    server.tracef(e, "Server sending authentication rejected");
                     sendBuffer.put(p, Protocol.AUTH_REJECTED);
                     saslDispose(saslServer);
                     if (isInitial) {
