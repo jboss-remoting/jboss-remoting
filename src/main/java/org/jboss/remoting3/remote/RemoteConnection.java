@@ -77,9 +77,11 @@ final class RemoteConnection {
 
     void setReadListener(ChannelListener<? super ConnectedMessageChannel> listener, final boolean resume) {
         RemoteLogger.log.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, null, "Setting read listener to %s", listener);
-        channel.getReadSetter().set(listener);
-        if (listener != null && resume) {
-            channel.resumeReads();
+        synchronized (getLock()) {
+            channel.getReadSetter().set(listener);
+            if (listener != null && resume) {
+                channel.resumeReads();
+            }
         }
     }
 
@@ -167,23 +169,35 @@ final class RemoteConnection {
 
     void sendAlive() {
         final Pooled<ByteBuffer> pooled = allocate();
-        final ByteBuffer buffer = pooled.getResource();
-        buffer.put(Protocol.CONNECTION_ALIVE);
-        buffer.limit(80);
-        Buffers.addRandom(buffer);
-        buffer.flip();
-        send(pooled);
-        channel.wakeupReads();
+        boolean ok = false;
+        try {
+            final ByteBuffer buffer = pooled.getResource();
+            buffer.put(Protocol.CONNECTION_ALIVE);
+            buffer.limit(80);
+            Buffers.addRandom(buffer);
+            buffer.flip();
+            send(pooled);
+            ok = true;
+            channel.wakeupReads();
+        } finally {
+            if (! ok) pooled.free();
+        }
     }
 
     void sendAliveResponse() {
         final Pooled<ByteBuffer> pooled = allocate();
-        final ByteBuffer buffer = pooled.getResource();
-        buffer.put(Protocol.CONNECTION_ALIVE_ACK);
-        buffer.limit(80);
-        Buffers.addRandom(buffer);
-        buffer.flip();
-        send(pooled);
+        boolean ok = false;
+        try {
+            final ByteBuffer buffer = pooled.getResource();
+            buffer.put(Protocol.CONNECTION_ALIVE_ACK);
+            buffer.limit(80);
+            Buffers.addRandom(buffer);
+            buffer.flip();
+            send(pooled);
+            ok = true;
+        } finally {
+            if (! ok) pooled.free();
+        }
     }
 
     void terminateHeartbeat() {
@@ -191,6 +205,10 @@ final class RemoteConnection {
         if (key != null) {
             key.remove();
         }
+    }
+
+    Object getLock() {
+        return writeListener.queue;
     }
 
     final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {

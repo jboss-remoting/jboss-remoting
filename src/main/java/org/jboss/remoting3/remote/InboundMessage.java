@@ -94,10 +94,15 @@ final class InboundMessage {
             return;
         }
         Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_CLOSE);
-        ByteBuffer buffer = pooled.getResource();
-        buffer.flip();
-        channel.getRemoteConnection().send(pooled);
-        closeSent = true;
+        boolean ok = false;
+        try {
+            ByteBuffer buffer = pooled.getResource();
+            buffer.flip();
+            channel.getRemoteConnection().send(pooled);
+            closeSent = true;
+        } finally {
+            if (! ok) pooled.free();
+        }
     }
 
     private void doAcknowledge(final Pooled<ByteBuffer> acked) {
@@ -111,10 +116,16 @@ final class InboundMessage {
         if (! badMsgSize) consumed -= 8; // position minus header length (not including framing size)
         inboundWindow += consumed;
         Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_WINDOW_OPEN);
-        ByteBuffer buffer = pooled.getResource();
-        buffer.putInt(consumed); // Open window by buffer size
-        buffer.flip();
-        channel.getRemoteConnection().send(pooled);
+        boolean ok = false;
+        try {
+            ByteBuffer buffer = pooled.getResource();
+            buffer.putInt(consumed); // Open window by buffer size
+            buffer.flip();
+            channel.getRemoteConnection().send(pooled);
+            ok = true;
+        } finally {
+            if (! ok) pooled.free();
+        }
     }
 
     final MessageInputStream messageInputStream = new MessageInputStream() {
