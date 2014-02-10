@@ -159,19 +159,21 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
                 final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                int res;
-                try {
-                    res = channel.receive(receiveBuffer);
-                } catch (IOException e) {
-                    connection.handleException(e);
-                    return;
-                }
-                if (res == -1) {
-                    connection.handleException(client.abruptClose(connection));
-                    return;
-                }
-                if (res == 0) {
-                    return;
+                synchronized (connection.getLock()) {
+                    int res;
+                    try {
+                        res = channel.receive(receiveBuffer);
+                    } catch (IOException e) {
+                        connection.handleException(e);
+                        return;
+                    }
+                    if (res == -1) {
+                        connection.handleException(client.abruptClose(connection));
+                        return;
+                    }
+                    if (res == 0) {
+                        return;
+                    }
                 }
                 client.tracef("Received %s", receiveBuffer);
                 receiveBuffer.flip();
@@ -249,19 +251,21 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
                 final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                int res;
-                try {
-                    res = channel.receive(receiveBuffer);
-                } catch (IOException e) {
-                    connection.handleException(e);
-                    return;
-                }
-                if (res == -1) {
-                    connection.handleException(client.abruptClose(connection));
-                    return;
-                }
-                if (res == 0) {
-                    return;
+                synchronized (connection.getLock()) {
+                    int res;
+                    try {
+                        res = channel.receive(receiveBuffer);
+                    } catch (IOException e) {
+                        connection.handleException(e);
+                        return;
+                    }
+                    if (res == -1) {
+                        connection.handleException(client.abruptClose(connection));
+                        return;
+                    }
+                    if (res == 0) {
+                        return;
+                    }
                 }
                 receiveBuffer.flip();
                 boolean starttls = false;
@@ -364,13 +368,19 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             if (optionMap.get(Options.SSL_STARTTLS, true)) {
                                 // Prepare the request message body
                                 final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
-                                final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
-                                sendBuffer.put(Protocol.STARTTLS);
-                                sendBuffer.flip();
-                                connection.setReadListener(new StartTls(remoteServerName), true);
-                                connection.send(pooledSendBuffer);
-                                // all set
-                                return;
+                                boolean ok = false;
+                                try {
+                                    final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
+                                    sendBuffer.put(Protocol.STARTTLS);
+                                    sendBuffer.flip();
+                                    connection.setReadListener(new StartTls(remoteServerName), true);
+                                    connection.send(pooledSendBuffer);
+                                    ok = true;
+                                    // all set
+                                    return;
+                                } finally {
+                                    if (! ok) pooledSendBuffer.free();
+                                }
                             }
                         }
 
@@ -465,21 +475,27 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 }
                                 // Prepare the request message body
                                 final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
-                                final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
-                                sendBuffer.put(Protocol.AUTH_REQUEST);
-                                if (negotiatedVersion < 1) {
-                                    sendBuffer.put(mechanismName.getBytes(Protocol.UTF_8));
-                                } else {
-                                    ProtocolUtils.writeString(sendBuffer, mechanismName);
-                                    if (response != null) {
-                                        sendBuffer.put(response);
+                                boolean ok = false;
+                                try {
+                                    final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
+                                    sendBuffer.put(Protocol.AUTH_REQUEST);
+                                    if (negotiatedVersion < 1) {
+                                        sendBuffer.put(mechanismName.getBytes(Protocol.UTF_8));
+                                    } else {
+                                        ProtocolUtils.writeString(sendBuffer, mechanismName);
+                                        if (response != null) {
+                                            sendBuffer.put(response);
+                                        }
                                     }
-                                }
 
-                                sendBuffer.flip();
-                                connection.send(pooledSendBuffer);
-                                connection.setReadListener(authentication, true);
-                                return;
+                                    sendBuffer.flip();
+                                    connection.send(pooledSendBuffer);
+                                    ok = true;
+                                    connection.setReadListener(authentication, true);
+                                    return;
+                                } finally {
+                                    if (! ok) pooledSendBuffer.free();
+                                }
                             }
                         });
                         return;
@@ -514,19 +530,21 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
                 final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                int res;
-                try {
-                    res = channel.receive(receiveBuffer);
-                } catch (IOException e) {
-                    connection.handleException(e);
-                    return;
-                }
-                if (res == -1) {
-                    connection.handleException(client.abruptClose(connection));
-                    return;
-                }
-                if (res == 0) {
-                    return;
+                synchronized (connection.getLock()) {
+                    int res;
+                    try {
+                        res = channel.receive(receiveBuffer);
+                    } catch (IOException e) {
+                        connection.handleException(e);
+                        return;
+                    }
+                    if (res == -1) {
+                        connection.handleException(client.abruptClose(connection));
+                        return;
+                    }
+                    if (res == 0) {
+                        return;
+                    }
                 }
                 client.tracef("Received %s", receiveBuffer);
                 receiveBuffer.flip();
@@ -608,23 +626,26 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledBuffer = connection.allocate();
+            boolean free = true;
             try {
                 final ByteBuffer buffer = pooledBuffer.getResource();
-                final int res;
-                try {
-                    res = channel.receive(buffer);
-                } catch (IOException e) {
-                    connection.handleException(e);
-                    saslDispose(saslClient);
-                    return;
-                }
-                if (res == 0) {
-                    return;
-                }
-                if (res == -1) {
-                    connection.handleException(client.abruptClose(connection));
-                    saslDispose(saslClient);
-                    return;
+                synchronized (connection.getLock()) {
+                    final int res;
+                    try {
+                        res = channel.receive(buffer);
+                    } catch (IOException e) {
+                        connection.handleException(e);
+                        saslDispose(saslClient);
+                        return;
+                    }
+                    if (res == 0) {
+                        return;
+                    }
+                    if (res == -1) {
+                        connection.handleException(client.abruptClose(connection));
+                        saslDispose(saslClient);
+                        return;
+                    }
                 }
                 buffer.flip();
                 final byte msgType = buffer.get();
@@ -649,34 +670,45 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         channel.suspendReads();
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
-                                final boolean clientComplete = saslClient.isComplete();
-                                if (clientComplete) {
-                                    connection.handleException(new SaslException("Received extra auth message after completion"));
-                                    return;
-                                }
-                                final byte[] response;
-                                final byte[] challenge = Buffers.take(buffer, buffer.remaining());
                                 try {
-                                    response = saslClient.evaluateChallenge(challenge);
-                                } catch (Throwable e) {
-                                    final String mechanismName = saslClient.getMechanismName();
-                                    client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
-                                    failedMechs.put(mechanismName, e.toString());
-                                    saslDispose(saslClient);
-                                    sendCapRequest(serverName);
+                                    final boolean clientComplete = saslClient.isComplete();
+                                    if (clientComplete) {
+                                        connection.handleException(new SaslException("Received extra auth message after completion"));
+                                        return;
+                                    }
+                                    final byte[] response;
+                                    final byte[] challenge = Buffers.take(buffer, buffer.remaining());
+                                    try {
+                                        response = saslClient.evaluateChallenge(challenge);
+                                    } catch (Throwable e) {
+                                        final String mechanismName = saslClient.getMechanismName();
+                                        client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
+                                        failedMechs.put(mechanismName, e.toString());
+                                        saslDispose(saslClient);
+                                        sendCapRequest(serverName);
+                                        return;
+                                    }
+                                    client.trace("Client sending authentication response");
+                                    final Pooled<ByteBuffer> pooled = connection.allocate();
+                                    boolean ok = false;
+                                    try {
+                                        final ByteBuffer sendBuffer = pooled.getResource();
+                                        sendBuffer.put(Protocol.AUTH_RESPONSE);
+                                        sendBuffer.put(response);
+                                        sendBuffer.flip();
+                                        connection.send(pooled);
+                                        ok = true;
+                                        channel.resumeReads();
+                                    } finally {
+                                        if (! ok) pooled.free();
+                                    }
                                     return;
+                                } finally {
+                                    pooledBuffer.free();
                                 }
-                                client.trace("Client sending authentication response");
-                                final Pooled<ByteBuffer> pooled = connection.allocate();
-                                final ByteBuffer sendBuffer = pooled.getResource();
-                                sendBuffer.put(Protocol.AUTH_RESPONSE);
-                                sendBuffer.put(response);
-                                sendBuffer.flip();
-                                connection.send(pooled);
-                                channel.resumeReads();
-                                return;
                             }
                         });
+                        free = false;
                         return;
                     }
                     case Protocol.AUTH_COMPLETE: {
@@ -684,50 +716,54 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         channel.suspendReads();
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
-                                final boolean clientComplete = saslClient.isComplete();
-                                final byte[] challenge = Buffers.take(buffer, buffer.remaining());
-                                if (!clientComplete) try {
-                                    final byte[] response = saslClient.evaluateChallenge(challenge);
-                                    if (response != null && response.length > 0) {
-                                        connection.handleException(new SaslException("Received extra auth message after completion"));
+                                try {
+                                    final boolean clientComplete = saslClient.isComplete();
+                                    final byte[] challenge = Buffers.take(buffer, buffer.remaining());
+                                    if (!clientComplete) try {
+                                        final byte[] response = saslClient.evaluateChallenge(challenge);
+                                        if (response != null && response.length > 0) {
+                                            connection.handleException(new SaslException("Received extra auth message after completion"));
+                                            saslDispose(saslClient);
+                                            return;
+                                        }
+                                        if (!saslClient.isComplete()) {
+                                            connection.handleException(new SaslException("Client not complete after processing auth complete message"));
+                                            saslDispose(saslClient);
+                                            return;
+                                        }
+                                    } catch (Throwable e) {
+                                        final String mechanismName = saslClient.getMechanismName();
+                                        client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
+                                        failedMechs.put(mechanismName, e.toString());
                                         saslDispose(saslClient);
+                                        sendCapRequest(serverName);
                                         return;
                                     }
-                                    if (!saslClient.isComplete()) {
-                                        connection.handleException(new SaslException("Client not complete after processing auth complete message"));
-                                        saslDispose(saslClient);
-                                        return;
+                                    final Object qop = saslClient.getNegotiatedProperty(Sasl.QOP);
+                                    if ("auth-int".equals(qop) || "auth-conf".equals(qop)) {
+                                        connection.setSaslWrapper(SaslWrapper.create(saslClient));
                                     }
-                                } catch (Throwable e) {
-                                    final String mechanismName = saslClient.getMechanismName();
-                                    client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
-                                    failedMechs.put(mechanismName, e.toString());
-                                    saslDispose(saslClient);
-                                    sendCapRequest(serverName);
-                                    return;
-                                }
-                                final Object qop = saslClient.getNegotiatedProperty(Sasl.QOP);
-                                if ("auth-int".equals(qop) || "auth-conf".equals(qop)) {
-                                    connection.setSaslWrapper(SaslWrapper.create(saslClient));
-                                }
-                                // auth complete.
-                                final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {
-                                    public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                                        Collection<Principal> principals = definePrincipals();
+                                    // auth complete.
+                                    final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {
+                                        public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
+                                            Collection<Principal> principals = definePrincipals();
 
-                                        // this happens immediately.
-                                        final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                                connectionContext, connection, principals, new SimpleUserInfo(principals), maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
-                                        connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
-                                        connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
-                                        return connectionHandler;
-                                    }
-                                };
-                                connection.getResult().setResult(connectionHandlerFactory);
-                                channel.resumeReads();
-                                return;
+                                            // this happens immediately.
+                                            final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, principals, new SimpleUserInfo(principals), maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
+                                            connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
+                                            connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
+                                            return connectionHandler;
+                                        }
+                                    };
+                                    connection.getResult().setResult(connectionHandlerFactory);
+                                    channel.resumeReads();
+                                    return;
+                                } finally {
+                                    pooledBuffer.free();
+                                }
                             }
                         });
+                        free = false;
                         return;
                     }
                     case Protocol.AUTH_REJECTED: {
@@ -746,7 +782,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     }
                 }
             } finally {
-                pooledBuffer.free();
+                if (free) pooledBuffer.free();
             }
         }
 

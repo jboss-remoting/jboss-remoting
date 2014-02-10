@@ -76,6 +76,8 @@ import org.xnio.ssl.XnioSsl;
  */
 class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionProvider> implements ConnectionProvider {
 
+    private static final boolean USE_POOLING = true;
+
     private final ProviderInterface providerInterface = new ProviderInterface();
     private final Xnio xnio;
     private final XnioWorker xnioWorker;
@@ -95,9 +97,9 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         xnioWorker = connectionProviderContext.getXnioWorker();
         this.connectionProviderContext = connectionProviderContext;
         final int messageBufferSize = optionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, RemotingOptions.DEFAULT_RECEIVE_BUFFER_SIZE);
-        messageBufferPool = false ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, messageBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+        messageBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, messageBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
         final int framingBufferSize = messageBufferSize + 4;
-        framingBufferPool = false ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, framingBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
+        framingBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, framingBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
         MBeanServer server = null;
         ObjectName objectName = null;
         try {

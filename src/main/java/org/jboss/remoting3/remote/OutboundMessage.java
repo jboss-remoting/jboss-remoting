@@ -57,19 +57,25 @@ final class OutboundMessage extends MessageOutputStream {
     final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
         public Pooled<ByteBuffer> getBuffer(boolean firstBuffer) throws IOException {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
-            ByteBuffer buffer = pooled.getResource();
+            boolean ok = false;
+            try {
+                ByteBuffer buffer = pooled.getResource();
 
-            //Reserve room for the transmit data which is 4 bytes
-            buffer.limit(buffer.limit() - 4);
+                //Reserve room for the transmit data which is 4 bytes
+                buffer.limit(buffer.limit() - 4);
 
-            buffer.put(firstBuffer ? Protocol.MSG_FLAG_NEW : 0); // flags
-            // header size plus window size
-            int windowPlusHeader = maximumWindow + 8;
-            if (buffer.remaining() > windowPlusHeader) {
-                // never try to write more than the maximum window size
-                buffer.limit(windowPlusHeader);
+                buffer.put(firstBuffer ? Protocol.MSG_FLAG_NEW : 0); // flags
+                // header size plus window size
+                int windowPlusHeader = maximumWindow + 8;
+                if (buffer.remaining() > windowPlusHeader) {
+                    // never try to write more than the maximum window size
+                    buffer.limit(windowPlusHeader);
+                }
+                ok = true;
+                return pooled;
+            } finally {
+                if (! ok) pooled.free();
             }
-            return pooled;
         }
 
         public void accept(final Pooled<ByteBuffer> pooledBuffer, final boolean eof) throws IOException {
@@ -205,10 +211,15 @@ final class OutboundMessage extends MessageOutputStream {
             if (! eofSent && channel.getConnectionHandler().isMessageClose()) {
                 eofSent = true;
                 pooled = allocate(Protocol.MESSAGE_DATA);
-                final ByteBuffer buffer = pooled.getResource();
-                buffer.put(Protocol.MSG_FLAG_EOF); // flags
-                buffer.flip();
-                channel.getRemoteConnection().send(pooled);
+                boolean ok = false;
+                try {
+                    final ByteBuffer buffer = pooled.getResource();
+                    buffer.put(Protocol.MSG_FLAG_EOF); // flags
+                    buffer.flip();
+                    channel.getRemoteConnection().send(pooled);
+                } finally {
+                    if (! ok) pooled.free();
+                }
             }
             // safe to free now; remote side has cleared this ID for sure
             // if the peer is new, then they send this to free the message either way
