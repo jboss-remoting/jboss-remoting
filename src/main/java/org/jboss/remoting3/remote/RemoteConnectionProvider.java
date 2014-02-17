@@ -75,7 +75,15 @@ import org.xnio.ssl.XnioSsl;
  */
 final class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionProvider> implements ConnectionProvider {
 
-    private static final boolean USE_POOLING = true;
+    private static final boolean USE_POOLING;
+
+    static {
+        boolean usePooling = true;
+        try {
+            usePooling = Boolean.parseBoolean(System.getProperty("jboss.remoting.pooled-buffers", "true"));
+        } catch (Throwable ignored) {}
+        USE_POOLING = usePooling;
+    }
 
     private final ProviderInterface providerInterface = new ProviderInterface();
     private final Xnio xnio;
