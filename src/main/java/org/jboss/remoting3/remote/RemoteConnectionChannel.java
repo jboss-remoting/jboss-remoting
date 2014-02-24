@@ -333,18 +333,16 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     public void writeShutdown() throws IOException {
         if (closeWrites()) {
             Pooled<ByteBuffer> pooled = connection.allocate();
+            boolean ok = false;
             try {
                 ByteBuffer byteBuffer = pooled.getResource();
                 byteBuffer.put(Protocol.CHANNEL_SHUTDOWN_WRITE);
                 byteBuffer.putInt(channelId);
                 byteBuffer.flip();
-                ConnectedMessageChannel channel = connection.getChannel();
-                synchronized (connection.getLock()) {
-                    Channels.sendBlocking(channel, byteBuffer);
-                    Channels.flushBlocking(channel);
-                }
+                connection.send(pooled);
+                ok = true;
             } finally {
-                pooled.free();
+                if (! ok) pooled.free();
             }
         }
     }

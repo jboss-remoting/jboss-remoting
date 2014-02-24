@@ -46,7 +46,6 @@ import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Pooled;
 import org.xnio.Result;
-import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
 
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
@@ -332,7 +331,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                         Pooled<ByteBuffer> pooled = remoteConnection.allocate();
                         try {
                             ByteBuffer buffer = pooled.getResource();
-                            ConnectedMessageChannel channel = remoteConnection.getChannel();
                             buffer.put(Protocol.CHANNEL_OPEN_REQUEST);
                             buffer.putInt(id);
                             ProtocolUtils.writeBytes(buffer, Protocol.O_SERVICE_NAME, serviceTypeBytes);
@@ -348,22 +346,13 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                             }
                             buffer.put((byte) 0);
                             buffer.flip();
-                            try {
-                                synchronized (remoteConnection.getLock()) {
-                                    Channels.sendBlocking(channel, buffer);
-                                    Channels.flushBlocking(channel);
-                                }
-                            } catch (IOException e) {
-                                result.setException(e);
-                                pendingChannels.removeKey(id);
-                                return IoUtils.nullCancellable();
-                            }
+                            remoteConnection.send(pooled);
                             ok = true;
                             log.tracef("Completed initiation of service open of type %s on %s", serviceType, this);
                             // TODO: allow cancel
                             return IoUtils.nullCancellable();
                         } finally {
-                            pooled.free();
+                            if (! ok) pooled.free();
                         }
                     }
                 }
