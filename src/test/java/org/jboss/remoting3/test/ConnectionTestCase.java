@@ -71,8 +71,13 @@ public class ConnectionTestCase {
     private AcceptingChannel<? extends ConnectedStreamChannel> server;
 
     public ConnectionTestCase() throws IOException {
-        clientEndpoint = Remoting.createEndpoint("connection-test-client", OptionMap.create(Options.WORKER_TASK_CORE_THREADS, THREAD_POOL_SIZE, Options.WORKER_TASK_MAX_THREADS, THREAD_POOL_SIZE));
-        serverEndpoint = Remoting.createEndpoint("connection-test-server", OptionMap.create(Options.WORKER_TASK_CORE_THREADS, THREAD_POOL_SIZE, Options.WORKER_TASK_MAX_THREADS, THREAD_POOL_SIZE));
+        OptionMap optionMap = OptionMap.builder()
+            .set(Options.WORKER_TASK_CORE_THREADS, THREAD_POOL_SIZE)
+            .set(Options.WORKER_TASK_MAX_THREADS, THREAD_POOL_SIZE)
+            .set(Options.WORKER_IO_THREADS, IO_THREAD_COUNT)
+            .getMap();
+        clientEndpoint = Remoting.createEndpoint("connection-test-client", optionMap);
+        serverEndpoint = Remoting.createEndpoint("connection-test-server", optionMap);
         clientReg = clientEndpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         serverReg = serverEndpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
     }
@@ -94,6 +99,7 @@ public class ConnectionTestCase {
         IoUtils.safeClose(serverEndpoint);
     }
 
+    private static final int IO_THREAD_COUNT = (int) (Runtime.getRuntime().availableProcessors() * 1.5);
     private static final int THREAD_POOL_SIZE = 100;
     private static final int CONNECTION_COUNT = 10;
     private static final int MESSAGE_COUNT = 8;
