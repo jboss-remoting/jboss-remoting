@@ -31,6 +31,7 @@ import java.util.Queue;
 import java.util.Random;
 
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
@@ -271,7 +272,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     private void notifyEnd() {
-        synchronized (connection) {
+        synchronized (connection.getLock()) {
             if (nextReceiver != null) {
                 final Receiver receiver = nextReceiver;
                 nextReceiver = null;
@@ -356,7 +357,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     public void receiveMessage(final Receiver handler) {
-        synchronized (connection) {
+        synchronized (connection.getLock()) {
             if (inboundMessageQueue.isEmpty()) {
                 if (nextReceiver != null) {
                     throw new IllegalStateException("Message handler already queued");
@@ -383,7 +384,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                     }
                 }
             }
-            connection.notify();
+            connection.getLock().notify();
         }
     }
 
@@ -441,7 +442,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                     if (existing != null) {
                         existing.handleDuplicate();
                     }
-                    synchronized(connection) {
+                    synchronized(connection.getLock()) {
                         if (nextReceiver != null) {
                             final Receiver receiver = nextReceiver;
                             nextReceiver = null;
@@ -532,11 +533,20 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     private void closeMessages() {
-        for (InboundMessage message : inboundMessages) {
-            message.inputStream.pushException(new MessageCancelledException());
+        Executor executor = connection.getExecutor();
+        for (final InboundMessage message : inboundMessages) {
+            executor.execute(new Runnable() {
+                public void run() {
+                    message.inputStream.pushException(new MessageCancelledException());
+                }
+            });
         }
-        for (OutboundMessage message : outboundMessages) {
-            message.cancel();
+        for (final OutboundMessage message : outboundMessages) {
+            executor.execute(new Runnable() {
+                public void run() {
+                    message.cancel();
+                }
+            });
         }
     }
 

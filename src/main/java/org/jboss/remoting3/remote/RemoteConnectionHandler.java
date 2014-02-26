@@ -379,7 +379,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     private void closePendingChannels() {
-        synchronized (remoteConnection) {
+        synchronized (remoteConnection.getLock()) {
             for (PendingChannel pendingChannel : pendingChannels) {
                 pendingChannel.getResult().setCancelled();
             }
@@ -387,7 +387,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     private void closeAllChannels() {
-        synchronized (remoteConnection) {
+        synchronized (remoteConnection.getLock()) {
             for (RemoteConnectionChannel channel : channels) {
                 channel.closeAsync();
             }
@@ -427,7 +427,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     void dumpState(final StringBuilder b) {
-        synchronized (remoteConnection) {
+        synchronized (remoteConnection.getLock()) {
             final int state = this.channelState;
             final boolean sentCloseReq = Bits.allAreSet(state, SENT_CLOSE_REQ);
             final boolean receivedCloseReq = Bits.allAreSet(state, RECEIVED_CLOSE_REQ);
