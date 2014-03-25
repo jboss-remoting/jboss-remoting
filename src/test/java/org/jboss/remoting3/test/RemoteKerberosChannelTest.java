@@ -79,6 +79,7 @@ import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
+import org.xnio.OptionMap.Builder;
 import org.xnio.Options;
 import org.xnio.Sequence;
 import org.xnio.channels.AcceptingChannel;
@@ -118,8 +119,12 @@ public class RemoteKerberosChannelTest extends ChannelTestBase {
         streamServer = Subject.doAs(serverSubject, new PrivilegedExceptionAction<AcceptingChannel>() {
             @Override
             public AcceptingChannel run() throws Exception {
-                return networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(
-                        Options.SASL_MECHANISMS, Sequence.of("GSSAPI"), RemotingOptions.SERVER_NAME, "test_server"), sap, null);
+                Builder builder = OptionMap.builder();
+                builder.set(Options.SASL_MECHANISMS, Sequence.of("GSSAPI"));
+                builder.set(RemotingOptions.SERVER_NAME, "test_server");
+                builder.set(RemotingOptions.SASL_PROTOCOL, "remoting");
+
+                return networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), builder.getMap(), sap, null);
             }
         });
     }
@@ -247,7 +252,7 @@ public class RemoteKerberosChannelTest extends ChannelTestBase {
 
                     @Override
                     public IoFuture<Connection> run() throws Exception {
-                        return endpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY);
+                        return endpoint.connect(new URI("remote://localhost:30123"), OptionMap.create(RemotingOptions.SASL_PROTOCOL, "remoting"));
                     }
                 });
         connection = futureConnection.get();
