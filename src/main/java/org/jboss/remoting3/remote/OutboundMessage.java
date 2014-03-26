@@ -79,78 +79,84 @@ final class OutboundMessage extends MessageOutputStream {
         }
 
         public void accept(final Pooled<ByteBuffer> pooledBuffer, final boolean eof) throws IOException {
-            assert holdsLock(pipeOutputStream);
-            if (closeCalled) {
-                throw new NotOpenException("Message was closed asynchronously by another thread");
-            }
-            if (cancelSent) {
-                throw new MessageCancelledException("Message was cancelled");
-            }
-            if (closeReceived) {
-                throw new BrokenPipeException("Remote side closed the message stream");
-            }
-            if (eof) {
-                closeCalled = true;
-                // make sure other waiters know about it
-                pipeOutputStream.notifyAll();
-            }
-            final ByteBuffer buffer = pooledBuffer.getResource();
-            final ConnectedMessageChannel messageChannel = channel.getRemoteConnection().getChannel();
-            final boolean badMsgSize = channel.getConnectionHandler().isFaultyMessageSize();
-            final int msgSize = badMsgSize ? buffer.remaining() : buffer.remaining() - 8;
-            boolean sendCancel = cancelled && ! cancelSent;
-            boolean intr = false;
-            if (msgSize > 0 && ! sendCancel) {
-                // empty messages and cancellation both bypass the transmit window check
-                for (;;) {
-                    if (window > msgSize) {
-                        window -= msgSize;
-                        log.trace("Message window is open, proceeding with send");
-                        break;
-                    }
-                    try {
-                        log.trace("Message window is closed, waiting");
-                        pipeOutputStream.wait();
-                    } catch (InterruptedException e) {
-                        cancelled = true;
-                        intr = true;
-                        break;
-                    }
-                    if (closeReceived) {
-                        throw new BrokenPipeException("Remote side closed the message stream");
-                    }
-                    if (closeCalled && ! eof) {
-                        throw new NotOpenException("Message was closed asynchronously by another thread");
-                    }
-                    if (cancelSent) {
-                        throw new MessageCancelledException("Message was cancelled");
+            boolean ok = false;
+            try {
+                assert holdsLock(pipeOutputStream);
+                if (closeCalled) {
+                    throw new NotOpenException("Message was closed asynchronously by another thread");
+                }
+                if (cancelSent) {
+                    throw new MessageCancelledException("Message was cancelled");
+                }
+                if (closeReceived) {
+                    throw new BrokenPipeException("Remote side closed the message stream");
+                }
+                if (eof) {
+                    closeCalled = true;
+                    // make sure other waiters know about it
+                    pipeOutputStream.notifyAll();
+                }
+                final ByteBuffer buffer = pooledBuffer.getResource();
+                final ConnectedMessageChannel messageChannel = channel.getRemoteConnection().getChannel();
+                final boolean badMsgSize = channel.getConnectionHandler().isFaultyMessageSize();
+                final int msgSize = badMsgSize ? buffer.remaining() : buffer.remaining() - 8;
+                boolean sendCancel = cancelled && ! cancelSent;
+                boolean intr = false;
+                if (msgSize > 0 && ! sendCancel) {
+                    // empty messages and cancellation both bypass the transmit window check
+                    for (;;) {
+                        if (window > msgSize) {
+                            window -= msgSize;
+                            log.trace("Message window is open, proceeding with send");
+                            break;
+                        }
+                        try {
+                            log.trace("Message window is closed, waiting");
+                            pipeOutputStream.wait();
+                        } catch (InterruptedException e) {
+                            cancelled = true;
+                            intr = true;
+                            break;
+                        }
+                        if (closeReceived) {
+                            throw new BrokenPipeException("Remote side closed the message stream");
+                        }
+                        if (closeCalled && ! eof) {
+                            throw new NotOpenException("Message was closed asynchronously by another thread");
+                        }
+                        if (cancelSent) {
+                            throw new MessageCancelledException("Message was cancelled");
+                        }
                     }
                 }
-            }
-            if (eof || sendCancel || intr) {
-                // EOF flag (sync close)
-                eofSent = true;
-                buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_EOF));
-                log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
-                if (! channel.getConnectionHandler().isMessageClose()) {
-                    // free now, because we may never receive a close message
-                    channel.free(OutboundMessage.this);
+                if (eof || sendCancel || intr) {
+                    // EOF flag (sync close)
+                    eofSent = true;
+                    buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_EOF));
+                    log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
+                    if (! channel.getConnectionHandler().isMessageClose()) {
+                        // free now, because we may never receive a close message
+                        channel.free(OutboundMessage.this);
+                    }
+                    if (! released) {
+                        released = true;
+                        channel.closeOutboundMessage();
+                    }
                 }
-                if (! released) {
-                    released = true;
-                    channel.closeOutboundMessage();
+                if (sendCancel || intr) {
+                    cancelSent = true;
+                    buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
+                    buffer.limit(8); // discard everything in the buffer so we can send even if there is no window
+                    log.trace("Message includes cancel flag");
                 }
-            }
-            if (sendCancel || intr) {
-                cancelSent = true;
-                buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
-                buffer.limit(8); // discard everything in the buffer so we can send even if there is no window
-                log.trace("Message includes cancel flag");
-            }
-            channel.getRemoteConnection().send(pooledBuffer);
-            if (intr) {
-                Thread.currentThread().interrupt();
-                throw new InterruptedIOException("Interrupted on write (message cancelled)");
+                channel.getRemoteConnection().send(pooledBuffer);
+                ok = true;
+                if (intr) {
+                    Thread.currentThread().interrupt();
+                    throw new InterruptedIOException("Interrupted on write (message cancelled)");
+                }
+            } finally {
+                if (! ok) pooledBuffer.free();
             }
         }
 
@@ -217,6 +223,7 @@ final class OutboundMessage extends MessageOutputStream {
                     buffer.put(Protocol.MSG_FLAG_EOF); // flags
                     buffer.flip();
                     channel.getRemoteConnection().send(pooled);
+                    ok = true;
                 } finally {
                     if (! ok) pooled.free();
                 }

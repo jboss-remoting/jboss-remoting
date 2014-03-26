@@ -99,6 +99,7 @@ final class InboundMessage {
             ByteBuffer buffer = pooled.getResource();
             buffer.flip();
             channel.getRemoteConnection().send(pooled);
+            ok = true;
             closeSent = true;
         } finally {
             if (! ok) pooled.free();
