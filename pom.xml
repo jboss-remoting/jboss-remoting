@@ -31,7 +31,7 @@
 
     <groupId>org.jboss.remoting3</groupId>
     <artifactId>jboss-remoting</artifactId>
-    <version>3.3.1.Final-SNAPSHOT</version>
+    <version>3.3.1.Final</version>
 
     <packaging>jar</packaging>
 
