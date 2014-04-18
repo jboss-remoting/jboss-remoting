@@ -22,6 +22,10 @@
 
 package org.jboss.remoting3;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Properties;
+
 /**
  * The version of Remoting.
  *
@@ -33,9 +37,23 @@ public final class Version {
     }
 
     /**
-     * The version.
+     * The version string.
+     *
+     * @deprecated Use {@link #getVersionString()} instead.
      */
-    public static final String VERSION = getVersionString();
+    @Deprecated
+    public static final String VERSION;
+
+    static {
+        Properties versionProps = new Properties();
+        String versionString = "(unknown)";
+        try {
+            versionProps.load(new InputStreamReader(Version.class.getResourceAsStream("Version.properties")));
+            versionString = versionProps.getProperty("version", versionString);
+        } catch (IOException ignored) {
+        }
+        VERSION = versionString;
+    }
 
     /**
      * Get the version string.
