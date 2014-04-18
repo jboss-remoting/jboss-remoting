@@ -201,6 +201,15 @@
         </dependency>
     </dependencies>
     <build>
+        <resources>
+            <resource>
+                <directory>${project.build.sourceDirectory}</directory>
+                <includes>
+                    <include>**/Version.properties</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
