@@ -22,7 +22,10 @@
 
 package org.jboss.remoting3;
 
+import static org.xnio.IoUtils.safeClose;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Properties;
 
@@ -48,8 +51,18 @@ public final class Version {
         Properties versionProps = new Properties();
         String versionString = "(unknown)";
         try {
-            versionProps.load(new InputStreamReader(Version.class.getResourceAsStream("Version.properties")));
-            versionString = versionProps.getProperty("version", versionString);
+            final InputStream stream = Version.class.getResourceAsStream("Version.properties");
+            try {
+                final InputStreamReader reader = new InputStreamReader(stream);
+                try {
+                    versionProps.load(reader);
+                    versionString = versionProps.getProperty("version", versionString);
+                } finally {
+                    safeClose(reader);
+                }
+            } finally {
+                safeClose(stream);
+            }
         } catch (IOException ignored) {
         }
         VERSION = versionString;
