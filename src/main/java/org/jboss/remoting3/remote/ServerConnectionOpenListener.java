@@ -441,7 +441,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     ProtocolUtils.writeString(sendBuffer, Protocol.CAP_SASL_MECH, mechName);
                 }
                 ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
-                ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.getVersionString());
+                ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.INSTANCE.toString());
                 ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_IN, optionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_INBOUND_CHANNELS));
                 ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_OUT, optionMap.get(RemotingOptions.MAX_OUTBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_OUTBOUND_CHANNELS));
                 sendBuffer.flip();

@@ -22,89 +22,19 @@
 
 package org.jboss.remoting3;
 
-import static org.xnio.IoUtils.safeClose;
+import java.util.ResourceBundle;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Enumeration;
-import java.util.jar.Attributes;
-import java.util.jar.Manifest;
+public enum Version {
+  INSTANCE("version");
 
-/**
- * The version of Remoting.
- *
- * @apiviz.exclude
- */
-@SuppressWarnings("deprecation")
-public final class Version {
+  private static final ResourceBundle resource = ResourceBundle.getBundle(Version.class.getName());
+  private final String key;
 
-    private Version() {
-    }
+  private Version(String key) {
+    this.key = key;
+  }
 
-    private static final String JAR_NAME;
-    /**
-     * The version string.
-     *
-     * @deprecated Use {@link #getVersionString()} instead.
-     */
-    @Deprecated
-    public static final String VERSION;
-
-    static {
-        final Enumeration<URL> resources;
-        String jarName = "(unknown)";
-        String versionString = "(unknown)";
-        final ClassLoader classLoader = Version.class.getClassLoader();
-        try {
-            resources = classLoader == null ? ClassLoader.getSystemResources("META-INF/MANIFEST.MF") : classLoader.getResources("META-INF/MANIFEST.MF");
-            while (resources.hasMoreElements()) {
-                final URL url = resources.nextElement();
-                try {
-                    final InputStream stream = url.openStream();
-                    if (stream != null) try {
-                        final Manifest manifest = new Manifest(stream);
-                        final Attributes mainAttributes = manifest.getMainAttributes();
-                        if (mainAttributes != null && "JBoss Remoting".equals(mainAttributes.getValue("Specification-Title"))) {
-                            jarName = mainAttributes.getValue("Jar-Name");
-                            versionString = mainAttributes.getValue("Jar-Version");
-                        }
-                    } finally {
-                        safeClose(stream);
-                    }
-                } catch (IOException ignored) {
-                }
-            }
-        } catch (IOException ignored) {
-        }
-        JAR_NAME = jarName;
-        VERSION = versionString;
-    }
-
-    /**
-     * Get the name of the JBoss Remoting JAR.
-     *
-     * @return the name
-     */
-    public static String getJarName() {
-        return JAR_NAME;
-    }
-
-    /**
-     * Get the version string of JBoss Remoting.
-     *
-     * @return the version string
-     */
-    public static String getVersionString() {
-        return VERSION;
-    }
-
-    /**
-     * Print out the current version on {@code System.out}.
-     *
-     * @param args ignored
-     */
-    public static void main(String[] args) {
-        System.out.printf("JBoss Remoting version %s\n", getVersionString());
-    }
+  public String toString() {
+    return resource.getString(this.key);
+  }
 }
