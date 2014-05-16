@@ -93,6 +93,7 @@ final class Protocol {
     /**
      * Sent by server
      * byte 0: AUTH_COMPLETE
+     * byte 1..n: final response body
      */
     static final byte AUTH_COMPLETE = 5;
     /**
