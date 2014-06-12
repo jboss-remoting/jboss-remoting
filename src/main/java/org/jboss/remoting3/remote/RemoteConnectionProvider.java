@@ -23,7 +23,6 @@
 package org.jboss.remoting3.remote;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
-import static org.jboss.remoting3.remote.RemoteLogger.server;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -53,7 +52,6 @@ import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.xnio.BufferAllocator;
 import org.xnio.Buffers;
-import org.xnio.ByteBufferSlicePool;
 import org.xnio.Cancellable;
 import org.xnio.ChannelListener;
 import org.xnio.FutureResult;
@@ -79,13 +77,12 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     private final Xnio xnio;
     private final XnioWorker xnioWorker;
     private final ConnectionProviderContext connectionProviderContext;
-    private final Pool<ByteBuffer> messageBufferPool;
-    private final Pool<ByteBuffer> framingBufferPool;
     private final boolean sslEnabled;
     private final Collection<Cancellable> pendingInboundConnections = Collections.synchronizedSet(new HashSet<Cancellable>());
     private final Set<RemoteConnectionHandler> handlers = Collections.synchronizedSet(new HashSet<RemoteConnectionHandler>());
     private final MBeanServer server;
     private final ObjectName objectName;
+    private final int defaultMessageBufferSize;
 
     RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
         super(connectionProviderContext.getExecutor());
@@ -93,10 +90,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         sslEnabled = optionMap.get(Options.SSL_ENABLED, true);
         xnioWorker = connectionProviderContext.getXnioWorker();
         this.connectionProviderContext = connectionProviderContext;
-        final int messageBufferSize = optionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, 8192);
-        messageBufferPool = false ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, messageBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
-        final int framingBufferSize = messageBufferSize + 4;
-        framingBufferPool = false ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, optionMap.get(RemotingOptions.BUFFER_REGION_SIZE, framingBufferSize * 2)) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
+        this.defaultMessageBufferSize = optionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, 8192);
         MBeanServer server = null;
         ObjectName objectName = null;
         try {
@@ -170,6 +164,10 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                 } catch (IOException e) {
                     // ignore
                 }
+                final int messageBufferSize = connectOptions.get(RemotingOptions.RECEIVE_BUFFER_SIZE, defaultMessageBufferSize);
+                final Pool<ByteBuffer> messageBufferPool = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+                final int framingBufferSize = messageBufferSize + 4;
+                final Pool<ByteBuffer> framingBufferPool = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
                 final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
                 final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, RemoteConnectionProvider.this);
                 cancellableResult.addCancelHandler(new Cancellable() {
@@ -307,10 +305,17 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         private final ServerAuthenticationProvider serverAuthenticationProvider;
         private final AccessControlContext accessControlContext;
 
+        private final Pool<ByteBuffer> messageBufferPool;
+        private final Pool<ByteBuffer> framingBufferPool;
+
         AcceptListener(final OptionMap serverOptionMap, final ServerAuthenticationProvider serverAuthenticationProvider, final AccessControlContext accessControlContext) {
             this.serverOptionMap = serverOptionMap;
             this.serverAuthenticationProvider = serverAuthenticationProvider;
             this.accessControlContext = accessControlContext;
+            final int messageBufferSize = serverOptionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, defaultMessageBufferSize);
+            messageBufferPool = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+            final int framingBufferSize = messageBufferSize + 4;
+            framingBufferPool = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
         }
 
         public void handleEvent(final AcceptingChannel<? extends ConnectedStreamChannel> channel) {
