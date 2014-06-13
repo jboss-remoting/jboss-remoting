@@ -29,6 +29,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.MessageDigest;
@@ -41,6 +42,9 @@ import java.util.Map;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ExternalConnectionProvider;
+import org.xnio.BufferAllocator;
+import org.xnio.Buffers;
+import org.xnio.ByteBufferSlicePool;
 import org.xnio.ChannelListener;
 import org.xnio.ChannelListeners;
 import org.xnio.FailedIoFuture;
@@ -48,6 +52,7 @@ import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.Options;
+import org.xnio.Pool;
 import org.xnio.StreamConnection;
 import org.xnio.channels.AssembledConnectedSslStreamChannel;
 import org.xnio.channels.AssembledConnectedStreamChannel;
@@ -218,8 +223,13 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
                 // ignore
             }
 
-            final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, getFramingBufferPool().allocate(), getFramingBufferPool().allocate());
-            final RemoteConnection connection = new RemoteConnection(getMessageBufferPool(), channel, messageChannel, optionMap, HttpUpgradeConnectionProvider.this);
+            final int messageBufferSize = getDefaultBufferSize();
+            Pool<ByteBuffer> messageBufferPool = RemoteConnectionProvider.USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+            final int framingBufferSize = messageBufferSize + 4;
+            Pool<ByteBuffer> framingBufferPool = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
+
+            final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
+            final RemoteConnection connection = new RemoteConnection(messageBufferPool, channel, messageChannel, optionMap, HttpUpgradeConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), authenticationProvider, optionMap, accessControlContext);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
             RemoteLogger.log.tracef("Accepted connection from %s to %s", channel.getPeerAddress(), channel.getLocalAddress());
