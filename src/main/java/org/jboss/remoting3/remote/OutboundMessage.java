@@ -105,7 +105,7 @@ final class OutboundMessage extends MessageOutputStream {
                 if (msgSize > 0 && ! sendCancel) {
                     // empty messages and cancellation both bypass the transmit window check
                     for (;;) {
-                        if (window > msgSize) {
+                        if (window >= msgSize) {
                             window -= msgSize;
                             log.trace("Message window is open, proceeding with send");
                             break;
