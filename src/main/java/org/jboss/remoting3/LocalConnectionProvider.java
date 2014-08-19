@@ -41,6 +41,7 @@ import org.xnio.OptionMap;
 import org.xnio.Result;
 import org.xnio.ssl.XnioSsl;
 
+import javax.net.ssl.SSLSession;
 import javax.security.auth.callback.CallbackHandler;
 
 import static org.xnio.IoUtils.nullCancellable;
@@ -106,6 +107,10 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
                 }
 
             };
+        }
+
+        public SSLSession getSslSession() {
+            return null;
         }
 
         public String getRemoteEndpointName() {
