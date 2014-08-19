@@ -25,6 +25,8 @@ package org.jboss.remoting3;
 import java.security.Principal;
 import java.util.Collection;
 
+import javax.net.ssl.SSLSession;
+
 import org.jboss.remoting3.security.UserInfo;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -47,6 +49,13 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * @return the authenticated UserInfo
      */
     UserInfo getUserInfo();
+
+    /**
+     * Get the underlying {@link SSLSession} for this connection if one is established.
+     *
+     * @return the {@link SSLSession} for the connection if one is established, otherwise returns {@code null}.
+     */
+    SSLSession getSslSession();
 
     /**
      * Open a channel to a remote service on this connection.
