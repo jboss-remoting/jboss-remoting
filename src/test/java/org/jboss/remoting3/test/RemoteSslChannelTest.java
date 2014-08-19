@@ -91,10 +91,12 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
         }, OptionMap.EMPTY);
         IoFuture<Connection> futureConnection = endpoint.connect(new URI("remote://localhost:30123"), OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE), "bob", "test", "pass".toCharArray());
         connection = futureConnection.get();
+        assertNotNull("SSLSession Available", connection.getSslSession());
         IoFuture<Channel> futureChannel = connection.openChannel("org.jboss.test", OptionMap.EMPTY);
         sendChannel = futureChannel.get();
         recvChannel = passer.getIoFuture().get();
         assertNotNull(recvChannel);
+        assertNotNull("SSLSession Available", recvChannel.getConnection().getSslSession());
     }
 
     @After
