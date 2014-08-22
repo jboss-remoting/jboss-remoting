@@ -104,7 +104,10 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                             case Protocol.CONNECTION_CLOSE: {
                                 log.trace("Received connection close request");
                                 handler.receiveCloseRequest();
-                                return;
+                                // do not return now so we can read once more,
+                                // thus making sure we are not skipping a
+                                // receive equal to -1
+                                break;
                             }
                             case Protocol.CHANNEL_OPEN_REQUEST: {
                                 log.trace("Received channel open request");
