@@ -259,7 +259,7 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     void dumpState(final StringBuilder b) {
-        b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", messageId & 0xFFFF, window, maximumWindow));
+        b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", Integer.valueOf(messageId & 0xFFFF), Integer.valueOf(window), Integer.valueOf(maximumWindow)));
         b.append("            ").append("* flags: ");
         if (cancelled) b.append("cancelled ");
         if (cancelSent) b.append("cancel-sent ");
