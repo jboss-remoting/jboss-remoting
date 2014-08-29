@@ -116,12 +116,12 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                             case Protocol.CHANNEL_OPEN_REQUEST: {
                                 log.trace("Received channel open request");
                                 int channelId = buffer.getInt() ^ 0x80000000;
-                                int inboundWindow = Integer.MAX_VALUE;
-                                int inboundMessages = 0xffff;
-                                int outboundWindow = Integer.MAX_VALUE;
-                                int outboundMessages = 0xffff;
-                                long inboundMessageSize = Long.MAX_VALUE;
-                                long outboundMessageSize = Long.MAX_VALUE;
+                                int requestedInboundWindow = Integer.MAX_VALUE;
+                                int requestedInboundMessages = 0xffff;
+                                int requestedOutboundWindow = Integer.MAX_VALUE;
+                                int requestedOutboundMessages = 0xffff;
+                                long requestedInboundMessageSize = Long.MAX_VALUE;
+                                long requestedOutboundMessageSize = Long.MAX_VALUE;
                                 // parse out request
                                 int b;
                                 String serviceType = null;
@@ -134,27 +134,27 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                             break;
                                         }
                                         case Protocol.O_MAX_INBOUND_MSG_WINDOW_SIZE: {
-                                            outboundWindow = Math.min(outboundWindow, ProtocolUtils.readInt(buffer));
+                                            requestedOutboundWindow = Math.min(requestedOutboundWindow, ProtocolUtils.readInt(buffer));
                                             break;
                                         }
                                         case Protocol.O_MAX_INBOUND_MSG_COUNT: {
-                                            outboundMessages = Math.min(outboundMessages, ProtocolUtils.readUnsignedShort(buffer));
+                                            requestedOutboundMessages = Math.min(requestedOutboundMessages, ProtocolUtils.readUnsignedShort(buffer));
                                             break;
                                         }
                                         case Protocol.O_MAX_OUTBOUND_MSG_WINDOW_SIZE: {
-                                            inboundWindow = Math.min(inboundWindow, ProtocolUtils.readInt(buffer));
+                                            requestedInboundWindow = Math.min(requestedInboundWindow, ProtocolUtils.readInt(buffer));
                                             break;
                                         }
                                         case Protocol.O_MAX_OUTBOUND_MSG_COUNT: {
-                                            inboundMessages = Math.min(inboundMessages, ProtocolUtils.readUnsignedShort(buffer));
+                                            requestedInboundMessages = Math.min(requestedInboundMessages, ProtocolUtils.readUnsignedShort(buffer));
                                             break;
                                         }
                                         case Protocol.O_MAX_INBOUND_MSG_SIZE: {
-                                            outboundMessageSize = Math.min(outboundMessageSize, ProtocolUtils.readLong(buffer));
+                                            requestedOutboundMessageSize = Math.min(requestedOutboundMessageSize, ProtocolUtils.readLong(buffer));
                                             break;
                                         }
                                         case Protocol.O_MAX_OUTBOUND_MSG_SIZE: {
-                                            inboundMessageSize = Math.min(inboundMessageSize, ProtocolUtils.readLong(buffer));
+                                            requestedInboundMessageSize = Math.min(requestedInboundMessageSize, ProtocolUtils.readLong(buffer));
                                             break;
                                         }
                                         default: {
@@ -181,12 +181,40 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     break;
                                 }
                                 final OptionMap serviceOptionMap = registeredService.getOptionMap();
-                                outboundWindow = Math.min(outboundWindow, serviceOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, RemotingOptions.INCOMING_CHANNEL_DEFAULT_TRANSMIT_WINDOW_SIZE));
-                                outboundMessages = Math.min(outboundMessages, serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, RemotingOptions.INCOMING_CHANNEL_DEFAULT_MAX_OUTBOUND_MESSAGES));
-                                inboundWindow = Math.min(inboundWindow, serviceOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, RemotingOptions.INCOMING_CHANNEL_DEFAULT_RECEIVE_WINDOW_SIZE));
-                                inboundMessages = Math.min(inboundMessages, serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGES));
-                                outboundMessageSize = Math.min(outboundMessageSize, serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_OUTBOUND_MESSAGE_SIZE));
-                                inboundMessageSize = Math.min(inboundMessageSize, serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGE_SIZE));
+
+                                final int outboundWindowOptionValue = serviceOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, RemotingOptions.INCOMING_CHANNEL_DEFAULT_TRANSMIT_WINDOW_SIZE);
+                                final int outboundMessagesOptionValue = serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, RemotingOptions.INCOMING_CHANNEL_DEFAULT_MAX_OUTBOUND_MESSAGES);
+                                final int inboundWindowOptionValue = serviceOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, RemotingOptions.INCOMING_CHANNEL_DEFAULT_RECEIVE_WINDOW_SIZE);
+                                final int inboundMessagesOptionValue = serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGES);
+                                final long outboundMessageSizeOptionValue = serviceOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_OUTBOUND_MESSAGE_SIZE);
+                                final long inboundMessageSizeOptionValue = serviceOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGE_SIZE);
+
+                                final int outboundWindow = Math.min(requestedOutboundWindow, outboundWindowOptionValue);
+                                final int outboundMessages = Math.min(requestedOutboundMessages, outboundMessagesOptionValue);
+                                final int inboundWindow = Math.min(requestedInboundWindow, inboundWindowOptionValue);
+                                final int inboundMessages = Math.min(requestedInboundMessages, inboundMessagesOptionValue);
+                                final long outboundMessageSize = Math.min(requestedOutboundMessageSize, outboundMessageSizeOptionValue);
+                                final long inboundMessageSize = Math.min(requestedInboundMessageSize, inboundMessageSizeOptionValue);
+
+                                if (log.isTraceEnabled()) {
+                                    log.tracef("HERE IS THE MESSAGE");
+                                    log.tracef(
+                                        "Inbound service request for channel %08x is configured as follows:\n" +
+                                        "  outbound window:  req %10d, option %10d, grant %10d\n" +
+                                        "  inbound window:   req %10d, option %10d, grant %10d\n" +
+                                        "  outbound msgs:    req %10d, option %10d, grant %10d\n" +
+                                        "  inbound msgs:     req %10d, option %10d, grant %10d\n" +
+                                        "  outbound msgsize: req %19d, option %19d, grant %19d\n" +
+                                        "  inbound msgsize:  req %19d, option %19d, grant %19d",
+                                        Integer.valueOf(channelId),
+                                        Integer.valueOf(requestedOutboundWindow), Integer.valueOf(outboundWindowOptionValue), Integer.valueOf(outboundWindow),
+                                        Integer.valueOf(requestedInboundWindow), Integer.valueOf(inboundWindowOptionValue), Integer.valueOf(inboundWindow),
+                                        Integer.valueOf(requestedOutboundMessages), Integer.valueOf(outboundMessagesOptionValue), Integer.valueOf(outboundMessages),
+                                        Integer.valueOf(requestedInboundMessages), Integer.valueOf(inboundMessagesOptionValue), Integer.valueOf(inboundMessages),
+                                        Long.valueOf(requestedOutboundMessageSize), Long.valueOf(outboundMessageSizeOptionValue), Long.valueOf(outboundMessageSize),
+                                        Long.valueOf(requestedInboundMessageSize), Long.valueOf(inboundMessageSizeOptionValue), Long.valueOf(inboundMessageSize)
+                                    );
+                                }
 
                                 final OpenListener openListener = registeredService.getOpenListener();
                                 if (! handler.handleInboundChannelOpen()) {
@@ -399,6 +427,9 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
     }
 
     private void refuseService(final int channelId, final String reason) {
+        if (log.isTraceEnabled()) {
+            log.tracef("Refusing service on channel %08x: %s", Integer.valueOf(channelId), reason);
+        }
         Pooled<ByteBuffer> pooledReply = connection.allocate();
         boolean ok = false;
         try {
