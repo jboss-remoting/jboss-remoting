@@ -22,6 +22,9 @@
 
 package org.jboss.remoting3.remote;
 
+import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.jboss.logging.Logger.Level.*;
+
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -49,8 +52,6 @@ import org.xnio.Result;
 import org.xnio.channels.ConnectedMessageChannel;
 
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
-
-    private static final RemoteLogger log = RemoteLogger.log;
 
     private final ConnectionHandlerContext connectionContext;
     private final RemoteConnection remoteConnection;
@@ -305,14 +306,22 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         final OptionMap connectionOptionMap = remoteConnection.getOptionMap();
 
         // Request the maximum outbound value if none was specified.
-        final int outboundWindowSize = optionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, connectionOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, RemotingOptions.OUTGOING_CHANNEL_DEFAULT_TRANSMIT_WINDOW_SIZE));
-        final int outboundMessageCount = optionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, RemotingOptions.OUTGOING_CHANNEL_DEFAULT_MAX_OUTBOUND_MESSAGES));
+        final int outboundWindowSizeOptionValue = connectionOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, RemotingOptions.OUTGOING_CHANNEL_DEFAULT_TRANSMIT_WINDOW_SIZE);
+        final int outboundMessageCountOptionValue = connectionOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, RemotingOptions.OUTGOING_CHANNEL_DEFAULT_MAX_OUTBOUND_MESSAGES);
         // Restrict the inbound value to defaults if none was specified.
-        final int inboundWindowSize = optionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, connectionOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, RemotingOptions.OUTGOING_CHANNEL_DEFAULT_RECEIVE_WINDOW_SIZE));
-        final int inboundMessageCount = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGES));
+        final int inboundWindowSizeOptionValue = connectionOptionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, RemotingOptions.OUTGOING_CHANNEL_DEFAULT_RECEIVE_WINDOW_SIZE);
+        final int inboundMessageCountOptionValue = connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGES);
         // Request the maximum message size to defaults if none was specified.
-        final long outboundMessageSize = optionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, connectionOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_OUTBOUND_MESSAGE_SIZE));
-        final long inboundMessageSize = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGE_SIZE));
+        final long outboundMessageSizeOptionValue = connectionOptionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_OUTBOUND_MESSAGE_SIZE);
+        final long inboundMessageSizeOptionValue = connectionOptionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGE_SIZE);
+
+        final int outboundWindowSize = optionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, outboundWindowSizeOptionValue);
+        final int outboundMessageCount = optionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGES, outboundMessageCountOptionValue);
+        final int inboundWindowSize = optionMap.get(RemotingOptions.RECEIVE_WINDOW_SIZE, inboundWindowSizeOptionValue);
+        final int inboundMessageCount = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGES, inboundMessageCountOptionValue);
+        final long outboundMessageSize = optionMap.get(RemotingOptions.MAX_OUTBOUND_MESSAGE_SIZE, outboundMessageSizeOptionValue);
+        final long inboundMessageSize = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, inboundMessageSizeOptionValue);
+
         final IntIndexMap<PendingChannel> pendingChannels = this.pendingChannels;
         try {
             handleOutboundChannelOpen();
@@ -328,6 +337,24 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                 if (! pendingChannels.containsKey(id)) {
                     PendingChannel pendingChannel = new PendingChannel(id, outboundWindowSize, inboundWindowSize, outboundMessageCount, inboundMessageCount, outboundMessageSize, inboundMessageSize, result);
                     if (pendingChannels.putIfAbsent(pendingChannel) == null) {
+                        if (log.isTraceEnabled()) {
+                            log.tracef("Outbound service request for channel %08x is configured as follows:\n" +
+                                    "  outbound window:  option %10d, req %10d\n" +
+                                    "  inbound window:   option %10d, req %10d\n" +
+                                    "  outbound msgs:    option %10d, req %10d\n" +
+                                    "  inbound msgs:     option %10d, req %10d\n" +
+                                    "  outbound msgsize: option %19d, req %19d\n" +
+                                    "  inbound msgsize:  option %19d, req %19d",
+                                Integer.valueOf(id),
+                                Integer.valueOf(outboundWindowSizeOptionValue), Integer.valueOf(outboundWindowSize),
+                                Integer.valueOf(inboundWindowSizeOptionValue), Integer.valueOf(inboundWindowSize),
+                                Integer.valueOf(outboundMessageCountOptionValue), Integer.valueOf(outboundMessageCount),
+                                Integer.valueOf(inboundMessageCountOptionValue), Integer.valueOf(inboundMessageCount),
+                                Long.valueOf(outboundMessageSizeOptionValue), Long.valueOf(outboundMessageSize),
+                                Long.valueOf(inboundMessageSizeOptionValue), Long.valueOf(inboundMessageSize)
+                            );
+                        }
+
                         Pooled<ByteBuffer> pooled = remoteConnection.allocate();
                         try {
                             ByteBuffer buffer = pooled.getResource();

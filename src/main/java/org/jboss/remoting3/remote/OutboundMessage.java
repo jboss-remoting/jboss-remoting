@@ -107,7 +107,9 @@ final class OutboundMessage extends MessageOutputStream {
                     for (;;) {
                         if (window >= msgSize) {
                             window -= msgSize;
-                            log.trace("Message window is open, proceeding with send");
+                            if (log.isTraceEnabled()) {
+                                log.tracef("Message window is open (%d-%d=%d remaining), proceeding with send", Integer.valueOf(window + msgSize), Integer.valueOf(msgSize), Integer.valueOf(window));
+                            }
                             break;
                         }
                         try {
@@ -296,7 +298,7 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     void dumpState(final StringBuilder b) {
-        b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", messageId & 0xFFFF, window, maximumWindow));
+        b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", Integer.valueOf(messageId & 0xFFFF), Integer.valueOf(window), Integer.valueOf(maximumWindow)));
         b.append("            ").append("* flags: ");
         if (cancelled) b.append("cancelled ");
         if (cancelSent) b.append("cancel-sent ");

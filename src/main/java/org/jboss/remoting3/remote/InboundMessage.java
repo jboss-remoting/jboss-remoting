@@ -30,6 +30,7 @@ import org.jboss.remoting3.MessageInputStream;
 import org.xnio.Pooled;
 import org.xnio.streams.BufferPipeInputStream;
 
+import static org.jboss.remoting3.remote.RemoteLogger.log;
 import static java.lang.Thread.holdsLock;
 
 /**
@@ -190,6 +191,9 @@ final class InboundMessage {
             final int bufRemaining = buffer.remaining();
             if ((inboundWindow -= bufRemaining) < 0) {
                 channel.getRemoteConnection().handleException(new IOException("Input overrun"));
+            }
+            if (log.isTraceEnabled()) {
+                log.tracef("Received message (chan %08x msg %04x) (%d-%d=%d remaining)", Integer.valueOf(channel.getChannelId()), Short.valueOf(messageId), Integer.valueOf(inboundWindow + bufRemaining), Integer.valueOf(bufRemaining), Integer.valueOf(inboundWindow));
             }
             buffer.position(buffer.position() - 1);
             byte flags = buffer.get();
