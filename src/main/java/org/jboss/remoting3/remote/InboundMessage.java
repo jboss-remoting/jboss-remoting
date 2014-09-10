@@ -186,50 +186,56 @@ final class InboundMessage {
 
     void handleIncoming(Pooled<ByteBuffer> pooledBuffer) {
         boolean eof;
-        synchronized (inputStream) {
-            ByteBuffer buffer = pooledBuffer.getResource();
-            final int bufRemaining = buffer.remaining();
-            if ((inboundWindow -= bufRemaining) < 0) {
-                channel.getRemoteConnection().handleException(new IOException("Input overrun"));
-            }
-            if (log.isTraceEnabled()) {
-                log.tracef("Received message (chan %08x msg %04x) (%d-%d=%d remaining)", Integer.valueOf(channel.getChannelId()), Short.valueOf(messageId), Integer.valueOf(inboundWindow + bufRemaining), Integer.valueOf(bufRemaining), Integer.valueOf(inboundWindow));
-            }
-            buffer.position(buffer.position() - 1);
-            byte flags = buffer.get();
+        boolean free = true;
+        try {
+            synchronized (inputStream) {
+                ByteBuffer buffer = pooledBuffer.getResource();
+                final int bufRemaining = buffer.remaining();
+                if ((inboundWindow -= bufRemaining) < 0) {
+                    channel.getRemoteConnection().handleException(new IOException("Input overrun"));
+                    return;
+                }
+                if (log.isTraceEnabled()) {
+                    log.tracef("Received message (chan %08x msg %04x) (%d-%d=%d remaining)", Integer.valueOf(channel.getChannelId()), Short.valueOf(messageId), Integer.valueOf(inboundWindow + bufRemaining), Integer.valueOf(bufRemaining), Integer.valueOf(inboundWindow));
+                }
+                buffer.position(buffer.position() - 1);
+                byte flags = buffer.get();
 
-            eof = (flags & Protocol.MSG_FLAG_EOF) != 0;
-            boolean cancelled = (flags & Protocol.MSG_FLAG_CANCELLED) != 0;
-            if (bufRemaining > remaining) {
-                cancelled = true;
-                doClose();
-            }
-            if (cancelled) {
-                this.cancelled = true;
-                // make sure it goes through
-                inputStream.pushException(new MessageCancelledException());
-            }
-            if (streamClosed) {
-                // ignore, but keep the bits flowing
-                if (! eof && ! closeSent) {
-                    // we don't need to acknowledge if it's EOF or if we sent a close msg since no more data is coming anyway
-                    buffer.position(buffer.limit()); // "consume" everything
-                    doAcknowledge(pooledBuffer);
+                eof = (flags & Protocol.MSG_FLAG_EOF) != 0;
+                boolean cancelled = (flags & Protocol.MSG_FLAG_CANCELLED) != 0;
+                if (bufRemaining > remaining) {
+                    cancelled = true;
+                    doClose();
                 }
-                pooledBuffer.free();
-            } else if (! cancelled) {
-                remaining -= bufRemaining;
-                inputStream.push(pooledBuffer);
-            }
-            if (eof) {
-                eofReceived = true;
-                if (!streamClosed) {
-                    inputStream.pushEof();
+                if (cancelled) {
+                    this.cancelled = true;
+                    // make sure it goes through
+                    inputStream.pushException(new MessageCancelledException());
                 }
-                channel.freeInboundMessage(messageId);
-                // if the peer is old, they might reuse the ID now regardless of us; if new, we have to send the close message to acknowledge the remainder
-                doSendCloseMessage();
+                if (streamClosed) {
+                    // ignore, but keep the bits flowing
+                    if (! eof && ! closeSent) {
+                        // we don't need to acknowledge if it's EOF or if we sent a close msg since no more data is coming anyway
+                        buffer.position(buffer.limit()); // "consume" everything
+                        doAcknowledge(pooledBuffer);
+                    }
+                } else if (! cancelled) {
+                    remaining -= bufRemaining;
+                    free = false;
+                    inputStream.push(pooledBuffer);
+                }
+                if (eof) {
+                    eofReceived = true;
+                    if (!streamClosed) {
+                        inputStream.pushEof();
+                    }
+                    channel.freeInboundMessage(messageId);
+                    // if the peer is old, they might reuse the ID now regardless of us; if new, we have to send the close message to acknowledge the remainder
+                    doSendCloseMessage();
+                }
             }
+        } finally {
+            if (free) pooledBuffer.free();
         }
     }
 
