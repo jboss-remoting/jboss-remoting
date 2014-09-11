@@ -548,6 +548,16 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 }
             });
         }
+        synchronized (connection.getLock()) {
+            for (final InboundMessage message : inboundMessageQueue) {
+                executor.execute(new Runnable() {
+                    public void run() {
+                        message.terminate();
+                    }
+                });
+            }
+            inboundMessageQueue.clear();
+        }
     }
 
     RemoteConnection getRemoteConnection() {

@@ -32,6 +32,7 @@ import org.xnio.streams.BufferPipeInputStream;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
 import static java.lang.Thread.holdsLock;
+import static org.xnio.IoUtils.safeClose;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -72,6 +73,12 @@ final class InboundMessage {
             doClose();
         }
     });
+
+    void terminate() {
+        synchronized (inputStream) {
+            safeClose(inputStream);
+        }
+    }
 
     private void doClose() {
         assert holdsLock(inputStream);
