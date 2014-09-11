@@ -41,6 +41,7 @@ import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
+import org.junit.After;
 import org.junit.Test;
 import org.xnio.IoUtils;
 
@@ -52,6 +53,12 @@ public abstract class ChannelTestBase {
     private static final int TEST_FILE_LENGTH = 20480;
     protected Channel sendChannel;
     protected Channel recvChannel;
+
+    @After
+    public void doAfter() {
+        System.gc();
+        System.runFinalization();
+    }
 
     @Test
     public void testEmptyMessage() throws IOException, InterruptedException {

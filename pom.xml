@@ -57,6 +57,7 @@
         <byteman-version>2.0.0</byteman-version>
 
         <test.level>INFO</test.level>
+        <leak.debug>false</leak.debug>
 
         <maven.compiler.target>1.7</maven.compiler.target>
         <maven.compiler.source>1.7</maven.compiler.source>
@@ -253,11 +254,15 @@
                         </property>
                         <property>
                             <name>jboss.remoting.leakdebugging</name>
-                            <value>false</value>
+                            <value>${leak.debug}</value>
                         </property>
                         <property>
                             <name>test.level</name>
                             <value>${test.level}</value>
+                        </property>
+                        <property>
+                            <name>jboss.remoting.debug-buffer-leaks</name>
+                            <value>${leak.debug}</value>
                         </property>
                     </systemProperties>
                     <enableAssertions>true</enableAssertions>
