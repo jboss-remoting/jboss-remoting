@@ -76,13 +76,17 @@ import org.xnio.ssl.XnioSsl;
 final class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionProvider> implements ConnectionProvider {
 
     private static final boolean USE_POOLING;
+    private static final boolean LEAK_DEBUGGING;
 
     static {
         boolean usePooling = true;
+        boolean leakDebugging = false;
         try {
             usePooling = Boolean.parseBoolean(System.getProperty("jboss.remoting.pooled-buffers", "true"));
+            leakDebugging = Boolean.parseBoolean(System.getProperty("jboss.remoting.debug-buffer-leaks", "false"));
         } catch (Throwable ignored) {}
         USE_POOLING = usePooling;
+        LEAK_DEBUGGING = leakDebugging;
     }
 
     private final ProviderInterface providerInterface = new ProviderInterface();
@@ -179,8 +183,10 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                 }
                 final int messageBufferSize = defaultBufferSize;
                 Pool<ByteBuffer> messageBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+                if (LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
                 final int framingBufferSize = messageBufferSize + 4;
                 Pool<ByteBuffer> framingBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, framingBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
+                if (LEAK_DEBUGGING) framingBufferPool = new DebuggingBufferPool(messageBufferPool);
                 final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
                 final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, RemoteConnectionProvider.this);
                 cancellableResult.addCancelHandler(new Cancellable() {
@@ -325,9 +331,11 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             this.serverAuthenticationProvider = serverAuthenticationProvider;
             this.accessControlContext = accessControlContext;
             final int messageBufferSize = defaultBufferSize;
-            messageBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+            Pool<ByteBuffer> pool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+            messageBufferPool = LEAK_DEBUGGING ? new DebuggingBufferPool(pool) : pool;
             final int framingBufferSize = messageBufferSize + 4;
-            framingBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, framingBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
+            pool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, framingBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
+            framingBufferPool = LEAK_DEBUGGING ? new DebuggingBufferPool(pool) : pool;
         }
 
         public void handleEvent(final AcceptingChannel<? extends ConnectedStreamChannel> channel) {
