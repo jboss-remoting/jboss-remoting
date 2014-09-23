@@ -227,6 +227,8 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                         replyBuffer.putInt(channelId);
                                         ProtocolUtils.writeInt(replyBuffer, 0x80, outboundWindow);
                                         ProtocolUtils.writeShort(replyBuffer, 0x81, outboundMessages);
+                                        ProtocolUtils.writeInt(replyBuffer, 0x82, inboundWindow);
+                                        ProtocolUtils.writeShort(replyBuffer, 0x83, inboundMessages);
                                         replyBuffer.put((byte) 0);
                                         replyBuffer.flip();
                                         ok2 = true;
