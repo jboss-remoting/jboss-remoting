@@ -345,12 +345,20 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     // invalid
                                     break;
                                 }
-                                int outboundWindow = pendingChannel.getOutboundWindowSize();
-                                int inboundWindow = pendingChannel.getInboundWindowSize();
-                                int outboundMessageCount = pendingChannel.getOutboundMessageCount();
-                                int inboundMessageCount = pendingChannel.getInboundMessageCount();
-                                long outboundMessageSize = pendingChannel.getOutboundMessageSize();
-                                long inboundMessageSize = pendingChannel.getInboundMessageSize();
+                                int requestedOutboundWindow = pendingChannel.getOutboundWindowSize();
+                                int requestedInboundWindow = pendingChannel.getInboundWindowSize();
+                                int requestedOutboundMessageCount = pendingChannel.getOutboundMessageCount();
+                                int requestedInboundMessageCount = pendingChannel.getInboundMessageCount();
+                                long requestedOutboundMessageSize = pendingChannel.getOutboundMessageSize();
+                                long requestedInboundMessageSize = pendingChannel.getInboundMessageSize();
+
+                                int outboundWindow = requestedOutboundWindow;
+                                int inboundWindow = requestedInboundWindow;
+                                int outboundMessageCount = requestedOutboundMessageCount;
+                                int inboundMessageCount = requestedInboundMessageCount;
+                                long outboundMessageSize = requestedOutboundMessageSize;
+                                long inboundMessageSize = requestedInboundMessageSize;
+
                                 OUT: for (;;) {
                                     switch (buffer.get() & 0xff) {
                                         case Protocol.O_MAX_INBOUND_MSG_WINDOW_SIZE: {
@@ -387,6 +395,26 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                         }
                                     }
                                 }
+
+                                if (log.isTraceEnabled()) {
+                                    log.tracef(
+                                        "Inbound service acknowledgement for channel %08x is configured as follows:\n" +
+                                        "  outbound window:  req %10d, use %10d\n" +
+                                        "  inbound window:   req %10d, use %10d\n" +
+                                        "  outbound msgs:    req %10d, use %10d\n" +
+                                        "  inbound msgs:     req %10d, use %10d\n" +
+                                        "  outbound msgsize: req %19d, use %19d\n" +
+                                        "  inbound msgsize:  req %19d, use %19d",
+                                        Integer.valueOf(channelId),
+                                        Integer.valueOf(requestedOutboundWindow), Integer.valueOf(outboundWindow),
+                                        Integer.valueOf(requestedInboundWindow), Integer.valueOf(inboundWindow),
+                                        Integer.valueOf(requestedOutboundMessageCount), Integer.valueOf(outboundMessageCount),
+                                        Integer.valueOf(requestedInboundMessageCount), Integer.valueOf(inboundMessageCount),
+                                        Long.valueOf(requestedOutboundMessageSize), Long.valueOf(outboundMessageSize),
+                                        Long.valueOf(requestedInboundMessageSize), Long.valueOf(inboundMessageSize)
+                                    );
+                                }
+
                                 RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount, outboundMessageSize, inboundMessageSize);
                                 handler.putChannel(newChannel);
                                 pendingChannel.getResult().setResult(newChannel);
