@@ -316,10 +316,16 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     // invalid
                                     break;
                                 }
-                                int outboundWindow = pendingChannel.getOutboundWindowSize();
-                                int inboundWindow = pendingChannel.getInboundWindowSize();
-                                int outboundMessageCount = pendingChannel.getOutboundMessageCount();
-                                int inboundMessageCount = pendingChannel.getInboundMessageCount();
+                                int requestedOutboundWindow = pendingChannel.getOutboundWindowSize();
+                                int requestedInboundWindow = pendingChannel.getInboundWindowSize();
+                                int requestedOutboundMessageCount = pendingChannel.getOutboundMessageCount();
+                                int requestedInboundMessageCount = pendingChannel.getInboundMessageCount();
+
+                                int outboundWindow = requestedOutboundWindow;
+                                int inboundWindow = requestedInboundWindow;
+                                int outboundMessageCount = requestedOutboundMessageCount;
+                                int inboundMessageCount = requestedInboundMessageCount;
+
                                 OUT: for (;;) {
                                     switch (buffer.get() & 0xff) {
                                         case 0x80: {
@@ -348,6 +354,22 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                         }
                                     }
                                 }
+
+                                if (log.isTraceEnabled()) {
+                                    log.tracef(
+                                        "Inbound service acknowledgement for channel %08x is configured as follows:\n" +
+                                        "  outbound window:  req %10d, use %10d\n" +
+                                        "  inbound window:   req %10d, use %10d\n" +
+                                        "  outbound msgs:    req %10d, use %10d\n" +
+                                        "  inbound msgs:     req %10d, use %10d",
+                                        Integer.valueOf(channelId),
+                                        Integer.valueOf(requestedOutboundWindow), Integer.valueOf(outboundWindow),
+                                        Integer.valueOf(requestedInboundWindow), Integer.valueOf(inboundWindow),
+                                        Integer.valueOf(requestedOutboundMessageCount), Integer.valueOf(outboundMessageCount),
+                                        Integer.valueOf(requestedInboundMessageCount), Integer.valueOf(inboundMessageCount)
+                                    );
+                                }
+
                                 RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount);
                                 handler.putChannel(newChannel);
                                 pendingChannel.getResult().setResult(newChannel);
