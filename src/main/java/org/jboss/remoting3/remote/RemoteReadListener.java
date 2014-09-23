@@ -180,7 +180,6 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 final int inboundMessages = Math.min(requestedInboundMessages, inboundMessagesOptionValue);
 
                                 if (log.isTraceEnabled()) {
-                                    log.tracef("HERE IS THE MESSAGE");
                                     log.tracef(
                                         "Inbound service request for channel %08x is configured as follows:\n" +
                                         "  outbound window:  req %10d, option %10d, grant %10d\n" +
