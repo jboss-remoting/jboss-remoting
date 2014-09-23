@@ -330,19 +330,19 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 OUT: for (;;) {
                                     switch (buffer.get() & 0xff) {
                                         case 0x80: {
-                                            outboundWindow = Math.min(outboundWindow, ProtocolUtils.readInt(buffer));
-                                            break;
-                                        }
-                                        case 0x81: {
-                                            outboundMessageCount = Math.min(outboundMessageCount, ProtocolUtils.readUnsignedShort(buffer));
-                                            break;
-                                        }
-                                        case 0x82: {
                                             inboundWindow = Math.min(inboundWindow, ProtocolUtils.readInt(buffer));
                                             break;
                                         }
-                                        case 0x83: {
+                                        case 0x81: {
                                             inboundMessageCount = Math.min(inboundMessageCount, ProtocolUtils.readUnsignedShort(buffer));
+                                            break;
+                                        }
+                                        case 0x82: {
+                                            outboundWindow = Math.min(outboundWindow, ProtocolUtils.readInt(buffer));
+                                            break;
+                                        }
+                                        case 0x83: {
+                                            outboundMessageCount = Math.min(outboundMessageCount, ProtocolUtils.readUnsignedShort(buffer));
                                             break;
                                         }
                                         case 0x00: {
