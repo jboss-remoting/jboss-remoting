@@ -34,6 +34,8 @@ import java.util.Collections;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+import javax.net.ssl.SSLSession;
+
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.ProtocolException;
@@ -50,6 +52,7 @@ import org.xnio.OptionMap;
 import org.xnio.Pooled;
 import org.xnio.Result;
 import org.xnio.channels.ConnectedMessageChannel;
+import org.xnio.channels.SslChannel;
 
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
 
@@ -395,6 +398,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     public UserInfo getUserInfo() {
         return userInfo;
+    }
+
+    public SSLSession getSslSession() {
+        SslChannel sslChannel = remoteConnection.getSslChannel();
+        return sslChannel != null ? sslChannel.getSslSession() : null;
     }
 
     public String getRemoteEndpointName() {
