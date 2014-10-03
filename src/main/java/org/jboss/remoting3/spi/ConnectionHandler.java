@@ -24,6 +24,9 @@ package org.jboss.remoting3.spi;
 
 import java.security.Principal;
 import java.util.Collection;
+
+import javax.net.ssl.SSLSession;
+
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.HandleableCloseable;
 import org.jboss.remoting3.security.UserInfo;
@@ -59,6 +62,13 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
      * @return the authenticated UserInfo
      */
     UserInfo getUserInfo();
+
+    /**
+     * Get the underlying {@link SSLSession} for this connection if one is established.
+     *
+     * @return the {@link SSLSession} for the connection if one is established, otherwise returns {@code null}.
+     */
+    SSLSession getSslSession();
 
     /**
      * Get the name of the remote endpoint.
