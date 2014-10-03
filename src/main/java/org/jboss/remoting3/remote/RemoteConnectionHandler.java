@@ -109,15 +109,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
      * The socket channel was closed with or without our consent.
      */
     void handleConnectionClose() {
+        sendCloseRequest();
         closePendingChannels();
         closeAllChannels();
         remoteConnection.shutdownWrites();
         IoUtils.safeShutdownReads(remoteConnection.getChannel());
-        try {
-            closeAction();
-        } catch (IOException ignored) {
-            log.tracef(ignored, "Failure to close after forced connection close");
-        }
         remoteConnection.getRemoteConnectionProvider().removeConnectionHandler(this);
         closeComplete();
     }
@@ -410,7 +406,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     protected void closeAction() throws IOException {
-        sendCloseRequest();
+        handleConnectionClose();
     }
 
     private void closePendingChannels() {
