@@ -223,14 +223,18 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
                 // ignore
             }
 
-            final int messageBufferSize = getDefaultBufferSize();
-            Pool<ByteBuffer> messageBufferPool = RemoteConnectionProvider.USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
-            if (RemoteConnectionProvider.LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
-            final int framingBufferSize = messageBufferSize + 4;
-            Pool<ByteBuffer> framingBufferPool = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
-            if (RemoteConnectionProvider.LEAK_DEBUGGING) framingBufferPool = new DebuggingBufferPool(framingBufferPool);
+            final int receiveBufferSize = getDefaultReceiveBufferSize();
+            final int sendBufferSize = getDefaultSendBufferSize();
+            final int messageBufferSize = Math.max(receiveBufferSize, sendBufferSize) - 4;
 
-            final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
+            Pool<ByteBuffer> messageBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+            if (LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
+            Pool<ByteBuffer> framingReceiverBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, receiveBufferSize, receiveBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, receiveBufferSize);
+            if (LEAK_DEBUGGING) framingReceiverBufferPool = new DebuggingBufferPool(framingReceiverBufferPool);
+            Pool<ByteBuffer> framingSendBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, sendBufferSize, sendBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, sendBufferSize);
+            if (LEAK_DEBUGGING) framingSendBufferPool = new DebuggingBufferPool(framingSendBufferPool);
+
+            final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingReceiverBufferPool.allocate(), framingSendBufferPool.allocate());
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, channel, messageChannel, optionMap, HttpUpgradeConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), authenticationProvider, optionMap, accessControlContext);
             messageChannel.getWriteSetter().set(connection.getWriteListener());

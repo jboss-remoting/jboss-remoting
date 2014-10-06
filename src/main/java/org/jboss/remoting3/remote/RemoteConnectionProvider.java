@@ -99,15 +99,17 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     private final Set<RemoteConnectionHandler> handlers = Collections.synchronizedSet(new HashSet<RemoteConnectionHandler>());
     private final MBeanServer server;
     private final ObjectName objectName;
-    private final int defaultBufferSize;
+    private final int defaultReceiveBufferSize;
+    private final int defaultSendBufferSize;
 
     RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
         super(connectionProviderContext.getExecutor());
-        xnio = connectionProviderContext.getXnio();
-        sslEnabled = optionMap.get(Options.SSL_ENABLED, true);
-        xnioWorker = connectionProviderContext.getXnioWorker();
+        this.xnio = connectionProviderContext.getXnio();
+        this.sslEnabled = optionMap.get(Options.SSL_ENABLED, true);
+        this.xnioWorker = connectionProviderContext.getXnioWorker();
         this.connectionProviderContext = connectionProviderContext;
-        defaultBufferSize = optionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, RemotingOptions.DEFAULT_RECEIVE_BUFFER_SIZE);
+        this.defaultReceiveBufferSize = optionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, RemotingOptions.DEFAULT_RECEIVE_BUFFER_SIZE);
+        this.defaultSendBufferSize = optionMap.get(RemotingOptions.SEND_BUFFER_SIZE, RemotingOptions.DEFAULT_RECEIVE_BUFFER_SIZE);
         MBeanServer server = null;
         ObjectName objectName = null;
         try {
@@ -182,13 +184,18 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 } catch (IOException e) {
                     // ignore
                 }
-                final int messageBufferSize = defaultBufferSize;
+                final int receiveBufferSize = connectOptions.get(RemotingOptions.RECEIVE_BUFFER_SIZE, defaultReceiveBufferSize);
+                final int sendBufferSize = connectOptions.get(RemotingOptions.SEND_BUFFER_SIZE, defaultSendBufferSize);
+                final int messageBufferSize = Math.max(receiveBufferSize, sendBufferSize) - 4;
+
                 Pool<ByteBuffer> messageBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
                 if (LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
-                final int framingBufferSize = messageBufferSize + 4;
-                Pool<ByteBuffer> framingBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, framingBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
-                if (LEAK_DEBUGGING) framingBufferPool = new DebuggingBufferPool(messageBufferPool);
-                final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
+                Pool<ByteBuffer> framingReceiverBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, receiveBufferSize, receiveBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, receiveBufferSize);
+                if (LEAK_DEBUGGING) framingReceiverBufferPool = new DebuggingBufferPool(framingReceiverBufferPool);
+                Pool<ByteBuffer> framingSendBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, sendBufferSize, sendBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, sendBufferSize);
+                if (LEAK_DEBUGGING) framingSendBufferPool = new DebuggingBufferPool(framingSendBufferPool);
+                
+                final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingReceiverBufferPool.allocate(), framingSendBufferPool.allocate());
                 final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, RemoteConnectionProvider.this);
                 cancellableResult.addCancelHandler(new Cancellable() {
                     @Override
@@ -331,19 +338,24 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         private final OptionMap serverOptionMap;
         private final ServerAuthenticationProvider serverAuthenticationProvider;
         private final AccessControlContext accessControlContext;
-        private final Pool<ByteBuffer> messageBufferPool;
-        private final Pool<ByteBuffer> framingBufferPool;
+        private Pool<ByteBuffer> messageBufferPool;
+        private Pool<ByteBuffer> framingSendBufferPool;
+        private Pool<ByteBuffer> framingReceiverBufferPool;
 
         AcceptListener(final OptionMap serverOptionMap, final ServerAuthenticationProvider serverAuthenticationProvider, final AccessControlContext accessControlContext) {
             this.serverOptionMap = serverOptionMap;
             this.serverAuthenticationProvider = serverAuthenticationProvider;
             this.accessControlContext = accessControlContext;
-            final int messageBufferSize = defaultBufferSize;
-            Pool<ByteBuffer> pool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
-            messageBufferPool = LEAK_DEBUGGING ? new DebuggingBufferPool(pool) : pool;
-            final int framingBufferSize = messageBufferSize + 4;
-            pool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, framingBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
-            framingBufferPool = LEAK_DEBUGGING ? new DebuggingBufferPool(pool) : pool;
+            final int receiveBufferSize = serverOptionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, defaultReceiveBufferSize);
+            final int sendBufferSize = serverOptionMap.get(RemotingOptions.SEND_BUFFER_SIZE, defaultSendBufferSize);
+            final int messageBufferSize = Math.max(receiveBufferSize, sendBufferSize) - 4;
+            
+            messageBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+            if (LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
+            framingReceiverBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, receiveBufferSize, receiveBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, receiveBufferSize);
+            if (LEAK_DEBUGGING) framingReceiverBufferPool = new DebuggingBufferPool(framingReceiverBufferPool);
+            framingSendBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, sendBufferSize, sendBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, sendBufferSize);
+            if (LEAK_DEBUGGING) framingSendBufferPool = new DebuggingBufferPool(framingSendBufferPool);
         }
 
         public void handleEvent(final AcceptingChannel<? extends ConnectedStreamChannel> channel) {
@@ -363,7 +375,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 // ignore
             }
 
-            final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, framingBufferPool.allocate(), framingBufferPool.allocate());
+            final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, framingReceiverBufferPool.allocate(), framingSendBufferPool.allocate());
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, accepted, messageChannel, serverOptionMap, RemoteConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, serverAuthenticationProvider, serverOptionMap, accessControlContext);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
@@ -384,7 +396,13 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return connectionProviderContext;
     }
 
-    int getDefaultBufferSize() {
-        return defaultBufferSize;
+    int getDefaultReceiveBufferSize() {
+        return defaultReceiveBufferSize;
     }
+
+    int getDefaultSendBufferSize() {
+        return defaultSendBufferSize;
+    }
+
+
 }
