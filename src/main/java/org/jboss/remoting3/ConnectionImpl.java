@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.security.Principal;
 import java.util.Collection;
 
+import javax.net.ssl.SSLSession;
+
 import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
@@ -68,6 +70,11 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     @Override
     public UserInfo getUserInfo() {
         return connectionHandler.getUserInfo();
+    }
+
+    @Override
+    public SSLSession getSslSession() {
+        return connectionHandler.getSslSession();
     }
 
     public IoFuture<Channel> openChannel(final String serviceType, final OptionMap optionMap) {
