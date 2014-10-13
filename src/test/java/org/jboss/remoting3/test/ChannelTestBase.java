@@ -36,13 +36,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.xnio.IoUtils;
 
 /**
@@ -54,10 +58,21 @@ public abstract class ChannelTestBase {
     protected Channel sendChannel;
     protected Channel recvChannel;
 
+    @Rule
+    public TestName name = new TestName();
+
+    @Before
+    public void doBefore() {
+        System.gc();
+        System.runFinalization();
+        Logger.getLogger("TEST").infof("Running test %s", name.getMethodName());
+    }
+
     @After
     public void doAfter() {
         System.gc();
         System.runFinalization();
+        Logger.getLogger("TEST").infof("Finished test %s", name.getMethodName());
     }
 
     @Test

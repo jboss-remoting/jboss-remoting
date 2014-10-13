@@ -29,12 +29,17 @@ import java.net.URI;
 import java.nio.channels.ServerSocketChannel;
 import java.util.concurrent.TimeUnit;
 
+import org.jboss.logging.Logger;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.xnio.IoFuture;
 import org.xnio.IoFuture.Status;
 import org.xnio.OptionMap;
@@ -53,6 +58,23 @@ import org.xnio.Options;
 public class TimeOutConnectionTestCase {
 
     protected static Endpoint endpoint;
+
+    @Rule
+    public TestName name = new TestName();
+
+    @Before
+    public void doBefore() {
+        System.gc();
+        System.runFinalization();
+        Logger.getLogger("TEST").infof("Running test %s", name.getMethodName());
+    }
+
+    @After
+    public void doAfter() {
+        System.gc();
+        System.runFinalization();
+        Logger.getLogger("TEST").infof("Finished test %s", name.getMethodName());
+    }
 
     private void doTest(OptionMap connectionProviderOptions) throws Exception {
         final ServerSocketChannel channel = ServerSocketChannel.open();

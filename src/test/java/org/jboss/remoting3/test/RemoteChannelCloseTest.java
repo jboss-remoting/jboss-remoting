@@ -22,10 +22,12 @@
 
 package org.jboss.remoting3.test;
 
+import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
+import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.Remoting;
@@ -37,7 +39,9 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -82,8 +86,14 @@ public class RemoteChannelCloseTest {
         streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
     }
 
+    @Rule
+    public TestName name = new TestName();
+
     @Before
     public void testStart() throws IOException, URISyntaxException, InterruptedException {
+        System.gc();
+        System.runFinalization();
+        Logger.getLogger("TEST").infof("Running test %s", name.getMethodName());
         final FutureResult<Channel> passer = new FutureResult<Channel>();
         serviceRegistration = endpoint.registerService("org.jboss.test", new OpenListener() {
             public void channelOpened(final Channel channel) {
@@ -108,6 +118,9 @@ public class RemoteChannelCloseTest {
         IoUtils.safeClose(serverChannel);
         IoUtils.safeClose(connection);
         serviceRegistration.close();
+        System.gc();
+        System.runFinalization();
+        Logger.getLogger("TEST").infof("Finished test %s", name.getMethodName());
     }
 
     @AfterClass
