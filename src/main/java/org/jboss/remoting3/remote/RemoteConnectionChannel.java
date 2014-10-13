@@ -359,29 +359,28 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     public void receiveMessage(final Receiver handler) {
         synchronized (connection.getLock()) {
             if (inboundMessageQueue.isEmpty()) {
-                if (nextReceiver != null) {
-                    throw new IllegalStateException("Message handler already queued");
-                }
-                nextReceiver = handler;
-            } else {
                 if ((channelState & READ_CLOSED) != 0) {
                     getExecutor().execute(new Runnable() {
                         public void run() {
                             handler.handleEnd(RemoteConnectionChannel.this);
                         }
                     });
+                } else if (nextReceiver != null) {
+                    throw new IllegalStateException("Message handler already queued");
                 } else {
-                    final InboundMessage message = inboundMessageQueue.remove();
-                    try {
-                        getExecutor().execute(new Runnable() {
-                            public void run() {
-                                handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream);
-                            }
-                        });
-                    } catch (Throwable t) {
-                        connection.handleException(new IOException("Fatal connection error", t));
-                        return;
-                    }
+                    nextReceiver = handler;
+                }
+            } else {
+                final InboundMessage message = inboundMessageQueue.remove();
+                try {
+                    getExecutor().execute(new Runnable() {
+                        public void run() {
+                            handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream);
+                        }
+                    });
+                } catch (Throwable t) {
+                    connection.handleException(new IOException("Fatal connection error", t));
+                    return;
                 }
             }
             connection.getLock().notify();
@@ -534,21 +533,21 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
 
     private void closeMessages() {
         Executor executor = connection.getExecutor();
-        for (final InboundMessage message : inboundMessages) {
-            executor.execute(new Runnable() {
-                public void run() {
-                    message.inputStream.pushException(new MessageCancelledException());
-                }
-            });
-        }
-        for (final OutboundMessage message : outboundMessages) {
-            executor.execute(new Runnable() {
-                public void run() {
-                    message.cancel();
-                }
-            });
-        }
         synchronized (connection.getLock()) {
+            for (final InboundMessage message : inboundMessages) {
+                executor.execute(new Runnable() {
+                    public void run() {
+                        message.inputStream.pushException(new MessageCancelledException());
+                    }
+                });
+            }
+            for (final OutboundMessage message : outboundMessages) {
+                executor.execute(new Runnable() {
+                    public void run() {
+                        message.cancel();
+                    }
+                });
+            }
             for (final InboundMessage message : inboundMessageQueue) {
                 executor.execute(new Runnable() {
                     public void run() {
