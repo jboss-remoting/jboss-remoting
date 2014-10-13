@@ -29,17 +29,20 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.concurrent.CancellationException;
 
-import javax.security.sasl.SaslException;
-
 import org.jboss.byteman.contrib.bmunit.BMScript;
 import org.jboss.byteman.contrib.bmunit.BMUnitRunner;
+import org.jboss.logging.Logger;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -58,6 +61,23 @@ import org.xnio.Sequence;
 public class CloseConnectingEndpointTestCase {
 
     protected static Endpoint endpoint;
+
+    @Rule
+    public TestName name = new TestName();
+
+    @Before
+    public void doBefore() {
+        System.gc();
+        System.runFinalization();
+        Logger.getLogger("TEST").infof("Running test %s", name.getMethodName());
+    }
+
+    @After
+    public void doAfter() {
+        System.gc();
+        System.runFinalization();
+        Logger.getLogger("TEST").infof("Finished test %s", name.getMethodName());
+    }
 
     @Test
     public void test() throws Exception {
