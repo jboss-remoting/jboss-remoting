@@ -26,6 +26,7 @@ import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
+import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
@@ -39,7 +40,9 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -60,6 +63,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 
 import static org.junit.Assert.assertNotNull;
+import static org.xnio.IoUtils.safeClose;
 
 /**
  * Tests that a {@link org.jboss.remoting3.MessageOutputStream#close() closing the message on the channel}
@@ -82,6 +86,9 @@ public class OutboundMessageCountTestCase {
     private Connection connection;
     private Registration serviceRegistration;
 
+    @Rule
+    public TestName name = new TestName();
+
     @BeforeClass
     public static void create() throws IOException {
         endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
@@ -94,6 +101,9 @@ public class OutboundMessageCountTestCase {
 
     @Before
     public void beforeTest() throws IOException, URISyntaxException, InterruptedException {
+        System.gc();
+        System.runFinalization();
+        Logger.getLogger("TEST").infof("Running test %s", name.getMethodName());
         final FutureResult<Channel> passer = new FutureResult<Channel>();
         serviceRegistration = endpoint.registerService("org.jboss.test", new OpenListener() {
             public void channelOpened(final Channel channel) {
@@ -115,15 +125,20 @@ public class OutboundMessageCountTestCase {
 
     @After
     public void afterTest() {
-        IoUtils.safeClose(connection);
+        safeClose(serverChannel);
+        safeClose(clientChannel);
+        safeClose(connection);
         serviceRegistration.close();
+        System.gc();
+        System.runFinalization();
+        Logger.getLogger("TEST").infof("Finished test %s", name.getMethodName());
     }
 
     @AfterClass
     public static void destroy() throws IOException, InterruptedException {
-        IoUtils.safeClose(streamServer);
-        IoUtils.safeClose(endpoint);
-        IoUtils.safeClose(registration);
+        safeClose(streamServer);
+        safeClose(endpoint);
+        safeClose(registration);
     }
 
     /**
@@ -134,6 +149,25 @@ public class OutboundMessageCountTestCase {
      */
     @Test
     public void testOutboundMessageSend() throws Exception {
+        serverChannel.receiveMessage(new Channel.Receiver() {
+            public void handleError(final Channel channel, final IOException error) {
+
+            }
+
+            public void handleEnd(final Channel channel) {
+
+            }
+
+            public void handleMessage(final Channel channel, final MessageInputStream message) {
+                channel.receiveMessage(this);
+                try {
+                    while (message.read() != -1);
+                } catch (IOException ignored) {
+                } finally {
+                    safeClose(message);
+                }
+            }
+        });
         final int NUM_THREADS = 150;
         final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
         final Future<Throwable>[] futureFailures = new Future[NUM_THREADS];
