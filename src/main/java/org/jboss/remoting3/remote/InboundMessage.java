@@ -176,10 +176,12 @@ final class InboundMessage {
 
         public void close() throws IOException {
             synchronized (inputStream) {
-                if (cancelled) {
-                    throw new MessageCancelledException();
+                if (! streamClosed) {
+                    inputStream.close();
+                    if (cancelled) {
+                        throw new MessageCancelledException();
+                    }
                 }
-                inputStream.close();
             }
         }
     };
