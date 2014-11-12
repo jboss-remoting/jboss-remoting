@@ -23,6 +23,7 @@
 package org.jboss.remoting3.remote;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -32,6 +33,7 @@ import java.util.Random;
 
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
@@ -357,14 +359,18 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     public void receiveMessage(final Receiver handler) {
+        boolean immediateEnd = false;
         synchronized (connection.getLock()) {
             if (inboundMessageQueue.isEmpty()) {
-                if ((channelState & READ_CLOSED) != 0) {
+                if ((channelState & READ_CLOSED) != 0) try {
                     getExecutor().execute(new Runnable() {
                         public void run() {
                             handler.handleEnd(RemoteConnectionChannel.this);
                         }
                     });
+                } catch (RejectedExecutionException ignored) {
+                    // oops, endpoint shut down out from under us; call directly and hope for the best
+                    immediateEnd = true;
                 } else if (nextReceiver != null) {
                     throw new IllegalStateException("Message handler already queued");
                 } else {
@@ -378,12 +384,16 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                             handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream);
                         }
                     });
-                } catch (Throwable t) {
-                    connection.handleException(new IOException("Fatal connection error", t));
-                    return;
+                } catch (RejectedExecutionException ignored) {
+                    safeClose(message.messageInputStream);
+                    // oops, endpoint shut down out from under us; call handleEnd directly and hope for the best
+                    immediateEnd = true;
                 }
             }
             connection.getLock().notify();
+        }
+        if (immediateEnd) {
+            handler.handleEnd(this);
         }
     }
 
