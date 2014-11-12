@@ -102,7 +102,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         InetSocketAddress destination = (InetSocketAddress) dst;
         final URI uri;
         try {
-            uri = new URI("http", "", destination.getHostString(), destination.getPort(), "/", "", "");
+            uri = new URI("http", "", destination.getAddress().getHostAddress(), destination.getPort(), "/", "", "");
         } catch (URISyntaxException e) {
             return new FailedIoFuture<ConnectedStreamChannel>(new IOException(e));
         }
@@ -137,7 +137,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
     protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final SocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options, final XnioSsl xnioSsl, final ChannelListener<ConnectedStreamChannel> openListener) {
         final URI uri;
         try {
-            uri = new URI("https", "", destination.getHostString(), destination.getPort(), "/", "", "");
+            uri = new URI("https", "", destination.getAddress().getHostAddress(), destination.getPort(), "/", "", "");
         } catch (URISyntaxException e) {
             return new FailedIoFuture<ConnectedSslStreamChannel>(new IOException(e));
         }
