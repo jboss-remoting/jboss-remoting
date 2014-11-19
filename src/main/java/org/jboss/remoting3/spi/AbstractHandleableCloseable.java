@@ -132,6 +132,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
     /**
      * {@inheritDoc}
      */
+    @SuppressWarnings("unchecked")
     public void close() throws IOException {
         log.tracef("Closing %s synchronously", this);
         boolean first = false;
@@ -162,12 +163,24 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             }
             if (closeHandlers != null) {
                 for (final CloseHandler<? super T> handler : closeHandlers.values()) {
-                    runCloseTask(new CloseHandlerTask(handler, e));
+                    SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this, null);
                 }
             }
             throw e;
         } catch (Throwable t) {
             log.errorf(t, "Close action for %s failed to execute (resource may be left in an indeterminate state)", this);
+            final Map<Key, CloseHandler<? super T>> closeHandlers;
+            synchronized (closeLock) {
+                state = State.CLOSED;
+                closeHandlers = this.closeHandlers;
+                this.closeHandlers = null;
+                closeLock.notifyAll();
+            }
+            if (closeHandlers != null) {
+                for (final CloseHandler<? super T> handler : closeHandlers.values()) {
+                    SpiUtils.safeHandleClose(handler, (T) AbstractHandleableCloseable.this, null);
+                }
+            }
             throw new IllegalStateException(t);
         }
 
