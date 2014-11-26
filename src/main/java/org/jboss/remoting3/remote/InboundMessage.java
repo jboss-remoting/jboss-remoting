@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
+import org.jboss.remoting3._private.IntIndexer;
 import org.xnio.Pooled;
 import org.xnio.streams.BufferPipeInputStream;
 

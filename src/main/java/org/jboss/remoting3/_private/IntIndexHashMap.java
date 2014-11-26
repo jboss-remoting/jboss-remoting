@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.remote;
+package org.jboss.remoting3._private;
 
 import java.util.AbstractCollection;
 import java.util.ArrayList;
@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndexMap<V> {
+public final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndexMap<V> {
     private static final int DEFAULT_INITIAL_CAPACITY = 512;
     private static final int MAXIMUM_CAPACITY = 1 << 30;
     private static final float DEFAULT_LOAD_FACTOR = 0.60f;
@@ -71,7 +71,7 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
      * @param initialCapacity the initial capacity
      * @param loadFactor the load factor
      */
-    IntIndexHashMap(IntIndexer<? super V> indexer, Equaller<? super V> valueEqualler, int initialCapacity, float loadFactor) {
+    public IntIndexHashMap(IntIndexer<? super V> indexer, Equaller<? super V> valueEqualler, int initialCapacity, float loadFactor) {
         if (valueEqualler == null) {
             throw new IllegalArgumentException("valueEqualler is null");
         }
@@ -106,7 +106,7 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
      * @param indexer the key indexer
      * @param valueEqualler the value equaller
      */
-    IntIndexHashMap(IntIndexer<? super V> indexer, Equaller<? super V> valueEqualler) {
+    public IntIndexHashMap(IntIndexer<? super V> indexer, Equaller<? super V> valueEqualler) {
         this(indexer, valueEqualler, DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR);
     }
 
@@ -117,7 +117,7 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
      * @param initialCapacity the initial capacity
      * @param loadFactor the load factor
      */
-    IntIndexHashMap(IntIndexer<? super V> indexer, int initialCapacity, final float loadFactor) {
+    public IntIndexHashMap(IntIndexer<? super V> indexer, int initialCapacity, final float loadFactor) {
         this(indexer, Equaller.DEFAULT, initialCapacity, loadFactor);
     }
 
@@ -127,7 +127,7 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
      * @param indexer the key indexer
      * @param loadFactor the load factor
      */
-    IntIndexHashMap(IntIndexer<? super V> indexer, final float loadFactor) {
+    public IntIndexHashMap(IntIndexer<? super V> indexer, final float loadFactor) {
         this(indexer, DEFAULT_INITIAL_CAPACITY, loadFactor);
     }
 
@@ -137,7 +137,7 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
      * @param indexer the key indexer
      * @param initialCapacity the initial capacity
      */
-    IntIndexHashMap(IntIndexer<? super V> indexer, final int initialCapacity) {
+    public IntIndexHashMap(IntIndexer<? super V> indexer, final int initialCapacity) {
         this(indexer, initialCapacity, DEFAULT_LOAD_FACTOR);
     }
 
@@ -146,7 +146,7 @@ final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndex
      *
      * @param indexer the key indexer
      */
-    IntIndexHashMap(IntIndexer<? super V> indexer) {
+    public IntIndexHashMap(IntIndexer<? super V> indexer) {
         this(indexer, DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR);
     }
 

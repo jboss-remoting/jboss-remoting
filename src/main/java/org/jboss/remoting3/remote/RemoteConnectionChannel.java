@@ -45,13 +45,15 @@ import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3._private.Equaller;
+import org.jboss.remoting3._private.IntIndexHashMap;
+import org.jboss.remoting3._private.IntIndexMap;
+import org.jboss.remoting3._private.IntIndexer;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.xnio.Bits;
 import org.xnio.Option;
 import org.xnio.Pooled;
-import org.xnio.channels.Channels;
-import org.xnio.channels.ConnectedMessageChannel;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>

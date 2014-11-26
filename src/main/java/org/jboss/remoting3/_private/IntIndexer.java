@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.remote;
+package org.jboss.remoting3._private;
 
 /**
  * An integer indexer for a hash table.  Used for integer-keyed hash tables
@@ -29,6 +29,6 @@ package org.jboss.remoting3.remote;
  * @param <T> the value type
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-interface IntIndexer<T> {
+public interface IntIndexer<T> {
     int getKey(T argument);
 }

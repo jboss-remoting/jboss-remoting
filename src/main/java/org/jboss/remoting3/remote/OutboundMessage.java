@@ -29,6 +29,7 @@ import java.nio.ByteBuffer;
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.NotOpenException;
+import org.jboss.remoting3._private.IntIndexer;
 import org.xnio.BrokenPipeException;
 import org.xnio.IoUtils;
 import org.xnio.Pooled;

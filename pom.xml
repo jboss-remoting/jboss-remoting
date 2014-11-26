@@ -38,7 +38,7 @@
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>12</version>
+        <version>16</version>
     </parent>
 
     <properties>
@@ -56,8 +56,8 @@
         <test.level>INFO</test.level>
         <leak.debug>false</leak.debug>
 
-        <maven.compiler.source>1.6</maven.compiler.source>
-        <maven.compiler.target>1.6</maven.compiler.target>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
     </properties>
 
     <licenses>
@@ -270,6 +270,7 @@
                     <links>
                         <link>http://java.sun.com/javase/7/docs/api/</link>
                     </links>
+                    <excludePackageNames>*._private</excludePackageNames>
                 </configuration>
             </plugin>
         </plugins>

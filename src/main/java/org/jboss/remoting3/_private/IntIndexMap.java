@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.remote;
+package org.jboss.remoting3._private;
 
 import java.util.Collection;
 
@@ -31,7 +31,7 @@ import java.util.Collection;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-interface IntIndexMap<E> extends Iterable<E>, IntIndexer<E>, Collection<E> {
+public interface IntIndexMap<E> extends Iterable<E>, IntIndexer<E>, Collection<E> {
 
     /**
      * Determine whether the given index is contained in the map.

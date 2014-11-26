@@ -23,7 +23,6 @@
 package org.jboss.remoting3.remote;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
-import static org.jboss.logging.Logger.Level.*;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -42,6 +41,9 @@ import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.ProtocolException;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.ServiceOpenException;
+import org.jboss.remoting3._private.Equaller;
+import org.jboss.remoting3._private.IntIndexHashMap;
+import org.jboss.remoting3._private.IntIndexMap;
 import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;

@@ -20,9 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.remote;
-
-import java.io.Serializable;
+package org.jboss.remoting3._private;
 
 /**
  * An equals-comparator.
@@ -30,7 +28,7 @@ import java.io.Serializable;
  * @param <T> the type to compare
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-interface Equaller<T> {
+public interface Equaller<T> {
 
     /**
      * Test the two objects for equality.
@@ -46,28 +44,3 @@ interface Equaller<T> {
     Equaller<Object> DEFAULT = new DefaultEqualler();
 }
 
-class IdentityEqualler implements Equaller<Object>, Serializable {
-
-    private static final long serialVersionUID = -749526530940615408L;
-
-    public boolean equals(final Object obj, final Object other) {
-        return obj == other;
-    }
-
-    protected Object readResolve() {
-        return Equaller.IDENTITY;
-    }
-}
-
-class DefaultEqualler implements Equaller<Object>, Serializable {
-
-    private static final long serialVersionUID = -5237758393814640207L;
-
-    public boolean equals(final Object obj, final Object other) {
-        return obj == null ? other == null : obj.equals(other);
-    }
-
-    protected Object readResolve() {
-        return Equaller.DEFAULT;
-    }
-}

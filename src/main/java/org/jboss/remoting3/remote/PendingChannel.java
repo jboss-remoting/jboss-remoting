@@ -23,6 +23,7 @@
 package org.jboss.remoting3.remote;
 
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3._private.IntIndexer;
 import org.xnio.Result;
 
 /**
