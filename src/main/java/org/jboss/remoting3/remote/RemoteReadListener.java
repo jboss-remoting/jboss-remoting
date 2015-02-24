@@ -77,6 +77,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                             log.trace("Received connection end-of-stream");
                             try {
                                 channel.shutdownReads();
+                                connection.closing();
                             } finally {
                                 handler.handleConnectionClose();
                             }
