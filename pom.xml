@@ -38,7 +38,7 @@
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>16</version>
+        <version>17</version>
     </parent>
 
     <properties>
@@ -47,17 +47,19 @@
         <apacheds.jdbm1.version>2.0.0-M2</apacheds.jdbm1.version>
         <apacheds.shared.version>1.0.0-M13</apacheds.shared.version>
         <apacheds.api.version>1.0.0-M16</apacheds.api.version>        
-        <xnio.version>3.2.0.Final</xnio.version>
-        <logging.version>3.1.4.GA</logging.version>
-        <logging-tools.version>1.1.0.Final</logging-tools.version>
-        <logmanager.version>1.5.2.Final</logmanager.version>
+        <elytron.version>1.0.0.Alpha1-SNAPSHOT</elytron.version>
+        <xnio.version>3.4.0.Beta1-SNAPSHOT</xnio.version>
+        <logging.version>3.2.1.Final</logging.version>
+        <logging-tools.version>1.2.1.Final</logging-tools.version>
+        <logmanager.version>1.5.4.Final</logmanager.version>
+        <wildfly-common.version>1.0.0.Alpha2</wildfly-common.version>
         <junit.version>4.8.2</junit.version>
         <byteman-version>2.2.0.1</byteman-version>
         <test.level>INFO</test.level>
         <leak.debug>false</leak.debug>
 
-        <maven.compiler.source>1.7</maven.compiler.source>
-        <maven.compiler.target>1.7</maven.compiler.target>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
     <licenses>
@@ -71,26 +73,78 @@
         <name>JBoss, a division of Red Hat, Inc.</name>
         <url>http://www.jboss.org/</url>
     </organization>
-    <dependencies>            
-       <dependency>
+    <dependencies>
+        <!-- Build dependencies -->
+
+        <dependency>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging</artifactId>
+            <version>${logging.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging-annotations</artifactId>
+            <version>${logging-tools.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- TODO: move this to <processors> in maven-compiler-plugin -->
+        <dependency>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging-processor</artifactId>
+            <version>${logging-tools.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.xnio</groupId>
+            <artifactId>xnio-api</artifactId>
+            <version>${xnio.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.common</groupId>
+            <artifactId>wildfly-common</artifactId>
+            <version>${wildfly-common.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron</artifactId>
+            <version>${elytron.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Test dependencies -->
+
+        <!-- JBDS -->
+
+        <dependency>
             <groupId>org.apache.directory.jdbm</groupId>
             <artifactId>apacheds-jdbm1</artifactId>
             <version>${apacheds.jdbm1.version}</version>
             <type>jar</type>
             <scope>test</scope>
-        </dependency>    
-       <dependency>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.directory.server</groupId>
             <artifactId>apacheds-core</artifactId>
             <version>${apacheds.version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.apache.directory.server</groupId>
             <artifactId>apacheds-server-config</artifactId>
             <version>${apacheds.version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.apache.directory.server</groupId>
             <artifactId>apacheds-protocol-ldap</artifactId>
@@ -98,102 +152,103 @@
             <scope>test</scope>
             <exclusions>
                 <exclusion>
-                    <groupId>org.apache.directory.jdbm</groupId>                
-                    <artifactId>apacheds-jdbm1</artifactId>                    
+                    <groupId>org.apache.directory.jdbm</groupId>
+                    <artifactId>apacheds-jdbm1</artifactId>
                 </exclusion>
-            </exclusions>                 
+            </exclusions>
         </dependency>
+
         <dependency>
             <groupId>org.apache.directory.server</groupId>
             <artifactId>apacheds-interceptors-hash</artifactId>
             <version>${apacheds.version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.apache.directory.server</groupId>
             <artifactId>apacheds-interceptor-kerberos</artifactId>
             <version>${apacheds.version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.apache.directory.server</groupId>
             <artifactId>apacheds-server-annotations</artifactId>
             <version>${apacheds.version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.apache.directory.api</groupId>
             <artifactId>api-ldap-codec-standalone</artifactId>
             <version>${apacheds.api.version}</version>
-            <scope>test</scope>  
-        </dependency>        
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.directory.shared</groupId>
             <artifactId>shared-ldap-codec-standalone</artifactId>
             <version>${apacheds.shared.version}</version>
-            <scope>test</scope>  
+            <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.apache.directory.server</groupId>
             <artifactId>apacheds-core-jndi</artifactId>
             <version>${apacheds.version}</version>
             <scope>test</scope>
         </dependency>
-            
-        <dependency>
-            <groupId>org.jboss.logging</groupId>
-            <artifactId>jboss-logging</artifactId>
-            <version>${logging.version}</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.logging</groupId>
-            <artifactId>jboss-logging-processor</artifactId>
-            <version>${logging-tools.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.xnio</groupId>
-            <artifactId>xnio-api</artifactId>
-            <version>${xnio.version}</version>
-            <scope>compile</scope>
-        </dependency>
+
+        <!-- XNIO -->
+
         <dependency>
             <groupId>org.jboss.xnio</groupId>
             <artifactId>xnio-nio</artifactId>
             <version>${xnio.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- JUnit itself -->
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- Logging -->
+
         <dependency>
             <groupId>org.jboss.logmanager</groupId>
             <artifactId>jboss-logmanager</artifactId>
             <version>${logmanager.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- ByteMan -->
+
         <dependency>
             <groupId>org.jboss.byteman</groupId>
             <artifactId>byteman</artifactId>
             <version>${byteman-version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.jboss.byteman</groupId>
             <artifactId>byteman-bmunit</artifactId>
             <version>${byteman-version}</version>
             <scope>test</scope>
-             <exclusions>
+            <exclusions>
                 <exclusion>
                     <artifactId>testng</artifactId>
                     <groupId>org.testng</groupId>
                 </exclusion>
             </exclusions>
         </dependency>
+
         <dependency>
             <groupId>org.jboss.byteman</groupId>
             <artifactId>byteman-install</artifactId>
@@ -201,6 +256,7 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
     <build>
         <resources>
             <resource>
