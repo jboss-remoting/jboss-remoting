@@ -33,7 +33,6 @@ import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
-import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -43,12 +42,19 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
+import org.wildfly.security.WildFlyElytronProvider;
+import org.wildfly.security.auth.AuthenticationConfiguration;
+import org.wildfly.security.auth.AuthenticationContext;
+import org.wildfly.security.auth.MatchRule;
+import org.wildfly.security.auth.principal.NamePrincipal;
+import org.wildfly.security.auth.provider.SecurityDomain;
+import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.password.PasswordFactory;
+import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
-import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
-import org.xnio.Sequence;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
@@ -56,6 +62,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.security.PrivilegedAction;
+import java.security.Security;
+import java.util.Collections;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -70,8 +80,6 @@ import static org.xnio.IoUtils.safeClose;
  * synchronously decrements the outbound message count maintained by JBoss Remoting.
  *
  * @author Jaikiran Pai
- * @see https://issues.jboss.org/browse/REM3-165 for more details
- *      <p/>
  */
 public class OutboundMessageCountTestCase {
 
@@ -88,15 +96,28 @@ public class OutboundMessageCountTestCase {
 
     @Rule
     public TestName name = new TestName();
+    private static String providerName;
+
+    @AfterClass
+    public static void doAfterClass() {
+        Security.removeProvider(providerName);
+    }
 
     @BeforeClass
-    public static void create() throws IOException {
+    public static void create() throws Exception {
+        final WildFlyElytronProvider provider = new WildFlyElytronProvider();
+        Security.addProvider(provider);
+        providerName = provider.getName();
         endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
         registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
-        SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
-        provider.addUser("bob", "test", "pass".toCharArray());
-        streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
+        final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
+        final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
+        domainBuilder.addRealm("mainRealm", mainRealm);
+        domainBuilder.setDefaultRealmName("mainRealm");
+        final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
+        mainRealm.setPasswordMap(Collections.singletonMap(new NamePrincipal("bob"), passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.EMPTY, domainBuilder.build());
     }
 
     @Before
@@ -113,7 +134,15 @@ public class OutboundMessageCountTestCase {
             public void registrationTerminated() {
             }
         }, OptionMap.EMPTY);
-        IoFuture<Connection> futureConnection = endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.EMPTY, "bob", "test", "pass".toCharArray());
+        IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").allowSaslMechanisms("SCRAM-SHA-256")).run(new PrivilegedAction<IoFuture<Connection>>() {
+            public IoFuture<Connection> run() {
+                try {
+                    return endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.EMPTY);
+                } catch (IOException | URISyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
         connection = futureConnection.get();
         final OptionMap channelCreationOptions = OptionMap.create(RemotingOptions.MAX_OUTBOUND_MESSAGES, MAX_OUTBOUND_MESSAGES);
         IoFuture<Channel> futureChannel = connection.openChannel("org.jboss.test", channelCreationOptions);
@@ -217,7 +246,7 @@ public class OutboundMessageCountTestCase {
                 try {
                     // now send a message
                     messageOutputStream = this.channel.writeMessage();
-                    messageOutputStream.write("hello".getBytes());
+                    messageOutputStream.write("hello".getBytes(StandardCharsets.UTF_8));
                 } catch (IOException e) {
                     return e;
                 } finally {

@@ -24,6 +24,11 @@ package org.jboss.remoting3.test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.PrivilegedAction;
+import java.security.Security;
+import java.util.Collections;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.CancellationException;
@@ -42,15 +47,25 @@ import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
-import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import static org.junit.Assert.fail;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
+import org.wildfly.security.WildFlyElytronProvider;
+import org.wildfly.security.auth.AuthenticationConfiguration;
+import org.wildfly.security.auth.AuthenticationContext;
+import org.wildfly.security.auth.MatchRule;
+import org.wildfly.security.auth.principal.NamePrincipal;
+import org.wildfly.security.auth.provider.SecurityDomain;
+import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.password.PasswordFactory;
+import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
@@ -74,6 +89,20 @@ public class ConnectionTestCase {
 
     private AcceptingChannel<? extends ConnectedStreamChannel> server;
 
+    private static String providerName;
+
+    @BeforeClass
+    public static void doBeforeClass() {
+        final WildFlyElytronProvider provider = new WildFlyElytronProvider();
+        Security.addProvider(provider);
+        providerName = provider.getName();
+    }
+
+    @AfterClass
+    public static void doAfterClass() {
+        Security.removeProvider(providerName);
+    }
+
     public ConnectionTestCase() throws IOException {
         OptionMap optionMap = OptionMap.builder()
             .set(Options.WORKER_TASK_CORE_THREADS, THREAD_POOL_SIZE)
@@ -90,14 +119,18 @@ public class ConnectionTestCase {
     public TestName name = new TestName();
 
     @Before
-    public void before() throws IOException {
+    public void before() throws Exception {
         System.gc();
         System.runFinalization();
         Logger.getLogger("TEST").infof("Running test %s", name.getMethodName());
         final NetworkServerProvider networkServerProvider = serverEndpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
-        SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
-        provider.addUser("bob", "test", "pass".toCharArray());
-        server = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
+        final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
+        final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
+        domainBuilder.addRealm("mainRealm", mainRealm);
+        domainBuilder.setDefaultRealmName("mainRealm");
+        final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
+        mainRealm.setPasswordMap(Collections.singletonMap(new NamePrincipal("bob"), passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        server = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), domainBuilder.build());
     }
 
     @After
@@ -159,7 +192,16 @@ public class ConnectionTestCase {
         }, OptionMap.EMPTY);
         final AtomicReferenceArray<Connection> connections = new AtomicReferenceArray<Connection>(CONNECTION_COUNT);
         for (int h = 0; h < CONNECTION_COUNT; h ++) {
-            final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("localhost", 0), new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
+            IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").allowSaslMechanisms("SCRAM-SHA-256")).run(new PrivilegedAction<IoFuture<Connection>>() {
+                public IoFuture<Connection> run() {
+                    try {
+                        return clientEndpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY);
+                    } catch (IOException | URISyntaxException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+            final Connection connection = futureConnection.get();
             connections.set(h, connection);
             for (int i = 0; i < CHANNEL_COUNT; i ++) {
                 clientWorker.execute(new Runnable() {
@@ -206,8 +248,16 @@ public class ConnectionTestCase {
     }
 
     @Test
-    public void rejectUnknownService() throws IOException {
-        final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("localhost", 0), new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
+    public void rejectUnknownService() throws Exception {
+        final Connection connection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").allowSaslMechanisms("SCRAM-SHA-256")).run(new PrivilegedAction<Connection>() {
+            public Connection run() {
+                try {
+                    return clientEndpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY).get();
+                } catch (IOException | URISyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
         final IoFuture<Channel> channelFuture = connection.openChannel("unknown", OptionMap.EMPTY);
         try {
             channelFuture.get();
@@ -223,7 +273,7 @@ public class ConnectionTestCase {
     private static final int MAX_SERVER_TRANSMIT = 0x14000;
 
     @Test
-    public void testChannelOptions() throws IOException {
+    public void testChannelOptions() throws Exception {
         serverEndpoint.registerService("test", new OpenListener() {
             @Override
             public void channelOpened(Channel channel) {
@@ -238,7 +288,15 @@ public class ConnectionTestCase {
             }
         }, OptionMap.create(RemotingOptions.RECEIVE_WINDOW_SIZE, MAX_SERVER_RECEIVE, RemotingOptions.TRANSMIT_WINDOW_SIZE, MAX_SERVER_TRANSMIT));
 
-        final Connection connection = clientEndpoint.connect("remote", new InetSocketAddress("localhost", 0), new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, "bob", "test", "pass".toCharArray()).get();
+        final Connection connection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").allowSaslMechanisms("SCRAM-SHA-256")).run(new PrivilegedAction<Connection>() {
+            public Connection run() {
+                try {
+                    return clientEndpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY).get();
+                } catch (IOException | URISyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
         IoFuture<Channel> future = connection.openChannel("test", OptionMap.create(RemotingOptions.RECEIVE_WINDOW_SIZE, 0x8000, RemotingOptions.TRANSMIT_WINDOW_SIZE, 0x12000));
         Channel channel = future.get();
         try {

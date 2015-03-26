@@ -30,6 +30,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -43,10 +44,13 @@ import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
+import org.wildfly.security.WildFlyElytronProvider;
 import org.xnio.IoUtils;
 
 /**
@@ -57,6 +61,19 @@ public abstract class ChannelTestBase {
     private static final int TEST_FILE_LENGTH = 20480;
     protected Channel sendChannel;
     protected Channel recvChannel;
+    private static String providerName;
+
+    @BeforeClass
+    public static void doBeforeClass() {
+        final WildFlyElytronProvider provider = new WildFlyElytronProvider();
+        Security.addProvider(provider);
+        providerName = provider.getName();
+    }
+
+    @AfterClass
+    public static void doAfterClass() {
+        Security.removeProvider(providerName);
+    }
 
     @Rule
     public TestName name = new TestName();

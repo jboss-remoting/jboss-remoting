@@ -23,12 +23,9 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
-import java.security.Principal;
-import java.util.Collection;
 
 import javax.net.ssl.SSLSession;
 
-import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
@@ -61,15 +58,6 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
 
     ConnectionHandler getConnectionHandler() {
         return connectionHandler;
-    }
-
-    public Collection<Principal> getPrincipals() {
-        return connectionHandler.getPrincipals();
-    }
-
-    @Override
-    public UserInfo getUserInfo() {
-        return connectionHandler.getUserInfo();
     }
 
     @Override

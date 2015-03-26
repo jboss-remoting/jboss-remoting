@@ -22,14 +22,15 @@
 
 package org.jboss.remoting3.spi;
 
-import java.net.SocketAddress;
+import java.net.URI;
+
 import org.jboss.remoting3.HandleableCloseable;
+import org.wildfly.security.auth.AuthenticationContext;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
-import org.xnio.ssl.XnioSsl;
 
-import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.SaslClientFactory;
 
 /**
  * A connection provider.  Used to establish connections with remote systems.  There is typically one instance
@@ -41,16 +42,15 @@ public interface ConnectionProvider extends HandleableCloseable<ConnectionProvid
      * Open an outbound connection, using the (optionally) given socket addresses as source and destination.
      * This method is expected to be non-blocking, with the result stored in the result variable possibly asynchronously.
      *
-     * @param bindAddress the local address to bind to for this outbound connection, or {@code null} to choose one automatically
-     * @param destination the destination socket address, or {@code null} if none is given
+     * @param destination the destination URI, or {@code null} if none is given
      * @param connectOptions the options to use for this connection
      * @param result the result which should receive the connection
-     * @param callbackHandler the callback handler to use for authentication
-     * @param xnioSsl the XNIO SSL context to use
+     * @param authenticationContext the context to use for authentication
+     * @param saslClientFactory the SASL client factory to use for authentication mechanisms
      * @return a handle which may be used to cancel the connect attempt
      * @throws IllegalArgumentException if any of the given arguments are not valid for this protocol
      */
-    Cancellable connect(SocketAddress bindAddress, SocketAddress destination, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IllegalArgumentException;
+    Cancellable connect(URI destination, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory);
 
     /**
      * Get the user data associated with this connection provider.  This object should implement all of the
@@ -65,4 +65,5 @@ public interface ConnectionProvider extends HandleableCloseable<ConnectionProvid
      * The object to use when a connection provider has no provider interfaces.
      */
     Object NO_PROVIDER_INTERFACES = new Object();
+
 }

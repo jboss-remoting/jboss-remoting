@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.Security;
+import java.util.Collections;
 import java.util.concurrent.CancellationException;
 
 import org.jboss.byteman.contrib.bmunit.BMScript;
@@ -36,14 +38,22 @@ import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
-import org.jboss.remoting3.security.SimpleServerAuthenticationProvider;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
+import org.wildfly.security.WildFlyElytronProvider;
+import org.wildfly.security.auth.principal.NamePrincipal;
+import org.wildfly.security.auth.provider.SecurityDomain;
+import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.password.PasswordFactory;
+import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.Options;
@@ -58,12 +68,26 @@ import org.xnio.Sequence;
  */
 @RunWith(BMUnitRunner.class)
 @BMScript(dir="src/test/resources")
+@Ignore
 public class CloseConnectingEndpointTestCase {
 
     protected static Endpoint endpoint;
 
     @Rule
     public TestName name = new TestName();
+    private static String providerName;
+
+    @BeforeClass
+    public static void doBeforeClass() {
+        final WildFlyElytronProvider provider = new WildFlyElytronProvider();
+        Security.addProvider(provider);
+        providerName = provider.getName();
+    }
+
+    @AfterClass
+    public static void doAfterClass() {
+        Security.removeProvider(providerName);
+    }
 
     @Before
     public void doBefore() {
@@ -85,9 +109,13 @@ public class CloseConnectingEndpointTestCase {
         endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
         endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
-        SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
-        provider.addUser("bob", "test", "pass".toCharArray());
-        networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
+        final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
+        final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
+        domainBuilder.addRealm("mainRealm", mainRealm);
+        domainBuilder.setDefaultRealmName("mainRealm");
+        final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
+        mainRealm.setPasswordMap(Collections.singletonMap(new NamePrincipal("bob"), passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), domainBuilder.build());
         // create connect and close endpoint threads
         Connect connectRunnable = new Connect(endpoint);
         Thread connectThread = new Thread(connectRunnable);
@@ -114,7 +142,7 @@ public class CloseConnectingEndpointTestCase {
         public void run() {
             final IoFuture<Connection> futureConnection;
             try {
-                futureConnection = endpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY, "bob", "test", "pass".toCharArray());
+                futureConnection = endpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY);
                 if (futureConnection != null) {
                     Connection c = futureConnection.get();
                     if (c != null) {

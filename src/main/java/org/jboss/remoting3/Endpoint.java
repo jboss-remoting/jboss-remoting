@@ -23,17 +23,16 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
-import java.net.SocketAddress;
 import java.net.URI;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
+import org.wildfly.security.auth.AuthenticationContext;
+import org.wildfly.security.sasl.util.SaslFactories;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.XnioWorker;
-import org.xnio.ssl.XnioSsl;
 
-import javax.net.ssl.SSLContext;
-import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.SaslClientFactory;
 
 /**
  * A potential participant in a JBoss Remoting communications relationship.
@@ -71,10 +70,14 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
+     *
      * @return the future connection
+     *
      * @throws IOException if an error occurs while starting the connect attempt
      */
-    IoFuture<Connection> connect(URI destination) throws IOException;
+    default IoFuture<Connection> connect(URI destination) throws IOException {
+        return connect(destination, OptionMap.EMPTY);
+    }
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
@@ -84,251 +87,61 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
+     *
      * @return the future connection
+     *
      * @throws IOException if an error occurs while starting the connect attempt
      */
     IoFuture<Connection> connect(URI destination, OptionMap connectOptions) throws IOException;
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
      * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
-     * @param callbackHandler the local callback handler to use for authentication
+     * @param saslClientFactory the SASL client factory to use for client authentication
+     *
      * @return the future connection
+     *
      * @throws IOException if an error occurs while starting the connect attempt
      */
-    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, CallbackHandler callbackHandler) throws IOException;
+    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, SaslClientFactory saslClientFactory) throws IOException;
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
      * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
-     * @param callbackHandler the local callback handler to use for authentication
-     * @param sslContext the SSL context to use for SSL connections
+     * @param authenticationContext the client authentication context to use
+     *
      * @return the future connection
+     *
      * @throws IOException if an error occurs while starting the connect attempt
      */
-    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, CallbackHandler callbackHandler, SSLContext sslContext) throws IOException;
+    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, AuthenticationContext authenticationContext) throws IOException;
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
      * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
-     * @param callbackHandler the local callback handler to use for authentication
-     * @param xnioSsl the SSL context to use for SSL connections
-     * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given user name and password is used as local authentication information, if the protocol demands it.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     * @param authenticationContext the client authentication context to use
+     * @param saslClientFactory the SASL client factory to use for client authentication
      *
-     * @param destination the destination
-     * @param connectOptions options to configure this connection
-     * @param userName the user name to authenticate as, or {@code null} if it is unspecified
-     * @param realmName the user realm to authenticate with, or {@code null} if it is unspecified
-     * @param password the password to send, or {@code null} if it is unspecified
      * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, String userName, String realmName, char[] password) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given user name and password is used as local authentication information, if the protocol demands it.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
      *
-     * @param destination the destination
-     * @param connectOptions options to configure this connection
-     * @param userName the user name to authenticate as, or {@code null} if it is unspecified
-     * @param realmName the user realm to authenticate with, or {@code null} if it is unspecified
-     * @param password the password to send, or {@code null} if it is unspecified
-     * @param sslContext the SSL context to use for SSL connections
-     * @return the future connection
      * @throws IOException if an error occurs while starting the connect attempt
      */
-    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, String userName, String realmName, char[] password, SSLContext sslContext) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given user name and password is used as local authentication information, if the protocol demands it.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param destination the destination
-     * @param connectOptions options to configure this connection
-     * @param userName the user name to authenticate as, or {@code null} if it is unspecified
-     * @param realmName the user realm to authenticate with, or {@code null} if it is unspecified
-     * @param password the password to send, or {@code null} if it is unspecified
-     * @param xnioSsl the SSL context to use for SSL connections
-     * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, String userName, String realmName, char[] password, XnioSsl xnioSsl) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param protocol the protocol to use for connection
-     * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
-     * @param destination the destination address, or {@code null} if the protocol is not a network protocol
-     * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(String protocol, SocketAddress bindAddress, SocketAddress destination) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param protocol the protocol to use for connection
-     * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
-     * @param destination the destination address, or {@code null} if the protocol is not a network protocol
-     * @param connectOptions options to configure this connection
-     * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(String protocol, SocketAddress bindAddress, SocketAddress destination, OptionMap connectOptions) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param protocol the protocol to use for connection
-     * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
-     * @param destination the destination address, or {@code null} if the protocol is not a network protocol
-     * @param connectOptions options to configure this connection
-     * @param callbackHandler the local callback handler to use for authentication
-     * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(String protocol, SocketAddress bindAddress, SocketAddress destination, OptionMap connectOptions, CallbackHandler callbackHandler) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param protocol the protocol to use for connection
-     * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
-     * @param destination the destination address, or {@code null} if the protocol is not a network protocol
-     * @param connectOptions options to configure this connection
-     * @param callbackHandler the local callback handler to use for authentication
-     * @param sslContext the SSL context to use for SSL connections
-     * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(String protocol, SocketAddress bindAddress, SocketAddress destination, OptionMap connectOptions, CallbackHandler callbackHandler, SSLContext sslContext) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given callback handler is used to retrieve local authentication information, if the protocol demands it.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param protocol the protocol to use for connection
-     * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
-     * @param destination the destination address, or {@code null} if the protocol is not a network protocol
-     * @param connectOptions options to configure this connection
-     * @param callbackHandler the local callback handler to use for authentication
-     * @param xnioSsl the SSL context to use for SSL connections
-     * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(String protocol, SocketAddress bindAddress, SocketAddress destination, OptionMap connectOptions, CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given user name and password is used as local authentication information, if the protocol demands it.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param protocol the protocol to use for connection
-     * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
-     * @param destination the destination address, or {@code null} if the protocol is not a network protocol
-     * @param connectOptions options to configure this connection
-     * @param userName the user name to authenticate as, or {@code null} if it is unspecified
-     * @param realmName the user realm to authenticate with, or {@code null} if it is unspecified
-     * @param password the password to send, or {@code null} if it is unspecified
-     * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(String protocol, SocketAddress bindAddress, SocketAddress destination, OptionMap connectOptions, String userName, String realmName, char[] password) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given user name and password is used as local authentication information, if the protocol demands it.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param protocol the protocol to use for connection
-     * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
-     * @param destination the destination address, or {@code null} if the protocol is not a network protocol
-     * @param connectOptions options to configure this connection
-     * @param userName the user name to authenticate as, or {@code null} if it is unspecified
-     * @param realmName the user realm to authenticate with, or {@code null} if it is unspecified
-     * @param password the password to send, or {@code null} if it is unspecified
-     * @param sslContext the SSL context to use for SSL connections
-     * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(String protocol, SocketAddress bindAddress, SocketAddress destination, OptionMap connectOptions, String userName, String realmName, char[] password, SSLContext sslContext) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * The given user name and password is used as local authentication information, if the protocol demands it.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param protocol the protocol to use for connection
-     * @param bindAddress the address to bind to, or {@code null} to choose one automatically as needed
-     * @param destination the destination address, or {@code null} if the protocol is not a network protocol
-     * @param connectOptions options to configure this connection
-     * @param userName the user name to authenticate as, or {@code null} if it is unspecified
-     * @param realmName the user realm to authenticate with, or {@code null} if it is unspecified
-     * @param password the password to send, or {@code null} if it is unspecified
-     * @param xnioSsl the SSL context to use for SSL connections
-     * @return the future connection
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(String protocol, SocketAddress bindAddress, SocketAddress destination, OptionMap connectOptions, String userName, String realmName, char[] password, XnioSsl xnioSsl) throws IOException;
+    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException;
 
     /**
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can
@@ -373,15 +186,4 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @return the XNIO worker
      */
     XnioWorker getXnioWorker();
-
-    /**
-     * Flags which can be passed in to listener registration methods.
-     */
-    enum ListenerFlag {
-
-        /**
-         * Include old registrations.
-         */
-        INCLUDE_OLD,
-    }
 }

@@ -24,73 +24,66 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
-import java.security.AccessControlContext;
-import java.security.AccessController;
-import java.security.Principal;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
-import org.jboss.remoting3.security.InetAddressPrincipal;
-import org.jboss.remoting3.security.SimpleUserInfo;
-import org.jboss.remoting3.security.UserPrincipal;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
+import org.wildfly.security.auth.AuthenticationConfiguration;
+import org.wildfly.security.auth.AuthenticationContext;
+import org.wildfly.security.auth.AuthenticationContextConfigurationClient;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pooled;
 import org.xnio.Sequence;
-import org.xnio.channels.Channels;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.SslChannel;
 import org.xnio.channels.WrappedChannel;
-import org.xnio.sasl.SaslUtils;
 import org.xnio.sasl.SaslWrapper;
 
-import javax.net.ssl.SSLPeerUnverifiedException;
-import javax.net.ssl.SSLSession;
-import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslClientFactory;
 import javax.security.sasl.SaslException;
 
+import static java.security.AccessController.doPrivileged;
 import static org.jboss.remoting3.remote.RemoteLogger.client;
 import static org.xnio.sasl.SaslUtils.EMPTY_BYTES;
 
+@SuppressWarnings("deprecation")
 final class ClientConnectionOpenListener implements ChannelListener<ConnectedMessageChannel> {
+
+    private final URI uri;
     private final RemoteConnection connection;
     private final ConnectionProviderContext connectionProviderContext;
-    private final CallbackHandler callbackHandler;
-    private final AccessControlContext accessControlContext;
+    private final AuthenticationContext authenticationContext;
+    private final SaslClientFactory saslClientFactory;
     private final OptionMap optionMap;
     private final Map<String, String> failedMechs = new LinkedHashMap<String, String>();
     private final Set<String> allowedMechs;
     private final Set<String> disallowedMechs;
+    static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
 
-    ClientConnectionOpenListener(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final CallbackHandler callbackHandler, final AccessControlContext accessControlContext, final OptionMap optionMap) {
+    ClientConnectionOpenListener(final URI uri, final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final AuthenticationContext authenticationContext, final SaslClientFactory saslClientFactory, final OptionMap optionMap) {
+        this.uri = uri;
         this.connection = connection;
         this.connectionProviderContext = connectionProviderContext;
-        this.callbackHandler = callbackHandler;
-        this.accessControlContext = accessControlContext;
+        this.authenticationContext = authenticationContext;
+        this.saslClientFactory = saslClientFactory;
         this.optionMap = optionMap;
         final Sequence<String> allowedMechs = optionMap.get(Options.SASL_MECHANISMS);
         final Sequence<String> disallowedMechs = optionMap.get(Options.SASL_DISALLOWED_MECHANISMS);
@@ -131,7 +124,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_IN, optionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_INBOUND_CHANNELS));
             ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_OUT, optionMap.get(RemotingOptions.MAX_OUTBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_OUTBOUND_CHANNELS));
             sendBuffer.flip();
-            connection.setReadListener(new Capabilities(remoteServerName), true);
+            connection.setReadListener(new Capabilities(remoteServerName, uri), true);
             connection.send(pooledSendBuffer);
             ok = true;
             // all set
@@ -226,10 +219,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         return;
                     }
                 }
-            } catch (BufferUnderflowException e) {
-                connection.handleException(client.invalidMessage(connection));
-                return;
-            } catch (BufferOverflowException e) {
+            } catch (BufferUnderflowException | BufferOverflowException e) {
                 connection.handleException(client.invalidMessage(connection));
                 return;
             } finally {
@@ -242,9 +232,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
     final class Capabilities implements ChannelListener<ConnectedMessageChannel> {
 
         private final String remoteServerName;
+        private final URI uri;
 
-        Capabilities(final String remoteServerName) {
+        Capabilities(final String remoteServerName, final URI uri) {
             this.remoteServerName = remoteServerName;
+            this.uri = uri;
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
@@ -389,55 +381,16 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             return;
                         }
 
-                        final List<String> saslMechs = new ArrayList<String>(serverSaslMechs.size());
-                        if (allowedMechs != null) {
-                            saslMechs.addAll(allowedMechs);
-                            saslMechs.retainAll(serverSaslMechs);
-                        } else {
-                            saslMechs.addAll(serverSaslMechs);
-                        }
-
                         // OK now send our authentication request
-                        final OptionMap optionMap = connection.getOptionMap();
-                        final String userName = optionMap.get(RemotingOptions.AUTHORIZE_ID);
-                        final Map<String, ?> propertyMap = SaslUtils.createPropertyMap(optionMap, Channels.getOption(channel, Options.SECURE, false));
-                        SaslClient saslClient = null;
-                        final Iterator<SaslClientFactory> iterator = SaslUtils.getSaslClientFactories(getClass().getClassLoader(), true);
-                        final LinkedHashMap<String, Set<SaslClientFactory>> factories = new LinkedHashMap<String, Set<SaslClientFactory>>();
-                        while (iterator.hasNext()) {
-                            final SaslClientFactory factory = iterator.next();
-                            for (String name : factory.getMechanismNames(propertyMap)) {
-                                if (! factories.containsKey(name)) {
-                                    factories.put(name, new LinkedHashSet<SaslClientFactory>(Collections.singleton(factory)));
-                                } else {
-                                    factories.get(name).add(factory);
-                                }
-                            }
-                        }
-                        FOUND: for (String mechanism : saslMechs) {
-                            final Set<SaslClientFactory> factorySet = factories.get(mechanism);
-                            final String protocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
-                            // By default we allow the remote server to tell us it's name - config can mandate a specific server name is expected.
-                            final String remoteServerName = optionMap.contains(RemotingOptions.SERVER_NAME) ? optionMap.get(RemotingOptions.SERVER_NAME) : this.remoteServerName;
-                            if (factorySet == null) continue;
-                            final String[] strings = new String[] { mechanism };
-                            for (final SaslClientFactory factory : factorySet) {
-                                try {
-                                    saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
-                                        public SaslClient run() throws SaslException {
-                                            return factory.createSaslClient(strings, userName, protocol, remoteServerName, propertyMap, callbackHandler);
-                                        }
-                                    }, accessControlContext);
-                                } catch (PrivilegedActionException e) {
-                                    // in case this is the last one...
-                                    failedMechs.put(mechanism, e.getCause().toString());
-                                }
-                                if (saslClient != null) {
-                                    failedMechs.remove(mechanism);
-                                    break FOUND;
-                                }
-                            }
-                            failedMechs.put(mechanism, "No implementation found");
+                        final AuthenticationContextConfigurationClient configurationClient = AUTH_CONFIGURATION_CLIENT;
+                        AuthenticationConfiguration configuration = configurationClient.getAuthenticationConfiguration(uri, authenticationContext);
+                        final SaslClient saslClient;
+                        try {
+                            saslClient = configurationClient.createSaslClient(uri, configuration, saslClientFactory, serverSaslMechs);
+                        } catch (SaslException e) {
+                            // apparently no more mechanisms can succeed
+                            connection.handleException(e);
+                            return;
                         }
                         if (saslClient == null) {
                             connection.handleException(allMechanismsFailed());
@@ -446,30 +399,19 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         final String mechanismName = saslClient.getMechanismName();
                         client.tracef("Client initiating authentication using mechanism %s", mechanismName);
 
-                        final String theRemoteEndpointName = remoteEndpointName;
                         connection.getChannel().suspendReads();
                         final int negotiatedVersion = version;
                         final SaslClient usedSaslClient = saslClient;
-                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, userName, theRemoteEndpointName, behavior, channelsIn, channelsOut);
+                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, remoteEndpointName, behavior, channelsIn, channelsOut);
                         connection.getExecutor().execute(new Runnable() {
                             public void run() {
                                 final byte[] response;
                                 try {
-                                    if (usedSaslClient.hasInitialResponse()) {
-                                        response = AccessController.doPrivileged(new PrivilegedExceptionAction<byte[]>() {
-
-                                            @Override
-                                            public byte[] run() throws Exception {
-                                                return usedSaslClient.evaluateChallenge(EMPTY_BYTES);
-                                            }
-                                        }, accessControlContext);
-                                    } else {
-                                        response = null;
-                                    }
-                                } catch (PrivilegedActionException e) {
-                                    client.tracef("Client authentication failed: %s", e.getCause());
+                                    response = usedSaslClient.hasInitialResponse() ? usedSaslClient.evaluateChallenge(EMPTY_BYTES) : null;
+                                } catch (SaslException e) {
+                                    client.tracef("Client authentication failed: %s", e);
                                     saslDispose(usedSaslClient);
-                                    failedMechs.put(mechanismName, e.getCause().toString());
+                                    failedMechs.put(mechanismName, e.toString());
                                     sendCapRequest(remoteServerName);
                                     return;
                                 }
@@ -506,10 +448,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         return;
                     }
                 }
-            } catch (BufferUnderflowException e) {
-                connection.handleException(client.invalidMessage(connection));
-                return;
-            } catch (BufferOverflowException e) {
+            } catch (BufferUnderflowException | BufferOverflowException e) {
                 connection.handleException(client.invalidMessage(connection));
                 return;
             } finally {
@@ -592,10 +531,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         return;
                     }
                 }
-            } catch (BufferUnderflowException e) {
-                connection.handleException(client.invalidMessage(connection));
-                return;
-            } catch (BufferOverflowException e) {
+            } catch (BufferUnderflowException | BufferOverflowException e) {
                 connection.handleException(client.invalidMessage(connection));
                 return;
             } finally {
@@ -608,18 +544,16 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
         private final SaslClient saslClient;
         private final String serverName;
-        private final String authorizationID;
         private final String remoteEndpointName;
         private final int behavior;
         private final int maxInboundChannels;
         private final int maxOutboundChannels;
 
-        Authentication(final SaslClient saslClient, final String serverName, final String authorizationID, final String remoteEndpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels) {
+        Authentication(final SaslClient saslClient, final String serverName, final String endpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels) {
             this.saslClient = saslClient;
             this.serverName = serverName;
-            this.authorizationID = authorizationID;
-            this.remoteEndpointName = remoteEndpointName;
             this.behavior = behavior;
+            this.remoteEndpointName = endpointName;
             this.maxInboundChannels = maxInboundChannels;
             this.maxOutboundChannels = maxOutboundChannels;
         }
@@ -746,10 +680,9 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     // auth complete.
                                     final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {
                                         public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                                            Collection<Principal> principals = definePrincipals();
 
                                             // this happens immediately.
-                                            final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, principals, new SimpleUserInfo(principals), maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
+                                            final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
                                             connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                             connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                             return connectionHandler;
@@ -785,33 +718,5 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                 if (free) pooledBuffer.free();
             }
         }
-
-        private Collection<Principal> definePrincipals() {
-
-            final Set<Principal> principals = new LinkedHashSet<Principal>();
-
-            final SslChannel sslChannel = connection.getSslChannel();
-            if (sslChannel != null) {
-                // It might be STARTTLS, in which case we can still opt out of SSL
-                final SSLSession session = sslChannel.getSslSession();
-                if (session != null) {
-                    try {
-                        principals.add(session.getPeerPrincipal());
-                    } catch (SSLPeerUnverifiedException ignored) {
-                    }
-                }
-            }
-            if (authorizationID != null) {
-                principals.add(new UserPrincipal(authorizationID));
-            }
-            final ConnectedMessageChannel channel = connection.getChannel();
-            final InetSocketAddress address = channel.getPeerAddress(InetSocketAddress.class);
-            if (address != null) {
-                principals.add(new InetAddressPrincipal(address.getAddress()));
-            }
-
-            return principals;
-        }
-
     }
 }

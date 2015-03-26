@@ -22,12 +22,8 @@
 
 package org.jboss.remoting3;
 
-import java.security.Principal;
-import java.util.Collection;
-
 import javax.net.ssl.SSLSession;
 
-import org.jboss.remoting3.security.UserInfo;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 
@@ -35,20 +31,6 @@ import org.xnio.OptionMap;
  * A connection to a remote peer.
  */
 public interface Connection extends HandleableCloseable<Connection>, Attachable {
-
-    /**
-     * Get the authenticated principals for this connection.
-     *
-     * @return the authenticated principals
-     */
-    Collection<Principal> getPrincipals();
-
-    /**
-     * Get the UserInfo for this connection.
-     *
-     * @return the authenticated UserInfo
-     */
-    UserInfo getUserInfo();
 
     /**
      * Get the underlying {@link SSLSession} for this connection if one is established.

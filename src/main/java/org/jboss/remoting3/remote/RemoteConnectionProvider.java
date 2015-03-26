@@ -23,15 +23,13 @@
 package org.jboss.remoting3.remote;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
-import static org.jboss.remoting3.remote.RemoteLogger.server;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.URI;
 import java.nio.ByteBuffer;
-import java.security.AccessControlContext;
-import java.security.AccessController;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,18 +37,27 @@ import java.util.HashSet;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
-import javax.security.auth.callback.CallbackHandler;
+import javax.net.ssl.SSLEngine;
+import javax.security.sasl.SaslClientFactory;
+import javax.security.sasl.SaslServerFactory;
 
 import java.util.Set;
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.RemotingOptions;
-import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.NetworkServerProvider;
+import org.wildfly.common.Assert;
+import org.wildfly.security.auth.AuthenticationConfiguration;
+import org.wildfly.security.auth.AuthenticationContext;
+import org.wildfly.security.auth.AuthenticationContextConfigurationClient;
+import org.wildfly.security.auth.provider.SecurityDomain;
+import org.wildfly.security.sasl.util.PrivilegedSaslServerFactory;
+import org.wildfly.security.sasl.util.SaslFactories;
+import org.xnio.AbstractConvertingIoFuture;
 import org.xnio.BufferAllocator;
 import org.xnio.Buffers;
 import org.xnio.ByteBufferSlicePool;
@@ -63,17 +70,22 @@ import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pool;
 import org.xnio.Result;
+import org.xnio.StreamConnection;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 import org.xnio.channels.AcceptingChannel;
+import org.xnio.channels.AssembledConnectedSslStreamChannel;
+import org.xnio.channels.AssembledConnectedStreamChannel;
 import org.xnio.channels.ConnectedSslStreamChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
+import org.xnio.ssl.JsseSslConnection;
 import org.xnio.ssl.XnioSsl;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
+@SuppressWarnings("deprecation")
 class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionProvider> implements ConnectionProvider {
 
     static final boolean USE_POOLING;
@@ -150,16 +162,15 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return b.toString();
     }
 
-    public Cancellable connect(final SocketAddress bindAddress, final SocketAddress destination, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler, XnioSsl xnioSsl) throws IllegalArgumentException {
+    public Cancellable connect(final URI destination, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationContext authenticationContext, final SaslClientFactory saslClientFactory) {
         if (! isOpen()) {
             throw new IllegalStateException("Connection provider is closed");
         }
-        if (destination == null) {
-            throw new IllegalArgumentException("destination address may not be null");
-        }
-        if (bindAddress != null && destination != null && bindAddress.getClass() != destination.getClass()) {
-            throw new IllegalArgumentException("bind and destination addresses must be of the same type");
-        }
+        Assert.checkNotNullParam("destination", destination);
+        Assert.checkNotNullParam("connectOptions", connectOptions);
+        Assert.checkNotNullParam("result", result);
+        Assert.checkNotNullParam("authenticationContext", authenticationContext);
+        Assert.checkNotNullParam("saslClientFactory", saslClientFactory);
         log.tracef("Attempting to connect to \"%s\" with options %s", destination, connectOptions);
         // cancellable that will be returned by this method
         final FutureResult<ConnectionHandlerFactory> cancellableResult = new FutureResult<ConnectionHandlerFactory>();
@@ -174,7 +185,6 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         returnedFuture.addNotifier(IoUtils.<ConnectionHandlerFactory>resultNotifier(), result);
         final boolean sslCapable = sslEnabled;
         final boolean useSsl = sslCapable && connectOptions.get(Options.SSL_ENABLED, true) && !connectOptions.get(Options.SECURE, false);
-        final AccessControlContext accessControlContext = AccessController.getContext();
         final ChannelListener<ConnectedStreamChannel> openListener = new ChannelListener<ConnectedStreamChannel>() {
             public void handleEvent(final ConnectedStreamChannel channel) {
                 try {
@@ -201,24 +211,19 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 if (messageChannel.isOpen()) {
                     remoteConnection.setResult(cancellableResult);
                     messageChannel.getWriteSetter().set(remoteConnection.getWriteListener());
-                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, connectionProviderContext, callbackHandler, accessControlContext , connectOptions);
+                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(destination, remoteConnection, connectionProviderContext, authenticationContext, saslClientFactory, connectOptions);
                     openListener.handleEvent(messageChannel);
                 }
             }
         };
+        final AuthenticationContextConfigurationClient configurationClient = ClientConnectionOpenListener.AUTH_CONFIGURATION_CLIENT;
+        final AuthenticationConfiguration authenticationConfiguration = configurationClient.getAuthenticationConfiguration(destination, authenticationContext);
+        final InetSocketAddress address = configurationClient.getDestinationInetSocketAddress(destination, authenticationConfiguration, 0);
         final IoFuture<? extends ConnectedStreamChannel> future;
-        if (useSsl && destination instanceof InetSocketAddress) {
-            if (xnioSsl == null) {
-                try {
-                    xnioSsl = xnio.getSslProvider(connectOptions);
-                } catch (GeneralSecurityException e) {
-                    result.setException(sslConfigFailure(e));
-                    return IoUtils.nullCancellable();
-                }
-            }
-            future = createSslConnection(bindAddress, (InetSocketAddress) destination, connectOptions, xnioSsl, openListener);
+        if (useSsl) {
+            future = createSslConnection(address, connectOptions, authenticationContext, openListener);
         } else {
-            future = createConnection(bindAddress, destination, connectOptions, openListener);
+            future = createConnection(address, connectOptions, openListener);
         }
         pendingInboundConnections.add(returnedFuture);
         // if the connection fails, we need to propagate that
@@ -248,12 +253,35 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return returnedFuture;
     }
 
-    protected IoFuture<ConnectedStreamChannel> createConnection(final SocketAddress bindAddress, final SocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
-        return bindAddress == null ? xnioWorker.connectStream(destination, openListener, connectOptions) : xnioWorker.connectStream(bindAddress, destination, openListener, null, connectOptions);
+    protected IoFuture<ConnectedStreamChannel> createConnection(final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
+        final AbstractConvertingIoFuture<ConnectedStreamChannel, StreamConnection> future = new AbstractConvertingIoFuture<ConnectedStreamChannel, StreamConnection>(xnioWorker.openStreamConnection(destination, null, connectOptions)) {
+            protected ConnectedStreamChannel convert(final StreamConnection streamConnection) throws IOException {
+                return new AssembledConnectedStreamChannel(streamConnection, streamConnection.getSourceChannel(), streamConnection.getSinkChannel());
+            }
+        };
+        future.addNotifier(new IoFuture.HandlingNotifier<ConnectedStreamChannel, Void>() {
+            public void handleDone(final ConnectedStreamChannel data, final Void attachment) {
+                openListener.handleEvent(data);
+            }
+        }, null);
+        return future;
     }
 
-    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final SocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final XnioSsl xnioSsl, final ChannelListener<ConnectedStreamChannel> openListener) {
-        return bindAddress == null ? xnioSsl.connectSsl(xnioWorker, (InetSocketAddress) destination, openListener, connectOptions) : xnioSsl.connectSsl(xnioWorker, (InetSocketAddress) bindAddress, (InetSocketAddress) destination, openListener, connectOptions);
+    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext, final ChannelListener<ConnectedStreamChannel> openListener) {
+        final AbstractConvertingIoFuture<ConnectedSslStreamChannel, StreamConnection> future = new AbstractConvertingIoFuture<ConnectedSslStreamChannel, StreamConnection>(xnioWorker.openStreamConnection(destination, null, connectOptions)) {
+            protected ConnectedSslStreamChannel convert(final StreamConnection streamConnection) throws IOException {
+                final AuthenticationContextConfigurationClient configurationClient = ClientConnectionOpenListener.AUTH_CONFIGURATION_CLIENT;
+                final SSLEngine engine = null /* TODO: configurationClient.createSslEngine(authenticationContext, uri) */;
+                final JsseSslConnection sslConnection = new JsseSslConnection(streamConnection, engine);
+                return new AssembledConnectedSslStreamChannel(sslConnection, sslConnection.getSourceChannel(), sslConnection.getSinkChannel());
+            }
+        };
+        future.addNotifier(new IoFuture.HandlingNotifier<ConnectedSslStreamChannel, Void>() {
+            public void handleDone(final ConnectedSslStreamChannel data, final Void attachment) {
+                openListener.handleEvent(data);
+            }
+        }, null);
+        return future;
     }
 
     public Object getProviderInterface() {
@@ -291,20 +319,17 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
 
     final class ProviderInterface implements NetworkServerProvider {
 
-        public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider, XnioSsl xnioSsl) throws IOException {
-            final AccessControlContext accessControlContext = AccessController.getContext();
+        public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final SecurityDomain securityDomain) throws IOException {
+            SaslServerFactory saslServerFactory = SaslFactories.getStandardSaslServerFactory(getClass().getClassLoader());
+            saslServerFactory = new PrivilegedSaslServerFactory(saslServerFactory);
+            // TODO: server name, protocol name
             final boolean sslCapable = sslEnabled;
-            final AcceptListener acceptListener = new AcceptListener(optionMap, authenticationProvider, accessControlContext);
+            final AcceptListener acceptListener = new AcceptListener(optionMap, securityDomain, saslServerFactory);
             final AcceptingChannel<? extends ConnectedStreamChannel> result;
             if (sslCapable && optionMap.get(Options.SSL_ENABLED, true)) {
-                if (xnioSsl == null) {
-                    try {
-                        xnioSsl = xnio.getSslProvider(optionMap);
-                    } catch (GeneralSecurityException e) {
-                        throw sslConfigFailure(e);
-                    }
-                }
-                result = xnioSsl.createSslTcpServer(xnioWorker, (InetSocketAddress) bindAddress, acceptListener, optionMap);
+                // todo
+                result = xnioWorker.createStreamServer(bindAddress, acceptListener, optionMap);
+//                result = xnioSsl.createSslTcpServer(xnioWorker, (InetSocketAddress) bindAddress, acceptListener, optionMap);
             } else {
                 result = xnioWorker.createStreamServer(bindAddress, acceptListener, optionMap);
             }
@@ -329,15 +354,15 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     private final class AcceptListener implements ChannelListener<AcceptingChannel<? extends ConnectedStreamChannel>> {
 
         private final OptionMap serverOptionMap;
-        private final ServerAuthenticationProvider serverAuthenticationProvider;
-        private final AccessControlContext accessControlContext;
+        private final SecurityDomain securityDomain;
+        private final SaslServerFactory saslServerFactory;
         private final Pool<ByteBuffer> messageBufferPool;
         private final Pool<ByteBuffer> framingBufferPool;
 
-        AcceptListener(final OptionMap serverOptionMap, final ServerAuthenticationProvider serverAuthenticationProvider, final AccessControlContext accessControlContext) {
+        AcceptListener(final OptionMap serverOptionMap, final SecurityDomain securityDomain, final SaslServerFactory saslServerFactory) {
             this.serverOptionMap = serverOptionMap;
-            this.serverAuthenticationProvider = serverAuthenticationProvider;
-            this.accessControlContext = accessControlContext;
+            this.securityDomain = securityDomain;
+            this.saslServerFactory = saslServerFactory;
             final int messageBufferSize = defaultBufferSize;
             Pool<ByteBuffer> pool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
             messageBufferPool = LEAK_DEBUGGING ? new DebuggingBufferPool(pool) : pool;
@@ -365,7 +390,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
 
             final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, framingBufferPool.allocate(), framingBufferPool.allocate());
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, accepted, messageChannel, serverOptionMap, RemoteConnectionProvider.this);
-            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, serverAuthenticationProvider, serverOptionMap, accessControlContext);
+            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, securityDomain, saslServerFactory, serverOptionMap);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
             RemoteLogger.log.tracef("Accepted connection from %s to %s", accepted.getPeerAddress(), accepted.getLocalAddress());
             openListener.handleEvent(messageChannel);

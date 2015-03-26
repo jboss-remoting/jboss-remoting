@@ -22,13 +22,9 @@
 
 package org.jboss.remoting3;
 
-import java.net.SocketAddress;
-import java.security.Principal;
-import java.util.Collection;
-import java.util.Collections;
+import java.net.URI;
 import java.util.concurrent.Executor;
 
-import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -36,13 +32,13 @@ import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.SpiUtils;
+import org.wildfly.security.auth.AuthenticationContext;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
-import org.xnio.ssl.XnioSsl;
 
 import javax.net.ssl.SSLSession;
-import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.SaslClientFactory;
 
 import static org.xnio.IoUtils.nullCancellable;
 
@@ -57,12 +53,8 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
         this.executor = executor;
     }
 
-    public Cancellable connect(final SocketAddress bindAddress, final SocketAddress destination, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final CallbackHandler callbackHandler, final XnioSsl xnioSsl) throws IllegalArgumentException {
-        context.accept(new ConnectionHandlerFactory() {
-            public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                return new LoopbackConnectionHandler(connectionContext);
-            }
-        });
+    public Cancellable connect(final URI destination, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationContext authenticationContext, final SaslClientFactory saslClientFactory) {
+        context.accept(LoopbackConnectionHandler::new);
         return nullCancellable();
     }
 
@@ -93,20 +85,6 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
             }
             result.setResult(channel);
             return nullCancellable();
-        }
-
-        public Collection<Principal> getPrincipals() {
-            return Collections.emptySet();
-        }
-
-        public UserInfo getUserInfo() {
-            return new UserInfo() {
-
-                public String getUserName() {
-                    return null;
-                }
-
-            };
         }
 
         public SSLSession getSslSession() {

@@ -27,10 +27,7 @@ import static org.jboss.remoting3.remote.RemoteLogger.log;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.security.Principal;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
@@ -44,7 +41,6 @@ import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3._private.Equaller;
 import org.jboss.remoting3._private.IntIndexHashMap;
 import org.jboss.remoting3._private.IntIndexMap;
-import org.jboss.remoting3.security.UserInfo;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -57,6 +53,7 @@ import org.xnio.Result;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.SslChannel;
 
+@SuppressWarnings("deprecation")
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
 
     private final ConnectionHandlerContext connectionContext;
@@ -72,8 +69,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
      * Pending channels.  All have a "1" MSB.  Replies are read with a "0" MSB.
      */
     private final IntIndexMap<PendingChannel> pendingChannels = new IntIndexHashMap<PendingChannel>(PendingChannel.INDEXER, Equaller.IDENTITY);
-    private final Collection<Principal> principals;
-    private final UserInfo userInfo;
 
     private final int maxInboundChannels;
     private final int maxOutboundChannels;
@@ -95,7 +90,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final Collection<Principal> principals, final UserInfo userInfo, final int maxInboundChannels, final int maxOutboundChannels, final String remoteEndpointName, final int behavior) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final int maxInboundChannels, final int maxOutboundChannels, final String remoteEndpointName, final int behavior) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
@@ -103,9 +98,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         this.maxOutboundChannels = maxOutboundChannels;
         this.remoteEndpointName = remoteEndpointName;
         this.behavior = behavior;
-
-        this.principals = Collections.unmodifiableCollection(principals);
-        this.userInfo = userInfo;
     }
 
     /**
@@ -389,14 +381,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         } finally {
             if (! ok) handleOutboundChannelClosed();
         }
-    }
-
-    public Collection<Principal> getPrincipals() {
-        return principals;
-    }
-
-    public UserInfo getUserInfo() {
-        return userInfo;
     }
 
     public SSLSession getSslSession() {

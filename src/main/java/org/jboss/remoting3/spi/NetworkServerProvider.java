@@ -24,11 +24,10 @@ package org.jboss.remoting3.spi;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import org.jboss.remoting3.security.ServerAuthenticationProvider;
+import org.wildfly.security.auth.provider.SecurityDomain;
 import org.xnio.OptionMap;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
-import org.xnio.ssl.XnioSsl;
 
 /**
  * A provider interface implemented by connection providers which can be connected to across the network.
@@ -40,10 +39,9 @@ public interface NetworkServerProvider {
      *
      * @param bindAddress the address to bind to
      * @param optionMap the server options
-     * @param authenticationProvider the authentication provider
-     * @param xnioSsl the XNIO SSL provider to use for this server, or {@code null} to automatically configure a new provider as needed
+     * @param securityDomain the security domain to use for authentication
      * @return the server channel
      * @throws IOException if the server could not be created
      */
-    AcceptingChannel<? extends ConnectedStreamChannel> createServer(SocketAddress bindAddress, OptionMap optionMap, ServerAuthenticationProvider authenticationProvider, XnioSsl xnioSsl) throws IOException;
+    AcceptingChannel<? extends ConnectedStreamChannel> createServer(SocketAddress bindAddress, OptionMap optionMap, SecurityDomain securityDomain) throws IOException;
 }

@@ -22,14 +22,10 @@
 
 package org.jboss.remoting3.spi;
 
-import java.security.Principal;
-import java.util.Collection;
-
 import javax.net.ssl.SSLSession;
 
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.HandleableCloseable;
-import org.jboss.remoting3.security.UserInfo;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
@@ -50,19 +46,6 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
     Cancellable open(String serviceType, Result<Channel> result, OptionMap optionMap);
 
     /**
-     * Get the authenticated principals for this connection.
-     *
-     * @return the authenticated principals
-     */
-    Collection<Principal> getPrincipals();
-
-    /**
-     * Get the authenticated UserInfo for this connection.
-     *
-     * @return the authenticated UserInfo
-     */
-    UserInfo getUserInfo();
-
     /**
      * Get the underlying {@link SSLSession} for this connection if one is established.
      *

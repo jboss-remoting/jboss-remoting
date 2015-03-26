@@ -26,11 +26,9 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
-import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -39,9 +37,14 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.jboss.remoting3.security.ServerAuthenticationProvider;
+import javax.security.sasl.SaslServerFactory;
+
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ExternalConnectionProvider;
+import org.wildfly.security.auth.AuthenticationContext;
+import org.wildfly.security.auth.provider.SecurityDomain;
+import org.wildfly.security.sasl.util.PrivilegedSaslServerFactory;
+import org.wildfly.security.sasl.util.SaslFactories;
 import org.xnio.BufferAllocator;
 import org.xnio.Buffers;
 import org.xnio.ByteBufferSlicePool;
@@ -62,7 +65,6 @@ import org.xnio.channels.FramedMessageChannel;
 import org.xnio.ssl.SslConnection;
 import org.xnio.http.HandshakeChecker;
 import org.xnio.http.HttpUpgrade;
-import org.xnio.ssl.XnioSsl;
 
 /**
  *
@@ -76,7 +78,9 @@ import org.xnio.ssl.XnioSsl;
  * Other than that the handshake process is identical. Once the upgrade is completed the remoting handshake takes
  * place as normal.
  *
- * @see http://tools.ietf.org/html/rfc6455
+ * <p>
+ * See also: <a href="http://tools.ietf.org/html/rfc6455">RFC 6455</a>
+ *
  * @author Stuart Douglas
  */
 final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
@@ -97,9 +101,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         super(optionMap, connectionProviderContext);
     }
 
-    @Override
-    protected IoFuture<ConnectedStreamChannel> createConnection(final SocketAddress bindAddress, final SocketAddress dst, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
-        InetSocketAddress destination = (InetSocketAddress) dst;
+    protected IoFuture<ConnectedStreamChannel> createConnection(final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
         final URI uri;
         try {
             uri = new URI("http", "", destination.getHostString(), destination.getPort(), "/", "", "");
@@ -113,7 +115,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
         final FutureResult<ConnectedStreamChannel> future = new FutureResult<ConnectedStreamChannel>();
 
-        HttpUpgrade.performUpgrade(getXnioWorker(), (InetSocketAddress) bindAddress, uri, headers, new ChannelListener<StreamConnection>() {
+        HttpUpgrade.performUpgrade(getXnioWorker(), null, uri, headers, new ChannelListener<StreamConnection>() {
             @Override
             public void handleEvent(final StreamConnection channel) {
                 AssembledConnectedStreamChannel newChannel = new AssembledConnectedStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
@@ -133,8 +135,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         return future.getIoFuture();
     }
 
-    @Override
-    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final SocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options, final XnioSsl xnioSsl, final ChannelListener<ConnectedStreamChannel> openListener) {
+    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final InetSocketAddress destination, final OptionMap options, final AuthenticationContext authenticationContext, final ChannelListener<ConnectedStreamChannel> openListener) {
         final URI uri;
         try {
             uri = new URI("https", "", destination.getHostString(), destination.getPort(), "/", "", "");
@@ -149,7 +150,8 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
         final FutureResult<ConnectedSslStreamChannel> future = new FutureResult<ConnectedSslStreamChannel>();
 
-        HttpUpgrade.performUpgrade(getXnioWorker(), xnioSsl, (InetSocketAddress) bindAddress, uri, headers, new ChannelListener<SslConnection>() {
+        // TODO: perform upgrade using existing SSL connection
+        HttpUpgrade.performUpgrade(getXnioWorker(), null, null, uri, headers, new ChannelListener<SslConnection>() {
             @Override
             public void handleEvent(final SslConnection channel) {
                 AssembledConnectedSslStreamChannel newChannel = new AssembledConnectedSslStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
@@ -196,22 +198,21 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
     final class ProviderInterface implements ExternalConnectionProvider {
 
-        @Override
-        public ConnectionAdaptor createConnectionAdaptor(final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider) throws IOException {
-            final AccessControlContext accessControlContext = AccessController.getContext();
-            return new ConnectionAdaptorImpl(optionMap, authenticationProvider, accessControlContext);
+        public ConnectionAdaptor createConnectionAdaptor(final OptionMap optionMap, final SecurityDomain securityDomain) throws IOException {
+            return new ConnectionAdaptorImpl(optionMap, securityDomain);
         }
     }
 
     private final class ConnectionAdaptorImpl implements ExternalConnectionProvider.ConnectionAdaptor {
         private final OptionMap optionMap;
-        private final ServerAuthenticationProvider authenticationProvider;
-        private final AccessControlContext accessControlContext;
+        private final SecurityDomain securityDomain;
+        private final SaslServerFactory saslServerFactory;
 
-        private ConnectionAdaptorImpl(final OptionMap optionMap, final ServerAuthenticationProvider authenticationProvider, final AccessControlContext accessControlContext) {
+        ConnectionAdaptorImpl(final OptionMap optionMap, final SecurityDomain securityDomain) {
             this.optionMap = optionMap;
-            this.authenticationProvider = authenticationProvider;
-            this.accessControlContext = accessControlContext;
+            this.securityDomain = securityDomain;
+            this.saslServerFactory = new PrivilegedSaslServerFactory(SaslFactories.getStandardSaslServerFactory(getClass().getClassLoader()));
+            // TODO: server name, protocol name
         }
 
         @Override
@@ -232,7 +233,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
             final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, channel, messageChannel, optionMap, HttpUpgradeConnectionProvider.this);
-            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), authenticationProvider, optionMap, accessControlContext);
+            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), securityDomain, saslServerFactory, optionMap);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
             RemoteLogger.log.tracef("Accepted connection from %s to %s", channel.getPeerAddress(), channel.getLocalAddress());
             openListener.handleEvent(messageChannel);
