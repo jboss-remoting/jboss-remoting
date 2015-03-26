@@ -48,6 +48,7 @@
         <apacheds.shared.version>1.0.0-M13</apacheds.shared.version>
         <apacheds.api.version>1.0.0-M16</apacheds.api.version>        
         <elytron.version>1.0.0.Alpha1-SNAPSHOT</elytron.version>
+        <config.version>1.0.0.Alpha2</config.version>
         <xnio.version>3.4.0.Beta1-SNAPSHOT</xnio.version>
         <logging.version>3.2.1.Final</logging.version>
         <logging-tools.version>1.2.1.Final</logging-tools.version>
@@ -109,6 +110,13 @@
             <groupId>org.wildfly.common</groupId>
             <artifactId>wildfly-common</artifactId>
             <version>${wildfly-common.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.client</groupId>
+            <artifactId>wildfly-client-config</artifactId>
+            <version>${config.version}</version>
             <scope>compile</scope>
         </dependency>
 
