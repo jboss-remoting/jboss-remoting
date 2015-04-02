@@ -24,10 +24,11 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.net.URI;
+
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
+import org.wildfly.common.selector.DefaultSelector;
 import org.wildfly.security.auth.AuthenticationContext;
-import org.wildfly.security.sasl.util.SaslFactories;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.XnioWorker;
@@ -43,6 +44,7 @@ import javax.security.sasl.SaslClientFactory;
  *
  * @apiviz.landmark
  */
+@DefaultSelector(ConfigurationEndpointSelector.class)
 public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
 
     /**
@@ -186,4 +188,13 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
      * @return the XNIO worker
      */
     XnioWorker getXnioWorker();
+
+    /**
+     * Create a new endpoint builder.
+     *
+     * @return the new endpoint builder
+     */
+    static EndpointBuilder builder() {
+        return new EndpointBuilder();
+    }
 }

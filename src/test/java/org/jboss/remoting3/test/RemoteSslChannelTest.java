@@ -39,7 +39,6 @@ import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
-import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
@@ -81,7 +80,7 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
     @BeforeClass
     public static void create() throws IOException, NoSuchProviderException, NoSuchAlgorithmException, InvalidKeySpecException {
         SslHelper.setKeyStoreAndTrustStore();
-        endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
+        endpoint = Endpoint.builder().setEndpointName("test").build();
         registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();

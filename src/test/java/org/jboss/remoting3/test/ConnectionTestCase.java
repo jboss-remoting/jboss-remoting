@@ -44,7 +44,6 @@ import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
-import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.spi.NetworkServerProvider;
@@ -109,8 +108,8 @@ public class ConnectionTestCase {
             .set(Options.WORKER_TASK_MAX_THREADS, THREAD_POOL_SIZE)
             .set(Options.WORKER_IO_THREADS, IO_THREAD_COUNT)
             .getMap();
-        clientEndpoint = Remoting.createEndpoint("connection-test-client", optionMap);
-        serverEndpoint = Remoting.createEndpoint("connection-test-server", optionMap);
+        clientEndpoint = Endpoint.builder().setXnioWorkerOptions(optionMap).setEndpointName("connection-test-client").build();
+        serverEndpoint = Endpoint.builder().setXnioWorkerOptions(optionMap).setEndpointName("connection-test-server").build();
         clientReg = clientEndpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         serverReg = serverEndpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
     }

@@ -36,12 +36,12 @@ import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -111,7 +111,7 @@ public class TimeOutConnectionTestCase {
             Thread acceptThread = new Thread(new Accept(channel));
             acceptThread.start();
             // create endpoint, auth provider, etc, create server
-            try (Endpoint ep = Remoting.createEndpoint("test", OptionMap.EMPTY)) {
+            try (Endpoint ep = Endpoint.builder().setXnioWorkerOptions(OptionMap.create(Options.WORKER_IO_THREADS, 4, Options.WORKER_TASK_CORE_THREADS, 16)).setEndpointName("test").build()) {
                 endpoint = ep;
                 ep.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), connectionProviderOptions);
                 final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
@@ -146,6 +146,7 @@ public class TimeOutConnectionTestCase {
     }
 
     @Test
+    @Ignore
     public void testSslEnabled() throws Exception {
         SslHelper.setKeyStoreAndTrustStore();
         doTest(OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE));

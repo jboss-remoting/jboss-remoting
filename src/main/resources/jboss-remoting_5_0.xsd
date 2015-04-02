@@ -43,7 +43,7 @@
         <xs:attribute name="scheme" use="required" type="xs:string"/>
         <xs:attribute name="aliases" use="optional" type="string-list-type"/>
         <xs:attribute name="module" use="optional" type="xs:string"/>
-        <xs:attribute name="class" use="required" type="xs:string"/>
+        <xs:attribute name="class" use="optional" type="xs:string"/>
     </xs:complexType>
 
     <xs:complexType name="connection-type">

@@ -26,15 +26,21 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 import javax.security.sasl.SaslClientFactory;
 
 import org.jboss.logging.Logger;
+import org.jboss.modules.Module;
+import org.jboss.modules.ModuleIdentifier;
+import org.jboss.modules.ModuleLoadException;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -55,6 +61,7 @@ import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoFuture.HandlingNotifier;
 import org.xnio.OptionMap;
+import org.xnio.Options;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 
@@ -70,10 +77,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private static final Logger log = Logger.getLogger("org.jboss.remoting.endpoint");
 
-    private static final RemotingPermission REGISTER_SERVICE_PERM = new RemotingPermission("registerService");
-    private static final RemotingPermission CONNECT_PERM = new RemotingPermission("connect");
-    private static final RemotingPermission ADD_CONNECTION_PROVIDER_PERM = new RemotingPermission("addConnectionProvider");
-    private static final RemotingPermission GET_CONNECTION_PROVIDER_INTERFACE_PERM = new RemotingPermission("getConnectionProviderInterface");
     private static final int CLOSED_FLAG = 0x80000000;
     private static final int COUNT_MASK = ~(CLOSED_FLAG);
     private static final String FQCN = EndpointImpl.class.getName();
@@ -101,8 +104,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
      * The name of this endpoint.
      */
     private final String name;
-    @SuppressWarnings("unused")
-    private final OptionMap optionMap;
     private final ConnectionProviderContext connectionProviderContext;
     private final CloseHandler<Object> resourceCloseHandler = new CloseHandler<Object>() {
         public void handleClose(final Object closed, final IOException exception) {
@@ -112,13 +113,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final EndpointImpl.ConnectionCloseHandler connectionCloseHandler = new EndpointImpl.ConnectionCloseHandler();
     private final boolean ourWorker;
 
-    private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name, final OptionMap optionMap) throws IOException {
+    private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name) throws NotOpenException {
         super(xnioWorker, true);
         worker = xnioWorker;
         this.ourWorker = ourWorker;
         this.xnio = xnioWorker.getXnio();
         this.name = name;
-        this.optionMap = optionMap;
         // initialize CPC
         connectionProviderContext = new ConnectionProviderContextImpl();
         // add default connection providers
@@ -127,8 +127,78 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         log.tracef("Completed open of %s", this);
     }
 
-    static EndpointImpl construct(final XnioWorker xnioWorker, final boolean ourWorker, final String name, final OptionMap optionMap) throws IOException {
-        return new EndpointImpl(xnioWorker, ourWorker, name, optionMap);
+    static EndpointImpl construct(final XnioWorker xnioWorker, final boolean ourWorker, final String name) throws IOException {
+        return new EndpointImpl(xnioWorker, ourWorker, name);
+    }
+
+    static EndpointImpl construct(final EndpointBuilder endpointBuilder) throws IOException {
+        final String endpointName = endpointBuilder.getEndpointName();
+        final List<ConnectionBuilder> connectionBuilders = endpointBuilder.getConnectionBuilders();
+        final List<ConnectionProviderFactoryBuilder> factoryBuilders = endpointBuilder.getConnectionProviderFactoryBuilders();
+        final EndpointImpl endpoint;
+        XnioWorker xnioWorker = endpointBuilder.getXnioWorker();
+        if (xnioWorker == null) {
+            Xnio xnio = Xnio.getInstance(EndpointImpl.class.getClassLoader());
+            final OptionMap.Builder builder = OptionMap.builder();
+            final OptionMap workerOptions = endpointBuilder.getXnioWorkerOptions();
+            if (workerOptions != null) {
+                builder.addAll(workerOptions);
+            }
+            final OptionMap modifiedOptionMap = builder.set(Options.WORKER_NAME, endpointName == null ? "Remoting (anonymous)" : "Remoting \"" + endpointName + "\"").getMap();
+            final AtomicReference<EndpointImpl> endpointRef = new AtomicReference<EndpointImpl>();
+            xnioWorker = xnio.createWorker(null, modifiedOptionMap, new Runnable() {
+                public void run() {
+                    final EndpointImpl endpoint = endpointRef.getAndSet(null);
+                    if (endpoint != null) {
+                        endpoint.closeComplete();
+                    }
+                }
+            });
+            endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName));
+        } else {
+            endpoint = new EndpointImpl(xnioWorker, false, endpointName);
+        }
+        boolean ok = false;
+        try {
+            if (factoryBuilders != null) for (ConnectionProviderFactoryBuilder factoryBuilder : factoryBuilders) {
+                final String className = factoryBuilder.getClassName();
+                final String moduleName = factoryBuilder.getModuleName();
+                final ClassLoader classLoader;
+                if (moduleName != null) {
+                    // modules code here only
+                    final Module module;
+                    try {
+                        module = Module.getCallerModuleLoader().loadModule(ModuleIdentifier.fromString(moduleName));
+                    } catch (ModuleLoadException e) {
+                        throw new IOException("Failed to create endpoint", e);
+                    }
+                    classLoader = module.getClassLoader();
+                } else if (className == null) {
+                    throw new IllegalArgumentException("Either class or module name required for connection provider factory");
+                } else {
+                    classLoader = EndpointImpl.class.getClassLoader();
+                }
+                if (className == null) {
+                    final ServiceLoader<ConnectionProviderFactory> loader = ServiceLoader.load(ConnectionProviderFactory.class, classLoader);
+                    for (ConnectionProviderFactory factory : loader) {
+                        endpoint.addConnectionProvider(factoryBuilder.getScheme(), factory, OptionMap.EMPTY);
+                    }
+                } else try {
+                    final Class<? extends ConnectionProviderFactory> factoryClass = classLoader.loadClass(className).asSubclass(ConnectionProviderFactory.class);
+                    final ConnectionProviderFactory factory = factoryClass.newInstance();
+                    endpoint.addConnectionProvider(factoryBuilder.getScheme(), factory, OptionMap.EMPTY);
+                } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+                    throw new IllegalArgumentException("Unable to load connection provider factory class '" + className + "'", e);
+                }
+            }
+            if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
+                endpoint.connect(connectionBuilder.getUri());
+            }
+            ok = true;
+            return endpoint;
+        } finally {
+            if (! ok) endpoint.closeAsync();
+        }
     }
 
     public Attachments getAttachments() {
@@ -214,7 +284,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
-            sm.checkPermission(REGISTER_SERVICE_PERM);
+            sm.checkPermission(RemotingPermission.REGISTER_SERVICE);
         }
         final RegisteredServiceImpl registeredService = new RegisteredServiceImpl(openListener, optionMap);
         if (registeredServices.putIfAbsent(serviceType, registeredService) != null) {
@@ -263,7 +333,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
-            sm.checkPermission(CONNECT_PERM);
+            sm.checkPermission(RemotingPermission.CONNECT);
         }
         final String scheme = destination.getScheme();
         synchronized (connectionLock) {
@@ -318,7 +388,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory, final OptionMap optionMap) throws IOException {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
-            sm.checkPermission(ADD_CONNECTION_PROVIDER_PERM);
+            sm.checkPermission(RemotingPermission.ADD_CONNECTION_PROVIDER);
         }
         boolean ok = false;
         resourceUntick("Connection provider for " + uriScheme);
@@ -363,7 +433,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     public <T> T getConnectionProviderInterface(final String uriScheme, final Class<T> expectedType) throws UnknownURISchemeException, ClassCastException {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
-            sm.checkPermission(GET_CONNECTION_PROVIDER_INTERFACE_PERM);
+            sm.checkPermission(RemotingPermission.GET_CONNECTION_PROVIDER_INTERFACE);
         }
         if (! expectedType.isInterface()) {
             throw new IllegalArgumentException("Interface expected");

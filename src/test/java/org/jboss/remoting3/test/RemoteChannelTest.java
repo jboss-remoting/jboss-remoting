@@ -41,7 +41,6 @@ import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
-import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
@@ -61,7 +60,6 @@ import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.Options;
-import org.xnio.Sequence;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
@@ -79,7 +77,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
 
     @BeforeClass
     public static void create() throws Exception {
-        endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
+        endpoint = Endpoint.builder().setEndpointName("test").build();
         registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();

@@ -30,7 +30,6 @@ import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
-import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.spi.NetworkServerProvider;
@@ -108,7 +107,7 @@ public class OutboundMessageCountTestCase {
         final WildFlyElytronProvider provider = new WildFlyElytronProvider();
         Security.addProvider(provider);
         providerName = provider.getName();
-        endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
+        endpoint = Endpoint.builder().setEndpointName("test").build();
         registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();

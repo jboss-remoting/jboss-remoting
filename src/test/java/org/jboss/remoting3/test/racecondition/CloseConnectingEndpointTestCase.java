@@ -36,7 +36,6 @@ import org.jboss.byteman.contrib.bmunit.BMUnitRunner;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.Remoting;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
@@ -106,7 +105,7 @@ public class CloseConnectingEndpointTestCase {
     @Test
     public void test() throws Exception {
         // create endpoint, auth provider, etc, create server
-        endpoint = Remoting.createEndpoint("test", OptionMap.EMPTY);
+        endpoint = Endpoint.builder().setEndpointName("test").build();
         endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
@@ -142,7 +141,7 @@ public class CloseConnectingEndpointTestCase {
         public void run() {
             final IoFuture<Connection> futureConnection;
             try {
-                futureConnection = endpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY);
+                futureConnection = endpoint.connect(new URI("remote://localhost:30123"), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
                 if (futureConnection != null) {
                     Connection c = futureConnection.get();
                     if (c != null) {

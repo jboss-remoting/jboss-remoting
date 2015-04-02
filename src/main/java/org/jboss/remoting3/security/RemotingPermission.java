@@ -31,11 +31,17 @@ public class RemotingPermission extends BasicPermission {
 
     private static final long serialVersionUID = 4984517897378387571L;
 
+    public static final RemotingPermission CREATE_ENDPOINT = new RemotingPermission("createEndpoint");
+    public static final RemotingPermission CONNECT = new RemotingPermission("connect");
+    public static final RemotingPermission ADD_CONNECTION_PROVIDER = new RemotingPermission("addConnectionProvider");
+    public static final RemotingPermission REGISTER_SERVICE = new RemotingPermission("registerService");
+    public static final RemotingPermission GET_CONNECTION_PROVIDER_INTERFACE = new RemotingPermission("getConnectionProviderInterface");
+
     /**
-     * Creates a new {@code EndpointPermission} object with the specified name.
-     * The name is the symbolic name of the {@code EndpointPermission}.
+     * Creates a new {@code RemotingPermission} object with the specified name.
+     * The name is the symbolic name of the {@code RemotingPermission}.
      *
-     * @param name the name of the {@code EndpointPermission}
+     * @param name the name of the {@code RemotingPermission}
      *
      * @throws NullPointerException if {@code name} is {@code null}
      * @throws IllegalArgumentException if {@code name} is empty
@@ -45,11 +51,11 @@ public class RemotingPermission extends BasicPermission {
     }
 
     /**
-     * Creates a new {@code EndpointPermission} object with the specified name.
-     * The name is the symbolic name of the {@code EndpointPermission}, and the
+     * Creates a new {@code RemotingPermission} object with the specified name.
+     * The name is the symbolic name of the {@code RemotingPermission}, and the
      * actions string is currently unused.
      *
-     * @param name the name of the {@code EndpointPermission}
+     * @param name the name of the {@code RemotingPermission}
      * @param actions ignored
      *
      * @throws NullPointerException if {@code name} is {@code null}
@@ -57,5 +63,16 @@ public class RemotingPermission extends BasicPermission {
      */
     public RemotingPermission(String name, String actions) throws NullPointerException, IllegalArgumentException {
         super(name, actions);
+    }
+
+    Object readResolve() {
+        switch (getName()) {
+            case "createEndpoint": return CREATE_ENDPOINT;
+            case "connect": return CONNECT;
+            case "addConnectionProvider": return ADD_CONNECTION_PROVIDER;
+            case "registerService": return REGISTER_SERVICE;
+            case "getConnectionProviderInterface": return GET_CONNECTION_PROVIDER_INTERFACE;
+            default: return this;
+        }
     }
 }
