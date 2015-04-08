@@ -66,6 +66,15 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
     Registration registerService(String serviceType, OpenListener openListener, OptionMap optionMap) throws ServiceRegistrationException;
 
     /**
+     * Get a possibly pre-existing connection to the destination.
+     *
+     * @param destination the destination URI
+     * @return the future (or existing) connection
+     * @throws IOException if an error occurs while starting a connect attempt
+     */
+    IoFuture<Connection> getConnection(URI destination) throws IOException;
+
+    /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>

@@ -29,6 +29,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -87,6 +88,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private final ConcurrentMap<String, ConnectionProvider> connectionProviders = new UnlockedReadHashMap<String, ConnectionProvider>();
     private final ConcurrentMap<String, RegisteredServiceImpl> registeredServices = new UnlockedReadHashMap<String, RegisteredServiceImpl>();
+    private final ConcurrentMap<ConnectionKey, FutureConnection> configuredConnections = new ConcurrentHashMap<>();
 
     private final Xnio xnio;
     private final XnioWorker worker;
@@ -307,6 +309,31 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
         });
         return registration;
+    }
+
+    public IoFuture<Connection> getConnection(final URI destination) throws IOException {
+        Assert.checkNotNullParam("destination", destination);
+        final String scheme = destination.getScheme();
+        if (scheme == null) {
+            throw new IllegalArgumentException("No scheme given in URI '" + destination + "'");
+        }
+        final String host = destination.getHost();
+        if (host == null) {
+            throw new IllegalArgumentException("No host given in URI '" + destination + "'");
+        }
+        final int port = destination.getPort();
+        final ConnectionKey connectionKey = new ConnectionKey(host, scheme, port);
+
+        FutureConnection futureConnection = configuredConnections.get(connectionKey);
+        if (futureConnection != null) {
+            return futureConnection.get();
+        }
+        FutureConnection appearing;
+        futureConnection = new FutureConnection(this, destination, false);
+        if ((appearing = configuredConnections.putIfAbsent(connectionKey, futureConnection)) != null) {
+            return appearing.get();
+        }
+        return futureConnection.get();
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
