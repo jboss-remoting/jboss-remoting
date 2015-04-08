@@ -271,11 +271,14 @@ public final class StreamUtils {
     }
 
     public static void readFully(final InputStream is, final byte[] bytes) throws IOException {
-        final int len = bytes.length;
-        int t = is.read(bytes);
+        readFully(is, bytes, 0, bytes.length);
+    }
+
+    public static void readFully(final InputStream is, final byte[] bytes, final int off, final int len) throws IOException {
+        int t = is.read(bytes, off, len);
         if (t == -1) throw new EOFException();
         while (t < len) {
-            int res = is.read(bytes, t, len - t);
+            int res = is.read(bytes, off + t, len - t);
             if (res == -1) throw new EOFException();
             t += res;
         }
