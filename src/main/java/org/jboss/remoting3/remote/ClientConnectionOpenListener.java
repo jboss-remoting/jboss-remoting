@@ -31,6 +31,7 @@ import java.nio.channels.Channel;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.Principal;
+import java.security.PrivilegedAction;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
@@ -402,7 +403,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         final String userName = optionMap.get(RemotingOptions.AUTHORIZE_ID);
                         final Map<String, ?> propertyMap = SaslUtils.createPropertyMap(optionMap, Channels.getOption(channel, Options.SECURE, false));
                         SaslClient saslClient = null;
-                        final Iterator<SaslClientFactory> iterator = SaslUtils.getSaslClientFactories(getClass().getClassLoader(), true);
+                        final Iterator<SaslClientFactory> iterator = AccessController.doPrivileged(new PrivilegedAction<Iterator<SaslClientFactory>>() {
+                            public Iterator<SaslClientFactory> run() {
+                                return SaslUtils.getSaslClientFactories(getClass().getClassLoader(), true);
+                            }
+                        });
                         final LinkedHashMap<String, Set<SaslClientFactory>> factories = new LinkedHashMap<String, Set<SaslClientFactory>>();
                         while (iterator.hasNext()) {
                             final SaslClientFactory factory = iterator.next();
