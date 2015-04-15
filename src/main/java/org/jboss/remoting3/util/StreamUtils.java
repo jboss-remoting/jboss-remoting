@@ -254,7 +254,7 @@ public final class StreamUtils {
     public static void writePackedUnsignedInt31(OutputStream os, int val) throws IOException {
         val &= 0x7fff_ffff;
         while (32 - Integer.numberOfLeadingZeros(val) > 7) {
-            os.write(val & 0b1000_0000);
+            os.write(val | 0b1000_0000);
             val >>>= 7;
         }
         assert allAreClear(val, 0b1000_0000);
@@ -263,7 +263,7 @@ public final class StreamUtils {
 
     public static void writePackedUnsignedInt32(OutputStream os, int val) throws IOException {
         while (32 - Integer.numberOfLeadingZeros(val) > 7) {
-            os.write(val & 0b1000_0000);
+            os.write(val | 0b1000_0000);
             val >>>= 7;
         }
         assert allAreClear(val, 0b1000_0000);
