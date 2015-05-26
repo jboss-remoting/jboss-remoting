@@ -333,11 +333,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
             } else {
                 result = xnioWorker.createStreamServer(bindAddress, acceptListener, optionMap);
             }
-            addCloseHandler(new CloseHandler<ConnectionProvider>() {
-                public void handleClose(final ConnectionProvider closed, final IOException exception) {
-                    IoUtils.safeClose(result);
-                }
-            });
+            addCloseHandler((closed, exception) -> IoUtils.safeClose(result));
             result.resumeAccepts();
             return result;
         }

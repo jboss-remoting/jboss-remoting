@@ -25,11 +25,11 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+import java.util.function.ToIntFunction;
 
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.NotOpenException;
-import org.jboss.remoting3._private.IntIndexer;
 import org.xnio.BrokenPipeException;
 import org.xnio.IoUtils;
 import org.xnio.Pooled;
@@ -169,15 +169,7 @@ final class OutboundMessage extends MessageOutputStream {
         }
     };
 
-    static final IntIndexer<OutboundMessage> INDEXER = new IntIndexer<OutboundMessage>() {
-        public int getKey(final OutboundMessage argument) {
-            return argument.messageId & 0xffff;
-        }
-
-        public boolean equals(final OutboundMessage argument, final int index) {
-            return (argument.messageId & 0xffff) == index;
-        }
-    };
+    static final ToIntFunction<OutboundMessage> INDEXER = OutboundMessage::getActualId;
 
     OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window, final long maxOutboundMessageSize) {
         this.messageId = messageId;
@@ -190,6 +182,10 @@ final class OutboundMessage extends MessageOutputStream {
             // not possible
             throw new IllegalStateException(e);
         }
+    }
+
+    int getActualId() {
+        return messageId & 0xffff;
     }
 
     Pooled<ByteBuffer> allocate(byte protoId) {

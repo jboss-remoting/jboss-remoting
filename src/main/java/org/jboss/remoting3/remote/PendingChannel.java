@@ -22,8 +22,9 @@
 
 package org.jboss.remoting3.remote;
 
+import java.util.function.ToIntFunction;
+
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3._private.IntIndexer;
 import org.xnio.Result;
 
 /**
@@ -82,13 +83,5 @@ final class PendingChannel {
         return result;
     }
 
-    static final IntIndexer<PendingChannel> INDEXER = new IntIndexer<PendingChannel>() {
-        public int getKey(final PendingChannel argument) {
-            return argument.id;
-        }
-
-        public boolean equals(final PendingChannel argument, final int index) {
-            return argument.id == index;
-        }
-    };
+    static final ToIntFunction<PendingChannel> INDEXER = PendingChannel::getId;
 }

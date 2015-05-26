@@ -23,6 +23,7 @@
 package org.jboss.remoting3._private;
 
 import java.util.Collection;
+import java.util.function.ToIntFunction;
 
 /**
  * A map which is indexed by integer value and thus acts similarly to a set.
@@ -31,7 +32,7 @@ import java.util.Collection;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public interface IntIndexMap<E> extends Iterable<E>, IntIndexer<E>, Collection<E> {
+public interface IntIndexMap<E> extends Iterable<E>, ToIntFunction<E>, Collection<E> {
 
     /**
      * Determine whether the given index is contained in the map.

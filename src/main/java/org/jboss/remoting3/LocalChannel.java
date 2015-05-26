@@ -153,19 +153,11 @@ final class LocalChannel extends AbstractHandleableCloseable<Channel> implements
     }
 
     private void executeEndTask(final Receiver handler) {
-        getExecutor().execute(new Runnable() {
-            public void run() {
-                handler.handleEnd(LocalChannel.this);
-            }
-        });
+        getExecutor().execute(() -> handler.handleEnd(LocalChannel.this));
     }
 
     private void executeMessageTask(final Receiver handler, final In in) {
-        getExecutor().execute(new Runnable() {
-            public void run() {
-                handler.handleMessage(LocalChannel.this, in);
-            }
-        });
+        getExecutor().execute(() -> handler.handleMessage(LocalChannel.this, in));
     }
 
     public Attachments getAttachments() {

@@ -107,12 +107,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
      */
     private final String name;
     private final ConnectionProviderContext connectionProviderContext;
-    private final CloseHandler<Object> resourceCloseHandler = new CloseHandler<Object>() {
-        public void handleClose(final Object closed, final IOException exception) {
-            closeTick1(closed);
-        }
-    };
-    private final EndpointImpl.ConnectionCloseHandler connectionCloseHandler = new EndpointImpl.ConnectionCloseHandler();
+    private final CloseHandler<Object> resourceCloseHandler = (closed, exception) -> closeTick1(closed);
+    private final CloseHandler<Connection> connectionCloseHandler = (closed, exception) -> connections.remove(closed);
     private final boolean ourWorker;
 
     private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name) throws NotOpenException {
@@ -148,12 +144,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
             final OptionMap modifiedOptionMap = builder.set(Options.WORKER_NAME, endpointName == null ? "Remoting (anonymous)" : "Remoting \"" + endpointName + "\"").getMap();
             final AtomicReference<EndpointImpl> endpointRef = new AtomicReference<EndpointImpl>();
-            xnioWorker = xnio.createWorker(null, modifiedOptionMap, new Runnable() {
-                public void run() {
-                    final EndpointImpl endpoint = endpointRef.getAndSet(null);
-                    if (endpoint != null) {
-                        endpoint.closeComplete();
-                    }
+            xnioWorker = xnio.createWorker(null, modifiedOptionMap, () -> {
+                final EndpointImpl e = endpointRef.getAndSet(null);
+                if (e != null) {
+                    e.closeComplete();
                 }
             });
             endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName));
@@ -303,11 +297,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         };
         // automatically close the registration when the endpoint is closed
         final Key key = addCloseHandler(SpiUtils.closingCloseHandler(registration));
-        registration.addCloseHandler(new CloseHandler<Registration>() {
-            public void handleClose(final Registration closed, final IOException exception) {
-                key.remove();
-            }
-        });
+        registration.addCloseHandler((closed, exception) -> key.remove());
         return registration;
     }
 
@@ -437,11 +427,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         }
                     }
                 };
-                provider.addCloseHandler(new CloseHandler<ConnectionProvider>() {
-                    public void handleClose(final ConnectionProvider closed, final IOException exception) {
-                        registration.closeAsync();
-                        closeTick1(closed);
-                    }
+                provider.addCloseHandler((closed, exception) -> {
+                    registration.closeAsync();
+                    closeTick1(closed);
                 });
                 ok = true;
                 return registration;
@@ -595,13 +583,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public XnioWorker getXnioWorker() {
             return worker;
-        }
-    }
-
-    private class ConnectionCloseHandler implements CloseHandler<Connection> {
-
-        public void handleClose(final Connection closed, final IOException exception) {
-            connections.remove(closed);
         }
     }
 

@@ -357,11 +357,7 @@ final class RemoteConnection {
         }
     }
 
-    private final Runnable heartbeatCommand = new Runnable() {
-        public void run() {
-            sendAlive();
-        }
-    };
+    private final Runnable heartbeatCommand = this::sendAlive;
 
     public String toString() {
         return String.format("Remoting connection %08x to %s", Integer.valueOf(hashCode()), channel.getPeerAddress());

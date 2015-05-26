@@ -20,12 +20,12 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3._private;
+package org.jboss.remoting3.util;
 
-import static java.util.concurrent.locks.LockSupport.park;
-import static java.util.concurrent.locks.LockSupport.unpark;
+import static java.util.concurrent.locks.LockSupport.*;
 
 import java.io.IOException;
+import java.util.function.ToIntFunction;
 
 import org.jboss.remoting3.MessageInputStream;
 
@@ -35,11 +35,7 @@ import org.jboss.remoting3.MessageInputStream;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class PendingResponse {
-    public static final IntIndexer<PendingResponse> PENDING_RESPONSE_INDEXER = new IntIndexer<PendingResponse>() {
-        public int getKey(final PendingResponse argument) {
-            return argument.reqId;
-        }
-    };
+    public static final ToIntFunction<PendingResponse> PENDING_RESPONSE_INDEXER = PendingResponse::getReqId;
 
     private final int reqId;
     private final Thread waiter;
@@ -48,6 +44,10 @@ public final class PendingResponse {
     public PendingResponse(final int reqId, final Thread waiter) {
         this.reqId = reqId;
         this.waiter = waiter;
+    }
+
+    int getReqId() {
+        return reqId;
     }
 
     public void setException(IOException e) {

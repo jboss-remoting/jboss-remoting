@@ -24,10 +24,10 @@ package org.jboss.remoting3.remote;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.function.ToIntFunction;
 
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
-import org.jboss.remoting3._private.IntIndexer;
 import org.xnio.Pooled;
 import org.xnio.streams.BufferPipeInputStream;
 
@@ -48,15 +48,7 @@ final class InboundMessage {
     boolean cancelled;
     long remaining;
 
-    static final IntIndexer<InboundMessage> INDEXER = new IntIndexer<InboundMessage>() {
-        public int getKey(final InboundMessage argument) {
-            return argument.messageId & 0xffff;
-        }
-
-        public boolean equals(final InboundMessage argument, final int index) {
-            return (argument.messageId & 0xffff) == index;
-        }
-    };
+    static final ToIntFunction<InboundMessage> INDEXER = InboundMessage::getActualId;
 
     InboundMessage(final short messageId, final RemoteConnectionChannel channel, int inboundWindow, final long maxInboundMessageSize) {
         this.messageId = messageId;
@@ -74,6 +66,10 @@ final class InboundMessage {
             doClose();
         }
     });
+
+    private int getActualId() {
+        return messageId & 0xffff;
+    }
 
     void terminate() {
         synchronized (inputStream) {

@@ -25,12 +25,12 @@ package org.jboss.remoting3._private;
 import java.util.AbstractCollection;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.ToIntFunction;
 
 /**
  * Lock-free concurrent integer-indexed hash map.
@@ -49,7 +49,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
     /** A non-existent table entry (as opposed to a {@code null} value). */
     private static final Object NONEXISTENT = new Object();
 
-    private final IntIndexer<? super V> indexer;
+    private final ToIntFunction<? super V> indexer;
     private final Equaller<? super V> ve;
 
     private volatile Table<V> table;
@@ -57,10 +57,10 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
     private final float loadFactor;
     private final int initialCapacity;
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static final AtomicIntegerFieldUpdater<Table> sizeUpdater = AtomicIntegerFieldUpdater.newUpdater(Table.class, "size");
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static final AtomicReferenceFieldUpdater<IntIndexHashMap, Table> tableUpdater = AtomicReferenceFieldUpdater.newUpdater(IntIndexHashMap.class, Table.class, "table");
 
     /**
@@ -71,7 +71,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
      * @param initialCapacity the initial capacity
      * @param loadFactor the load factor
      */
-    public IntIndexHashMap(IntIndexer<? super V> indexer, Equaller<? super V> valueEqualler, int initialCapacity, float loadFactor) {
+    public IntIndexHashMap(ToIntFunction<? super V> indexer, Equaller<? super V> valueEqualler, int initialCapacity, float loadFactor) {
         if (valueEqualler == null) {
             throw new IllegalArgumentException("valueEqualler is null");
         }
@@ -106,7 +106,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
      * @param indexer the key indexer
      * @param valueEqualler the value equaller
      */
-    public IntIndexHashMap(IntIndexer<? super V> indexer, Equaller<? super V> valueEqualler) {
+    public IntIndexHashMap(ToIntFunction<? super V> indexer, Equaller<? super V> valueEqualler) {
         this(indexer, valueEqualler, DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR);
     }
 
@@ -117,7 +117,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
      * @param initialCapacity the initial capacity
      * @param loadFactor the load factor
      */
-    public IntIndexHashMap(IntIndexer<? super V> indexer, int initialCapacity, final float loadFactor) {
+    public IntIndexHashMap(ToIntFunction<? super V> indexer, int initialCapacity, final float loadFactor) {
         this(indexer, Equaller.DEFAULT, initialCapacity, loadFactor);
     }
 
@@ -127,7 +127,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
      * @param indexer the key indexer
      * @param loadFactor the load factor
      */
-    public IntIndexHashMap(IntIndexer<? super V> indexer, final float loadFactor) {
+    public IntIndexHashMap(ToIntFunction<? super V> indexer, final float loadFactor) {
         this(indexer, DEFAULT_INITIAL_CAPACITY, loadFactor);
     }
 
@@ -137,7 +137,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
      * @param indexer the key indexer
      * @param initialCapacity the initial capacity
      */
-    public IntIndexHashMap(IntIndexer<? super V> indexer, final int initialCapacity) {
+    public IntIndexHashMap(ToIntFunction<? super V> indexer, final int initialCapacity) {
         this(indexer, initialCapacity, DEFAULT_LOAD_FACTOR);
     }
 
@@ -146,7 +146,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
      *
      * @param indexer the key indexer
      */
-    public IntIndexHashMap(IntIndexer<? super V> indexer) {
+    public IntIndexHashMap(ToIntFunction<? super V> indexer) {
         this(indexer, DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR);
     }
 
@@ -185,24 +185,25 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
     }
 
     public boolean replace(final V oldValue, final V newValue) {
-        if (indexer.getKey(oldValue) != indexer.getKey(newValue)) {
+        if (indexer.applyAsInt(oldValue) != indexer.applyAsInt(newValue)) {
             throw new IllegalArgumentException("Can only replace with value which has the same key");
         }
         return doReplace(oldValue, newValue, table);
     }
 
-    public int getKey(final V argument) {
-        return indexer.getKey(argument);
+    public int applyAsInt(final V argument) {
+        return indexer.applyAsInt(argument);
     }
 
     public boolean add(final V v) {
         return doPut(v, true, table) == NONEXISTENT;
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T[] toArray(final T[] a) {
-        final ArrayList<V> list = new ArrayList<V>(size());
-        for (V item : this) {
-            list.add(item);
+        final ArrayList<T> list = new ArrayList<T>(size());
+        for (final V item : this) {
+            list.add((T) item);
         }
         return list.toArray(a);
     }
@@ -217,7 +218,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
 
     @SuppressWarnings({ "unchecked" })
     public boolean contains(final Object o) {
-        return ve.equals((V) o, get(indexer.getKey((V) o)));
+        return ve.equals((V) o, get(indexer.applyAsInt((V) o)));
     }
 
     public Iterator<V> iterator() {
@@ -229,7 +230,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
     }
 
     private boolean doReplace(final V oldValue, final V newValue, final Table<V> table) {
-        final int key = indexer.getKey(oldValue);
+        final int key = indexer.applyAsInt(oldValue);
         final AtomicReferenceArray<V[]> array = table.array;
         final int idx = key & array.length() - 1;
 
@@ -261,7 +262,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
     }
 
     private V doReplace(final V value, final Table<V> table) {
-        final int key = indexer.getKey(value);
+        final int key = indexer.applyAsInt(value);
         final AtomicReferenceArray<V[]> array = table.array;
         final int idx = key & array.length() - 1;
 
@@ -279,7 +280,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
             // Find the matching Item in the row.
             for (int i = 0, length = oldRow.length; i < length; i++) {
                 final V tryItem = oldRow[i];
-                if (key == indexer.getKey(tryItem)) {
+                if (key == indexer.applyAsInt(tryItem)) {
                     final V[] newRow = oldRow.clone();
                     newRow[i] = value;
                     if (array.compareAndSet(i, oldRow, newRow)) {
@@ -294,7 +295,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
     }
 
     private boolean doRemove(final V item, final Table<V> table) {
-        int key = indexer.getKey(item);
+        int key = indexer.applyAsInt(item);
 
         final AtomicReferenceArray<V[]> array = table.array;
         final int idx = key & array.length() - 1;
@@ -349,7 +350,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
             }
 
             for (int i = 0; i < oldRow.length; i ++) {
-                if (key == indexer.getKey(oldRow[i])) {
+                if (key == indexer.applyAsInt(oldRow[i])) {
                     if (array.compareAndSet(idx, oldRow, remove(oldRow, i))) {
                         sizeUpdater.getAndDecrement(table);
                         return oldRow[i];
@@ -364,7 +365,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
     }
 
     private V doPut(V value, boolean ifAbsent, Table<V> table) {
-        final int hashCode = indexer.getKey(value);
+        final int hashCode = indexer.applyAsInt(value);
         final AtomicReferenceArray<V[]> array = table.array;
         final int idx = hashCode & array.length() - 1;
 
@@ -383,7 +384,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
                 // Find the matching Item in the row.
                 V oldItem;
                 for (int i = 0, length = oldRow.length; i < length; i++) {
-                    if (hashCode == indexer.getKey(oldRow[i])) {
+                    if (hashCode == indexer.applyAsInt(oldRow[i])) {
                         if (ifAbsent) {
                             return oldRow[i];
                         } else {
@@ -437,7 +438,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
                 origRow = origArray.get(i);
                 if (origRow != null) {
                     for (V item : origRow) {
-                        if ((indexer.getKey(item) & origCapacity) == 0) {
+                        if ((indexer.applyAsInt(item) & origCapacity) == 0) {
                             count0++;
                         } else {
                             count1++;
@@ -447,7 +448,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
                         newRow0 = createRow(count0);
                         int j = 0;
                         for (V item : origRow) {
-                            if ((indexer.getKey(item) & origCapacity) == 0) {
+                            if ((indexer.applyAsInt(item) & origCapacity) == 0) {
                                 newRow0[j++] = item;
                             }
                         }
@@ -457,7 +458,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
                         newRow1 = createRow(count1);
                         int j = 0;
                         for (V item : origRow) {
-                            if ((indexer.getKey(item) & origCapacity) != 0) {
+                            if ((indexer.applyAsInt(item) & origCapacity) != 0) {
                                 newRow1[j++] = item;
                             }
                         }
@@ -504,7 +505,7 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
         final AtomicReferenceArray<V[]> array = table.array;
         final V[] row = array.get(key & (array.length() - 1));
         if (row != null) for (V item : row) {
-            if (key == indexer.getKey(item)) {
+            if (key == indexer.applyAsInt(item)) {
                 return item;
             }
         }

@@ -34,9 +34,10 @@ import java.util.Queue;
 import java.util.Random;
 
 import java.util.Set;
-import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.function.ToIntFunction;
+
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.ChannelBusyException;
@@ -48,7 +49,6 @@ import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3._private.Equaller;
 import org.jboss.remoting3._private.IntIndexHashMap;
 import org.jboss.remoting3._private.IntIndexMap;
-import org.jboss.remoting3._private.IntIndexer;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.xnio.Bits;
@@ -60,15 +60,7 @@ import org.xnio.Pooled;
  */
 final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel> implements Channel {
 
-    static final IntIndexer<RemoteConnectionChannel> INDEXER = new IntIndexer<RemoteConnectionChannel>() {
-        public int getKey(final RemoteConnectionChannel argument) {
-            return argument.channelId;
-        }
-
-        public boolean equals(final RemoteConnectionChannel argument, final int index) {
-            return argument.channelId == index;
-        }
-    };
+    static final ToIntFunction<RemoteConnectionChannel> INDEXER = RemoteConnectionChannel::getChannelId;
 
     private final RemoteConnectionHandler connectionHandler;
     private final ConnectionHandlerContext connectionHandlerContext;
@@ -283,11 +275,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 final Receiver receiver = nextReceiver;
                 nextReceiver = null;
                 try {
-                    getExecutor().execute(new Runnable() {
-                        public void run() {
-                            receiver.handleEnd(RemoteConnectionChannel.this);
-                        }
-                    });
+                    getExecutor().execute(() -> receiver.handleEnd(RemoteConnectionChannel.this));
                 } catch (Throwable t) {
                     connection.handleException(new IOException("Fatal connection error", t));
                     return;
@@ -367,11 +355,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         synchronized (connection.getLock()) {
             if (inboundMessageQueue.isEmpty()) {
                 if ((channelState & READ_CLOSED) != 0) try {
-                    getExecutor().execute(new Runnable() {
-                        public void run() {
-                            handler.handleEnd(RemoteConnectionChannel.this);
-                        }
-                    });
+                    getExecutor().execute(() -> handler.handleEnd(RemoteConnectionChannel.this));
                 } catch (RejectedExecutionException ignored) {
                     // oops, endpoint shut down out from under us; call directly and hope for the best
                     immediateEnd = true;
@@ -383,11 +367,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             } else {
                 final InboundMessage message = inboundMessageQueue.remove();
                 try {
-                    getExecutor().execute(new Runnable() {
-                        public void run() {
-                            handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream);
-                        }
-                    });
+                    getExecutor().execute(() -> handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream));
                 } catch (RejectedExecutionException ignored) {
                     safeClose(message.messageInputStream);
                     // oops, endpoint shut down out from under us; call handleEnd directly and hope for the best
@@ -460,11 +440,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                             final Receiver receiver = nextReceiver;
                             nextReceiver = null;
                             try {
-                                getExecutor().execute(new Runnable() {
-                                    public void run() {
-                                        receiver.handleMessage(RemoteConnectionChannel.this, inboundMessage.messageInputStream);
-                                    }
-                                });
+                                getExecutor().execute(() -> receiver.handleMessage(RemoteConnectionChannel.this, inboundMessage.messageInputStream));
                                 ok2 = true;
                             } catch (Throwable t) {
                                 connection.handleException(new IOException("Fatal connection error", t));

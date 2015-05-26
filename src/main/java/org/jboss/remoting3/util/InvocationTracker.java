@@ -25,8 +25,11 @@ package org.jboss.remoting3.util;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.Iterator;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntFunction;
+import java.util.function.IntUnaryOperator;
 
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.ChannelClosedException;
@@ -47,13 +50,34 @@ public final class InvocationTracker {
     private final Channel channel;
     private final int maxMessages;
     private final AtomicInteger msgFree;
+    private final IntUnaryOperator intMasker;
 
-    private InvocationTracker(final Channel channel, final int maxMessages, int dummy) {
+    /**
+     * Construct a new instance.
+     *
+     * @param channel the channel that is being tracked
+     * @param maxMessages the maximum number of concurrent messages to allow
+     * @param intMasker the function to apply to ID numbers to limit them to a specific range
+     */
+    public InvocationTracker(final Channel channel, final int maxMessages, final IntUnaryOperator intMasker) {
+        Assert.checkNotNullParam("channel", channel);
         Assert.checkMinimumParameter("maxMessages", 1, maxMessages);
+        Assert.checkNotNullParam("intMasker", intMasker);
         this.channel = channel;
         this.maxMessages = maxMessages;
+        this.intMasker = intMasker;
         channel.addCloseHandler((closed, exception) -> connectionClosed());
         msgFree = new AtomicInteger(this.maxMessages);
+    }
+
+    /**
+     * Construct a new instance, using the maximum number of messages from the channel.
+     *
+     * @param channel the channel that is being tracked
+     * @param intMasker the function to apply to ID numbers to limit them to a specific range
+     */
+    public InvocationTracker(final Channel channel, final IntUnaryOperator intMasker) {
+        this(channel, channel.getOption(RemotingOptions.MAX_OUTBOUND_MESSAGES).intValue(), intMasker);
     }
 
     /**
@@ -63,7 +87,7 @@ public final class InvocationTracker {
      * @param maxMessages the maximum number of concurrent messages to allow
      */
     public InvocationTracker(final Channel channel, final int maxMessages) {
-        this(Assert.checkNotNullParam("channel", channel), maxMessages, 0);
+        this(channel, maxMessages, InvocationTracker::defaultFunction);
     }
 
     /**
@@ -72,7 +96,37 @@ public final class InvocationTracker {
      * @param channel the channel that is being tracked
      */
     public InvocationTracker(final Channel channel) {
-        this(Assert.checkNotNullParam("channel", channel), channel.getOption(RemotingOptions.MAX_OUTBOUND_MESSAGES).intValue(), 0);
+        this(channel, channel.getOption(RemotingOptions.MAX_OUTBOUND_MESSAGES).intValue(), InvocationTracker::defaultFunction);
+    }
+
+    private static int defaultFunction(int random) {
+        return random & 0xffff;
+    }
+
+    /**
+     * Add an invocation to this tracker.
+     *
+     * @param producer the invocation producer, which may be called more than once
+     * @param <T> the invocation type
+     * @return the produced invocation
+     */
+    public <T extends Invocation> T addInvocation(IntFunction<T> producer) {
+        final ThreadLocalRandom threadLocalRandom = ThreadLocalRandom.current();
+        final IntUnaryOperator intMasker = this.intMasker;
+        final IntIndexMap<Invocation> invocations = this.invocations;
+        int id;
+        T invocation;
+        for (;;) {
+            id = intMasker.applyAsInt(threadLocalRandom.nextInt());
+            if (invocations.containsKey(id)) {
+                continue;
+            }
+            invocation = producer.apply(id);
+            if (invocations.putIfAbsent(invocation) != null) {
+                continue;
+            }
+            return invocation;
+        }
     }
 
     /**

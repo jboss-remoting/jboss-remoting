@@ -46,9 +46,6 @@ import javax.security.sasl.SaslServerFactory;
 
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
-import org.jboss.remoting3.spi.ConnectionHandler;
-import org.jboss.remoting3.spi.ConnectionHandlerContext;
-import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.wildfly.security.auth.provider.SecurityDomain;
 import org.xnio.Buffers;
@@ -437,18 +434,16 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         sendBuffer.put(Protocol.AUTH_COMPLETE);
                         if (SaslUtils.evaluateResponse(saslServer, sendBuffer, buffer.getResource())) {
                             server.tracef("Server sending authentication complete");
-                            connectionProviderContext.accept(new ConnectionHandlerFactory() {
-                                public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-                                    final Object qop = saslServer.getNegotiatedProperty(Sasl.QOP);
-                                    if (!isInitial && ("auth-int".equals(qop) || "auth-conf".equals(qop))) {
-                                        connection.setSaslWrapper(SaslWrapper.create(saslServer));
-                                    }
-                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                        connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
-                                    connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
-                                    connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
-                                    return connectionHandler;
+                            connectionProviderContext.accept(connectionContext -> {
+                                final Object qop = saslServer.getNegotiatedProperty(Sasl.QOP);
+                                if (!isInitial && ("auth-int".equals(qop) || "auth-conf".equals(qop))) {
+                                    connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                 }
+                                final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
+                                    connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
+                                connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
+                                connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
+                                return connectionHandler;
                             });
                         } else {
                             server.tracef("Server sending authentication challenge");

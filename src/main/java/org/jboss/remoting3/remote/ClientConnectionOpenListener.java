@@ -37,8 +37,6 @@ import java.util.Map;
 import java.util.Set;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
-import org.jboss.remoting3.spi.ConnectionHandler;
-import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.wildfly.security.auth.AuthenticationConfiguration;
@@ -408,41 +406,39 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         final int negotiatedVersion = version;
                         final SaslClient usedSaslClient = saslClient;
                         final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, remoteEndpointName, behavior, channelsIn, channelsOut);
-                        connection.getExecutor().execute(new Runnable() {
-                            public void run() {
-                                final byte[] response;
-                                try {
-                                    response = usedSaslClient.hasInitialResponse() ? usedSaslClient.evaluateChallenge(EMPTY_BYTES) : null;
-                                } catch (SaslException e) {
-                                    client.tracef("Client authentication failed: %s", e);
-                                    saslDispose(usedSaslClient);
-                                    failedMechs.put(mechanismName, e.toString());
-                                    sendCapRequest(remoteServerName);
-                                    return;
-                                }
-                                // Prepare the request message body
-                                final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
-                                boolean ok = false;
-                                try {
-                                    final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
-                                    sendBuffer.put(Protocol.AUTH_REQUEST);
-                                    if (negotiatedVersion < 1) {
-                                        sendBuffer.put(mechanismName.getBytes(Protocol.UTF_8));
-                                    } else {
-                                        ProtocolUtils.writeString(sendBuffer, mechanismName);
-                                        if (response != null) {
-                                            sendBuffer.put(response);
-                                        }
+                        connection.getExecutor().execute(() -> {
+                            final byte[] response;
+                            try {
+                                response = usedSaslClient.hasInitialResponse() ? usedSaslClient.evaluateChallenge(EMPTY_BYTES) : null;
+                            } catch (SaslException e) {
+                                client.tracef("Client authentication failed: %s", e);
+                                saslDispose(usedSaslClient);
+                                failedMechs.put(mechanismName, e.toString());
+                                sendCapRequest(remoteServerName);
+                                return;
+                            }
+                            // Prepare the request message body
+                            final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
+                            boolean ok = false;
+                            try {
+                                final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
+                                sendBuffer.put(Protocol.AUTH_REQUEST);
+                                if (negotiatedVersion < 1) {
+                                    sendBuffer.put(mechanismName.getBytes(Protocol.UTF_8));
+                                } else {
+                                    ProtocolUtils.writeString(sendBuffer, mechanismName);
+                                    if (response != null) {
+                                        sendBuffer.put(response);
                                     }
-
-                                    sendBuffer.flip();
-                                    connection.send(pooledSendBuffer);
-                                    ok = true;
-                                    connection.setReadListener(authentication, true);
-                                    return;
-                                } finally {
-                                    if (! ok) pooledSendBuffer.free();
                                 }
+
+                                sendBuffer.flip();
+                                connection.send(pooledSendBuffer);
+                                ok = true;
+                                connection.setReadListener(authentication, true);
+                                return;
+                            } finally {
+                                if (! ok) pooledSendBuffer.free();
                             }
                         });
                         return;
@@ -607,44 +603,42 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     case Protocol.AUTH_CHALLENGE: {
                         client.trace("Client received authentication challenge");
                         channel.suspendReads();
-                        connection.getExecutor().execute(new Runnable() {
-                            public void run() {
-                                try {
-                                    final boolean clientComplete = saslClient.isComplete();
-                                    if (clientComplete) {
-                                        connection.handleException(new SaslException("Received extra auth message after completion"));
-                                        return;
-                                    }
-                                    final byte[] response;
-                                    final byte[] challenge = Buffers.take(buffer, buffer.remaining());
-                                    try {
-                                        response = saslClient.evaluateChallenge(challenge);
-                                    } catch (Throwable e) {
-                                        final String mechanismName = saslClient.getMechanismName();
-                                        client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
-                                        failedMechs.put(mechanismName, e.toString());
-                                        saslDispose(saslClient);
-                                        sendCapRequest(serverName);
-                                        return;
-                                    }
-                                    client.trace("Client sending authentication response");
-                                    final Pooled<ByteBuffer> pooled = connection.allocate();
-                                    boolean ok = false;
-                                    try {
-                                        final ByteBuffer sendBuffer = pooled.getResource();
-                                        sendBuffer.put(Protocol.AUTH_RESPONSE);
-                                        sendBuffer.put(response);
-                                        sendBuffer.flip();
-                                        connection.send(pooled);
-                                        ok = true;
-                                        channel.resumeReads();
-                                    } finally {
-                                        if (! ok) pooled.free();
-                                    }
+                        connection.getExecutor().execute(() -> {
+                            try {
+                                final boolean clientComplete = saslClient.isComplete();
+                                if (clientComplete) {
+                                    connection.handleException(new SaslException("Received extra auth message after completion"));
                                     return;
-                                } finally {
-                                    pooledBuffer.free();
                                 }
+                                final byte[] response;
+                                final byte[] challenge = Buffers.take(buffer, buffer.remaining());
+                                try {
+                                    response = saslClient.evaluateChallenge(challenge);
+                                } catch (Throwable e) {
+                                    final String mechanismName = saslClient.getMechanismName();
+                                    client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
+                                    failedMechs.put(mechanismName, e.toString());
+                                    saslDispose(saslClient);
+                                    sendCapRequest(serverName);
+                                    return;
+                                }
+                                client.trace("Client sending authentication response");
+                                final Pooled<ByteBuffer> pooled = connection.allocate();
+                                boolean ok = false;
+                                try {
+                                    final ByteBuffer sendBuffer = pooled.getResource();
+                                    sendBuffer.put(Protocol.AUTH_RESPONSE);
+                                    sendBuffer.put(response);
+                                    sendBuffer.flip();
+                                    connection.send(pooled);
+                                    ok = true;
+                                    channel.resumeReads();
+                                } finally {
+                                    if (! ok) pooled.free();
+                                }
+                                return;
+                            } finally {
+                                pooledBuffer.free();
                             }
                         });
                         free = false;
@@ -653,52 +647,48 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                     case Protocol.AUTH_COMPLETE: {
                         client.trace("Client received authentication complete");
                         channel.suspendReads();
-                        connection.getExecutor().execute(new Runnable() {
-                            public void run() {
-                                try {
-                                    final boolean clientComplete = saslClient.isComplete();
-                                    final byte[] challenge = Buffers.take(buffer, buffer.remaining());
-                                    if (!clientComplete) try {
-                                        final byte[] response = saslClient.evaluateChallenge(challenge);
-                                        if (response != null && response.length > 0) {
-                                            connection.handleException(new SaslException("Received extra auth message after completion"));
-                                            saslDispose(saslClient);
-                                            return;
-                                        }
-                                        if (!saslClient.isComplete()) {
-                                            connection.handleException(new SaslException("Client not complete after processing auth complete message"));
-                                            saslDispose(saslClient);
-                                            return;
-                                        }
-                                    } catch (Throwable e) {
-                                        final String mechanismName = saslClient.getMechanismName();
-                                        client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
-                                        failedMechs.put(mechanismName, e.toString());
+                        connection.getExecutor().execute(() -> {
+                            try {
+                                final boolean clientComplete = saslClient.isComplete();
+                                final byte[] challenge = Buffers.take(buffer, buffer.remaining());
+                                if (!clientComplete) try {
+                                    final byte[] response = saslClient.evaluateChallenge(challenge);
+                                    if (response != null && response.length > 0) {
+                                        connection.handleException(new SaslException("Received extra auth message after completion"));
                                         saslDispose(saslClient);
-                                        sendCapRequest(serverName);
                                         return;
                                     }
-                                    final Object qop = saslClient.getNegotiatedProperty(Sasl.QOP);
-                                    if ("auth-int".equals(qop) || "auth-conf".equals(qop)) {
-                                        connection.setSaslWrapper(SaslWrapper.create(saslClient));
+                                    if (!saslClient.isComplete()) {
+                                        connection.handleException(new SaslException("Client not complete after processing auth complete message"));
+                                        saslDispose(saslClient);
+                                        return;
                                     }
-                                    // auth complete.
-                                    final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {
-                                        public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
-
-                                            // this happens immediately.
-                                            final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
-                                            connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
-                                            connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
-                                            return connectionHandler;
-                                        }
-                                    };
-                                    connection.getResult().setResult(connectionHandlerFactory);
-                                    channel.resumeReads();
+                                } catch (Throwable e) {
+                                    final String mechanismName = saslClient.getMechanismName();
+                                    client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
+                                    failedMechs.put(mechanismName, e.toString());
+                                    saslDispose(saslClient);
+                                    sendCapRequest(serverName);
                                     return;
-                                } finally {
-                                    pooledBuffer.free();
                                 }
+                                final Object qop = saslClient.getNegotiatedProperty(Sasl.QOP);
+                                if ("auth-int".equals(qop) || "auth-conf".equals(qop)) {
+                                    connection.setSaslWrapper(SaslWrapper.create(saslClient));
+                                }
+                                // auth complete.
+                                final ConnectionHandlerFactory connectionHandlerFactory = connectionContext -> {
+
+                                    // this happens immediately.
+                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
+                                    connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
+                                    connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
+                                    return connectionHandler;
+                                };
+                                connection.getResult().setResult(connectionHandlerFactory);
+                                channel.resumeReads();
+                                return;
+                            } finally {
+                                pooledBuffer.free();
                             }
                         });
                         free = false;

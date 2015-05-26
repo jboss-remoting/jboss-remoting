@@ -115,20 +115,14 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
         final FutureResult<ConnectedStreamChannel> future = new FutureResult<ConnectedStreamChannel>();
 
-        HttpUpgrade.performUpgrade(getXnioWorker(), null, uri, headers, new ChannelListener<StreamConnection>() {
-            @Override
-            public void handleEvent(final StreamConnection channel) {
-                AssembledConnectedStreamChannel newChannel = new AssembledConnectedStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
-                future.setResult(newChannel);
-                ChannelListeners.invokeChannelListener(newChannel, openListener);
-            }
+        HttpUpgrade.performUpgrade(getXnioWorker(), null, uri, headers, channel -> {
+            AssembledConnectedStreamChannel newChannel = new AssembledConnectedStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
+            future.setResult(newChannel);
+            ChannelListeners.invokeChannelListener(newChannel, openListener);
         }, null, connectOptions, new RemotingHandshakeChecker(secKey))
-                .addNotifier(new IoFuture.Notifier<StreamConnection, Object>() {
-                    @Override
-                    public void notify(final IoFuture<? extends StreamConnection> ioFuture, final Object attachment) {
-                        if (ioFuture.getStatus() == IoFuture.Status.FAILED) {
-                            future.setException(ioFuture.getException());
-                        }
+                .addNotifier((ioFuture, attachment) -> {
+                    if (ioFuture.getStatus() == IoFuture.Status.FAILED) {
+                        future.setException(ioFuture.getException());
                     }
                 }, null);
 
@@ -151,20 +145,14 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         final FutureResult<ConnectedSslStreamChannel> future = new FutureResult<ConnectedSslStreamChannel>();
 
         // TODO: perform upgrade using existing SSL connection
-        HttpUpgrade.performUpgrade(getXnioWorker(), null, null, uri, headers, new ChannelListener<SslConnection>() {
-            @Override
-            public void handleEvent(final SslConnection channel) {
-                AssembledConnectedSslStreamChannel newChannel = new AssembledConnectedSslStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
-                future.setResult(newChannel);
-                ChannelListeners.invokeChannelListener(newChannel, openListener);
-            }
+        HttpUpgrade.performUpgrade(getXnioWorker(), null, null, uri, headers, channel -> {
+            AssembledConnectedSslStreamChannel newChannel = new AssembledConnectedSslStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
+            future.setResult(newChannel);
+            ChannelListeners.invokeChannelListener(newChannel, openListener);
         }, null, modifiedOptions, new RemotingHandshakeChecker(secKey))
-                .addNotifier(new IoFuture.Notifier<SslConnection, Object>() {
-                    @Override
-                    public void notify(final IoFuture<? extends SslConnection> ioFuture, final Object attachment) {
-                        if (ioFuture.getStatus() == IoFuture.Status.FAILED) {
-                            future.setException(ioFuture.getException());
-                        }
+                .addNotifier((ioFuture, attachment) -> {
+                    if (ioFuture.getStatus() == IoFuture.Status.FAILED) {
+                        future.setException(ioFuture.getException());
                     }
                 }, null);
 
@@ -290,14 +278,10 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
             Constructor<String> c = null;
             try {
-                PrivilegedExceptionAction<Constructor<String>> runnable = new PrivilegedExceptionAction<Constructor<String>>() {
-                    @Override
-                    public Constructor<String> run() throws Exception {
-                        Constructor<String> c;
-                        c = String.class.getDeclaredConstructor(char[].class, boolean.class);
-                        c.setAccessible(true);
-                        return c;
-                    }
+                PrivilegedExceptionAction<Constructor<String>> runnable = () -> {
+                    Constructor<String> c1 = String.class.getDeclaredConstructor(char[].class, boolean.class);
+                    c1.setAccessible(true);
+                    return c1;
                 };
                 if (System.getSecurityManager() != null) {
                     c = AccessController.doPrivileged(runnable);
