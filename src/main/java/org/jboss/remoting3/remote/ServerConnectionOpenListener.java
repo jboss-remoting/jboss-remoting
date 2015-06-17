@@ -47,7 +47,9 @@ import javax.security.sasl.SaslServerFactory;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.wildfly.security.auth.provider.SecurityDomain;
+import org.wildfly.security.auth.login.SecurityDomain;
+import org.wildfly.security.auth.login.SecurityIdentity;
+import org.wildfly.security.ssl.SSLUtils;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.OptionMap;
@@ -141,6 +143,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 // only enable EXTERNAL if there is an external auth layer
                 SSLSession sslSession;
                 if (sslChannel != null && (sslSession = sslChannel.getSslSession()) != null) {
+                    connection.setIdentity((SecurityIdentity) sslSession.getValue(SSLUtils.SSL_SESSION_IDENTITY_KEY));
                     final Principal principal = sslSession.getPeerPrincipal();
                     // only enable EXTERNAL if there's a peer principal (else it's just ANONYMOUS)
                     if (principal != null) {

@@ -27,7 +27,6 @@ import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.MessageDigest;
@@ -42,7 +41,7 @@ import javax.security.sasl.SaslServerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ExternalConnectionProvider;
 import org.wildfly.security.auth.AuthenticationContext;
-import org.wildfly.security.auth.provider.SecurityDomain;
+import org.wildfly.security.auth.login.SecurityDomain;
 import org.wildfly.security.sasl.util.PrivilegedSaslServerFactory;
 import org.wildfly.security.sasl.util.SaslFactories;
 import org.xnio.BufferAllocator;
@@ -50,19 +49,16 @@ import org.xnio.Buffers;
 import org.xnio.ByteBufferSlicePool;
 import org.xnio.ChannelListener;
 import org.xnio.ChannelListeners;
-import org.xnio.FailedIoFuture;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pool;
-import org.xnio.StreamConnection;
 import org.xnio.channels.AssembledConnectedSslStreamChannel;
 import org.xnio.channels.AssembledConnectedStreamChannel;
 import org.xnio.channels.ConnectedSslStreamChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
-import org.xnio.ssl.SslConnection;
 import org.xnio.http.HandshakeChecker;
 import org.xnio.http.HttpUpgrade;
 
@@ -101,13 +97,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         super(optionMap, connectionProviderContext);
     }
 
-    protected IoFuture<ConnectedStreamChannel> createConnection(final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
-        final URI uri;
-        try {
-            uri = new URI("http", "", destination.getHostString(), destination.getPort(), "/", "", "");
-        } catch (URISyntaxException e) {
-            return new FailedIoFuture<ConnectedStreamChannel>(new IOException(e));
-        }
+    protected IoFuture<ConnectedStreamChannel> createConnection(final URI uri, final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
         final Map<String, String> headers = new HashMap<String, String>();
         headers.put(UPGRADE, "jboss-remoting");
         final String secKey = createSecKey();
@@ -129,13 +119,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         return future.getIoFuture();
     }
 
-    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final InetSocketAddress destination, final OptionMap options, final AuthenticationContext authenticationContext, final ChannelListener<ConnectedStreamChannel> openListener) {
-        final URI uri;
-        try {
-            uri = new URI("https", "", destination.getHostString(), destination.getPort(), "/", "", "");
-        } catch (URISyntaxException e) {
-            return new FailedIoFuture<ConnectedSslStreamChannel>(new IOException(e));
-        }
+    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final URI uri, final InetSocketAddress destination, final OptionMap options, final AuthenticationContext authenticationContext, final ChannelListener<ConnectedStreamChannel> openListener) {
         final OptionMap modifiedOptions = OptionMap.builder().addAll(options).set(Options.SSL_STARTTLS, false).getMap();
         final Map<String, String> headers = new HashMap<String, String>();
         headers.put(UPGRADE, "jboss-remoting");

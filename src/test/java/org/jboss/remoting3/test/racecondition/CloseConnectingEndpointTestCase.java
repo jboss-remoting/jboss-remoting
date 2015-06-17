@@ -49,7 +49,7 @@ import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.principal.NamePrincipal;
-import org.wildfly.security.auth.provider.SecurityDomain;
+import org.wildfly.security.auth.login.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;

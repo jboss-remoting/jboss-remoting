@@ -24,7 +24,8 @@ package org.jboss.remoting3.spi;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import org.wildfly.security.auth.provider.SecurityDomain;
+
+import org.wildfly.security.auth.login.SecurityDomain;
 import org.xnio.OptionMap;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;

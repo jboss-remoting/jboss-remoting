@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
+import org.wildfly.security.auth.login.SecurityIdentity;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.IoUtils;
@@ -60,6 +61,7 @@ final class RemoteConnection {
     private volatile Result<ConnectionHandlerFactory> result;
     private volatile SaslWrapper saslWrapper;
     private volatile boolean closing;
+    private volatile SecurityIdentity identity;
     private final RemoteConnectionProvider remoteConnectionProvider;
 
     RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedStreamChannel underlyingChannel, final ConnectedMessageChannel channel, final OptionMap optionMap, final RemoteConnectionProvider remoteConnectionProvider) {
@@ -214,6 +216,14 @@ final class RemoteConnection {
 
     void closing() {
         this.closing = true;
+    }
+
+    SecurityIdentity getIdentity() {
+        return identity;
+    }
+
+    void setIdentity(final SecurityIdentity identity) {
+        this.identity = identity;
     }
 
     final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {

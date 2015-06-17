@@ -2,7 +2,7 @@ package org.jboss.remoting3.spi;
 
 import java.io.IOException;
 
-import org.wildfly.security.auth.provider.SecurityDomain;
+import org.wildfly.security.auth.login.SecurityDomain;
 import org.xnio.OptionMap;
 import org.xnio.channels.ConnectedStreamChannel;
 
@@ -24,7 +24,7 @@ public interface ExternalConnectionProvider {
      */
     ConnectionAdaptor createConnectionAdaptor(final OptionMap optionMap, SecurityDomain securityDomain) throws IOException;
 
-    public interface ConnectionAdaptor {
+    interface ConnectionAdaptor {
 
         void adapt(ConnectedStreamChannel channel);
 

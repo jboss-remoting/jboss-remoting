@@ -43,7 +43,6 @@ import javax.security.sasl.SaslServerFactory;
 
 import java.util.Set;
 import java.util.concurrent.Executor;
-import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
@@ -54,7 +53,7 @@ import org.wildfly.common.Assert;
 import org.wildfly.security.auth.AuthenticationConfiguration;
 import org.wildfly.security.auth.AuthenticationContext;
 import org.wildfly.security.auth.AuthenticationContextConfigurationClient;
-import org.wildfly.security.auth.provider.SecurityDomain;
+import org.wildfly.security.auth.login.SecurityDomain;
 import org.wildfly.security.sasl.util.PrivilegedSaslServerFactory;
 import org.wildfly.security.sasl.util.SaslFactories;
 import org.xnio.AbstractConvertingIoFuture;
@@ -80,7 +79,6 @@ import org.xnio.channels.ConnectedSslStreamChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
 import org.xnio.ssl.JsseSslConnection;
-import org.xnio.ssl.XnioSsl;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -221,9 +219,9 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         final InetSocketAddress address = configurationClient.getDestinationInetSocketAddress(destination, authenticationConfiguration, 0);
         final IoFuture<? extends ConnectedStreamChannel> future;
         if (useSsl) {
-            future = createSslConnection(address, connectOptions, authenticationContext, openListener);
+            future = createSslConnection(destination, address, connectOptions, authenticationContext, openListener);
         } else {
-            future = createConnection(address, connectOptions, openListener);
+            future = createConnection(destination, address, connectOptions, openListener);
         }
         pendingInboundConnections.add(returnedFuture);
         // if the connection fails, we need to propagate that
@@ -253,7 +251,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return returnedFuture;
     }
 
-    protected IoFuture<ConnectedStreamChannel> createConnection(final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
+    protected IoFuture<ConnectedStreamChannel> createConnection(final URI uri, final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
         final AbstractConvertingIoFuture<ConnectedStreamChannel, StreamConnection> future = new AbstractConvertingIoFuture<ConnectedStreamChannel, StreamConnection>(xnioWorker.openStreamConnection(destination, null, connectOptions)) {
             protected ConnectedStreamChannel convert(final StreamConnection streamConnection) throws IOException {
                 return new AssembledConnectedStreamChannel(streamConnection, streamConnection.getSourceChannel(), streamConnection.getSinkChannel());
@@ -267,11 +265,19 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return future;
     }
 
-    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext, final ChannelListener<ConnectedStreamChannel> openListener) {
+    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final URI uri, final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext, final ChannelListener<ConnectedStreamChannel> openListener) {
         final AbstractConvertingIoFuture<ConnectedSslStreamChannel, StreamConnection> future = new AbstractConvertingIoFuture<ConnectedSslStreamChannel, StreamConnection>(xnioWorker.openStreamConnection(destination, null, connectOptions)) {
             protected ConnectedSslStreamChannel convert(final StreamConnection streamConnection) throws IOException {
                 final AuthenticationContextConfigurationClient configurationClient = ClientConnectionOpenListener.AUTH_CONFIGURATION_CLIENT;
-                final SSLEngine engine = null /* TODO: configurationClient.createSslEngine(authenticationContext, uri) */;
+                final AuthenticationConfiguration configuration = configurationClient.getAuthenticationConfiguration(uri, authenticationContext);
+                final String realHost = configurationClient.getRealHost(uri, configuration);
+                final int realPort = configurationClient.getRealPort(uri, configuration);
+                final SSLEngine engine;
+                try {
+                    engine = configurationClient.getSslContext(configuration).createSSLEngine(realHost, realPort);
+                } catch (GeneralSecurityException e) {
+                    throw new IOException(e);
+                }
                 final JsseSslConnection sslConnection = new JsseSslConnection(streamConnection, engine);
                 return new AssembledConnectedSslStreamChannel(sslConnection, sslConnection.getSourceChannel(), sslConnection.getSinkChannel());
             }
