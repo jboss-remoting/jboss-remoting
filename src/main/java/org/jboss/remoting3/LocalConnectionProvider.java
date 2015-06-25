@@ -22,6 +22,7 @@
 
 package org.jboss.remoting3;
 
+import java.net.SocketAddress;
 import java.net.URI;
 import java.util.concurrent.Executor;
 
@@ -93,6 +94,14 @@ final class LocalConnectionProvider extends AbstractHandleableCloseable<Connecti
 
         public String getRemoteEndpointName() {
             return context.getConnectionProviderContext().getEndpoint().getName();
+        }
+
+        public SocketAddress getLocalAddress() {
+            return null;
+        }
+
+        public SocketAddress getPeerAddress() {
+            return null;
         }
     }
 

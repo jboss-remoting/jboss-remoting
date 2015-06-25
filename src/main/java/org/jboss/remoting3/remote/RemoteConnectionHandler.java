@@ -392,6 +392,14 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         return remoteEndpointName;
     }
 
+    public SocketAddress getLocalAddress() {
+        return remoteConnection.getChannel().getLocalAddress();
+    }
+
+    public SocketAddress getPeerAddress() {
+        return remoteConnection.getChannel().getPeerAddress();
+    }
+
     protected void closeAction() throws IOException {
         handleConnectionClose();
     }

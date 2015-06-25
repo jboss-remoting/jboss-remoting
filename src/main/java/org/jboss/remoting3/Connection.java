@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3;
 
+import java.net.SocketAddress;
+
 import javax.net.ssl.SSLSession;
 
 import org.xnio.IoFuture;
@@ -31,6 +33,48 @@ import org.xnio.OptionMap;
  * A connection to a remote peer.
  */
 public interface Connection extends HandleableCloseable<Connection>, Attachable {
+
+    /**
+     * Get the local address of this connection, if any.
+     *
+     * @return the local address of this connection, or {@code null} if there is no local address
+     */
+    SocketAddress getLocalAddress();
+
+    /**
+     * Get the local address of this connection, cast to a specific type, if any.  If there is an address but it
+     * cannot be cast to the given type, {@code null} is returned.
+     *
+     * @param type the address type class
+     * @param <S> the address type
+     * @return the local address of this connection, or {@code null} if there is no local address or the address is
+     *      of the wrong type
+     */
+    default <S extends SocketAddress> S getLocalAddress(Class<S> type) {
+        final SocketAddress localAddress = getLocalAddress();
+        return type.isInstance(localAddress) ? type.cast(localAddress) : null;
+    }
+
+    /**
+     * Get the peer address of this connection, if any.
+     *
+     * @return the peer address of this connection, or {@code null} if there is no peer address
+     */
+    SocketAddress getPeerAddress();
+
+    /**
+     * Get the peer address of this connection, cast to a specific type, if any.  If there is an address but it
+     * cannot be cast to the given type, {@code null} is returned.
+     *
+     * @param type the address type class
+     * @param <S> the address type
+     * @return the peer address of this connection, or {@code null} if there is no peer address or the address is
+     *      of the wrong type
+     */
+    default <S extends SocketAddress> S getPeerAddress(Class<S> type) {
+        final SocketAddress peerAddress = getPeerAddress();
+        return type.isInstance(peerAddress) ? type.cast(peerAddress) : null;
+    }
 
     /**
      * Get the underlying {@link SSLSession} for this connection if one is established.

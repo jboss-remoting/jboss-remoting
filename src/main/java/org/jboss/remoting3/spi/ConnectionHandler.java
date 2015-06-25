@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3.spi;
 
+import java.net.SocketAddress;
+
 import javax.net.ssl.SSLSession;
 
 import org.jboss.remoting3.Channel;
@@ -59,4 +61,18 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
      * @return the remote endpoint name
      */
     String getRemoteEndpointName();
+
+    /**
+     * Get the local address, if any.
+     *
+     * @return the local address, or {@code null} if there is none
+     */
+    SocketAddress getLocalAddress();
+
+    /**
+     * Get the peer address, if any.
+     *
+     * @return the peer address, or {@code null} if there is none
+     */
+    SocketAddress getPeerAddress();
 }

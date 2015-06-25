@@ -23,6 +23,7 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 
 import javax.net.ssl.SSLSession;
 
@@ -50,6 +51,14 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     protected void closeAction() throws IOException {
         connectionHandler.closeAsync();
         connectionHandler.addCloseHandler((closed, exception) -> closeComplete());
+    }
+
+    public SocketAddress getLocalAddress() {
+        return connectionHandler.getLocalAddress();
+    }
+
+    public SocketAddress getPeerAddress() {
+        return connectionHandler.getPeerAddress();
     }
 
     ConnectionHandler getConnectionHandler() {
