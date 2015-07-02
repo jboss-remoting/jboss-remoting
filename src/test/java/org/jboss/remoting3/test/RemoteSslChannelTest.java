@@ -34,6 +34,8 @@ import java.security.PrivilegedAction;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Collections;
 
+import javax.security.sasl.SaslServerFactory;
+
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
@@ -49,11 +51,11 @@ import org.junit.Ignore;
 import org.wildfly.security.auth.AuthenticationConfiguration;
 import org.wildfly.security.auth.AuthenticationContext;
 import org.wildfly.security.auth.MatchRule;
-import org.wildfly.security.auth.principal.NamePrincipal;
 import org.wildfly.security.auth.login.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
+import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -88,9 +90,10 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
         domainBuilder.addRealm("mainRealm", mainRealm);
         domainBuilder.setDefaultRealmName("mainRealm");
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-        mainRealm.setPasswordMap(Collections.singletonMap(new NamePrincipal("bob"), passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        mainRealm.setPasswordMap(Collections.singletonMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(RemoteSslChannelTest.class.getClassLoader());
         streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123),
-                OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE, Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), domainBuilder.build());
+                OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE, Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), domainBuilder.build(), saslServerFactory);
     }
 
     @Before

@@ -31,6 +31,8 @@ import java.security.Security;
 import java.util.Collections;
 import java.util.concurrent.CancellationException;
 
+import javax.security.sasl.SaslServerFactory;
+
 import org.jboss.byteman.contrib.bmunit.BMScript;
 import org.jboss.byteman.contrib.bmunit.BMUnitRunner;
 import org.jboss.logging.Logger;
@@ -48,11 +50,11 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.wildfly.security.WildFlyElytronProvider;
-import org.wildfly.security.auth.principal.NamePrincipal;
 import org.wildfly.security.auth.login.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
+import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.Options;
@@ -113,8 +115,9 @@ public class CloseConnectingEndpointTestCase {
         domainBuilder.addRealm("mainRealm", mainRealm);
         domainBuilder.setDefaultRealmName("mainRealm");
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-        mainRealm.setPasswordMap(Collections.singletonMap(new NamePrincipal("bob"), passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
-        networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), domainBuilder.build());
+        mainRealm.setPasswordMap(Collections.singletonMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(getClass().getClassLoader());
+        networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), domainBuilder.build(), saslServerFactory);
         // create connect and close endpoint threads
         Connect connectRunnable = new Connect(endpoint);
         Thread connectThread = new Thread(connectRunnable);

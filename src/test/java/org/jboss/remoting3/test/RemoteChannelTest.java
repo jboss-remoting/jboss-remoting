@@ -36,6 +36,8 @@ import java.util.Collections;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import javax.security.sasl.SaslServerFactory;
+
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
@@ -51,11 +53,11 @@ import org.junit.Test;
 import org.wildfly.security.auth.AuthenticationConfiguration;
 import org.wildfly.security.auth.AuthenticationContext;
 import org.wildfly.security.auth.MatchRule;
-import org.wildfly.security.auth.principal.NamePrincipal;
 import org.wildfly.security.auth.login.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
+import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -85,8 +87,9 @@ public final class RemoteChannelTest extends ChannelTestBase {
         domainBuilder.addRealm("mainRealm", mainRealm);
         domainBuilder.setDefaultRealmName("mainRealm");
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-        mainRealm.setPasswordMap(Collections.singletonMap(new NamePrincipal("bob"), passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
-        streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, domainBuilder.build());
+        mainRealm.setPasswordMap(Collections.singletonMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(RemoteChannelTest.class.getClassLoader());
+        streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, domainBuilder.build(), saslServerFactory);
     }
 
     @Before

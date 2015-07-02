@@ -183,7 +183,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         ConnectionAdaptorImpl(final OptionMap optionMap, final SecurityDomain securityDomain) {
             this.optionMap = optionMap;
             this.securityDomain = securityDomain;
-            this.saslServerFactory = new PrivilegedSaslServerFactory(SaslFactories.getStandardSaslServerFactory(getClass().getClassLoader()));
+            this.saslServerFactory = new PrivilegedSaslServerFactory(SaslFactories.getSearchSaslServerFactory(getClass().getClassLoader()));
             // TODO: server name, protocol name
         }
 

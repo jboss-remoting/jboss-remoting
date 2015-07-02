@@ -41,10 +41,10 @@ import org.wildfly.security.auth.AuthenticationConfiguration;
 import org.wildfly.security.auth.AuthenticationContext;
 import org.wildfly.security.auth.MatchRule;
 import org.wildfly.security.auth.login.SecurityDomain;
-import org.wildfly.security.auth.principal.NamePrincipal;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
+import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -64,6 +64,8 @@ import java.security.Security;
 import java.util.Collections;
 
 import static org.junit.Assert.assertNotNull;
+
+import javax.security.sasl.SaslServerFactory;
 
 /**
  * A testcase to ensure that threads don't hang when the client side closes a {@link Connection} while the
@@ -98,8 +100,9 @@ public class ConnectionCloseTestCase {
         domainBuilder.addRealm("mainRealm", mainRealm);
         domainBuilder.setDefaultRealmName("mainRealm");
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-        mainRealm.setPasswordMap(Collections.singletonMap(new NamePrincipal("bob"), passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
-        streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), domainBuilder.build());
+        mainRealm.setPasswordMap(Collections.singletonMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(ConnectionCloseTestCase.class.getClassLoader());
+        streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), domainBuilder.build(), saslServerFactory);
     }
 
     @AfterClass

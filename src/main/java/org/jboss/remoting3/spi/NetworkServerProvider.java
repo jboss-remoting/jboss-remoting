@@ -25,6 +25,8 @@ package org.jboss.remoting3.spi;
 import java.io.IOException;
 import java.net.SocketAddress;
 
+import javax.security.sasl.SaslServerFactory;
+
 import org.wildfly.security.auth.login.SecurityDomain;
 import org.xnio.OptionMap;
 import org.xnio.channels.AcceptingChannel;
@@ -41,8 +43,9 @@ public interface NetworkServerProvider {
      * @param bindAddress the address to bind to
      * @param optionMap the server options
      * @param securityDomain the security domain to use for authentication
+     * @param saslServerFactory the SASL server factory to use for authentication
      * @return the server channel
      * @throws IOException if the server could not be created
      */
-    AcceptingChannel<? extends ConnectedStreamChannel> createServer(SocketAddress bindAddress, OptionMap optionMap, SecurityDomain securityDomain) throws IOException;
+    AcceptingChannel<? extends ConnectedStreamChannel> createServer(SocketAddress bindAddress, OptionMap optionMap, SecurityDomain securityDomain, final SaslServerFactory saslServerFactory) throws IOException;
 }

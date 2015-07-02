@@ -22,8 +22,6 @@
 
 package org.jboss.remoting3.util;
 
-import java.util.function.ToIntFunction;
-
 import org.jboss.remoting3.MessageInputStream;
 
 /**
@@ -32,7 +30,6 @@ import org.jboss.remoting3.MessageInputStream;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public abstract class Invocation {
-    static final ToIntFunction<Invocation> INDEXER = Invocation::getIndex;
 
     private final int index;
 

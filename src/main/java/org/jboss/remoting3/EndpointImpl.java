@@ -605,7 +605,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     static class SaslClientFactoryHolder {
-        static final SaslClientFactory STANDARD_SASL_CLIENT_FACTORY = SaslFactories.getStandardSaslClientFactory(SaslClientFactoryHolder.class.getClassLoader());
+        static final SaslClientFactory STANDARD_SASL_CLIENT_FACTORY = SaslFactories.getSearchSaslClientFactory(SaslClientFactoryHolder.class.getClassLoader());
     }
 
 }

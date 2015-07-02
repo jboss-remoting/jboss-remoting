@@ -61,10 +61,10 @@ import org.wildfly.security.auth.AuthenticationConfiguration;
 import org.wildfly.security.auth.AuthenticationContext;
 import org.wildfly.security.auth.MatchRule;
 import org.wildfly.security.auth.login.SecurityDomain;
-import org.wildfly.security.auth.principal.NamePrincipal;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
+import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
@@ -75,6 +75,8 @@ import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
 import static org.junit.Assert.assertArrayEquals;
+
+import javax.security.sasl.SaslServerFactory;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -128,8 +130,9 @@ public class ConnectionTestCase {
         domainBuilder.addRealm("mainRealm", mainRealm);
         domainBuilder.setDefaultRealmName("mainRealm");
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-        mainRealm.setPasswordMap(Collections.singletonMap(new NamePrincipal("bob"), passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
-        server = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), domainBuilder.build());
+        mainRealm.setPasswordMap(Collections.singletonMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(getClass().getClassLoader());
+        server = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), domainBuilder.build(), saslServerFactory);
     }
 
     @After

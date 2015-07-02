@@ -325,10 +325,8 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
 
     final class ProviderInterface implements NetworkServerProvider {
 
-        public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final SecurityDomain securityDomain) throws IOException {
-            SaslServerFactory saslServerFactory = SaslFactories.getStandardSaslServerFactory(getClass().getClassLoader());
+        public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final SecurityDomain securityDomain, SaslServerFactory saslServerFactory) throws IOException {
             saslServerFactory = new PrivilegedSaslServerFactory(saslServerFactory);
-            // TODO: server name, protocol name
             final boolean sslCapable = sslEnabled;
             final AcceptListener acceptListener = new AcceptListener(optionMap, securityDomain, saslServerFactory);
             final AcceptingChannel<? extends ConnectedStreamChannel> result;

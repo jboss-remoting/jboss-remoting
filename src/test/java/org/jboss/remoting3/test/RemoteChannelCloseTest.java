@@ -43,11 +43,11 @@ import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.AuthenticationConfiguration;
 import org.wildfly.security.auth.AuthenticationContext;
 import org.wildfly.security.auth.MatchRule;
-import org.wildfly.security.auth.principal.NamePrincipal;
 import org.wildfly.security.auth.login.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
+import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
@@ -67,6 +67,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertNotNull;
+
+import javax.security.sasl.SaslServerFactory;
 
 /**
  * Test that the channel {@link CloseHandler}s are invoked when the channel is closed for whatever reasons
@@ -98,8 +100,9 @@ public class RemoteChannelCloseTest {
         domainBuilder.addRealm("mainRealm", mainRealm);
         domainBuilder.setDefaultRealmName("mainRealm");
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-        mainRealm.setPasswordMap(Collections.singletonMap(new NamePrincipal("bob"), passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
-        streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, domainBuilder.build());
+        mainRealm.setPasswordMap(Collections.singletonMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(RemoteChannelCloseTest.class.getClassLoader());
+        streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, domainBuilder.build(), saslServerFactory);
     }
 
     @Rule

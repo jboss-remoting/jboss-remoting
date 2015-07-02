@@ -49,7 +49,6 @@ import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.AuthenticationConfiguration;
 import org.wildfly.security.auth.AuthenticationContext;
 import org.wildfly.security.auth.MatchRule;
-import org.wildfly.security.auth.principal.NamePrincipal;
 import org.wildfly.security.auth.login.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.password.PasswordFactory;
@@ -119,7 +118,7 @@ public class TimeOutConnectionTestCase {
                 domainBuilder.addRealm("mainRealm", mainRealm);
                 domainBuilder.setDefaultRealmName("mainRealm");
                 final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-                mainRealm.setPasswordMap(Collections.singletonMap(new NamePrincipal("bob"), passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+                mainRealm.setPasswordMap(Collections.singletonMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
                 // create connect and close endpoint threads
                 IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass")).run(new PrivilegedAction<IoFuture<Connection>>() {
                     public IoFuture<Connection> run() {
