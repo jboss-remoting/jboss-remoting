@@ -26,13 +26,10 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.Iterator;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
 
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.ChannelClosedException;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.RemotingOptions;
@@ -47,9 +44,7 @@ import org.wildfly.common.Assert;
  */
 public final class InvocationTracker {
     private final IntIndexMap<Invocation> invocations = new IntIndexHashMap<Invocation>(Invocation::getIndex);
-    private final Channel channel;
-    private final int maxMessages;
-    private final AtomicInteger msgFree;
+    private final MessageTracker messageTracker;
     private final IntUnaryOperator intMasker;
 
     /**
@@ -60,14 +55,23 @@ public final class InvocationTracker {
      * @param intMasker the function to apply to ID numbers to limit them to a specific range
      */
     public InvocationTracker(final Channel channel, final int maxMessages, final IntUnaryOperator intMasker) {
+        this(channel, new MessageTracker(channel, maxMessages), intMasker);
+    }
+
+    /**
+     * Construct a new instance.
+     *
+     * @param channel the channel that is being tracked
+     * @param messageTracker the message tracker to use
+     * @param intMasker the function to apply to ID numbers to limit them to a specific range
+     */
+    public InvocationTracker(final Channel channel, final MessageTracker messageTracker, final IntUnaryOperator intMasker) {
         Assert.checkNotNullParam("channel", channel);
-        Assert.checkMinimumParameter("maxMessages", 1, maxMessages);
+        Assert.checkNotNullParam("messageTracker", messageTracker);
         Assert.checkNotNullParam("intMasker", intMasker);
-        this.channel = channel;
-        this.maxMessages = maxMessages;
-        this.intMasker = intMasker;
+        this.messageTracker = messageTracker;
         channel.addCloseHandler((closed, exception) -> connectionClosed());
-        msgFree = new AtomicInteger(this.maxMessages);
+        this.intMasker = intMasker;
     }
 
     /**
@@ -174,109 +178,15 @@ public final class InvocationTracker {
      * @throws IOException if an error occurs
      */
     public MessageOutputStream allocateMessage() throws IOException {
-        int oldCnt;
-        final AtomicInteger msgFree = this.msgFree;
-        do {
-            while ((oldCnt = msgFree.get()) == 0) {
-                try {
-                    msgFree.wait();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new InterruptedIOException("Message allocation interrupted");
-                }
-            }
-            if (oldCnt < 0) {
-                throw new ChannelClosedException("Channel was closed");
-            }
-        } while (! msgFree.compareAndSet(oldCnt, oldCnt - 1));
-        final MessageOutputStream message = channel.writeMessage();
-        return new MessageOutputStream() {
-            private final AtomicBoolean closed = new AtomicBoolean();
-
-            public void flush() throws IOException {
-                message.flush();
-            }
-
-            public void close() throws IOException {
-                try {
-                    message.close();
-                } finally {
-                    if (closed.compareAndSet(false, true) && msgFree.getAndIncrement() == 0) {
-                        synchronized (msgFree) {
-                            msgFree.notify();
-                        }
-                    }
-                }
-            }
-
-            public MessageOutputStream cancel() {
-                try {
-                    message.cancel();
-                } finally {
-                    if (closed.compareAndSet(false, true) && msgFree.getAndIncrement() == 0) {
-                        synchronized (msgFree) {
-                            msgFree.notify();
-                        }
-                    }
-                }
-                return this;
-            }
-
-            public void writeUTF(final String s) throws IOException {
-                message.writeUTF(s);
-            }
-
-            public void writeChars(final String s) throws IOException {
-                message.writeChars(s);
-            }
-
-            public void writeBytes(final String s) throws IOException {
-                message.writeBytes(s);
-            }
-
-            public void writeDouble(final double v) throws IOException {
-                message.writeDouble(v);
-            }
-
-            public void writeFloat(final float v) throws IOException {
-                message.writeFloat(v);
-            }
-
-            public void writeLong(final long v) throws IOException {
-                message.writeLong(v);
-            }
-
-            public void writeInt(final int v) throws IOException {
-                message.writeInt(v);
-            }
-
-            public void writeChar(final int v) throws IOException {
-                message.writeChar(v);
-            }
-
-            public void writeShort(final int v) throws IOException {
-                message.writeShort(v);
-            }
-
-            public void writeByte(final int v) throws IOException {
-                message.writeByte(v);
-            }
-
-            public void writeBoolean(final boolean v) throws IOException {
-                message.writeBoolean(v);
-            }
-
-            public void write(final int b) throws IOException {
-                message.write(b);
-            }
-        };
+        try {
+            return messageTracker.openMessage();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new InterruptedIOException("Message allocation interrupted");
+        }
     }
 
     private void connectionClosed() {
-        synchronized (msgFree) {
-            msgFree.set(Integer.MIN_VALUE);
-            msgFree.notifyAll();
-        }
         final Iterator<Invocation> iterator = invocations.iterator();
         while (iterator.hasNext()) {
             final Invocation invocation = iterator.next();
