@@ -47,6 +47,7 @@ import org.wildfly.security.auth.AuthenticationContext;
 import org.wildfly.security.auth.MatchRule;
 import org.wildfly.security.auth.login.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.password.Password;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
@@ -117,7 +118,7 @@ public class OutboundMessageCountTestCase {
         domainBuilder.addRealm("mainRealm", mainRealm);
         domainBuilder.setDefaultRealmName("mainRealm");
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-        mainRealm.setPasswordMap(Collections.singletonMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray()))));
+        mainRealm.setPasswordMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
         final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(OutboundMessageCountTestCase.class.getClassLoader());
         streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.EMPTY, domainBuilder.build(), saslServerFactory);
     }
