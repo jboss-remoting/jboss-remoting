@@ -96,7 +96,7 @@ class FutureConnection {
             return oldVal.getIoFuture();
         }
         final FutureResult<Connection> futureResult = new FutureResult<>();
-        while (! futureConnectionRef.compareAndSet(null, futureResult)) {
+        while (! futureConnectionRef.compareAndSet(oldVal, futureResult)) {
             oldVal = futureConnectionRef.get();
             if (oldVal != orig) {
                 // discard our new one
@@ -116,6 +116,6 @@ class FutureConnection {
     }
 
     public IoFuture<Connection> get() {
-        return null;
+        return init();
     }
 }
