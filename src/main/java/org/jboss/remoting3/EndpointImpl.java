@@ -42,6 +42,8 @@ import org.jboss.logging.Logger;
 import org.jboss.modules.Module;
 import org.jboss.modules.ModuleIdentifier;
 import org.jboss.modules.ModuleLoadException;
+import org.jboss.remoting3.remote.HttpUpgradeConnectionProviderFactory;
+import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
@@ -142,6 +144,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             if (workerOptions != null) {
                 builder.addAll(workerOptions);
             }
+            builder.addAll(OptionMap.create(Options.THREAD_DAEMON, Boolean.TRUE));
             final OptionMap modifiedOptionMap = builder.set(Options.WORKER_NAME, endpointName == null ? "Remoting (anonymous)" : "Remoting \"" + endpointName + "\"").getMap();
             final AtomicReference<EndpointImpl> endpointRef = new AtomicReference<EndpointImpl>();
             xnioWorker = xnio.createWorker(null, modifiedOptionMap, () -> {
@@ -187,6 +190,18 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     throw new IllegalArgumentException("Unable to load connection provider factory class '" + className + "'", e);
                 }
             }
+            // remote
+            final RemoteConnectionProviderFactory remoteConnectionProviderFactory = new RemoteConnectionProviderFactory();
+            endpoint.addConnectionProvider("remote", remoteConnectionProviderFactory, OptionMap.EMPTY);
+            // old
+            endpoint.addConnectionProvider("remoting", remoteConnectionProviderFactory, OptionMap.EMPTY);
+            // http
+            final HttpUpgradeConnectionProviderFactory httpUpgradeConnectionProviderFactory = new HttpUpgradeConnectionProviderFactory();
+            endpoint.addConnectionProvider("remote+http", httpUpgradeConnectionProviderFactory, OptionMap.EMPTY);
+            endpoint.addConnectionProvider("remote+https", httpUpgradeConnectionProviderFactory, OptionMap.EMPTY);
+            // old
+            endpoint.addConnectionProvider("http-remoting", httpUpgradeConnectionProviderFactory, OptionMap.EMPTY);
+            endpoint.addConnectionProvider("https-remoting", httpUpgradeConnectionProviderFactory, OptionMap.EMPTY);
             if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
                 endpoint.connect(connectionBuilder.getUri());
             }
