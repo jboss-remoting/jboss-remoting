@@ -48,7 +48,7 @@ final class RemotingXmlParser {
     }
 
     private static void parseDocument(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
-        switch (reader.nextTag()) {
+        if (reader.hasNext()) switch (reader.nextTag()) {
             case START_ELEMENT: {
                 switch (reader.getNamespaceURI()) {
                     case NS_REMOTING_5_0: break;
@@ -67,7 +67,6 @@ final class RemotingXmlParser {
                 throw reader.unexpectedContent();
             }
         }
-        throw reader.unexpectedDocumentEnd();
     }
 
     private static void parseEndpointElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
