@@ -81,7 +81,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private static final Logger log = Logger.getLogger("org.jboss.remoting.endpoint");
 
     private static final int CLOSED_FLAG = 0x80000000;
-    private static final int COUNT_MASK = ~(CLOSED_FLAG);
+    private static final int COUNT_MASK = ~CLOSED_FLAG;
     private static final String FQCN = EndpointImpl.class.getName();
 
     private final Set<ConnectionImpl> connections = Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<ConnectionImpl, Boolean>()));
