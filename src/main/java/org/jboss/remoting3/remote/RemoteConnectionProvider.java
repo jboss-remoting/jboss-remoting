@@ -92,7 +92,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         boolean usePooling = true;
         boolean leakDebugging = false;
         try {
-            usePooling = Boolean.parseBoolean(System.getProperty("jboss.remoting.pooled-buffers", "true"));
+            usePooling = Boolean.parseBoolean(System.getProperty("jboss.remoting.pooled-buffers", "false"));
             leakDebugging = Boolean.parseBoolean(System.getProperty("jboss.remoting.debug-buffer-leaks", "false"));
         } catch (Throwable ignored) {}
         USE_POOLING = usePooling;
