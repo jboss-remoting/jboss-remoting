@@ -33,7 +33,7 @@ import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.SpiUtils;
-import org.wildfly.security.auth.AuthenticationContext;
+import org.wildfly.security.auth.client.AuthenticationContext;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;

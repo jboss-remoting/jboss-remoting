@@ -28,7 +28,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.Security;
-import java.util.Collections;
 import java.util.concurrent.CancellationException;
 
 import javax.security.sasl.SaslServerFactory;
@@ -50,7 +49,7 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.wildfly.security.WildFlyElytronProvider;
-import org.wildfly.security.auth.login.SecurityDomain;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;

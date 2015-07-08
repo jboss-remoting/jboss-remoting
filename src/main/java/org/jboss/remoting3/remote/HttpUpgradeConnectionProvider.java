@@ -40,8 +40,8 @@ import javax.security.sasl.SaslServerFactory;
 
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ExternalConnectionProvider;
-import org.wildfly.security.auth.AuthenticationContext;
-import org.wildfly.security.auth.login.SecurityDomain;
+import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.sasl.util.PrivilegedSaslServerFactory;
 import org.wildfly.security.sasl.util.SaslFactories;
 import org.xnio.BufferAllocator;

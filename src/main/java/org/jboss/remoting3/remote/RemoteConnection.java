@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
-import org.wildfly.security.auth.login.SecurityIdentity;
+import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.IoUtils;

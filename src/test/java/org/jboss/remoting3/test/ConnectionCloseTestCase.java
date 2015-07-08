@@ -37,10 +37,10 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.wildfly.security.WildFlyElytronProvider;
-import org.wildfly.security.auth.AuthenticationConfiguration;
-import org.wildfly.security.auth.AuthenticationContext;
-import org.wildfly.security.auth.MatchRule;
-import org.wildfly.security.auth.login.SecurityDomain;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
+import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.auth.client.MatchRule;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
@@ -61,7 +61,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.PrivilegedAction;
 import java.security.Security;
-import java.util.Collections;
 
 import static org.junit.Assert.assertNotNull;
 

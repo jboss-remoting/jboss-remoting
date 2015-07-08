@@ -54,7 +54,7 @@ import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.wildfly.common.Assert;
-import org.wildfly.security.auth.AuthenticationContext;
+import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.sasl.util.PrivilegedSaslClientFactory;
 import org.wildfly.security.sasl.util.ProtocolSaslClientFactory;
 import org.wildfly.security.sasl.util.SaslFactories;

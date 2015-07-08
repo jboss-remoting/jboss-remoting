@@ -28,7 +28,7 @@ import java.net.URI;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.wildfly.common.selector.DefaultSelector;
-import org.wildfly.security.auth.AuthenticationContext;
+import org.wildfly.security.auth.client.AuthenticationContext;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.XnioWorker;

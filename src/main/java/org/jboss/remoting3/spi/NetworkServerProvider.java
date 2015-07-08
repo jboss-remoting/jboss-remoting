@@ -27,7 +27,7 @@ import java.net.SocketAddress;
 
 import javax.security.sasl.SaslServerFactory;
 
-import org.wildfly.security.auth.login.SecurityDomain;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.xnio.OptionMap;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;

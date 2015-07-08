@@ -25,7 +25,7 @@ package org.jboss.remoting3.spi;
 import java.net.URI;
 
 import org.jboss.remoting3.HandleableCloseable;
-import org.wildfly.security.auth.AuthenticationContext;
+import org.wildfly.security.auth.client.AuthenticationContext;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
