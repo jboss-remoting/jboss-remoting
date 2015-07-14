@@ -22,6 +22,9 @@
 
 package org.jboss.remoting3.test;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -35,6 +38,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import javax.security.sasl.SaslServerFactory;
+
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
@@ -42,16 +47,14 @@ import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.OpenListener;
-import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.RemotingOptions;
-import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -59,8 +62,8 @@ import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
-import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
@@ -73,10 +76,6 @@ import org.xnio.XnioWorker;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
-import static org.junit.Assert.assertArrayEquals;
-
-import javax.security.sasl.SaslServerFactory;
-
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
@@ -84,8 +83,6 @@ public class ConnectionTestCase {
 
     protected final Endpoint clientEndpoint;
     protected final Endpoint serverEndpoint;
-    private final Registration clientReg;
-    private final Registration serverReg;
 
     private AcceptingChannel<? extends ConnectedStreamChannel> server;
 
@@ -111,8 +108,6 @@ public class ConnectionTestCase {
             .getMap();
         clientEndpoint = Endpoint.builder().setXnioWorkerOptions(optionMap).setEndpointName("connection-test-client").build();
         serverEndpoint = Endpoint.builder().setXnioWorkerOptions(optionMap).setEndpointName("connection-test-server").build();
-        clientReg = clientEndpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
-        serverReg = serverEndpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
     }
 
     @Rule
@@ -137,8 +132,6 @@ public class ConnectionTestCase {
     @After
     public void after() {
         IoUtils.safeClose(server);
-        IoUtils.safeClose(clientReg);
-        IoUtils.safeClose(serverReg);
         IoUtils.safeClose(clientEndpoint);
         IoUtils.safeClose(serverEndpoint);
         System.gc();
@@ -155,6 +148,7 @@ public class ConnectionTestCase {
     private static final byte[] junkBuffer = new byte[BUFFER_SIZE];
 
     @Test
+    @Ignore
     public void testManyChannelsLotsOfData() throws Exception {
         final XnioWorker clientWorker = clientEndpoint.getXnioWorker();
         final XnioWorker serverWorker = serverEndpoint.getXnioWorker();

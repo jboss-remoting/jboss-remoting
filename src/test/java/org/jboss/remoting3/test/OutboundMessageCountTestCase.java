@@ -22,40 +22,8 @@
 
 package org.jboss.remoting3.test;
 
-import org.jboss.logging.Logger;
-import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.Connection;
-import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.MessageInputStream;
-import org.jboss.remoting3.MessageOutputStream;
-import org.jboss.remoting3.OpenListener;
-import org.jboss.remoting3.Registration;
-import org.jboss.remoting3.RemotingOptions;
-import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
-import org.jboss.remoting3.spi.NetworkServerProvider;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestName;
-import org.wildfly.security.WildFlyElytronProvider;
-import org.wildfly.security.auth.client.AuthenticationConfiguration;
-import org.wildfly.security.auth.client.AuthenticationContext;
-import org.wildfly.security.auth.client.MatchRule;
-import org.wildfly.security.auth.server.SecurityDomain;
-import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
-import org.wildfly.security.password.PasswordFactory;
-import org.wildfly.security.password.spec.ClearPasswordSpec;
-import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
-import org.xnio.FutureResult;
-import org.xnio.IoFuture;
-import org.xnio.OptionMap;
-import org.xnio.Options;
-import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedStreamChannel;
+import static org.junit.Assert.assertNotNull;
+import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -70,10 +38,40 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 
-import static org.junit.Assert.assertNotNull;
-import static org.xnio.IoUtils.safeClose;
-
 import javax.security.sasl.SaslServerFactory;
+
+import org.jboss.logging.Logger;
+import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.Connection;
+import org.jboss.remoting3.Endpoint;
+import org.jboss.remoting3.MessageInputStream;
+import org.jboss.remoting3.MessageOutputStream;
+import org.jboss.remoting3.OpenListener;
+import org.jboss.remoting3.Registration;
+import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3.spi.NetworkServerProvider;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
+import org.wildfly.security.WildFlyElytronProvider;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
+import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.auth.client.MatchRule;
+import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.auth.server.SecurityDomain;
+import org.wildfly.security.password.PasswordFactory;
+import org.wildfly.security.password.spec.ClearPasswordSpec;
+import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
+import org.xnio.FutureResult;
+import org.xnio.IoFuture;
+import org.xnio.OptionMap;
+import org.xnio.channels.AcceptingChannel;
+import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * Tests that a {@link org.jboss.remoting3.MessageOutputStream#close() closing the message on the channel}
@@ -90,7 +88,6 @@ public class OutboundMessageCountTestCase {
     private Channel serverChannel;
 
     private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
-    private static Registration registration;
     private Connection connection;
     private Registration serviceRegistration;
 
@@ -109,7 +106,6 @@ public class OutboundMessageCountTestCase {
         Security.addProvider(provider);
         providerName = provider.getName();
         endpoint = Endpoint.builder().setEndpointName("test").build();
-        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
         final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
@@ -168,7 +164,6 @@ public class OutboundMessageCountTestCase {
     public static void destroy() throws IOException, InterruptedException {
         safeClose(streamServer);
         safeClose(endpoint);
-        safeClose(registration);
     }
 
     /**

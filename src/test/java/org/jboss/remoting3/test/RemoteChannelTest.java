@@ -42,7 +42,6 @@ import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
-import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -52,15 +51,14 @@ import org.junit.Test;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
-import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
-import org.xnio.Options;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 
@@ -72,14 +70,12 @@ import org.xnio.channels.ConnectedStreamChannel;
 public final class RemoteChannelTest extends ChannelTestBase {
     protected static Endpoint endpoint;
     private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
-    private static Registration registration;
     private Connection connection;
     private Registration serviceRegistration;
 
     @BeforeClass
     public static void create() throws Exception {
         endpoint = Endpoint.builder().setEndpointName("test").build();
-        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
         final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
@@ -133,7 +129,6 @@ public final class RemoteChannelTest extends ChannelTestBase {
     public static void destroy() throws IOException, InterruptedException {
         safeClose(streamServer);
         safeClose(endpoint);
-        safeClose(registration);
     }
 
     @Test

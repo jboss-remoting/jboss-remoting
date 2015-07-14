@@ -35,7 +35,6 @@ import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
-import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -48,8 +47,8 @@ import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
-import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.xnio.IoFuture;
@@ -111,7 +110,6 @@ public class TimeOutConnectionTestCase {
             // create endpoint, auth provider, etc, create server
             try (Endpoint ep = Endpoint.builder().setXnioWorkerOptions(OptionMap.create(Options.WORKER_IO_THREADS, 4, Options.WORKER_TASK_CORE_THREADS, 16)).setEndpointName("test").build()) {
                 endpoint = ep;
-                ep.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), connectionProviderOptions);
                 final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
                 final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
                 domainBuilder.addRealm("mainRealm", mainRealm);
