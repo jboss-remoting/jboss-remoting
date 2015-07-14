@@ -172,6 +172,16 @@ public final class InvocationTracker {
     }
 
     /**
+     * Unconditionally remove an invocation from the map.  This should only be done if the outbound request definitely
+     * failed to be written.
+     *
+     * @param invocation the invocation
+     */
+    public void remove(final Invocation invocation) {
+        invocations.remove(invocation);
+    }
+
+    /**
      * Allocate a message, possibly blocking until one is available.
      *
      * @return the allocated message
