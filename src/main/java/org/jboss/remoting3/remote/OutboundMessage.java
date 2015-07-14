@@ -22,6 +22,9 @@
 
 package org.jboss.remoting3.remote;
 
+import static java.lang.Thread.holdsLock;
+import static org.jboss.remoting3.remote.RemoteLogger.log;
+
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
@@ -35,9 +38,6 @@ import org.xnio.IoUtils;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.streams.BufferPipeOutputStream;
-
-import static java.lang.Thread.holdsLock;
-import static org.jboss.remoting3.remote.RemoteLogger.log;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -242,11 +242,16 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     public void write(final int b) throws IOException {
-        if (remaining > 1) {
-            pipeOutputStream.write(b);
-            remaining--;
-        } else {
-            throw overrun();
+        try {
+            if (remaining > 1) {
+                pipeOutputStream.write(b);
+                remaining--;
+            } else {
+                throw overrun();
+            }
+        } catch (IOException e) {
+            cancel();
+            throw e;
         }
     }
 
@@ -259,25 +264,45 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     public void write(final byte[] b) throws IOException {
-        write(b, 0, b.length);
+        try {
+            write(b, 0, b.length);
+        } catch (IOException e) {
+            cancel();
+            throw e;
+        }
     }
 
     public void write(final byte[] b, final int off, final int len) throws IOException {
-        if ((long) len > remaining) {
-            throw overrun();
+        try {
+            if ((long) len > remaining) {
+                throw overrun();
+            }
+            pipeOutputStream.write(b, off, len);
+            remaining -= len;
+        } catch (IOException e) {
+            cancel();
+            throw e;
         }
-        pipeOutputStream.write(b, off, len);
-        remaining -= len;
     }
 
     public void flush() throws IOException {
-        pipeOutputStream.flush();
+        try {
+            pipeOutputStream.flush();
+        } catch (IOException e) {
+            cancel();
+            throw e;
+        }
     }
 
     public void close() throws IOException {
-        synchronized (pipeOutputStream) {
-            pipeOutputStream.notifyAll();
-            pipeOutputStream.close();
+        try {
+            synchronized (pipeOutputStream) {
+                pipeOutputStream.notifyAll();
+                pipeOutputStream.close();
+            }
+        } catch (IOException e) {
+            cancel();
+            throw e;
         }
     }
 

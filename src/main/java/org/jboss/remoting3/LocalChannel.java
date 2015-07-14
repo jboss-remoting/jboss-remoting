@@ -191,23 +191,48 @@ final class LocalChannel extends AbstractHandleableCloseable<Channel> implements
         }
 
         public void flush() throws IOException {
-            outputStream.flush();
+            try {
+                outputStream.flush();
+            } catch (IOException e) {
+                cancel();
+                throw e;
+            }
         }
 
         public void close() throws IOException {
-            outputStream.close();
+            try {
+                outputStream.close();
+            } catch (IOException e) {
+                cancel();
+                throw e;
+            }
         }
 
         public void write(final int b) throws IOException {
-            outputStream.write(b);
+            try {
+                outputStream.write(b);
+            } catch (IOException e) {
+                cancel();
+                throw e;
+            }
         }
 
         public void write(final byte[] b) throws IOException {
-            outputStream.write(b);
+            try {
+                outputStream.write(b);
+            } catch (IOException e) {
+                cancel();
+                throw e;
+            }
         }
 
         public void write(final byte[] b, final int off, final int len) throws IOException {
-            outputStream.write(b, off, len);
+            try {
+                outputStream.write(b, off, len);
+            } catch (IOException e) {
+                cancel();
+                throw e;
+            }
         }
 
         public Out cancel() {
