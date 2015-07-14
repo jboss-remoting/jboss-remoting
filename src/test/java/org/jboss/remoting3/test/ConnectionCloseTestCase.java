@@ -22,6 +22,18 @@
 
 package org.jboss.remoting3.test;
 
+import static org.junit.Assert.assertNotNull;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.PrivilegedAction;
+import java.security.Security;
+
+import javax.security.sasl.SaslServerFactory;
+
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
@@ -29,7 +41,6 @@ import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
-import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -40,8 +51,8 @@ import org.wildfly.security.WildFlyElytronProvider;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
-import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
@@ -53,18 +64,6 @@ import org.xnio.Options;
 import org.xnio.Sequence;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.security.PrivilegedAction;
-import java.security.Security;
-
-import static org.junit.Assert.assertNotNull;
-
-import javax.security.sasl.SaslServerFactory;
 
 /**
  * A testcase to ensure that threads don't hang when the client side closes a {@link Connection} while the
@@ -81,7 +80,6 @@ public class ConnectionCloseTestCase {
     private Channel serverChannel;
 
     private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
-    private static Registration connectionProviderRegistration;
     private Connection connection;
     private Registration serviceRegistration;
     private static String providerName;
@@ -92,7 +90,6 @@ public class ConnectionCloseTestCase {
         Security.addProvider(provider);
         providerName = provider.getName();
         endpoint = Endpoint.builder().setEndpointName("test").build();
-        connectionProviderRegistration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
         final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
@@ -149,7 +146,6 @@ public class ConnectionCloseTestCase {
     public static void afterClass() throws IOException, InterruptedException {
         IoUtils.safeClose(streamServer);
         IoUtils.safeClose(endpoint);
-        IoUtils.safeClose(connectionProviderRegistration);
     }
 
     /**

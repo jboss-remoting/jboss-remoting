@@ -40,7 +40,6 @@ import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
-import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -50,8 +49,8 @@ import org.junit.Ignore;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
-import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.provider.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
@@ -74,7 +73,6 @@ import org.xnio.channels.ConnectedStreamChannel;
 public final class RemoteSslChannelTest extends ChannelTestBase {
     protected static Endpoint endpoint;
     private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
-    private static Registration registration;
     private Connection connection;
     private Registration serviceRegistration;
 
@@ -82,7 +80,6 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
     public static void create() throws IOException, NoSuchProviderException, NoSuchAlgorithmException, InvalidKeySpecException {
         SslHelper.setKeyStoreAndTrustStore();
         endpoint = Endpoint.builder().setEndpointName("test").build();
-        registration = endpoint.addConnectionProvider("remote", new RemoteConnectionProviderFactory(), OptionMap.EMPTY);
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
         final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
@@ -136,6 +133,5 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
     public static void destroy() throws IOException, InterruptedException {
         IoUtils.safeClose(streamServer);
         IoUtils.safeClose(endpoint);
-        IoUtils.safeClose(registration);
     }
 }
