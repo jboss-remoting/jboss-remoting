@@ -29,6 +29,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
 
+import org.jboss.remoting3.AbstractDelegatingMessageOutputStream;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
@@ -194,6 +195,24 @@ public final class InvocationTracker {
             Thread.currentThread().interrupt();
             throw new InterruptedIOException("Message allocation interrupted");
         }
+    }
+
+    /**
+     * Allocate a message on behalf of an invocation, possibly blocking until a message is available.  The invocation
+     * will automatically be removed if writing the message fails or is cancelled.
+     *
+     * @param invocation the invocation of the message
+     * @return the allocated message
+     * @throws IOException if an error occurs
+     */
+    public MessageOutputStream allocateMessage(Invocation invocation) throws IOException {
+        return new AbstractDelegatingMessageOutputStream(allocateMessage()) {
+            public MessageOutputStream cancel() {
+                super.cancel();
+                remove(invocation);
+                return this;
+            }
+        };
     }
 
     private void connectionClosed() {
