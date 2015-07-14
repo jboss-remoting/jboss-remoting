@@ -112,6 +112,12 @@
             <artifactId>wildfly-common</artifactId>
             <version>${wildfly-common.version}</version>
             <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.wildfly.security</groupId>
+                    <artifactId>wildfly-security-manager</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
