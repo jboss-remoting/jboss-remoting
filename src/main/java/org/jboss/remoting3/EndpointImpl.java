@@ -190,18 +190,19 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     throw new IllegalArgumentException("Unable to load connection provider factory class '" + className + "'", e);
                 }
             }
-            // remote
+            // remote (SSL is explicit in URL)
             final RemoteConnectionProviderFactory remoteConnectionProviderFactory = new RemoteConnectionProviderFactory();
-            endpoint.addConnectionProvider("remote", remoteConnectionProviderFactory, OptionMap.EMPTY);
-            // old
-            endpoint.addConnectionProvider("remoting", remoteConnectionProviderFactory, OptionMap.EMPTY);
-            // http
+            endpoint.addConnectionProvider("remote", remoteConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
+            endpoint.addConnectionProvider("remote+tls", remoteConnectionProviderFactory, OptionMap.create(Options.SECURE, Boolean.TRUE));
+            // old (SSL is config-based)
+            endpoint.addConnectionProvider("remoting", remoteConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE));
+            // http - SSL is handled by the HTTP layer
             final HttpUpgradeConnectionProviderFactory httpUpgradeConnectionProviderFactory = new HttpUpgradeConnectionProviderFactory();
-            endpoint.addConnectionProvider("remote+http", httpUpgradeConnectionProviderFactory, OptionMap.EMPTY);
-            endpoint.addConnectionProvider("remote+https", httpUpgradeConnectionProviderFactory, OptionMap.EMPTY);
+            endpoint.addConnectionProvider("remote+http", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
+            endpoint.addConnectionProvider("remote+https", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
             // old
-            endpoint.addConnectionProvider("http-remoting", httpUpgradeConnectionProviderFactory, OptionMap.EMPTY);
-            endpoint.addConnectionProvider("https-remoting", httpUpgradeConnectionProviderFactory, OptionMap.EMPTY);
+            endpoint.addConnectionProvider("http-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
+            endpoint.addConnectionProvider("https-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
             if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
                 endpoint.connect(connectionBuilder.getUri());
             }

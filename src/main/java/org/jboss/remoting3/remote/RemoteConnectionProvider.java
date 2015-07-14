@@ -103,6 +103,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     private final Xnio xnio;
     private final XnioWorker xnioWorker;
     private final ConnectionProviderContext connectionProviderContext;
+    private final boolean sslRequired;
     private final boolean sslEnabled;
     private final Collection<Cancellable> pendingInboundConnections = Collections.synchronizedSet(new HashSet<Cancellable>());
     private final Set<RemoteConnectionHandler> handlers = Collections.synchronizedSet(new HashSet<RemoteConnectionHandler>());
@@ -113,6 +114,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
         super(connectionProviderContext.getExecutor());
         xnio = connectionProviderContext.getXnio();
+        sslRequired = optionMap.get(Options.SECURE, false);
         sslEnabled = optionMap.get(Options.SSL_ENABLED, true);
         xnioWorker = connectionProviderContext.getXnioWorker();
         this.connectionProviderContext = connectionProviderContext;
@@ -181,7 +183,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         final IoFuture<ConnectionHandlerFactory> returnedFuture = cancellableResult.getIoFuture();
         returnedFuture.addNotifier(IoUtils.<ConnectionHandlerFactory>resultNotifier(), result);
         final boolean sslCapable = sslEnabled;
-        final boolean useSsl = sslCapable && connectOptions.get(Options.SSL_ENABLED, true) && !connectOptions.get(Options.SECURE, false);
+        final boolean useSsl = sslRequired || sslCapable && connectOptions.get(Options.SSL_ENABLED, true) && !connectOptions.get(Options.SECURE, false);
         final ChannelListener<ConnectedStreamChannel> openListener = new ChannelListener<ConnectedStreamChannel>() {
             public void handleEvent(final ConnectedStreamChannel channel) {
                 try {
