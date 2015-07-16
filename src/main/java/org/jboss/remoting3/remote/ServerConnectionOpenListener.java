@@ -276,7 +276,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         final String protocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
                         final SaslServer saslServer;
                         try {
-                            saslServer = securityDomain.createNewAuthenticationContext().createSaslServer(saslServerFactory, serverName, mechName, protocol);
+                            saslServer = securityDomain.createNewAuthenticationContext().createSaslServer(saslServerFactory, mechName);
                         } catch (SaslException e) {
                             // bail out
                             return;
