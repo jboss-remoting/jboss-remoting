@@ -207,5 +207,5 @@ public final class RemotingOptions {
     /**
      * The default SASL protocol name.
      */
-    public static final String DEFAULT_SASL_PROTOCOL = "remoting";
+    public static final String DEFAULT_SASL_PROTOCOL = "remote";
 }
