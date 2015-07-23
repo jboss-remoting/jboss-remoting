@@ -127,10 +127,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         log.tracef("Completed open of %s", this);
     }
 
-    static EndpointImpl construct(final XnioWorker xnioWorker, final boolean ourWorker, final String name) throws IOException {
-        return new EndpointImpl(xnioWorker, ourWorker, name);
-    }
-
     static EndpointImpl construct(final EndpointBuilder endpointBuilder) throws IOException {
         final String endpointName = endpointBuilder.getEndpointName();
         final List<ConnectionBuilder> connectionBuilders = endpointBuilder.getConnectionBuilders();
@@ -204,7 +200,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             endpoint.addConnectionProvider("http-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
             endpoint.addConnectionProvider("https-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
             if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
-                endpoint.connect(connectionBuilder.getUri());
+                SaslClientFactory saslClientFactory = connectionBuilder.getSaslClientFactory();
+                if (saslClientFactory == null) {
+                    saslClientFactory = SaslClientFactoryHolder.STANDARD_SASL_CLIENT_FACTORY;
+                }
+                // todo: connect options from builder
+                endpoint.connect(connectionBuilder.getUri(), OptionMap.EMPTY, saslClientFactory);
             }
             ok = true;
             return endpoint;

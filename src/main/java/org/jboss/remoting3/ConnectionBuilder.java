@@ -24,6 +24,8 @@ package org.jboss.remoting3;
 
 import java.net.URI;
 
+import javax.security.sasl.SaslClientFactory;
+
 /**
 * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
 */
@@ -31,6 +33,7 @@ public final class ConnectionBuilder {
 
     private final URI uri;
     private boolean immediate;
+    private SaslClientFactory saslClientFactory;
 
     ConnectionBuilder(final URI uri) {
         this.uri = uri;
@@ -41,11 +44,19 @@ public final class ConnectionBuilder {
         return this;
     }
 
+    public void setSaslClientFactory(final SaslClientFactory saslClientFactory) {
+        this.saslClientFactory = saslClientFactory;
+    }
+
     URI getUri() {
         return uri;
     }
 
     boolean isImmediate() {
         return immediate;
+    }
+
+    SaslClientFactory getSaslClientFactory() {
+        return saslClientFactory;
     }
 }
