@@ -27,6 +27,7 @@ import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.MessageDigest;
@@ -49,6 +50,7 @@ import org.xnio.Buffers;
 import org.xnio.ByteBufferSlicePool;
 import org.xnio.ChannelListener;
 import org.xnio.ChannelListeners;
+import org.xnio.FailedIoFuture;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -98,6 +100,12 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
     }
 
     protected IoFuture<ConnectedStreamChannel> createConnection(final URI uri, final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
+        final URI newUri;
+        try {
+            newUri = new URI("http", "", uri.getHost(), uri.getPort(), "/", "", "");
+        } catch (URISyntaxException e) {
+            return new FailedIoFuture<ConnectedStreamChannel>(new IOException(e));
+        }
         final Map<String, String> headers = new HashMap<String, String>();
         headers.put(UPGRADE, "jboss-remoting");
         final String secKey = createSecKey();
@@ -105,7 +113,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
         final FutureResult<ConnectedStreamChannel> future = new FutureResult<ConnectedStreamChannel>();
 
-        HttpUpgrade.performUpgrade(getXnioWorker(), null, uri, headers, channel -> {
+        HttpUpgrade.performUpgrade(getXnioWorker(), null, newUri, headers, channel -> {
             AssembledConnectedStreamChannel newChannel = new AssembledConnectedStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
             future.setResult(newChannel);
             ChannelListeners.invokeChannelListener(newChannel, openListener);
@@ -120,6 +128,12 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
     }
 
     protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final URI uri, final InetSocketAddress destination, final OptionMap options, final AuthenticationContext authenticationContext, final ChannelListener<ConnectedStreamChannel> openListener) {
+        final URI newUri;
+        try {
+            newUri = new URI("https", "", uri.getHost(), uri.getPort(), "/", "", "");
+        } catch (URISyntaxException e) {
+            return new FailedIoFuture<ConnectedSslStreamChannel>(new IOException(e));
+        }
         final OptionMap modifiedOptions = OptionMap.builder().addAll(options).set(Options.SSL_STARTTLS, false).getMap();
         final Map<String, String> headers = new HashMap<String, String>();
         headers.put(UPGRADE, "jboss-remoting");
@@ -129,7 +143,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         final FutureResult<ConnectedSslStreamChannel> future = new FutureResult<ConnectedSslStreamChannel>();
 
         // TODO: perform upgrade using existing SSL connection
-        HttpUpgrade.performUpgrade(getXnioWorker(), null, null, uri, headers, channel -> {
+        HttpUpgrade.performUpgrade(getXnioWorker(), null, null, newUri, headers, channel -> {
             AssembledConnectedSslStreamChannel newChannel = new AssembledConnectedSslStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
             future.setResult(newChannel);
             ChannelListeners.invokeChannelListener(newChannel, openListener);
