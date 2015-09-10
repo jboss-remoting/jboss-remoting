@@ -51,11 +51,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
         synchronized (connection.getLock()) {
             connection.getChannel().getCloseSetter().set(new ChannelListener<java.nio.channels.Channel>() {
                 public void handleEvent(final java.nio.channels.Channel channel) {
-                    connection.getExecutor().execute(new Runnable() {
-                        public void run() {
-                            handler.handleConnectionClose();
-                        }
-                    });
+                    handler.handleConnectionClose();
                 }
             });
         }
