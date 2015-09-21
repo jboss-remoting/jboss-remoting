@@ -28,8 +28,6 @@ import static org.xnio.IoUtils.safeClose;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Queue;
 import java.util.Random;
 
@@ -546,23 +544,30 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     private void closeMessages() {
-        final List<InboundMessage> exceptionMessages;
-        final List<OutboundMessage> cancelMessages;
-        final List<InboundMessage> terminateMessages;
+        Executor executor = connection.getExecutor();
         synchronized (connection.getLock()) {
-            exceptionMessages = new ArrayList<InboundMessage>(inboundMessages);
-            cancelMessages = new ArrayList<OutboundMessage>(outboundMessages);
-            terminateMessages = new ArrayList<InboundMessage>(inboundMessageQueue);
+            for (final InboundMessage message : inboundMessages) {
+                executor.execute(new Runnable() {
+                    public void run() {
+                        message.inputStream.pushException(new MessageCancelledException());
+                    }
+                });
+            }
+            for (final OutboundMessage message : outboundMessages) {
+                executor.execute(new Runnable() {
+                    public void run() {
+                        message.cancel();
+                    }
+                });
+            }
+            for (final InboundMessage message : inboundMessageQueue) {
+                executor.execute(new Runnable() {
+                    public void run() {
+                        message.terminate();
+                    }
+                });
+            }
             inboundMessageQueue.clear();
-        }
-        for (final InboundMessage message : exceptionMessages) {
-            message.inputStream.pushException(new MessageCancelledException());
-        }
-        for (final OutboundMessage message : cancelMessages) {
-            message.cancel();
-        }
-        for (final InboundMessage message : terminateMessages) {
-            message.terminate();
         }
     }
 
