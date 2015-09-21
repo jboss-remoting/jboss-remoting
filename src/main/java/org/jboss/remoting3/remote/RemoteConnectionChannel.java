@@ -23,7 +23,6 @@
 package org.jboss.remoting3.remote;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
-import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -32,7 +31,7 @@ import java.util.Queue;
 import java.util.Random;
 
 import java.util.Set;
-import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.function.ToIntFunction;
 
@@ -153,7 +152,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     void closeOutboundMessage() {
-        int oldState = incrementState(-ONE_OUTBOUND_MESSAGE);
+        int oldState = incrementState(- ONE_OUTBOUND_MESSAGE);
         if (oldState == (WRITE_CLOSED | READ_CLOSED)) {
             // no messages left and read & write closed
             log.tracef("Closed outbound message on %s (unregistering)", this);
@@ -349,14 +348,10 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     }
 
     public void receiveMessage(final Receiver handler) {
-        boolean immediateEnd = false;
         synchronized (connection.getLock()) {
             if (inboundMessageQueue.isEmpty()) {
-                if ((channelState & READ_CLOSED) != 0) try {
+                if ((channelState & READ_CLOSED) != 0) {
                     getExecutor().execute(() -> handler.handleEnd(RemoteConnectionChannel.this));
-                } catch (RejectedExecutionException ignored) {
-                    // oops, endpoint shut down out from under us; call directly and hope for the best
-                    immediateEnd = true;
                 } else if (nextReceiver != null) {
                     throw new IllegalStateException("Message handler already queued");
                 } else {
@@ -366,16 +361,12 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
                 final InboundMessage message = inboundMessageQueue.remove();
                 try {
                     getExecutor().execute(() -> handler.handleMessage(RemoteConnectionChannel.this, message.messageInputStream));
-                } catch (RejectedExecutionException ignored) {
-                    safeClose(message.messageInputStream);
-                    // oops, endpoint shut down out from under us; call handleEnd directly and hope for the best
-                    immediateEnd = true;
+                } catch (Throwable t) {
+                    connection.handleException(new IOException("Fatal connection error", t));
+                    return;
                 }
             }
             connection.getLock().notify();
-        }
-        if (immediateEnd) {
-            handler.handleEnd(this);
         }
     }
 
