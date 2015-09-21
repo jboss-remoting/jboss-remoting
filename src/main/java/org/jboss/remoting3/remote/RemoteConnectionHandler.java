@@ -27,7 +27,6 @@ import static org.jboss.remoting3.remote.RemoteLogger.log;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
@@ -405,22 +404,18 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     private void closePendingChannels() {
-        final ArrayList<PendingChannel> list;
         synchronized (remoteConnection.getLock()) {
-            list = new ArrayList<PendingChannel>(pendingChannels);
-        }
-        for (PendingChannel pendingChannel : list) {
-            pendingChannel.getResult().setCancelled();
+            for (PendingChannel pendingChannel : pendingChannels) {
+                pendingChannel.getResult().setCancelled();
+            }
         }
     }
 
     private void closeAllChannels() {
-        final ArrayList<RemoteConnectionChannel> list;
         synchronized (remoteConnection.getLock()) {
-            list = new ArrayList<RemoteConnectionChannel>(channels);
-        }
-        for (RemoteConnectionChannel channel : list) {
-            channel.closeAsync();
+            for (RemoteConnectionChannel channel : channels) {
+                channel.closeAsync();
+            }
         }
     }
 
