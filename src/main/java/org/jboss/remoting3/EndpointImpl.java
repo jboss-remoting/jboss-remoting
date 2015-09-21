@@ -32,6 +32,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
@@ -223,7 +225,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public Executor getExecutor() {
-        return worker;
+        return new TrackingExecutor();
     }
 
     protected void closeComplete() {
@@ -264,6 +266,20 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             old = resourceCountUpdater.get(this);
             if ((old & CLOSED_FLAG) != 0) {
                 throw new NotOpenException("Endpoint is not open");
+            }
+        } while (! resourceCountUpdater.compareAndSet(this, old, old + 1));
+        if (log.isTraceEnabled()) {
+            log.tracef("Allocated tick to %d of %s (opened %s)", Integer.valueOf(old + 1), this, opened);
+        }
+    }
+
+    void executorUntick(Object opened) {
+        // just like resourceUntick - except we allow tasks to be submitted after close begins.
+        int old;
+        do {
+            old = resourceCountUpdater.get(this);
+            if (old == CLOSED_FLAG) {
+                throw new RejectedExecutionException("Endpoint is not open");
             }
         } while (! resourceCountUpdater.compareAndSet(this, old, old + 1));
         if (log.isTraceEnabled()) {
@@ -504,7 +520,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         private final T value;
 
         private MapRegistration(final ConcurrentMap<String, T> map, final String key, final T value) {
-            super(worker, false);
+            super(EndpointImpl.this.getExecutor(), false);
             this.map = map;
             this.key = key;
             this.value = value;
@@ -595,7 +611,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public Executor getExecutor() {
-            return worker;
+            return EndpointImpl.this.getExecutor();
         }
 
         public XnioWorker getXnioWorker() {
@@ -625,4 +641,36 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         static final SaslClientFactory STANDARD_SASL_CLIENT_FACTORY = SaslFactories.getSearchSaslClientFactory(SaslClientFactoryHolder.class.getClassLoader());
     }
 
+    final class TrackingExecutor implements Executor {
+        private final AtomicInteger count = new AtomicInteger();
+
+        public void execute(final Runnable command) {
+            final AtomicInteger count = this.count;
+            final int i = count.getAndIncrement();
+            boolean ok = false;
+            try {
+                if (i == 0) {
+                    executorUntick(this);
+                }
+                worker.execute(() -> {
+                    try {
+                        command.run();
+                    } finally {
+                        finishWork();
+                    }
+                });
+                ok = true;
+            } finally {
+                if (! ok) {
+                    finishWork();
+                }
+            }
+        }
+
+        void finishWork() {
+            if (count.decrementAndGet() == 0) {
+                closeTick1(this);
+            }
+        }
+    }
 }
