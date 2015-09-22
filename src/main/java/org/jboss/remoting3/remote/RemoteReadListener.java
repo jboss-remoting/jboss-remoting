@@ -32,6 +32,7 @@ import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
+import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Pooled;
 import org.xnio.channels.ConnectedMessageChannel;
@@ -54,6 +55,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                     connection.getExecutor().execute(new Runnable() {
                         public void run() {
                             handler.handleConnectionClose();
+                            handler.closeComplete();
                         }
                     });
                 }
@@ -75,11 +77,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                         res = channel.receive(buffer);
                         if (res == -1) {
                             log.trace("Received connection end-of-stream");
-                            try {
-                                channel.shutdownReads();
-                            } finally {
-                                handler.handleConnectionClose();
-                            }
+                            channel.shutdownReads();
                             return;
                         } else if (res == 0) {
                             log.trace("No message ready; returning");
@@ -449,7 +447,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
             }
         } catch (IOException e) {
             connection.handleException(e);
-            handler.handleConnectionClose();
+            IoUtils.safeClose(channel);
         }
     }
 
