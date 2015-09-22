@@ -210,6 +210,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             // no channels
             log.tracef("Closed channel reads on %s (unregistering)", this);
             unregister();
+            closeComplete();
         } else {
             log.tracef("Closed channel reads on %s", this);
         }
@@ -229,6 +230,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             // no channels and read was closed
             log.tracef("Closed channel writes on %s (unregistering)", this);
             unregister();
+            closeComplete();
         } else {
             log.tracef("Closed channel writes on %s", this);
         }
@@ -267,6 +269,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         } else {
             log.tracef("Closed channel reads and writes on %s", this);
         }
+        closeComplete();
         notifyEnd();
         return true;
     }
@@ -528,7 +531,6 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     protected void closeAction() throws IOException {
         closeReadsAndWrites();
         closeMessages();
-        closeComplete();
     }
 
     private void closeMessages() {
