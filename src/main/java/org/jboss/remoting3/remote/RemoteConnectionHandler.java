@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Random;
@@ -418,18 +419,22 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     private void closePendingChannels() {
+        final ArrayList<PendingChannel> list;
         synchronized (remoteConnection.getLock()) {
-            for (PendingChannel pendingChannel : pendingChannels) {
-                pendingChannel.getResult().setCancelled();
-            }
+            list = new ArrayList<PendingChannel>(pendingChannels);
+        }
+        for (PendingChannel pendingChannel : list) {
+            pendingChannel.getResult().setCancelled();
         }
     }
 
     private void closeAllChannels() {
+        final ArrayList<RemoteConnectionChannel> list;
         synchronized (remoteConnection.getLock()) {
-            for (RemoteConnectionChannel channel : channels) {
-                channel.closeAsync();
-            }
+            list = new ArrayList<RemoteConnectionChannel>(channels);
+        }
+        for (RemoteConnectionChannel channel : list) {
+            channel.closeAsync();
         }
     }
 
