@@ -200,14 +200,18 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
     }
 
     public <T> T[] toArray(final T[] a) {
-        final ArrayList<T> list = new ArrayList<T>(size());
-        list.addAll((Collection<T>) this);
+        final ArrayList<V> list = new ArrayList<V>(size());
+        for (V item : this) {
+            list.add(item);
+        }
         return list.toArray(a);
     }
 
     public Object[] toArray() {
         final ArrayList<Object> list = new ArrayList<Object>(size());
-        list.addAll(this);
+        for (V item : this) {
+            list.add(item);
+        }
         return list.toArray();
     }
 
