@@ -73,17 +73,21 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
             ByteBuffer buffer = pooled.getResource();
             try {
                 for (;;) try {
+                    boolean exit = false;
                     synchronized (connection.getLock()) {
                         res = channel.receive(buffer);
                         if (res == -1) {
                             log.trace("Received connection end-of-stream");
-                            channel.shutdownReads();
-                            handler.receiveCloseRequest();
-                            return;
+                            exit = true;
                         } else if (res == 0) {
                             log.trace("No message ready; returning");
                             return;
                         }
+                    }
+                    if (exit) {
+                        channel.shutdownReads();
+                        handler.receiveCloseRequest();
+                        return;
                     }
                     buffer.flip();
                     if (saslWrapper != null) {
