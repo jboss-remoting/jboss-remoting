@@ -158,7 +158,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 server.trace("No EXTERNAL mechanism due to unverified SSL peer");
             }
             final SaslServerFactory saslServerFactory = ServerConnectionOpenListener.this.saslServerFactory;
-            for (String mechName : securityDomain.getSaslServerMechanismNames(saslServerFactory)) {
+            for (String mechName : securityDomain.createNewAuthenticationContext().querySaslServerMechanismNames(saslServerFactory)) {
                 if (foundMechanisms.containsKey(mechName)) {
                     server.tracef("Excluding repeated occurrence of mechanism %s", mechName);
                 } else if (! enableExternal && mechName.equals("EXTERNAL")) {
