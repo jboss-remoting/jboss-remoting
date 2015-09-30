@@ -22,7 +22,8 @@
 
 package org.jboss.remoting3;
 
-import static javax.xml.stream.XMLStreamConstants.*;
+import static javax.xml.stream.XMLStreamConstants.END_ELEMENT;
+import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
 
 import java.io.IOException;
 import java.net.URI;
@@ -71,8 +72,16 @@ final class RemotingXmlParser {
 
     private static void parseEndpointElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
         final int attributeCount = reader.getAttributeCount();
-        if (attributeCount > 0) {
-            throw reader.unexpectedAttribute(0);
+        for (int i = 0; i < attributeCount; i++) {
+            switch (reader.getAttributeLocalName(i)) {
+                case "name": {
+                    builder.setEndpointName(reader.getAttributeValue(i));
+                    break;
+                }
+                default: {
+                    throw reader.unexpectedAttribute(i);
+                }
+            }
         }
         while (reader.hasNext()) {
             switch (reader.nextTag()) {
