@@ -303,34 +303,23 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         final SaslServerFactory saslServerFactory = allowedMechanisms.get(mechName);
                         final AuthorizingCallbackHandler callbackHandler = serverAuthenticationProvider.getCallbackHandler(mechName);
                         if (saslServerFactory == null || callbackHandler == null) {
-                            // reject
-                            authLog.rejectedInvalidMechanism(mechName);
-                            final Pooled<ByteBuffer> pooled = connection.allocate();
-                            boolean ok = false;
-                            try {
-                                final ByteBuffer sendBuffer = pooled.getResource();
-                                sendBuffer.put(Protocol.AUTH_REJECTED);
-                                sendBuffer.flip();
-                                connection.send(pooled);
-                                ok = true;
-                                return;
-                            } finally {
-                                if (! ok) pooled.free();
-                            }
+                            rejectAuthentication(mechName);
+                            return;
                         }
                         final String protocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
                         final SaslServer saslServer = AccessController.doPrivileged(new PrivilegedAction<SaslServer>() {
+                            @Override
                             public SaslServer run() {
                                 try {
                                     return saslServerFactory.createSaslServer(mechName, protocol, serverName, propertyMap, callbackHandler);
                                 } catch (SaslException e) {
-                                    connection.handleException(e);
+                                    server.trace("Unable to create SaslServer", e);
                                     return null;
                                 }
                             }
                         }, accessControlContext);
                         if (saslServer == null) {
-                            // bail out
+                            rejectAuthentication(mechName);
                             return;
                         }
                         connection.getChannel().suspendReads();
@@ -352,6 +341,22 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 return;
             } finally {
                 if (free) pooledBuffer.free();
+            }
+        }
+
+        void rejectAuthentication(String mechName) {
+            // reject
+            authLog.rejectedInvalidMechanism(mechName);
+            final Pooled<ByteBuffer> pooled = connection.allocate();
+            boolean ok = false;
+            try {
+                final ByteBuffer sendBuffer = pooled.getResource();
+                sendBuffer.put(Protocol.AUTH_REJECTED);
+                sendBuffer.flip();
+                connection.send(pooled);
+                ok = true;
+            } finally {
+                if (! ok) pooled.free();
             }
         }
 
