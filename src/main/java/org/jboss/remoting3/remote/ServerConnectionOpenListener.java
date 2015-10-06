@@ -258,31 +258,19 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         }
                         final SaslServerFactory saslServerFactory = allowedMechanisms.get(mechName);
                         if (saslServerFactory == null) {
-                            // reject
-                            authLog.rejectedInvalidMechanism(mechName);
-                            final Pooled<ByteBuffer> pooled = connection.allocate();
-                            boolean ok = false;
-                            try {
-                                final ByteBuffer sendBuffer = pooled.getResource();
-                                sendBuffer.put(Protocol.AUTH_REJECTED);
-                                sendBuffer.flip();
-                                connection.send(pooled);
-                                ok = true;
-                                return;
-                            } finally {
-                                if (! ok) pooled.free();
-                            }
+                            rejectAuthentication(mechName);
+                            return;
                         }
                         final String protocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
-                        final SaslServer saslServer;
+                        SaslServer saslServer;
                         try {
                             saslServer = securityDomain.createNewAuthenticationContext().createSaslServer(saslServerFactory, mechName);
                         } catch (SaslException e) {
-                            // bail out
-                            return;
+                            server.trace("Unable to create SaslServer", e);
+                            saslServer = null;
                         }
                         if (saslServer == null) {
-                            // bail out
+                            rejectAuthentication(mechName);
                             return;
                         }
                         connection.getChannel().suspendReads();
@@ -301,6 +289,22 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 return;
             } finally {
                 if (free) pooledBuffer.free();
+            }
+        }
+
+        void rejectAuthentication(String mechName) {
+            // reject
+            authLog.rejectedInvalidMechanism(mechName);
+            final Pooled<ByteBuffer> pooled = connection.allocate();
+            boolean ok = false;
+            try {
+                final ByteBuffer sendBuffer = pooled.getResource();
+                sendBuffer.put(Protocol.AUTH_REJECTED);
+                sendBuffer.flip();
+                connection.send(pooled);
+                ok = true;
+            } finally {
+                if (! ok) pooled.free();
             }
         }
 
