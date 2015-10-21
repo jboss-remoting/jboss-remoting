@@ -178,22 +178,20 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             boolean free = true;
             try {
                 final ByteBuffer receiveBuffer = pooledBuffer.getResource();
-                synchronized (connection.getLock()) {
-                    final int res;
-                    try {
-                        res = channel.receive(receiveBuffer);
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
-                    }
-                    if (res == 0) {
-                        return;
-                    }
-                    if (res == -1) {
-                        log.trace("Received connection end-of-stream");
-                        connection.handlePreAuthCloseRequest();
-                        return;
-                    }
+                final int res;
+                try {
+                    res = channel.receive(receiveBuffer);
+                } catch (IOException e) {
+                    connection.handleException(e);
+                    return;
+                }
+                if (res == 0) {
+                    return;
+                }
+                if (res == -1) {
+                    log.trace("Received connection end-of-stream");
+                    connection.handlePreAuthCloseRequest();
+                    return;
                 }
                 receiveBuffer.flip();
                 final byte msgType = receiveBuffer.get();
@@ -507,24 +505,22 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             boolean free = true;
             try {
                 final ByteBuffer buffer = pooledBuffer.getResource();
-                synchronized (connection.getLock()) {
-                    final int res;
-                    try {
-                        res = channel.receive(buffer);
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        saslDispose(saslServer);
-                        return;
-                    }
-                    if (res == -1) {
-                        log.trace("Received connection end-of-stream");
-                        connection.handlePreAuthCloseRequest();
-                        saslDispose(saslServer);
-                        return;
-                    }
-                    if (res == 0) {
-                        return;
-                    }
+                final int res;
+                try {
+                    res = channel.receive(buffer);
+                } catch (IOException e) {
+                    connection.handleException(e);
+                    saslDispose(saslServer);
+                    return;
+                }
+                if (res == -1) {
+                    log.trace("Received connection end-of-stream");
+                    connection.handlePreAuthCloseRequest();
+                    saslDispose(saslServer);
+                    return;
+                }
+                if (res == 0) {
+                    return;
                 }
                 server.tracef("Received %s", buffer);
                 buffer.flip();

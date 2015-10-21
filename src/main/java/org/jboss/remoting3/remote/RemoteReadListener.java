@@ -74,15 +74,13 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
             try {
                 for (;;) try {
                     boolean exit = false;
-                    synchronized (connection.getLock()) {
-                        res = channel.receive(buffer);
-                        if (res == -1) {
-                            log.trace("Received connection end-of-stream");
-                            exit = true;
-                        } else if (res == 0) {
-                            log.trace("No message ready; returning");
-                            return;
-                        }
+                    res = channel.receive(buffer);
+                    if (res == -1) {
+                        log.trace("Received connection end-of-stream");
+                        exit = true;
+                    } else if (res == 0) {
+                        log.trace("No message ready; returning");
+                        return;
                     }
                     if (exit) {
                         channel.shutdownReads();
