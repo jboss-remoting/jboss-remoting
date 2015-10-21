@@ -160,21 +160,19 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
                 final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                synchronized (connection.getLock()) {
-                    int res;
-                    try {
-                        res = channel.receive(receiveBuffer);
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
-                    }
-                    if (res == -1) {
-                        connection.handleException(client.abruptClose(connection));
-                        return;
-                    }
-                    if (res == 0) {
-                        return;
-                    }
+                int res;
+                try {
+                    res = channel.receive(receiveBuffer);
+                } catch (IOException e) {
+                    connection.handleException(e);
+                    return;
+                }
+                if (res == -1) {
+                    connection.handleException(client.abruptClose(connection));
+                    return;
+                }
+                if (res == 0) {
+                    return;
                 }
                 client.tracef("Received %s", receiveBuffer);
                 receiveBuffer.flip();
@@ -252,21 +250,19 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
                 final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                synchronized (connection.getLock()) {
-                    int res;
-                    try {
-                        res = channel.receive(receiveBuffer);
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
-                    }
-                    if (res == -1) {
-                        connection.handleException(client.abruptClose(connection));
-                        return;
-                    }
-                    if (res == 0) {
-                        return;
-                    }
+                int res;
+                try {
+                    res = channel.receive(receiveBuffer);
+                } catch (IOException e) {
+                    connection.handleException(e);
+                    return;
+                }
+                if (res == -1) {
+                    connection.handleException(client.abruptClose(connection));
+                    return;
+                }
+                if (res == 0) {
+                    return;
                 }
                 receiveBuffer.flip();
                 boolean starttls = false;
@@ -540,21 +536,19 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
                 final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                synchronized (connection.getLock()) {
-                    int res;
-                    try {
-                        res = channel.receive(receiveBuffer);
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
-                    }
-                    if (res == -1) {
-                        connection.handleException(client.abruptClose(connection));
-                        return;
-                    }
-                    if (res == 0) {
-                        return;
-                    }
+                int res;
+                try {
+                    res = channel.receive(receiveBuffer);
+                } catch (IOException e) {
+                    connection.handleException(e);
+                    return;
+                }
+                if (res == -1) {
+                    connection.handleException(client.abruptClose(connection));
+                    return;
+                }
+                if (res == 0) {
+                    return;
                 }
                 client.tracef("Received %s", receiveBuffer);
                 receiveBuffer.flip();
@@ -639,23 +633,21 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             boolean free = true;
             try {
                 final ByteBuffer buffer = pooledBuffer.getResource();
-                synchronized (connection.getLock()) {
-                    final int res;
-                    try {
-                        res = channel.receive(buffer);
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        saslDispose(saslClient);
-                        return;
-                    }
-                    if (res == 0) {
-                        return;
-                    }
-                    if (res == -1) {
-                        connection.handleException(client.abruptClose(connection));
-                        saslDispose(saslClient);
-                        return;
-                    }
+                final int res;
+                try {
+                    res = channel.receive(buffer);
+                } catch (IOException e) {
+                    connection.handleException(e);
+                    saslDispose(saslClient);
+                    return;
+                }
+                if (res == 0) {
+                    return;
+                }
+                if (res == -1) {
+                    connection.handleException(client.abruptClose(connection));
+                    saslDispose(saslClient);
+                    return;
                 }
                 buffer.flip();
                 final byte msgType = buffer.get();

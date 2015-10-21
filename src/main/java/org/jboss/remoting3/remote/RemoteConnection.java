@@ -77,11 +77,9 @@ final class RemoteConnection {
 
     void setReadListener(ChannelListener<? super ConnectedMessageChannel> listener, final boolean resume) {
         RemoteLogger.log.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, null, "Setting read listener to %s", listener);
-        synchronized (getLock()) {
-            channel.getReadSetter().set(listener);
-            if (listener != null && resume) {
-                channel.resumeReads();
-            }
+        channel.getReadSetter().set(listener);
+        if (listener != null && resume) {
+            channel.resumeReads();
         }
     }
 
