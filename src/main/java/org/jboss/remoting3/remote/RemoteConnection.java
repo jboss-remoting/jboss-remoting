@@ -249,6 +249,8 @@ final class RemoteConnection {
                             // either this is successful and no more notifications will come, or not and it will be retried
                             // either way we're done here
                             return;
+                        } else {
+                            this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
                         }
                         channel.suspendWrites();
                     }
@@ -307,32 +309,13 @@ final class RemoteConnection {
                         wrapper.wrap(buffer, source);
                         buffer.flip();
                     }
-                    if (queue.isEmpty()) {
-                        final ByteBuffer buffer = pooled.getResource();
-                        if (! channel.send(buffer)) {
-                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
-                            queue.add(pooled);
-                            free = false;
-                            channel.resumeWrites();
-                            return;
-                        }
-                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (direct)", buffer);
-                        if (close) {
-                            channel.shutdownWrites();
-                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel (direct)");
-                            // fall thru to flush
-                        }
-                        if (! channel.flush()) {
-                            channel.resumeWrites();
-                            return;
-                        }
-                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel (direct)");
-                        if (! close) {
-                            this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
-                        }
-                    } else {
-                        queue.add(pooled);
-                        free = false;
+                    final ByteBuffer buffer = pooled.getResource();
+                    RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
+                    final boolean empty = queue.isEmpty();
+                    queue.add(pooled);
+                    free = false;
+                    if (empty) {
+                        channel.resumeWrites();
                     }
                 } catch (IOException e) {
                     handleException(e, false);
