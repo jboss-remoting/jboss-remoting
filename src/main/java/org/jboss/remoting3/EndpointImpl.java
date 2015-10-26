@@ -123,8 +123,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         this.name = name;
         // initialize CPC
         connectionProviderContext = new ConnectionProviderContextImpl();
-        // add default connection providers
-        connectionProviders.put("local", new LocalConnectionProvider(connectionProviderContext, worker));
         // get XNIO worker
         log.tracef("Completed open of %s", this);
     }
