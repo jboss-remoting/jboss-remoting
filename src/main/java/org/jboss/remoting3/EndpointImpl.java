@@ -51,10 +51,12 @@ import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
+import org.xnio.Bits;
 import org.xnio.Cancellable;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoFuture.HandlingNotifier;
+import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
@@ -205,6 +207,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
+    boolean isCloseFlagSet() {
+        return Bits.allAreSet(resourceCountUpdater.get(this), CLOSED_FLAG);
+    }
+
     protected void closeAction() throws IOException {
         synchronized (connectionLock) {
             // Commence phase one shutdown actions
@@ -308,7 +314,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                         connection.addCloseHandler(resourceCloseHandler);
                         connection.addCloseHandler(connectionCloseHandler);
-                        futureResult.setResult(connection);
+                        // see if we were closed in the meantime
+                        if (EndpointImpl.this.isCloseFlagSet()) {
+                            IoUtils.safeClose(connection);
+                            futureResult.setCancelled();
+                        } else {
+                            futureResult.setResult(connection);
+                        }
                     }
                 }, null);
                 final Cancellable connect = connectionProvider.connect(bindAddress, destination, connectOptions,  connHandlerFuture, callbackHandler, xnioSsl);
