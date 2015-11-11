@@ -39,7 +39,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.net.ssl.SSLEngine;
 import javax.security.sasl.SaslClientFactory;
-import javax.security.sasl.SaslServerFactory;
 
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -53,8 +52,7 @@ import org.wildfly.common.Assert;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
-import org.wildfly.security.auth.server.SecurityDomain;
-import org.wildfly.security.sasl.util.PrivilegedSaslServerFactory;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.AbstractConvertingIoFuture;
 import org.xnio.BufferAllocator;
 import org.xnio.Buffers;
@@ -326,10 +324,9 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
 
     final class ProviderInterface implements NetworkServerProvider {
 
-        public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final SecurityDomain securityDomain, SaslServerFactory saslServerFactory) throws IOException {
-            saslServerFactory = new PrivilegedSaslServerFactory(saslServerFactory);
+        public AcceptingChannel<? extends ConnectedStreamChannel> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory) throws IOException {
             final boolean sslCapable = sslEnabled;
-            final AcceptListener acceptListener = new AcceptListener(optionMap, securityDomain, saslServerFactory);
+            final AcceptListener acceptListener = new AcceptListener(optionMap, saslAuthenticationFactory);
             final AcceptingChannel<? extends ConnectedStreamChannel> result;
             if (sslCapable && optionMap.get(Options.SSL_ENABLED, true)) {
                 // todo
@@ -348,22 +345,16 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return super.getExecutor();
     }
 
-    private static IOException sslConfigFailure(final GeneralSecurityException e) {
-        return new IOException("Failed to configure SSL", e);
-    }
-
     private final class AcceptListener implements ChannelListener<AcceptingChannel<? extends ConnectedStreamChannel>> {
 
         private final OptionMap serverOptionMap;
-        private final SecurityDomain securityDomain;
-        private final SaslServerFactory saslServerFactory;
+        private final SaslAuthenticationFactory saslAuthenticationFactory;
         private final Pool<ByteBuffer> messageBufferPool;
         private final Pool<ByteBuffer> framingBufferPool;
 
-        AcceptListener(final OptionMap serverOptionMap, final SecurityDomain securityDomain, final SaslServerFactory saslServerFactory) {
+        AcceptListener(final OptionMap serverOptionMap, final SaslAuthenticationFactory saslAuthenticationFactory) {
             this.serverOptionMap = serverOptionMap;
-            this.securityDomain = securityDomain;
-            this.saslServerFactory = saslServerFactory;
+            this.saslAuthenticationFactory = saslAuthenticationFactory;
             final int messageBufferSize = defaultBufferSize;
             Pool<ByteBuffer> pool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
             messageBufferPool = LEAK_DEBUGGING ? new DebuggingBufferPool(pool) : pool;
@@ -391,7 +382,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
 
             final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, framingBufferPool.allocate(), framingBufferPool.allocate());
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, accepted, messageChannel, serverOptionMap, RemoteConnectionProvider.this);
-            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, securityDomain, saslServerFactory, serverOptionMap);
+            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, saslAuthenticationFactory, serverOptionMap);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
             RemoteLogger.log.tracef("Accepted connection from %s to %s", accepted.getPeerAddress(), accepted.getLocalAddress());
             openListener.handleEvent(messageChannel);

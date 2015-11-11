@@ -2,7 +2,7 @@ package org.jboss.remoting3.spi;
 
 import java.io.IOException;
 
-import org.wildfly.security.auth.server.SecurityDomain;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.OptionMap;
 import org.xnio.channels.ConnectedStreamChannel;
 
@@ -18,11 +18,11 @@ public interface ExternalConnectionProvider {
      * Create a network server.
      *
      * @param optionMap              the server options
-     * @param securityDomain the security domain to authenticate against
+     * @param saslAuthenticationFactory
      * @return the channel adaptor
      * @throws java.io.IOException if the adaptor could not be created
      */
-    ConnectionAdaptor createConnectionAdaptor(final OptionMap optionMap, SecurityDomain securityDomain) throws IOException;
+    ConnectionAdaptor createConnectionAdaptor(final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory) throws IOException;
 
     interface ConnectionAdaptor {
 

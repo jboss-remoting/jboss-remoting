@@ -47,6 +47,7 @@ import javax.security.sasl.SaslServerFactory;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.ssl.SSLUtils;
@@ -68,17 +69,15 @@ import org.xnio.sasl.SaslWrapper;
 final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMessageChannel> {
     private final RemoteConnection connection;
     private final ConnectionProviderContext connectionProviderContext;
-    private final SecurityDomain securityDomain;
-    private final SaslServerFactory saslServerFactory;
+    private final SaslAuthenticationFactory saslAuthenticationFactory;
     private final OptionMap optionMap;
     private final AtomicInteger retryCount = new AtomicInteger(8);
     private final String serverName;
 
-    ServerConnectionOpenListener(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final SecurityDomain securityDomain, final SaslServerFactory saslServerFactory, final OptionMap optionMap) {
+    ServerConnectionOpenListener(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final SaslAuthenticationFactory saslAuthenticationFactory, final OptionMap optionMap) {
         this.connection = connection;
         this.connectionProviderContext = connectionProviderContext;
-        this.securityDomain = securityDomain;
-        this.saslServerFactory = saslServerFactory;
+        this.saslAuthenticationFactory = saslAuthenticationFactory;
         this.optionMap = optionMap;
         if (optionMap.contains(RemotingOptions.SERVER_NAME)) {
             serverName = optionMap.get(RemotingOptions.SERVER_NAME);
@@ -157,8 +156,8 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             } catch (SSLPeerUnverifiedException e) {
                 server.trace("No EXTERNAL mechanism due to unverified SSL peer");
             }
-            final SaslServerFactory saslServerFactory = ServerConnectionOpenListener.this.saslServerFactory;
-            for (String mechName : securityDomain.createNewAuthenticationContext().querySaslServerMechanismNames(saslServerFactory)) {
+            final SaslServerFactory saslServerFactory = saslAuthenticationFactory.getSaslServerFactory();
+            for (String mechName : saslAuthenticationFactory.getMechanismNames()) {
                 if (foundMechanisms.containsKey(mechName)) {
                     server.tracef("Excluding repeated occurrence of mechanism %s", mechName);
                 } else if (! enableExternal && mechName.equals("EXTERNAL")) {
@@ -264,7 +263,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         final String protocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
                         SaslServer saslServer;
                         try {
-                            saslServer = securityDomain.createNewAuthenticationContext().createSaslServer(saslServerFactory, mechName);
+                            saslServer = saslAuthenticationFactory.createMechanism(mechName);
                         } catch (SaslException e) {
                             server.trace("Unable to create SaslServer", e);
                             saslServer = null;

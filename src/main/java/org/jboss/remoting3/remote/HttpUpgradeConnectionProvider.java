@@ -37,14 +37,10 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.security.sasl.SaslServerFactory;
-
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ExternalConnectionProvider;
 import org.wildfly.security.auth.client.AuthenticationContext;
-import org.wildfly.security.auth.server.SecurityDomain;
-import org.wildfly.security.sasl.util.PrivilegedSaslServerFactory;
-import org.wildfly.security.sasl.util.SaslFactories;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.BufferAllocator;
 import org.xnio.Buffers;
 import org.xnio.ByteBufferSlicePool;
@@ -184,21 +180,19 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
     final class ProviderInterface implements ExternalConnectionProvider {
 
-        public ConnectionAdaptor createConnectionAdaptor(final OptionMap optionMap, final SecurityDomain securityDomain) throws IOException {
-            return new ConnectionAdaptorImpl(optionMap, securityDomain);
+        public ConnectionAdaptor createConnectionAdaptor(final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory) throws IOException {
+            return new ConnectionAdaptorImpl(optionMap, saslAuthenticationFactory);
         }
     }
 
     private final class ConnectionAdaptorImpl implements ExternalConnectionProvider.ConnectionAdaptor {
         private final OptionMap optionMap;
-        private final SecurityDomain securityDomain;
-        private final SaslServerFactory saslServerFactory;
+        private final SaslAuthenticationFactory saslAuthenticationFactory;
 
-        ConnectionAdaptorImpl(final OptionMap optionMap, final SecurityDomain securityDomain) {
+        ConnectionAdaptorImpl(final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory) {
             this.optionMap = optionMap;
-            this.securityDomain = securityDomain;
-            this.saslServerFactory = new PrivilegedSaslServerFactory(SaslFactories.getSearchSaslServerFactory(getClass().getClassLoader()));
             // TODO: server name, protocol name
+            this.saslAuthenticationFactory = saslAuthenticationFactory;
         }
 
         @Override
@@ -219,7 +213,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
             final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, channel, messageChannel, optionMap, HttpUpgradeConnectionProvider.this);
-            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), securityDomain, saslServerFactory, optionMap);
+            final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), saslAuthenticationFactory, optionMap);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
             RemoteLogger.log.tracef("Accepted connection from %s to %s", channel.getPeerAddress(), channel.getLocalAddress());
             openListener.handleEvent(messageChannel);
