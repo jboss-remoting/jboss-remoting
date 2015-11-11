@@ -25,6 +25,7 @@
             <rule>
                 <set-user-name name="bob"/>
                 <clear-password password="pass"/>
+                <use-realm name="localhost"/>
                 <allow-sasl-mechanisms names="SCRAM-SHA-256"/>
             </rule>
         </rules>

@@ -61,7 +61,9 @@ import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
+import org.wildfly.security.sasl.util.ProtocolSaslServerFactory;
 import org.wildfly.security.sasl.util.SaslMechanismInformation;
+import org.wildfly.security.sasl.util.ServerNameSaslServerFactory;
 import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
@@ -96,7 +98,12 @@ public final class ConfigurationRemoteChannelTest extends ChannelTestBase {
         domainBuilder.setDefaultRealmName("mainRealm");
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
         mainRealm.setPasswordMap("bob", "clear-password", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
-        final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(RemoteChannelTest.class.getClassLoader());
+        final SaslServerFactory saslServerFactory =
+                new ProtocolSaslServerFactory(
+                        new ServerNameSaslServerFactory(
+                                new ServiceLoaderSaslServerFactory(RemoteChannelTest.class.getClassLoader()),
+                                "localhost"),
+                        "remoting");
         final SaslAuthenticationFactory.Builder builder = SaslAuthenticationFactory.builder();
         builder.setSecurityDomain(domainBuilder.build());
         builder.setSaslServerFactory(saslServerFactory);
