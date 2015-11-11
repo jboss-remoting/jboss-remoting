@@ -74,7 +74,6 @@ import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
-import org.xnio.Sequence;
 import org.xnio.XnioWorker;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.ConnectedStreamChannel;
@@ -129,7 +128,7 @@ public class ConnectionTestCase {
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
         mainRealm.setPasswordMap("bob", "clear-password", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
         final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(getClass().getClassLoader());
-        final SaslAuthenticationFactory.Builder builder = new SaslAuthenticationFactory.Builder();
+        final SaslAuthenticationFactory.Builder builder = SaslAuthenticationFactory.builder();
         builder.setSecurityDomain(domainBuilder.build());
         builder.setSaslServerFactory(saslServerFactory);
         builder.addMechanism(SaslMechanismInformation.Names.SCRAM_SHA_256, MechanismConfiguration.EMPTY);

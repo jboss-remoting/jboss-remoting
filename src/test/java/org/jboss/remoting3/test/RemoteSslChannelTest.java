@@ -91,7 +91,7 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
         mainRealm.setPasswordMap("bob", "clear-password", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
         final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(RemoteSslChannelTest.class.getClassLoader());
-        final SaslAuthenticationFactory.Builder builder = new SaslAuthenticationFactory.Builder();
+        final SaslAuthenticationFactory.Builder builder = SaslAuthenticationFactory.builder();
         builder.setSecurityDomain(domainBuilder.build());
         builder.setSaslServerFactory(saslServerFactory);
         builder.addMechanism(SaslMechanismInformation.Names.SCRAM_SHA_256, MechanismConfiguration.EMPTY);
