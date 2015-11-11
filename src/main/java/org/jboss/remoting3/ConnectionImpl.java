@@ -24,6 +24,7 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.net.URI;
 
 import javax.net.ssl.SSLSession;
 
@@ -41,10 +42,12 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
 
     private final ConnectionHandler connectionHandler;
     private final Endpoint endpoint;
+    private final URI peerUri;
 
-    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext) {
+    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final URI peerUri) {
         super(endpoint.getExecutor(), true);
         this.endpoint = endpoint;
+        this.peerUri = peerUri;
         connectionHandler = connectionHandlerFactory.createInstance(endpoint.new LocalConnectionContext(connectionProviderContext, this));
     }
 
@@ -82,6 +85,10 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
 
     public Endpoint getEndpoint() {
         return endpoint;
+    }
+
+    public URI getPeerURI() {
+        return peerUri;
     }
 
     public Attachments getAttachments() {

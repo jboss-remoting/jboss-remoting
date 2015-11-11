@@ -155,6 +155,14 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
     IoFuture<Connection> connect(URI destination, OptionMap connectOptions, AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException;
 
     /**
+     * Try to ascertain whether there is currently a valid connection to the given URI.
+     *
+     * @param uri the URI
+     * @return {@code true} if there is likely to be a valid connection, or {@code false} if there is not likely to be a valid connection
+     */
+    boolean isConnected(URI uri);
+
+    /**
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can
      * be used to accept new connections or terminate the registration.
      * <p/>

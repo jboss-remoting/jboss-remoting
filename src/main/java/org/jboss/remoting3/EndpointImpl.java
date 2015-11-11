@@ -413,7 +413,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
                     public void handleDone(final ConnectionHandlerFactory connHandlerFactory, final Void attachment) {
                         log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                        final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext);
+                        final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext, destination);
                         connections.add(connection);
                         connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                         connection.addCloseHandler(resourceCloseHandler);
@@ -430,6 +430,29 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     closeTick1("a failed connection (1)");
                 }
             }
+        }
+    }
+
+    public boolean isConnected(final URI uri) {
+        if (uri == null) {
+            return false;
+        }
+        final String scheme = uri.getScheme();
+        if (scheme == null) {
+            return false;
+        }
+        final String host = uri.getHost();
+        if (host == null) {
+            return false;
+        }
+        final int port = uri.getPort();
+        final ConnectionKey connectionKey = new ConnectionKey(host, scheme, port);
+
+        FutureConnection futureConnection = configuredConnections.get(connectionKey);
+        if (futureConnection != null) {
+            return futureConnection.isConnected();
+        } else {
+            return false;
         }
     }
 
@@ -588,7 +611,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 }
                 boolean ok = false;
                 try {
-                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this);
+                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null);
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                     connection.addCloseHandler(connectionCloseHandler);

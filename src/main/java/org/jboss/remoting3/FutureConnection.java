@@ -118,4 +118,9 @@ class FutureConnection {
     public IoFuture<Connection> get() {
         return init();
     }
+
+    boolean isConnected() {
+        final FutureResult<Connection> futureResult = futureConnectionRef.get();
+        return futureResult != null && futureResult.getIoFuture().getStatus() == IoFuture.Status.DONE;
+    }
 }

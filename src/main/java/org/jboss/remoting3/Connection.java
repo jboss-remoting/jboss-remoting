@@ -23,6 +23,7 @@
 package org.jboss.remoting3;
 
 import java.net.SocketAddress;
+import java.net.URI;
 
 import javax.net.ssl.SSLSession;
 
@@ -105,4 +106,11 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * @return the local endpoint
      */
     Endpoint getEndpoint();
+
+    /**
+     * Get the URI of the remote peer.  The URI may be constructed or {@code null} if the connection was accepted rather than established.
+     *
+     * @return the peer URI, or {@code null} if none is available
+     */
+    URI getPeerURI();
 }
