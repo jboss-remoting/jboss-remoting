@@ -208,10 +208,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
             Pool<ByteBuffer> messageBufferPool = RemoteConnectionProvider.USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
             if (RemoteConnectionProvider.LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
             final int framingBufferSize = messageBufferSize + 4;
-            Pool<ByteBuffer> framingBufferPool = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
-            if (RemoteConnectionProvider.LEAK_DEBUGGING) framingBufferPool = new DebuggingBufferPool(framingBufferPool);
-
-            final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
+            final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, ByteBuffer.allocate(framingBufferSize), ByteBuffer.allocate(framingBufferSize));
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, channel, messageChannel, optionMap, HttpUpgradeConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), saslAuthenticationFactory, optionMap);
             messageChannel.getWriteSetter().set(connection.getWriteListener());

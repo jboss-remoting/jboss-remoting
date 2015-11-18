@@ -193,9 +193,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 Pool<ByteBuffer> messageBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
                 if (LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
                 final int framingBufferSize = messageBufferSize + 4;
-                Pool<ByteBuffer> framingBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, framingBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
-                if (LEAK_DEBUGGING) framingBufferPool = new DebuggingBufferPool(framingBufferPool);
-                final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
+                final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, ByteBuffer.allocate(framingBufferSize), ByteBuffer.allocate(framingBufferSize));
                 final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, RemoteConnectionProvider.this);
                 cancellableResult.addCancelHandler(new Cancellable() {
                     @Override
