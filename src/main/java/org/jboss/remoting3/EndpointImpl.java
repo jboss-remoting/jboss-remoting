@@ -193,6 +193,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
+
     void executorUntick(Object opened) {
         // just like resourceUntick - except we allow tasks to be submitted after close begins.
         int old;
@@ -308,19 +309,26 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     }
 
                     public void handleDone(final ConnectionHandlerFactory connHandlerFactory, final Void attachment) {
-                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                        final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext);
-                        connections.add(connection);
-                        connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
-                        connection.addCloseHandler(resourceCloseHandler);
-                        connection.addCloseHandler(connectionCloseHandler);
-                        // see if we were closed in the meantime
-                        if (EndpointImpl.this.isCloseFlagSet()) {
-                            IoUtils.safeClose(connection);
-                            futureResult.setCancelled();
-                        } else {
-                            futureResult.setResult(connection);
-                        }
+                        worker.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
+                                synchronized (EndpointImpl.this.connectionLock) {
+                                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext);
+                                    connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
+                                    connection.addCloseHandler(resourceCloseHandler);
+                                    connection.addCloseHandler(connectionCloseHandler);
+                                    // see if we were closed in the meantime
+                                    if (EndpointImpl.this.isCloseFlagSet()) {
+                                        IoUtils.safeClose(connection);
+                                        futureResult.setCancelled();
+                                    } else {
+                                        connections.add(connection);
+                                        futureResult.setResult(connection);
+                                    }
+                                }
+                            }
+                        });
                     }
                 }, null);
                 final Cancellable connect = connectionProvider.connect(bindAddress, destination, connectOptions,  connHandlerFuture, callbackHandler, xnioSsl);
