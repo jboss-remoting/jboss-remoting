@@ -32,6 +32,7 @@ import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
+import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -89,6 +90,10 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
 
     public URI getPeerURI() {
         return peerUri;
+    }
+
+    public SecurityIdentity getLocalIdentity() {
+        return connectionHandler.getLocalIdentity();
     }
 
     public Attachments getAttachments() {

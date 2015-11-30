@@ -27,6 +27,7 @@ import java.net.URI;
 
 import javax.net.ssl.SSLSession;
 
+import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 
@@ -113,4 +114,11 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * @return the peer URI, or {@code null} if none is available
      */
     URI getPeerURI();
+
+    /**
+     * Get the local identity of this inbound connection.
+     *
+     * @return the local identity, or {@code null} if the connection is outbound
+     */
+    SecurityIdentity getLocalIdentity();
 }

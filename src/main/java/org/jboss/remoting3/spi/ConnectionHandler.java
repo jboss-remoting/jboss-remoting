@@ -28,6 +28,7 @@ import javax.net.ssl.SSLSession;
 
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.HandleableCloseable;
+import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
@@ -75,4 +76,12 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
      * @return the peer address, or {@code null} if there is none
      */
     SocketAddress getPeerAddress();
+
+    /**
+     * Get the local identity corresponding to the peer authentication which was performed on this connection, if it
+     * is an incoming connection.  Outbound connections will always return {@code null} for this property.
+     *
+     * @return the local identity of inbound connections, or {@code null} if the connection is not inbound
+     */
+    SecurityIdentity getLocalIdentity();
 }

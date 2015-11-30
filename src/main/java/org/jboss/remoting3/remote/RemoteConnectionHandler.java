@@ -44,6 +44,7 @@ import org.jboss.remoting3._private.IntIndexMap;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
+import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.Bits;
 import org.xnio.Cancellable;
 import org.xnio.IoUtils;
@@ -402,6 +403,10 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     public SocketAddress getPeerAddress() {
         return remoteConnection.getChannel().getPeerAddress();
+    }
+
+    public SecurityIdentity getLocalIdentity() {
+        return remoteConnection.getIdentity();
     }
 
     protected void closeAction() throws IOException {
