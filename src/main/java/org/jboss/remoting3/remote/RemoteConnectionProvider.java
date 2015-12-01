@@ -23,7 +23,6 @@
 package org.jboss.remoting3.remote;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
-import static org.jboss.remoting3.remote.RemoteLogger.server;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -44,7 +43,6 @@ import javax.security.auth.callback.CallbackHandler;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.CloseHandler;
-import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.security.ServerAuthenticationProvider;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
@@ -66,6 +64,7 @@ import org.xnio.Result;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 import org.xnio.channels.AcceptingChannel;
+import org.xnio.channels.ConnectedSslStreamChannel;
 import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.FramedMessageChannel;
 import org.xnio.ssl.XnioSsl;
@@ -82,12 +81,14 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         boolean usePooling = true;
         boolean leakDebugging = false;
         try {
-            usePooling = Boolean.parseBoolean(System.getProperty("jboss.remoting.pooled-buffers", "false"));
+            usePooling = Boolean.parseBoolean(System.getProperty("jboss.remoting.pooled-buffers", "true"));
             leakDebugging = Boolean.parseBoolean(System.getProperty("jboss.remoting.debug-buffer-leaks", "false"));
         } catch (Throwable ignored) {}
         USE_POOLING = usePooling;
         LEAK_DEBUGGING = leakDebugging;
     }
+
+    static final Pool<ByteBuffer> GLOBAL_POOL = new ByteBufferSlicePool(BufferAllocator.DIRECT_BYTE_BUFFER_ALLOCATOR, 8192, 2048 * 1024);
 
     private final ProviderInterface providerInterface = new ProviderInterface();
     private final Xnio xnio;
@@ -98,7 +99,6 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
     private final Set<RemoteConnectionHandler> handlers = Collections.synchronizedSet(new HashSet<RemoteConnectionHandler>());
     private final MBeanServer server;
     private final ObjectName objectName;
-    private final int defaultBufferSize;
 
     RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
         super(connectionProviderContext.getExecutor());
@@ -106,7 +106,6 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         sslEnabled = optionMap.get(Options.SSL_ENABLED, true);
         xnioWorker = connectionProviderContext.getXnioWorker();
         this.connectionProviderContext = connectionProviderContext;
-        defaultBufferSize = optionMap.get(RemotingOptions.RECEIVE_BUFFER_SIZE, RemotingOptions.DEFAULT_RECEIVE_BUFFER_SIZE);
         MBeanServer server = null;
         ObjectName objectName = null;
         try {
@@ -156,7 +155,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         if (destination == null) {
             throw new IllegalArgumentException("destination address may not be null");
         }
-        if (bindAddress != null && destination != null && bindAddress.getClass() != destination.getClass()) {
+        if (bindAddress != null && bindAddress.getClass() != destination.getClass()) {
             throw new IllegalArgumentException("bind and destination addresses must be of the same type");
         }
         log.tracef("Attempting to connect to \"%s\" with options %s", destination, connectOptions);
@@ -181,13 +180,9 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                 } catch (IOException e) {
                     // ignore
                 }
-                final int messageBufferSize = defaultBufferSize;
-                Pool<ByteBuffer> messageBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+                Pool<ByteBuffer> messageBufferPool = USE_POOLING ? GLOBAL_POOL : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, 8192);
                 if (LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
-                final int framingBufferSize = messageBufferSize + 4;
-                Pool<ByteBuffer> framingBufferPool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, framingBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
-                if (LEAK_DEBUGGING) framingBufferPool = new DebuggingBufferPool(messageBufferPool);
-                final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, framingBufferPool.allocate(), framingBufferPool.allocate());
+                final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, ByteBuffer.allocate(8192 + 4), ByteBuffer.allocate(8192 + 4));
                 final RemoteConnection remoteConnection = new RemoteConnection(messageBufferPool, channel, messageChannel, connectOptions, RemoteConnectionProvider.this);
                 cancellableResult.addCancelHandler(new Cancellable() {
                     @Override
@@ -246,6 +241,14 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
             }
         }, returnedFuture);
         return returnedFuture;
+    }
+
+    protected IoFuture<ConnectedStreamChannel> createConnection(final SocketAddress bindAddress, final SocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
+        return bindAddress == null ? xnioWorker.connectStream(destination, openListener, connectOptions) : xnioWorker.connectStream(bindAddress, destination, openListener, null, connectOptions);
+    }
+
+    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final SocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final XnioSsl xnioSsl, final ChannelListener<ConnectedStreamChannel> openListener) {
+        return bindAddress == null ? xnioSsl.connectSsl(xnioWorker, destination, openListener, connectOptions) : xnioSsl.connectSsl(xnioWorker, (InetSocketAddress) bindAddress, destination, openListener, connectOptions);
     }
 
     public Object getProviderInterface() {
@@ -324,18 +327,13 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
         private final ServerAuthenticationProvider serverAuthenticationProvider;
         private final AccessControlContext accessControlContext;
         private final Pool<ByteBuffer> messageBufferPool;
-        private final Pool<ByteBuffer> framingBufferPool;
 
         AcceptListener(final OptionMap serverOptionMap, final ServerAuthenticationProvider serverAuthenticationProvider, final AccessControlContext accessControlContext) {
             this.serverOptionMap = serverOptionMap;
             this.serverAuthenticationProvider = serverAuthenticationProvider;
             this.accessControlContext = accessControlContext;
-            final int messageBufferSize = defaultBufferSize;
-            Pool<ByteBuffer> pool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+            Pool<ByteBuffer> pool = USE_POOLING ? GLOBAL_POOL : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, 8192);
             messageBufferPool = LEAK_DEBUGGING ? new DebuggingBufferPool(pool) : pool;
-            final int framingBufferSize = messageBufferSize + 4;
-            pool = USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize, framingBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, framingBufferSize);
-            framingBufferPool = LEAK_DEBUGGING ? new DebuggingBufferPool(pool) : pool;
         }
 
         public void handleEvent(final AcceptingChannel<? extends ConnectedStreamChannel> channel) {
@@ -355,7 +353,7 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
                 // ignore
             }
 
-            final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, framingBufferPool.allocate(), framingBufferPool.allocate());
+            final FramedMessageChannel messageChannel = new FramedMessageChannel(accepted, ByteBuffer.allocate(8192 + 4), ByteBuffer.allocate(8192 + 4));
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, accepted, messageChannel, serverOptionMap, RemoteConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, serverAuthenticationProvider, serverOptionMap, accessControlContext);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
@@ -366,5 +364,13 @@ final class RemoteConnectionProvider extends AbstractHandleableCloseable<Connect
 
     public String toString() {
         return String.format("Remoting remote connection provider %x for %s", Integer.valueOf(hashCode()), connectionProviderContext.getEndpoint());
+    }
+
+    protected XnioWorker getXnioWorker() {
+        return xnioWorker;
+    }
+
+    public ConnectionProviderContext getConnectionProviderContext() {
+        return connectionProviderContext;
     }
 }
