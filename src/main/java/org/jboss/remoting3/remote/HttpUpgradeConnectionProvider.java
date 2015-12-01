@@ -43,7 +43,6 @@ import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.BufferAllocator;
 import org.xnio.Buffers;
-import org.xnio.ByteBufferSlicePool;
 import org.xnio.ChannelListener;
 import org.xnio.ChannelListeners;
 import org.xnio.FailedIoFuture;
@@ -204,11 +203,9 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
                 // ignore
             }
 
-            final int messageBufferSize = getDefaultBufferSize();
-            Pool<ByteBuffer> messageBufferPool = RemoteConnectionProvider.USE_POOLING ? new ByteBufferSlicePool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize, messageBufferSize * 2) : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageBufferSize);
+            Pool<ByteBuffer> messageBufferPool = RemoteConnectionProvider.USE_POOLING ? GLOBAL_POOL : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, 8192);
             if (RemoteConnectionProvider.LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
-            final int framingBufferSize = messageBufferSize + 4;
-            final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, ByteBuffer.allocate(framingBufferSize), ByteBuffer.allocate(framingBufferSize));
+            final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, ByteBuffer.allocate(8192 + 4), ByteBuffer.allocate(8192 + 4));
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, channel, messageChannel, optionMap, HttpUpgradeConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), saslAuthenticationFactory, optionMap);
             messageChannel.getWriteSetter().set(connection.getWriteListener());
