@@ -33,8 +33,8 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.security.Principal;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
@@ -42,13 +42,14 @@ import javax.net.ssl.SSLSession;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
-import javax.security.sasl.SaslServerFactory;
 
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityIdentity;
+import org.wildfly.security.sasl.WildFlySasl;
+import org.wildfly.security.sasl.util.ProtocolSaslServerFactory;
 import org.wildfly.security.ssl.SSLUtils;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
@@ -119,7 +120,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
 
     final class Initial implements ChannelListener<ConnectedMessageChannel> {
         private boolean starttls;
-        private Map<String, SaslServerFactory> allowedMechanisms;
+        private Set<String> allowedMechanisms;
         private int version;
         private int channelsIn = 40;
         private int channelsOut = 40;
@@ -135,7 +136,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             final SslChannel sslChannel = connection.getSslChannel();
             final boolean channelSecure = Channels.getOption(connection.getChannel(), Options.SECURE, false);
             starttls = ! (sslChannel == null || channelSecure);
-            final Map<String, SaslServerFactory> foundMechanisms = new LinkedHashMap<String, SaslServerFactory>();
+            final Set<String> foundMechanisms = new LinkedHashSet<String>();
             boolean enableExternal = false;
             try {
                 // only enable EXTERNAL if there is an external auth layer
@@ -155,15 +156,14 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             } catch (SSLPeerUnverifiedException e) {
                 server.trace("No EXTERNAL mechanism due to unverified SSL peer");
             }
-            final SaslServerFactory saslServerFactory = saslAuthenticationFactory.getSaslServerFactory();
             for (String mechName : saslAuthenticationFactory.getMechanismNames()) {
-                if (foundMechanisms.containsKey(mechName)) {
+                if (foundMechanisms.contains(mechName)) {
                     server.tracef("Excluding repeated occurrence of mechanism %s", mechName);
                 } else if (! enableExternal && mechName.equals("EXTERNAL")) {
                     server.trace("Excluding EXTERNAL due to prior config");
                 } else {
                     server.tracef("Added mechanism %s", mechName);
-                    foundMechanisms.put(mechName, saslServerFactory);
+                    foundMechanisms.add(mechName);
                 }
             }
             // No need to re-order as an initial order was not passed in.
@@ -252,15 +252,10 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                         } else {
                             mechName = ProtocolUtils.readString(receiveBuffer);
                         }
-                        final SaslServerFactory saslServerFactory = allowedMechanisms.get(mechName);
-                        if (saslServerFactory == null) {
-                            rejectAuthentication(mechName);
-                            return;
-                        }
                         final String protocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
                         SaslServer saslServer;
                         try {
-                            saslServer = saslAuthenticationFactory.createMechanism(mechName);
+                            saslServer = saslAuthenticationFactory.createMechanism(mechName, saslServerFactory -> new ProtocolSaslServerFactory(saslServerFactory, protocol));
                         } catch (SaslException e) {
                             server.trace("Unable to create SaslServer", e);
                             saslServer = null;
@@ -386,7 +381,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 if (starttls) {
                     ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_STARTTLS);
                 }
-                for (String mechName : allowedMechanisms.keySet()) {
+                for (String mechName : allowedMechanisms) {
                     ProtocolUtils.writeString(sendBuffer, Protocol.CAP_SASL_MECH, mechName);
                 }
                 ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
@@ -445,6 +440,8 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                 final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
                                     connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
                                 connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
+                                final SecurityIdentity identity = (SecurityIdentity) saslServer.getNegotiatedProperty(WildFlySasl.SECURITY_IDENTITY);
+                                connection.setIdentity(identity == null ? saslAuthenticationFactory.getSecurityDomain().getAnonymousSecurityIdentity() : identity);
                                 connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                 return connectionHandler;
                             });
