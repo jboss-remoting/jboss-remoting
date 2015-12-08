@@ -45,7 +45,6 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
-import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Sequence;
@@ -96,7 +95,7 @@ public class OutboundMessageCountTestCase {
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         SimpleServerAuthenticationProvider provider = new SimpleServerAuthenticationProvider();
         provider.addUser("bob", "test", "pass".toCharArray());
-        streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
+        streamServer = networkServerProvider.createServer(new InetSocketAddress(System.getProperty("remote.server.ip.address"), 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), provider, null);
     }
 
     @Before
@@ -113,7 +112,7 @@ public class OutboundMessageCountTestCase {
             public void registrationTerminated() {
             }
         }, OptionMap.EMPTY);
-        IoFuture<Connection> futureConnection = endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.EMPTY, "bob", "test", "pass".toCharArray());
+        IoFuture<Connection> futureConnection = endpoint.connect(new URI("remote://" + System.getProperty("remote.server.ip.address") + ":30123"), OptionMap.EMPTY, "bob", "test", "pass".toCharArray());
         connection = futureConnection.get();
         final OptionMap channelCreationOptions = OptionMap.create(RemotingOptions.MAX_OUTBOUND_MESSAGES, MAX_OUTBOUND_MESSAGES);
         IoFuture<Channel> futureChannel = connection.openChannel("org.jboss.test", channelCreationOptions);

@@ -215,24 +215,18 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <systemProperties>
-                        <property>
-                            <name>java.util.logging.manager</name>
-                            <value>org.jboss.logmanager.LogManager</value>
-                        </property>
-                        <property>
-                            <name>jboss.remoting.leakdebugging</name>
-                            <value>${leak.debug}</value>
-                        </property>
-                        <property>
-                            <name>test.level</name>
-                            <value>${test.level}</value>
-                        </property>
-                        <property>
-                            <name>jboss.remoting.debug-buffer-leaks</name>
-                            <value>${leak.debug}</value>
-                        </property>
-                    </systemProperties>
+                    <systemPropertyVariables>
+                        <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                        <jboss.remoting.leakdebugging>${leak.debug}</jboss.remoting.leakdebugging>
+                        <test.level>${test.level}</test.level>
+                        <jboss.remoting.debug-buffer-leaks>${leak.debug}</jboss.remoting.debug-buffer-leaks>
+                        <user.language>en</user.language>
+                        <user.country>US</user.country>
+                        <remote.server.ip.address>[::1]</remote.server.ip.address>
+                    </systemPropertyVariables>
+                    <environmentVariables>
+                        <LANG>en_US.UTF-8</LANG>
+                    </environmentVariables>
                     <enableAssertions>true</enableAssertions>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                 </configuration>
