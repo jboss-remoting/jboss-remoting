@@ -290,44 +290,50 @@ final class RemoteConnection {
             }
         }
 
-        public void send(Pooled<ByteBuffer> pooled, final boolean close) {
-            synchronized (queue) {
-                XnioExecutor.Key heartKey = this.heartKey;
-                if (heartKey != null) heartKey.remove();
-                if (closed) { pooled.free(); return; }
-                if (close) { closed = true; }
-                final ConnectedMessageChannel channel = getChannel();
-                boolean free = true;
-                try {
-                    final SaslWrapper wrapper = saslWrapper;
-                    if (wrapper != null) {
-                        final ByteBuffer buffer = pooled.getResource();
-                        final ByteBuffer source = buffer.duplicate();
-                        buffer.clear();
-                        wrapper.wrap(buffer, source);
-                        buffer.flip();
-                    }
-                    final ByteBuffer buffer = pooled.getResource();
-                    RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
-                    final boolean empty = queue.isEmpty();
-                    queue.add(pooled);
-                    free = false;
-                    if (empty) {
-                        channel.resumeWrites();
-                    }
-                } catch (IOException e) {
-                    handleException(e, false);
-                    channel.wakeupReads();
-                    Pooled<ByteBuffer> unqueued;
-                    while ((unqueued = queue.poll()) != null) {
-                        unqueued.free();
-                    }
-                } finally {
-                    if (free) {
-                        pooled.free();
+        public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
+            channel.getIoThread().execute(new Runnable() {
+                @Override
+                public void run() {
+
+                    synchronized (queue) {
+                        XnioExecutor.Key heartKey = RemoteWriteListener.this.heartKey;
+                        if (heartKey != null) heartKey.remove();
+                        if (closed) { pooled.free(); return; }
+                        if (close) { closed = true; }
+                        final ConnectedMessageChannel channel = getChannel();
+                        boolean free = true;
+                        try {
+                            final SaslWrapper wrapper = saslWrapper;
+                            if (wrapper != null) {
+                                final ByteBuffer buffer = pooled.getResource();
+                                final ByteBuffer source = buffer.duplicate();
+                                buffer.clear();
+                                wrapper.wrap(buffer, source);
+                                buffer.flip();
+                            }
+                            final ByteBuffer buffer = pooled.getResource();
+                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
+                            final boolean empty = queue.isEmpty();
+                            queue.add(pooled);
+                            free = false;
+                            if (empty) {
+                                channel.resumeWrites();
+                            }
+                        } catch (IOException e) {
+                            handleException(e, false);
+                            channel.wakeupReads();
+                            Pooled<ByteBuffer> unqueued;
+                            while ((unqueued = queue.poll()) != null) {
+                                unqueued.free();
+                            }
+                        } finally {
+                            if (free) {
+                                pooled.free();
+                            }
+                        }
                     }
                 }
-            }
+            });
         }
     }
 
