@@ -219,75 +219,77 @@ final class RemoteConnection {
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
-            synchronized (queue) {
-                assert channel == getChannel();
-                Pooled<ByteBuffer> pooled;
-                final Queue<Pooled<ByteBuffer>> queue = this.queue;
-                try {
-                    while ((pooled = queue.peek()) != null) {
-                        final ByteBuffer buffer = pooled.getResource();
-                        if (channel.send(buffer)) {
-                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
-                            queue.poll().free();
-                        } else {
-                            // try again later
-                            return;
-                        }
-                    }
-                    if (channel.flush()) {
-                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
-                        if (closed) {
-                            terminateHeartbeat();
-                            // End of queue reached; shut down and try to flush the remainder
-                            channel.shutdownWrites();
-                            if (channel.flush()) {
-                                RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
-                                return;
-                            }
-                            // either this is successful and no more notifications will come, or not and it will be retried
-                            // either way we're done here
-                            return;
-                        } else {
-                            this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
-                        }
-                        channel.suspendWrites();
-                    }
-                } catch (IOException e) {
-                    handleException(e, false);
-                    channel.wakeupReads();
-                    while ((pooled = queue.poll()) != null) {
-                        pooled.free();
+            assert Thread.currentThread() == channel.getIoThread();
+            assert channel == getChannel();
+            Pooled<ByteBuffer> pooled;
+            final Queue<Pooled<ByteBuffer>> queue = this.queue;
+            try {
+                while ((pooled = queue.peek()) != null) {
+                    final ByteBuffer buffer = pooled.getResource();
+                    if (channel.send(buffer)) {
+                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
+                        queue.poll().free();
+                    } else {
+                        // try again later
+                        return;
                     }
                 }
-                // else try again later
+                if (channel.flush()) {
+                    RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
+                    if (closed) {
+                        terminateHeartbeat();
+                        // End of queue reached; shut down and try to flush the remainder
+                        channel.shutdownWrites();
+                        if (channel.flush()) {
+                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
+                            return;
+                        }
+                        // either this is successful and no more notifications will come, or not and it will be retried
+                        // either way we're done here
+                        return;
+                    } else {
+                        this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
+                    }
+                    channel.suspendWrites();
+                }
+            } catch (IOException e) {
+                handleException(e, false);
+                channel.wakeupReads();
+                while ((pooled = queue.poll()) != null) {
+                    pooled.free();
+                }
             }
+            // else try again later
         }
 
         public void shutdownWrites() {
-            synchronized (queue) {
-                closed = true;
-                terminateHeartbeat();
-                final ConnectedMessageChannel channel = getChannel();
-                try {
-                    if (! queue.isEmpty()) {
-                        channel.resumeWrites();
-                        return;
-                    }
-                    channel.shutdownWrites();
-                    if (! channel.flush()) {
-                        channel.resumeWrites();
-                        return;
-                    }
-                    RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
-                } catch (IOException e) {
-                    handleException(e, false);
-                    channel.wakeupReads();
-                    Pooled<ByteBuffer> unqueued;
-                    while ((unqueued = queue.poll()) != null) {
-                        unqueued.free();
+            channel.getIoThread().execute(new Runnable() {
+                @Override
+                public void run() {
+                    closed = true;
+                    terminateHeartbeat();
+                    final ConnectedMessageChannel channel = getChannel();
+                    try {
+                        if (! queue.isEmpty()) {
+                            channel.resumeWrites();
+                            return;
+                        }
+                        channel.shutdownWrites();
+                        if (! channel.flush()) {
+                            channel.resumeWrites();
+                            return;
+                        }
+                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
+                    } catch (IOException e) {
+                        handleException(e, false);
+                        channel.wakeupReads();
+                        Pooled<ByteBuffer> unqueued;
+                        while ((unqueued = queue.poll()) != null) {
+                            unqueued.free();
+                        }
                     }
                 }
-            }
+            });
         }
 
         public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
@@ -295,41 +297,39 @@ final class RemoteConnection {
                 @Override
                 public void run() {
 
-                    synchronized (queue) {
-                        XnioExecutor.Key heartKey = RemoteWriteListener.this.heartKey;
-                        if (heartKey != null) heartKey.remove();
-                        if (closed) { pooled.free(); return; }
-                        if (close) { closed = true; }
-                        final ConnectedMessageChannel channel = getChannel();
-                        boolean free = true;
-                        try {
-                            final SaslWrapper wrapper = saslWrapper;
-                            if (wrapper != null) {
-                                final ByteBuffer buffer = pooled.getResource();
-                                final ByteBuffer source = buffer.duplicate();
-                                buffer.clear();
-                                wrapper.wrap(buffer, source);
-                                buffer.flip();
-                            }
+                    XnioExecutor.Key heartKey = RemoteWriteListener.this.heartKey;
+                    if (heartKey != null) heartKey.remove();
+                    if (closed) { pooled.free(); return; }
+                    if (close) { closed = true; }
+                    final ConnectedMessageChannel channel = getChannel();
+                    boolean free = true;
+                    try {
+                        final SaslWrapper wrapper = saslWrapper;
+                        if (wrapper != null) {
                             final ByteBuffer buffer = pooled.getResource();
-                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
-                            final boolean empty = queue.isEmpty();
-                            queue.add(pooled);
-                            free = false;
-                            if (empty) {
-                                channel.resumeWrites();
-                            }
-                        } catch (IOException e) {
-                            handleException(e, false);
-                            channel.wakeupReads();
-                            Pooled<ByteBuffer> unqueued;
-                            while ((unqueued = queue.poll()) != null) {
-                                unqueued.free();
-                            }
-                        } finally {
-                            if (free) {
-                                pooled.free();
-                            }
+                            final ByteBuffer source = buffer.duplicate();
+                            buffer.clear();
+                            wrapper.wrap(buffer, source);
+                            buffer.flip();
+                        }
+                        final ByteBuffer buffer = pooled.getResource();
+                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
+                        final boolean empty = queue.isEmpty();
+                        queue.add(pooled);
+                        free = false;
+                        if (empty) {
+                            channel.resumeWrites();
+                        }
+                    } catch (IOException e) {
+                        handleException(e, false);
+                        channel.wakeupReads();
+                        Pooled<ByteBuffer> unqueued;
+                        while ((unqueued = queue.poll()) != null) {
+                            unqueued.free();
+                        }
+                    } finally {
+                        if (free) {
+                            pooled.free();
                         }
                     }
                 }
