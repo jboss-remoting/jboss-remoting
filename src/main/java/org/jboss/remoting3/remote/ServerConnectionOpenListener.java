@@ -269,15 +269,12 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             ByteBuffer sendBuffer = pooled.getResource();
                             sendBuffer.put(starttls ? Protocol.STARTTLS : Protocol.NAK);
                             sendBuffer.flip();
-                            connection.send(pooled);
-                            ok = true;
-                            if (starttls) {
-                                try {
-                                    connection.getSslChannel().startHandshake();
-                                } catch (IOException e) {
-                                    connection.handleException(e);
-                                }
+                            if(!starttls) {
+                                connection.send(pooled);
+                            } else {
+                                connection.sendStartTls(pooled);
                             }
+                            ok = true;
                             connection.setReadListener(new Initial(), true);
                             return;
                         } finally {
