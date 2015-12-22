@@ -49,6 +49,8 @@ import org.xnio.sasl.SaslWrapper;
  */
 final class RemoteConnection {
 
+    static final Pooled<ByteBuffer> STARTTLS_SENTINEL = Buffers.pooledWrapper(ByteBuffer.allocate(0));
+
     private static final String FQCN = RemoteConnection.class.getName();
     private final Pool<ByteBuffer> messageBufferPool;
     private final ConnectedMessageChannel channel;
@@ -226,12 +228,27 @@ final class RemoteConnection {
                 try {
                     while ((pooled = queue.peek()) != null) {
                         final ByteBuffer buffer = pooled.getResource();
-                        if (channel.send(buffer)) {
-                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
-                            queue.poll().free();
+                        if (buffer.hasRemaining()) {
+                            if (channel.send(buffer)) {
+                                RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
+                                queue.poll().free();
+                            } else {
+                                // try again later
+                                return;
+                            }
                         } else {
-                            // try again later
-                            return;
+                            if (pooled == STARTTLS_SENTINEL) {
+                                if (channel.flush()) {
+                                    final SslChannel sslChannel = getSslChannel();
+                                    assert sslChannel != null; // because STARTTLS would be false in this case
+                                    sslChannel.startHandshake();
+                                } else {
+                                    // try again later
+                                    return;
+                                }
+                            }
+                            // otherwise skip other empty message rather than try and write it
+                            queue.poll().free();
                         }
                     }
                     if (channel.flush()) {
