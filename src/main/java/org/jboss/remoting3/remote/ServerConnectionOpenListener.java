@@ -272,11 +272,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             connection.send(pooled);
                             ok = true;
                             if (starttls) {
-                                try {
-                                    connection.getSslChannel().startHandshake();
-                                } catch (IOException e) {
-                                    connection.handleException(e);
-                                }
+                                connection.send(RemoteConnection.STARTTLS_SENTINEL);
                             }
                             connection.setReadListener(new Initial(), true);
                             return;

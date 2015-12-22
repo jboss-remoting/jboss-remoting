@@ -573,12 +573,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         Channel c = channel;
                         for (;;) {
                             if (c instanceof SslChannel) {
-                                try {
-                                    ((SslChannel)c).startHandshake();
-                                } catch (IOException e) {
-                                    connection.handleException(e, false);
-                                    return;
-                                }
+                                connection.send(RemoteConnection.STARTTLS_SENTINEL);
                                 sendCapRequest(remoteServerName);
                                 return;
                             } else if (c instanceof WrappedChannel) {
