@@ -60,6 +60,7 @@ final class RemoteConnection {
     private volatile Result<ConnectionHandlerFactory> result;
     private volatile SaslWrapper saslWrapper;
     private final RemoteConnectionProvider remoteConnectionProvider;
+    private volatile Pooled<ByteBuffer> startTlsMessage;
 
     RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedStreamChannel underlyingChannel, final ConnectedMessageChannel channel, final OptionMap optionMap, final RemoteConnectionProvider remoteConnectionProvider) {
         this.messageBufferPool = messageBufferPool;
@@ -209,11 +210,17 @@ final class RemoteConnection {
         return writeListener.queue;
     }
 
+    void sendStartTls(Pooled<ByteBuffer> pooled) {
+        startTlsMessage = pooled;
+        writeListener.send(pooled, false);
+    }
+
     final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {
 
         private final Queue<Pooled<ByteBuffer>> queue = new ArrayDeque<Pooled<ByteBuffer>>();
         private XnioExecutor.Key heartKey;
         private boolean closed;
+        private boolean startingTls;
 
         RemoteWriteListener() {
         }
@@ -224,11 +231,27 @@ final class RemoteConnection {
                 Pooled<ByteBuffer> pooled;
                 final Queue<Pooled<ByteBuffer>> queue = this.queue;
                 try {
+                    if(startingTls) {
+                        if(!channel.flush()) {
+                            return;
+                        }
+                        startTlsMessage = null;
+                        getSslChannel().startHandshake();
+                        startingTls = false;
+                    }
                     while ((pooled = queue.peek()) != null) {
                         final ByteBuffer buffer = pooled.getResource();
                         if (channel.send(buffer)) {
                             RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
                             queue.poll().free();
+                            if(pooled == startTlsMessage) {
+                                if(!channel.flush()) {
+                                    startingTls = true;
+                                    return;
+                                }
+                                startTlsMessage = null;
+                                getSslChannel().startHandshake();
+                            }
                         } else {
                             // try again later
                             return;
@@ -298,8 +321,13 @@ final class RemoteConnection {
                     synchronized (queue) {
                         XnioExecutor.Key heartKey = RemoteWriteListener.this.heartKey;
                         if (heartKey != null) heartKey.remove();
-                        if (closed) { pooled.free(); return; }
-                        if (close) { closed = true; }
+                        if (closed) {
+                            pooled.free();
+                            return;
+                        }
+                        if (close) {
+                            closed = true;
+                        }
                         final ConnectedMessageChannel channel = getChannel();
                         boolean free = true;
                         try {
