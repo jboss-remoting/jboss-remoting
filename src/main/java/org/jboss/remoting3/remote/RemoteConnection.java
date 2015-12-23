@@ -49,7 +49,23 @@ import org.xnio.sasl.SaslWrapper;
  */
 final class RemoteConnection {
 
-    static final Pooled<ByteBuffer> STARTTLS_SENTINEL = Buffers.pooledWrapper(ByteBuffer.allocate(0));
+    static final Pooled<ByteBuffer> STARTTLS_SENTINEL = new Pooled<ByteBuffer>() {
+        final ByteBuffer data = ByteBuffer.allocate(0);
+        @Override
+        public void discard() {
+            //ignore
+        }
+
+        @Override
+        public void free() {
+            //ignore
+        }
+
+        @Override
+        public ByteBuffer getResource() throws IllegalStateException {
+            return data;
+        }
+    };
 
     private static final String FQCN = RemoteConnection.class.getName();
     private final Pool<ByteBuffer> messageBufferPool;
