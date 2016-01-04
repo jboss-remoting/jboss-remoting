@@ -61,6 +61,10 @@ final class DebuggingBufferPool implements Pool<ByteBuffer> {
                 real.free();
             }
 
+            public void close() {
+                free();
+            }
+
             public ByteBuffer getResource() throws IllegalStateException {
                 final ByteBuffer buffer = real.getResource();
                 synchronized (this) {
