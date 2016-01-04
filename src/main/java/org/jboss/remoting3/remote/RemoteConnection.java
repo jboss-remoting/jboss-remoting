@@ -49,7 +49,7 @@ import org.xnio.sasl.SaslWrapper;
  */
 final class RemoteConnection {
 
-    static final Pooled<ByteBuffer> STARTTLS_SENTINEL = Buffers.pooledWrapper(ByteBuffer.allocate(0));
+    static final Pooled<ByteBuffer> STARTTLS_SENTINEL = Buffers.emptyPooledByteBuffer();
 
     private static final String FQCN = RemoteConnection.class.getName();
     private final Pool<ByteBuffer> messageBufferPool;
