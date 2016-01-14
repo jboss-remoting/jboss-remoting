@@ -309,7 +309,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     }
 
                     public void handleDone(final ConnectionHandlerFactory connHandlerFactory, final Void attachment) {
-                        worker.execute(new Runnable() {
+                        getExecutor().execute(new Runnable() {
                             @Override
                             public void run() {
                                 log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
