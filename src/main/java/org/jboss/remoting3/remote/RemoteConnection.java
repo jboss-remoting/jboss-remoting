@@ -361,6 +361,6 @@ final class RemoteConnection {
     };
 
     public String toString() {
-        return String.format("Remoting connection %08x to %s", Integer.valueOf(hashCode()), channel.getPeerAddress());
+        return String.format("Remoting connection %08x to %s of %s", Integer.valueOf(hashCode()), channel.getPeerAddress(), getRemoteConnectionProvider().getConnectionProviderContext().getEndpoint());
     }
 }
