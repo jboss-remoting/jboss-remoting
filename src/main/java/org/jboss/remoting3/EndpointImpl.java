@@ -189,7 +189,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
         } while (! resourceCountUpdater.compareAndSet(this, old, old + 1));
         if (log.isTraceEnabled()) {
-            log.tracef("Allocated tick to %d of %s (opened %s)", Integer.valueOf(old + 1), this, opened);
+            log.tracef("Allocated tick to %08x of %s (opened %s)", Integer.valueOf(old + 1), this, opened);
         }
     }
 
@@ -204,7 +204,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
         } while (! resourceCountUpdater.compareAndSet(this, old, old + 1));
         if (log.isTraceEnabled()) {
-            log.tracef("Allocated tick to %d of %s (opened %s)", Integer.valueOf(old + 1), this, opened);
+            log.tracef("Allocated tick to %08x of %s (opened %s)", Integer.valueOf(old + 1), this, opened);
         }
     }
 
