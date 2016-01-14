@@ -96,6 +96,6 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     }
 
     public String toString() {
-        return String.format("Remoting connection <%x>", Integer.valueOf(hashCode()));
+        return String.format("Remoting connection <%x> on %s", Integer.valueOf(hashCode()), endpoint);
     }
 }
