@@ -215,6 +215,9 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
         @Override
         public void adapt(final ConnectedStreamChannel channel) {
+            if (channel.getWorker() != getXnioWorker()) {
+                throw RemoteLogger.log.invalidWorker();
+            }
 
             try {
                 channel.setOption(Options.TCP_NODELAY, Boolean.TRUE);
