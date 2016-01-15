@@ -96,4 +96,7 @@ interface RemoteLogger extends BasicLogger {
     @LogMessage(level = TRACE)
     @Message(value = "Message with unknown protocol ID %d received")
     void unknownProtocolId(int id);
+
+    @Message(id = 211, value = "Invalid XNIO worker; the worker must match the Remoting Endpoint worker")
+    IllegalArgumentException invalidWorker();
 }
