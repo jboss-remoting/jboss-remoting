@@ -315,6 +315,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                                 log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
                                 synchronized (EndpointImpl.this.connectionLock) {
                                     final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext);
+                                    connections.add(connection);
                                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                                     connection.addCloseHandler(resourceCloseHandler);
                                     connection.addCloseHandler(connectionCloseHandler);
@@ -323,7 +324,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                                         IoUtils.safeClose(connection);
                                         futureResult.setCancelled();
                                     } else {
-                                        connections.add(connection);
                                         futureResult.setResult(connection);
                                     }
                                 }
