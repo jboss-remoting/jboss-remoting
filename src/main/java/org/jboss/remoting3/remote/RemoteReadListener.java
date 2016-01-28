@@ -449,6 +449,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                 if (pooled != null) pooled.free();
             }
         } catch (IOException e) {
+            handler.receiveCloseRequest();
             connection.handleException(e);
             IoUtils.safeClose(channel);
         }
