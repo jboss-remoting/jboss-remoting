@@ -23,6 +23,7 @@
 package org.jboss.remoting3.remote;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.xnio.Bits.anyAreSet;
 
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -352,6 +353,12 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
                                 Long.valueOf(outboundMessageSizeOptionValue), Long.valueOf(outboundMessageSize),
                                 Long.valueOf(inboundMessageSizeOptionValue), Long.valueOf(inboundMessageSize)
                             );
+                        }
+                        if (anyAreSet(channelState, RECEIVED_CLOSE_REQ | SENT_CLOSE_REQ)) {
+                            // there's a chance that the connection was closed after the channel open was registered in the map here
+                            pendingChannels.remove(pendingChannel);
+                            result.setCancelled();
+                            return IoUtils.nullCancellable();
                         }
 
                         Pooled<ByteBuffer> pooled = remoteConnection.allocate();
