@@ -181,6 +181,24 @@ public final class StreamUtils {
         return t;
     }
 
+    public static int readPackedSignedInt32(InputStream is) throws IOException {
+        int t;
+        int res;
+        res = readInt8(is);
+        t = res & 0b0111_1111;
+        if (allAreSet(t, 0b0100_0000)) {
+            // sign-extend first 6 bits
+            t |= 0b1111_1111_1100_0000;
+        }
+        if (allAreSet(res, 0b1000_0000)) {
+            do {
+                res = readInt8(is);
+                t = t << 7 | res & 0b0111_1111;
+            } while (allAreSet(res, 0b1000_0000));
+        }
+        return t;
+    }
+
     // write
 
     public static void writeInt8(OutputStream os, int val) throws IOException {
