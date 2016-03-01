@@ -84,4 +84,21 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
      * @return the local identity of inbound connections, or {@code null} if the connection is not inbound
      */
     SecurityIdentity getLocalIdentity();
+
+    /**
+     * Get the local identity associated with the given ID that was previously shared to the peer.
+     *
+     * @param id the numeric ID
+     * @return the identity, or {@code null} if the the given ID is not valid
+     */
+    SecurityIdentity getLocalIdentity(int id);
+
+    /**
+     * The the ID number for the peer identity which is currently associated with the calling thread.  The special
+     * value 0 indicates that the connection's identity is in use; the special value 1 indicates that the anonymous
+     * identity is in use.
+     *
+     * @return the numeric ID
+     */
+    int getPeerIdentityId();
 }

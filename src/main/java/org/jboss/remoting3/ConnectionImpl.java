@@ -96,6 +96,14 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
         return connectionHandler.getLocalIdentity();
     }
 
+    public SecurityIdentity getLocalIdentity(final int id) {
+        return connectionHandler.getLocalIdentity(id);
+    }
+
+    public int getPeerIdentityId() {
+        return connectionHandler.getPeerIdentityId();
+    }
+
     public Attachments getAttachments() {
         return attachments;
     }

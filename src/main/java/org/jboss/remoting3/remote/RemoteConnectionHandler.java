@@ -416,6 +416,16 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         return remoteConnection.getIdentity();
     }
 
+    public SecurityIdentity getLocalIdentity(final int id) {
+        // TODO: remote authentication endpoint
+        return null;
+    }
+
+    public int getPeerIdentityId() {
+        // TODO: remote authentication endpoint
+        return 0;
+    }
+
     protected void closeAction() throws IOException {
         sendCloseRequest();
         remoteConnection.shutdownWrites();
