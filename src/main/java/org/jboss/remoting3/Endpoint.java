@@ -22,12 +22,16 @@
 
 package org.jboss.remoting3;
 
+import static java.security.AccessController.doPrivileged;
+
 import java.io.IOException;
 import java.net.URI;
+import java.security.PrivilegedAction;
 
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
-import org.wildfly.common.selector.DefaultSelector;
+import org.wildfly.common.context.ContextManager;
+import org.wildfly.common.context.Contextual;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -44,8 +48,33 @@ import javax.security.sasl.SaslClientFactory;
  *
  * @apiviz.landmark
  */
-@DefaultSelector(ConfigurationEndpointSelector.class)
-public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable {
+public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Contextual<Endpoint> {
+    /**
+     * The context manager for Remoting endpoints.
+     */
+    ContextManager<Endpoint> ENDPOINT_CONTEXT_MANAGER = doPrivileged((PrivilegedAction<ContextManager<Endpoint>>) () -> {
+        final ContextManager<Endpoint> contextManager = new ContextManager<>(Endpoint.class, "jboss-remoting.endpoint");
+        contextManager.setGlobalDefaultSupplierIfNotSet(ConfigurationEndpointSupplier::new);
+        return contextManager;
+    });
+
+    /**
+     * Get the context manager for Remoting endpoints ({@link #ENDPOINT_CONTEXT_MANAGER}).
+     *
+     * @return the context manager for Remoting endpoints (not {@code null})
+     */
+    default ContextManager<Endpoint> getInstanceContextManager() {
+        return EndpointImpl.ENDPOINT_CONTEXT_MANAGER;
+    }
+
+    /**
+     * Get the currently active Remoting endpoint.  If none is selected, {@code null} is returned.
+     *
+     * @return the currently active Remoting endpoint, or {@code null} if none
+     */
+    static Endpoint getCurrent() {
+        return EndpointGetterHolder.SUPPLIER.get();
+    }
 
     /**
      * Get the name of this endpoint.

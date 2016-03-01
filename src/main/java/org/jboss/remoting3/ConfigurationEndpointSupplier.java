@@ -26,29 +26,27 @@ import java.io.IOError;
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.function.Supplier;
 
 import org.wildfly.client.config.ConfigXMLParseException;
-import org.wildfly.common.selector.Selector;
 
 /**
- * A configuration-based endpoint selector.
+ * A configuration-based endpoint supplier.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public final class ConfigurationEndpointSelector extends Selector<Endpoint> {
+public final class ConfigurationEndpointSupplier implements Supplier<Endpoint> {
     private static final Endpoint CONFIGURED_ENDPOINT;
 
     static {
-        CONFIGURED_ENDPOINT = AccessController.doPrivileged(new PrivilegedAction<Endpoint>() {
-            public Endpoint run() {
+        CONFIGURED_ENDPOINT = AccessController.doPrivileged((PrivilegedAction<Endpoint>) () -> {
+            try {
+                return RemotingXmlParser.parseEndpoint();
+            } catch (ConfigXMLParseException | IOException e) {
                 try {
-                    return RemotingXmlParser.parseEndpoint();
-                } catch (ConfigXMLParseException | IOException e) {
-                    try {
-                        return new EndpointBuilder().build();
-                    } catch (IOException e1) {
-                        throw new IOError(e1);
-                    }
+                    return new EndpointBuilder().build();
+                } catch (IOException e1) {
+                    throw new IOError(e1);
                 }
             }
         });

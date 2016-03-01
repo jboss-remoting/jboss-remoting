@@ -53,7 +53,7 @@
         <logging.version>3.2.1.Final</logging.version>
         <logging-tools.version>1.2.1.Final</logging-tools.version>
         <logmanager.version>1.5.4.Final</logmanager.version>
-        <wildfly-common.version>1.1.0.Final</wildfly-common.version>
+        <wildfly-common.version>1.2.0.Beta1-SNAPSHOT</wildfly-common.version>
         <modules.version>1.4.2.Final</modules.version>
         <junit.version>4.8.2</junit.version>
         <byteman-version>2.2.0.1</byteman-version>
