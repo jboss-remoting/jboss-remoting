@@ -115,7 +115,7 @@ public class TimeOutConnectionTestCase {
                 domainBuilder.addRealm("mainRealm", mainRealm);
                 domainBuilder.setDefaultRealmName("mainRealm");
                 final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-                mainRealm.setPasswordMap("bob", "clear-password", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
+                mainRealm.setPasswordMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
                 // create connect and close endpoint threads
                 IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass")).run(new PrivilegedAction<IoFuture<Connection>>() {
                     public IoFuture<Connection> run() {

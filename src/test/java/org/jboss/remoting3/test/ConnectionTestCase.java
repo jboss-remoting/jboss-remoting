@@ -123,14 +123,15 @@ public class ConnectionTestCase {
         final NetworkServerProvider networkServerProvider = serverEndpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
         final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
-        domainBuilder.addRealm("mainRealm", mainRealm);
+        domainBuilder.addRealm("mainRealm", mainRealm).build();
         domainBuilder.setDefaultRealmName("mainRealm");
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-        mainRealm.setPasswordMap("bob", "clear-password", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
+        mainRealm.setPasswordMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
         final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(getClass().getClassLoader());
         final SaslAuthenticationFactory.Builder builder = SaslAuthenticationFactory.builder();
+        domainBuilder.setPermissionMapper((principal, roles) -> Utils.ALL_PERMISSIONS);
         builder.setSecurityDomain(domainBuilder.build());
-        builder.setSaslServerFactory(saslServerFactory);
+        builder.setFactory(saslServerFactory);
         builder.addMechanism(SaslMechanismInformation.Names.SCRAM_SHA_256, MechanismConfiguration.EMPTY);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
         server = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, saslAuthenticationFactory);

@@ -96,15 +96,16 @@ public class ConnectionCloseTestCase {
         NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
         final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
         final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
-        domainBuilder.addRealm("mainRealm", mainRealm);
+        domainBuilder.addRealm("mainRealm", mainRealm).build();
         domainBuilder.setDefaultRealmName("mainRealm");
+        domainBuilder.setPermissionMapper((principal, roles) -> Utils.ALL_PERMISSIONS);
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-        mainRealm.setPasswordMap("bob", "clear-password", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
+        mainRealm.setPasswordMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
         final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(ConnectionCloseTestCase.class.getClassLoader());
 
         final SaslAuthenticationFactory.Builder builder = SaslAuthenticationFactory.builder();
         builder.setSecurityDomain(domainBuilder.build());
-        builder.setSaslServerFactory(saslServerFactory);
+        builder.setFactory(saslServerFactory);
         builder.addMechanism(SaslMechanismInformation.Names.SCRAM_SHA_256, MechanismConfiguration.EMPTY);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
         streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), saslAuthenticationFactory);
