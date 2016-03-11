@@ -22,20 +22,35 @@
 
 package org.jboss.remoting3.security;
 
-import java.security.BasicPermission;
+import org.wildfly.common.Assert;
+import org.wildfly.security.permission.AbstractNameSetOnlyPermission;
+import org.wildfly.security.util.StringEnumeration;
+import org.wildfly.security.util.StringMapping;
 
 /**
  * This class is for permissions relating to Remoting endpoints.
  */
-public class RemotingPermission extends BasicPermission {
+public class RemotingPermission extends AbstractNameSetOnlyPermission<RemotingPermission> {
 
     private static final long serialVersionUID = 4984517897378387571L;
 
-    public static final RemotingPermission CREATE_ENDPOINT = new RemotingPermission("createEndpoint");
-    public static final RemotingPermission CONNECT = new RemotingPermission("connect");
-    public static final RemotingPermission ADD_CONNECTION_PROVIDER = new RemotingPermission("addConnectionProvider");
-    public static final RemotingPermission REGISTER_SERVICE = new RemotingPermission("registerService");
-    public static final RemotingPermission GET_CONNECTION_PROVIDER_INTERFACE = new RemotingPermission("getConnectionProviderInterface");
+    private static final StringEnumeration names = StringEnumeration.of(
+        "createEndpoint",
+        "connect",
+        "addConnectionProvider",
+        "registerService",
+        "getConnectionProviderInterface"
+    );
+
+    private static final StringMapping<RemotingPermission> mapping = new StringMapping<>(names, RemotingPermission::new);
+
+    public static final RemotingPermission CREATE_ENDPOINT = mapping.getItemById(0);
+    public static final RemotingPermission CONNECT = mapping.getItemById(1);
+    public static final RemotingPermission ADD_CONNECTION_PROVIDER = mapping.getItemById(2);
+    public static final RemotingPermission REGISTER_SERVICE = mapping.getItemById(3);
+    public static final RemotingPermission GET_CONNECTION_PROVIDER_INTERFACE = mapping.getItemById(4);
+
+    public static final RemotingPermission ALL_PERMISSION = new RemotingPermission("*");
 
     /**
      * Creates a new {@code RemotingPermission} object with the specified name.
@@ -47,7 +62,7 @@ public class RemotingPermission extends BasicPermission {
      * @throws IllegalArgumentException if {@code name} is empty
      */
     public RemotingPermission(String name) throws NullPointerException, IllegalArgumentException {
-        super(name);
+        super(name, names);
     }
 
     /**
@@ -61,18 +76,30 @@ public class RemotingPermission extends BasicPermission {
      * @throws NullPointerException if {@code name} is {@code null}
      * @throws IllegalArgumentException if {@code name} is empty
      */
-    public RemotingPermission(String name, String actions) throws NullPointerException, IllegalArgumentException {
-        super(name, actions);
+    public RemotingPermission(String name, @SuppressWarnings("unused") String actions) throws NullPointerException, IllegalArgumentException {
+        super(name, names);
     }
 
-    Object readResolve() {
-        switch (getName()) {
-            case "createEndpoint": return CREATE_ENDPOINT;
-            case "connect": return CONNECT;
-            case "addConnectionProvider": return ADD_CONNECTION_PROVIDER;
-            case "registerService": return REGISTER_SERVICE;
-            case "getConnectionProviderInterface": return GET_CONNECTION_PROVIDER_INTERFACE;
-            default: return this;
-        }
+    /**
+     * Create a new permission which is identical to this one, except with a new {@code name}.
+     *
+     * @param name the name to use
+     * @return the new permission (must not be {@code null})
+     * @throws IllegalArgumentException if the name is not valid
+     */
+    public RemotingPermission withName(final String name) {
+        return forName(name);
+    }
+
+    /**
+     * Get the permission with the given name.
+     *
+     * @param name the name (must not be {@code null})
+     * @return the permission (not {@code null})
+     * @throws IllegalArgumentException if the name is not valid
+     */
+    public static RemotingPermission forName(final String name) {
+        Assert.checkNotNullParam("name", name);
+        return name.equals("*") ? ALL_PERMISSION : mapping.getItemByString(name);
     }
 }
