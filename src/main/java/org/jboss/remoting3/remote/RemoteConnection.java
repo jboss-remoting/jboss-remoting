@@ -50,6 +50,8 @@ import org.xnio.sasl.SaslWrapper;
  */
 final class RemoteConnection {
 
+    static final Pooled<ByteBuffer> STARTTLS_SENTINEL = Buffers.emptyPooledByteBuffer();
+
     private static final String FQCN = RemoteConnection.class.getName();
     private final Pool<ByteBuffer> messageBufferPool;
     private final ConnectedMessageChannel channel;
@@ -236,12 +238,27 @@ final class RemoteConnection {
                 try {
                     while ((pooled = queue.peek()) != null) {
                         final ByteBuffer buffer = pooled.getResource();
-                        if (channel.send(buffer)) {
-                            RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
-                            queue.poll().free();
+                        if (buffer.hasRemaining()) {
+                            if (channel.send(buffer)) {
+                                RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
+                                queue.poll().free();
+                            } else {
+                                // try again later
+                                return;
+                            }
                         } else {
-                            // try again later
-                            return;
+                            if (pooled == STARTTLS_SENTINEL) {
+                                if (channel.flush()) {
+                                    final SslChannel sslChannel = getSslChannel();
+                                    assert sslChannel != null; // because STARTTLS would be false in this case
+                                    sslChannel.startHandshake();
+                                } else {
+                                    // try again later
+                                    return;
+                                }
+                            }
+                            // otherwise skip other empty message rather than try and write it
+                            queue.poll().free();
                         }
                     }
                     if (channel.flush()) {
@@ -300,50 +317,52 @@ final class RemoteConnection {
             }
         }
 
-        public void send(Pooled<ByteBuffer> pooled, final boolean close) {
-            synchronized (queue) {
-                XnioExecutor.Key heartKey = this.heartKey;
-                if (heartKey != null) heartKey.remove();
-                if (closed) { pooled.free(); return; }
-                if (close) { closed = true; }
-                final ConnectedMessageChannel channel = getChannel();
-                boolean free = true;
-                try {
-                    final SaslWrapper wrapper = saslWrapper;
-                    if (wrapper != null) {
+        public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
+            channel.getIoThread().execute(() -> {
+                synchronized (queue) {
+                    XnioExecutor.Key heartKey1 = RemoteWriteListener.this.heartKey;
+                    if (heartKey1 != null) heartKey1.remove();
+                    if (closed) { pooled.free(); return; }
+                    if (close) { closed = true; }
+                    final ConnectedMessageChannel channel1 = getChannel();
+                    boolean free = true;
+                    try {
+                        final SaslWrapper wrapper = saslWrapper;
+                        if (wrapper != null) {
+                            final ByteBuffer buffer = pooled.getResource();
+                            final ByteBuffer source = buffer.duplicate();
+                            buffer.clear();
+                            wrapper.wrap(buffer, source);
+                            buffer.flip();
+                        }
                         final ByteBuffer buffer = pooled.getResource();
-                        final ByteBuffer source = buffer.duplicate();
-                        buffer.clear();
-                        wrapper.wrap(buffer, source);
-                        buffer.flip();
-                    }
-                    final ByteBuffer buffer = pooled.getResource();
-                    RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
-                    final boolean empty = queue.isEmpty();
-                    queue.add(pooled);
-                    free = false;
-                    if (empty) {
-                        channel.resumeWrites();
-                    }
-                } catch (IOException e) {
-                    handleException(e, false);
-                    channel.wakeupReads();
-                    Pooled<ByteBuffer> unqueued;
-                    while ((unqueued = queue.poll()) != null) {
-                        unqueued.free();
-                    }
-                } finally {
-                    if (free) {
-                        pooled.free();
+                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
+                        final boolean empty = queue.isEmpty();
+                        queue.add(pooled);
+                        free = false;
+                        if (empty) {
+                            channel1.resumeWrites();
+                        }
+                    } catch (IOException e) {
+                        handleException(e, false);
+                        channel1.wakeupReads();
+                        Pooled<ByteBuffer> unqueued;
+                        while ((unqueued = queue.poll()) != null) {
+                            unqueued.free();
+                        }
+                    } finally {
+                        if (free) {
+                            pooled.free();
+                        }
                     }
                 }
-            }
+            });
         }
     }
 
     private final Runnable heartbeatCommand = this::sendAlive;
 
     public String toString() {
-        return String.format("Remoting connection %08x to %s", Integer.valueOf(hashCode()), channel.getPeerAddress());
+        return String.format("Remoting connection %08x to %s of %s", Integer.valueOf(hashCode()), channel.getPeerAddress(), getRemoteConnectionProvider().getConnectionProviderContext().getEndpoint());
     }
 }
