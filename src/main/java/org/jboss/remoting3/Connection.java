@@ -27,6 +27,7 @@ import java.net.URI;
 
 import javax.net.ssl.SSLSession;
 
+import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -136,6 +137,7 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * identity is in use.
      *
      * @return the numeric ID
+     * @throws AuthenticationException if an authentication was required to get the ID, but the authentication failed
      */
-    int getPeerIdentityId();
+    int getPeerIdentityId() throws AuthenticationException;
 }
