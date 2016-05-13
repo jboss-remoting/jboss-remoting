@@ -115,7 +115,7 @@ public class OutboundMessageCountTestCase {
         final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
         domainBuilder.addRealm("mainRealm", mainRealm).build();
         domainBuilder.setDefaultRealmName("mainRealm");
-        domainBuilder.setPermissionMapper((principal, roles) -> PermissionVerifier.ALL);
+        domainBuilder.setPermissionMapper((permissionMappable, roles) -> PermissionVerifier.ALL);
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
         mainRealm.setPasswordMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
         final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(OutboundMessageCountTestCase.class.getClassLoader());

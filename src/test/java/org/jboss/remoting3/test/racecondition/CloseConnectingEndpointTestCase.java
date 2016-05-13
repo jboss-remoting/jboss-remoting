@@ -39,7 +39,6 @@ import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.spi.NetworkServerProvider;
-import org.jboss.remoting3.test.Utils;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -118,7 +117,7 @@ public class CloseConnectingEndpointTestCase {
         final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
         domainBuilder.addRealm("mainRealm", mainRealm).build();
         domainBuilder.setDefaultRealmName("mainRealm");
-        domainBuilder.setPermissionMapper((principal, roles) -> PermissionVerifier.ALL);
+        domainBuilder.setPermissionMapper((permissionMappable, roles) -> PermissionVerifier.ALL);
         final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
         mainRealm.setPasswordMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
         final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(getClass().getClassLoader());

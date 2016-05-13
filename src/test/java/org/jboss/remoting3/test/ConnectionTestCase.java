@@ -130,7 +130,7 @@ public class ConnectionTestCase {
         mainRealm.setPasswordMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
         final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(getClass().getClassLoader());
         final SaslAuthenticationFactory.Builder builder = SaslAuthenticationFactory.builder();
-        domainBuilder.setPermissionMapper((principal, roles) -> PermissionVerifier.ALL);
+        domainBuilder.setPermissionMapper((permissionMappable, roles) -> PermissionVerifier.ALL);
         builder.setSecurityDomain(domainBuilder.build());
         builder.setFactory(saslServerFactory);
         builder.addMechanism(SaslMechanismInformation.Names.SCRAM_SHA_256, MechanismConfiguration.EMPTY);
