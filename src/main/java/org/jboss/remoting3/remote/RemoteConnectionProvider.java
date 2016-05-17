@@ -160,7 +160,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         }
         log.tracef("Attempting to connect to \"%s\" with options %s", destination, connectOptions);
         // cancellable that will be returned by this method
-        final FutureResult<ConnectionHandlerFactory> cancellableResult = new FutureResult<ConnectionHandlerFactory>();
+        final FutureResult<ConnectionHandlerFactory> cancellableResult = new FutureResult<ConnectionHandlerFactory>(getXnioWorker());
         cancellableResult.addCancelHandler(new Cancellable() {
             @Override
             public Cancellable cancel() {
