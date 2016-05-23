@@ -29,6 +29,7 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -420,7 +421,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                 final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
                                 sendBuffer.put(Protocol.AUTH_REQUEST);
                                 if (negotiatedVersion < 1) {
-                                    sendBuffer.put(mechanismName.getBytes(Protocol.UTF_8));
+                                    sendBuffer.put(mechanismName.getBytes(StandardCharsets.UTF_8));
                                 } else {
                                     ProtocolUtils.writeString(sendBuffer, mechanismName);
                                     if (response != null) {

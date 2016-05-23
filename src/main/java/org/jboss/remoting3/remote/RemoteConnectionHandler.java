@@ -28,8 +28,10 @@ import static org.xnio.Bits.anyAreSet;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import javax.net.ssl.SSLSession;
@@ -294,7 +296,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     public Cancellable open(final String serviceType, final Result<Channel> result, final OptionMap optionMap) {
         log.tracef("Requesting service open of type %s on %s", serviceType, this);
-        byte[] serviceTypeBytes = serviceType.getBytes(Protocol.UTF_8);
+        byte[] serviceTypeBytes = serviceType.getBytes(StandardCharsets.UTF_8);
         final int serviceTypeLength = serviceTypeBytes.length;
         if (serviceTypeLength > 255) {
             log.tracef("Rejecting service open of type %s on %s due to service type name being too long", serviceType, this);
@@ -331,7 +333,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         }
         boolean ok = false;
         try {
-            final Random random = ProtocolUtils.randomHolder.get();
+            final Random random = ThreadLocalRandom.current();
             for (;;) {
                 id = random.nextInt() | 0x80000000;
                 if (! pendingChannels.containsKey(id)) {

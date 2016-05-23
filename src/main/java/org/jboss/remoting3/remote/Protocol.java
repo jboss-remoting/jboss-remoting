@@ -23,6 +23,7 @@
 package org.jboss.remoting3.remote;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * The "remote" protocol.  Use this class to create an instance of the connection provider for the "remote" protocol.
@@ -266,10 +267,6 @@ final class Protocol {
     // Greeting messages
 
     static final byte GRT_SERVER_NAME = 0; // greeting server name
-
-    // Our charset
-
-    static final Charset UTF_8 = Charset.forName("UTF8");
 
     // Message flags
 

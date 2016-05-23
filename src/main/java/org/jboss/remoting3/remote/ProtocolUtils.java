@@ -23,33 +23,27 @@
 package org.jboss.remoting3.remote;
 
 import java.nio.ByteBuffer;
-import java.util.Random;
+import java.nio.charset.StandardCharsets;
+
 import org.xnio.Buffers;
 
-import static org.jboss.remoting3.remote.Protocol.UTF_8;
 import static org.xnio.Buffers.take;
 
 final class ProtocolUtils {
-
-    static final ThreadLocal<Random> randomHolder = new ThreadLocal<Random>() {
-        protected Random initialValue() {
-            return new Random(System.nanoTime() * 1024L + Thread.currentThread().getId());
-        }
-    };
 
     private ProtocolUtils() {
     }
 
     static void writeString(ByteBuffer buffer, byte type, String data) {
         buffer.put(type);
-        final byte[] bytes = data.getBytes(UTF_8);
+        final byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
         final int length = Math.min(255, bytes.length);
         buffer.put((byte) length);
         buffer.put(bytes, 0, length);
     }
 
     static void writeString(ByteBuffer buffer, String data) {
-        final byte[] bytes = data.getBytes(UTF_8);
+        final byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
         final int length = Math.min(255, bytes.length);
         buffer.put((byte) length);
         buffer.put(bytes, 0, length);
@@ -92,7 +86,7 @@ final class ProtocolUtils {
 
     static String readString(ByteBuffer buffer) {
         int length = buffer.get() & 0xff;
-        return new String(take(buffer, length), UTF_8);
+        return new String(take(buffer, length), StandardCharsets.UTF_8);
     }
 
     static int readInt(final ByteBuffer buffer) {

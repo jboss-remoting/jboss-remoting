@@ -33,6 +33,7 @@ import java.util.Queue;
 import java.util.Random;
 
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.function.ToIntFunction;
 
@@ -294,7 +295,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         openOutboundMessage();
         boolean ok = false;
         try {
-            final Random random = ProtocolUtils.randomHolder.get();
+            final Random random = ThreadLocalRandom.current();
             while (tries > 0) {
                 final int id = random.nextInt() & 0xfffe;
                 if (! outboundMessages.containsKey(id)) {

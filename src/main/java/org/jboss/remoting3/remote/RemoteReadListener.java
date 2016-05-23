@@ -25,6 +25,7 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.RemotingOptions;
@@ -428,7 +429,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     // invalid
                                     break;
                                 }
-                                String reason = new String(Buffers.take(buffer), Protocol.UTF_8);
+                                String reason = new String(Buffers.take(buffer), StandardCharsets.UTF_8);
                                 pendingChannel.getResult().setException(new IOException(reason));
                                 break;
                             }
@@ -465,7 +466,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
             replyBuffer.clear();
             replyBuffer.put(Protocol.SERVICE_ERROR);
             replyBuffer.putInt(channelId);
-            replyBuffer.put(reason.getBytes(Protocol.UTF_8));
+            replyBuffer.put(reason.getBytes(StandardCharsets.UTF_8));
             replyBuffer.flip();
             ok = true;
             // send takes ownership of the buffer
