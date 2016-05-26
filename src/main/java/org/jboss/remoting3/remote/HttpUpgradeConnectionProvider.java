@@ -106,7 +106,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         final String secKey = createSecKey();
         headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
 
-        final FutureResult<ConnectedStreamChannel> future = new FutureResult<ConnectedStreamChannel>();
+        final FutureResult<ConnectedStreamChannel> future = new FutureResult<ConnectedStreamChannel>(getExecutor());
 
         HttpUpgrade.performUpgrade(getXnioWorker(), null, newUri, headers, channel -> {
             AssembledConnectedStreamChannel newChannel = new AssembledConnectedStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
@@ -135,7 +135,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         final String secKey = createSecKey();
         headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
 
-        final FutureResult<ConnectedSslStreamChannel> future = new FutureResult<ConnectedSslStreamChannel>();
+        final FutureResult<ConnectedSslStreamChannel> future = new FutureResult<ConnectedSslStreamChannel>(getExecutor());
 
         // TODO: perform upgrade using existing SSL connection
         HttpUpgrade.performUpgrade(getXnioWorker(), null, null, newUri, headers, channel -> {
