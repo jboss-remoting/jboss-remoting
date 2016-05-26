@@ -33,6 +33,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.regex.Pattern;
@@ -55,9 +56,8 @@ import org.xnio.Bits;
 import org.xnio.Cancellable;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
-import org.xnio.IoFuture.HandlingNotifier;
-import org.xnio.IoUtils;
 import org.xnio.OptionMap;
+import org.xnio.Result;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 import org.xnio.ssl.JsseXnioSsl;
@@ -290,48 +290,54 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
                 }
                 final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
-                final FutureResult<ConnectionHandlerFactory> connHandlerFuture = new FutureResult<ConnectionHandlerFactory>();
                 // Mark the stack because otherwise debugging connect problems can be incredibly tough
                 final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
-                connHandlerFuture.getIoFuture().addNotifier(new HandlingNotifier<ConnectionHandlerFactory, Void>() {
-
-                    public void handleCancelled(final Void attachment) {
+                final Result<ConnectionHandlerFactory> result = new Result<ConnectionHandlerFactory>() {
+                    private final AtomicBoolean flag = new AtomicBoolean();
+                    public boolean setCancelled() {
+                        if (! flag.compareAndSet(false, true)) {
+                            return false;
+                        }
                         log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered cancellation result");
                         closeTick1("a cancelled connection");
                         futureResult.setCancelled();
+                        return true;
                     }
 
-                    public void handleFailed(final IOException exception, final Void attachment) {
+                    public boolean setException(final IOException exception) {
+                        if (! flag.compareAndSet(false, true)) {
+                            return false;
+                        }
                         log.logf(getClass().getName(), Logger.Level.TRACE, exception, "Registered exception result");
                         closeTick1("a failed connection (2)");
                         SpiUtils.glueStackTraces(exception, mark, 1, "asynchronous invocation");
                         futureResult.setException(exception);
+                        return true;
                     }
 
-                    public void handleDone(final ConnectionHandlerFactory connHandlerFactory, final Void attachment) {
-                        getExecutor().execute(new Runnable() {
-                            @Override
-                            public void run() {
-                                log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                                synchronized (EndpointImpl.this.connectionLock) {
-                                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext);
-                                    connections.add(connection);
-                                    connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
-                                    connection.addCloseHandler(resourceCloseHandler);
-                                    connection.addCloseHandler(connectionCloseHandler);
-                                    // see if we were closed in the meantime
-                                    if (EndpointImpl.this.isCloseFlagSet()) {
-                                        IoUtils.safeClose(connection);
-                                        futureResult.setCancelled();
-                                    } else {
-                                        futureResult.setResult(connection);
-                                    }
-                                }
+                    public boolean setResult(final ConnectionHandlerFactory connHandlerFactory) {
+                        if (! flag.compareAndSet(false, true)) {
+                            return false;
+                        }
+                        synchronized (connectionLock) {
+                            log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
+                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext);
+                            connections.add(connection);
+                            connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
+                            connection.addCloseHandler(resourceCloseHandler);
+                            connection.addCloseHandler(connectionCloseHandler);
+                            // see if we were closed in the meantime
+                            if (EndpointImpl.this.isCloseFlagSet()) {
+                                connection.closeAsync();
+                                futureResult.setCancelled();
+                            } else {
+                                futureResult.setResult(connection);
                             }
-                        });
+                        }
+                        return true;
                     }
-                }, null);
-                final Cancellable connect = connectionProvider.connect(bindAddress, destination, connectOptions,  connHandlerFuture, callbackHandler, xnioSsl);
+                };
+                final Cancellable connect = connectionProvider.connect(bindAddress, destination, connectOptions, result, callbackHandler, xnioSsl);
                 ok = true;
                 futureResult.addCancelHandler(connect);
                 return futureResult.getIoFuture();
