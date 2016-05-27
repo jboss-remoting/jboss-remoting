@@ -160,14 +160,8 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         }
         log.tracef("Attempting to connect to \"%s\" with options %s", destination, connectOptions);
         // cancellable that will be returned by this method
-        final FutureResult<ConnectionHandlerFactory> cancellableResult = new FutureResult<ConnectionHandlerFactory>(getXnioWorker());
-        cancellableResult.addCancelHandler(new Cancellable() {
-            @Override
-            public Cancellable cancel() {
-                cancellableResult.setCancelled();
-                return this;
-            }
-        });
+        // do not dispatch to a thread pool, in case the worker or endpoint was shut down in the meantime
+        final FutureResult<ConnectionHandlerFactory> cancellableResult = new FutureResult<ConnectionHandlerFactory>();
         final IoFuture<ConnectionHandlerFactory> returnedFuture = cancellableResult.getIoFuture();
         returnedFuture.addNotifier(IoUtils.<ConnectionHandlerFactory>resultNotifier(), result);
         final boolean sslCapable = sslEnabled;
@@ -187,17 +181,17 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 cancellableResult.addCancelHandler(new Cancellable() {
                     @Override
                     public Cancellable cancel() {
-                        RemoteConnectionHandler.sendCloseRequestBody(remoteConnection);
-                        remoteConnection.handlePreAuthCloseRequest();
+                        if (cancellableResult.setCancelled()) {
+                            RemoteConnectionHandler.sendCloseRequestBody(remoteConnection);
+                            remoteConnection.handlePreAuthCloseRequest();
+                        }
                         return this;
                     }
                 });
-                if (messageChannel.isOpen()) {
-                    remoteConnection.setResult(cancellableResult);
-                    messageChannel.getWriteSetter().set(remoteConnection.getWriteListener());
-                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, connectionProviderContext, callbackHandler, accessControlContext , connectOptions);
-                    openListener.handleEvent(messageChannel);
-                }
+                remoteConnection.setResult(cancellableResult);
+                messageChannel.getWriteSetter().set(remoteConnection.getWriteListener());
+                final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(remoteConnection, connectionProviderContext, callbackHandler, accessControlContext , connectOptions);
+                openListener.handleEvent(messageChannel);
             }
         };
         final IoFuture<? extends ConnectedStreamChannel> future;
@@ -214,6 +208,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         } else {
             future = createConnection(bindAddress, destination, connectOptions, openListener);
         }
+        cancellableResult.addCancelHandler(future);
         pendingInboundConnections.add(returnedFuture);
         // if the connection fails, we need to propagate that
         future.addNotifier(new IoFuture.HandlingNotifier<ConnectedStreamChannel, FutureResult<ConnectionHandlerFactory>>() {
