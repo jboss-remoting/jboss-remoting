@@ -50,6 +50,7 @@ import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.NetworkServerProvider;
+import org.jboss.remoting3.test.util.InetAddressUtil;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -124,7 +125,7 @@ public class OutboundMessageCountTestCase {
         builder.setFactory(saslServerFactory);
         builder.addMechanism(SaslMechanismInformation.Names.SCRAM_SHA_256, MechanismConfiguration.EMPTY);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
-        streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.EMPTY, saslAuthenticationFactory);
+        streamServer = networkServerProvider.createServer(InetAddressUtil.getLocalInetSocketAddress(), OptionMap.EMPTY, saslAuthenticationFactory);
     }
 
     @Before
@@ -144,7 +145,7 @@ public class OutboundMessageCountTestCase {
         IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").allowSaslMechanisms("SCRAM-SHA-256")).run(new PrivilegedAction<IoFuture<Connection>>() {
             public IoFuture<Connection> run() {
                 try {
-                    return endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.EMPTY);
+                    return endpoint.connect(InetAddressUtil.getLocalURI(), OptionMap.EMPTY);
                 } catch (IOException | URISyntaxException e) {
                     throw new RuntimeException(e);
                 }
