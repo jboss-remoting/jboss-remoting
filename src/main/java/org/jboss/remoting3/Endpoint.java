@@ -99,9 +99,8 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      *
      * @param destination the destination URI
      * @return the future (or existing) connection
-     * @throws IOException if an error occurs while starting a connect attempt
      */
-    IoFuture<Connection> getConnection(URI destination) throws IOException;
+    IoFuture<Connection> getConnection(URI destination);
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.

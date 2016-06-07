@@ -340,7 +340,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return registration;
     }
 
-    public IoFuture<Connection> getConnection(final URI destination) throws IOException {
+    public IoFuture<Connection> getConnection(final URI destination) {
         Assert.checkNotNullParam("destination", destination);
         final String scheme = destination.getScheme();
         if (scheme == null) {
