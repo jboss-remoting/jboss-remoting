@@ -68,13 +68,16 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
     public void handleEvent(final ConnectedMessageChannel channel) {
         int res;
         SaslWrapper saslWrapper = connection.getSaslWrapper();
+        final Object lock = connection.getLock();
         try {
             Pooled<ByteBuffer> pooled = connection.allocate();
             ByteBuffer buffer = pooled.getResource();
             try {
                 for (;;) try {
                     boolean exit = false;
-                    res = channel.receive(buffer);
+                    synchronized (lock) {
+                        res = channel.receive(buffer);
+                    }
                     if (res == -1) {
                         log.trace("Received connection end-of-stream");
                         exit = true;
@@ -83,7 +86,9 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                         return;
                     }
                     if (exit) {
-                        channel.shutdownReads();
+                        synchronized (lock) {
+                            channel.shutdownReads();
+                        }
                         handler.receiveCloseRequest();
                         return;
                     }
@@ -451,7 +456,9 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
         } catch (IOException e) {
             handler.receiveCloseRequest();
             connection.handleException(e);
-            IoUtils.safeClose(channel);
+            synchronized (lock) {
+                IoUtils.safeClose(channel);
+            }
         }
     }
 
