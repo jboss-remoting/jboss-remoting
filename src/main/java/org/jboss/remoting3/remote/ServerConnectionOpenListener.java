@@ -28,7 +28,6 @@ import static org.jboss.remoting3.remote.RemoteLogger.log;
 import static org.jboss.remoting3.remote.RemoteLogger.server;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -57,8 +56,8 @@ import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pooled;
 import org.xnio.channels.Channels;
-import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.SslChannel;
+import org.xnio.conduits.ConduitStreamSourceChannel;
 import org.xnio.sasl.SaslUtils;
 import org.xnio.sasl.SaslWrapper;
 
@@ -66,7 +65,7 @@ import org.xnio.sasl.SaslWrapper;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 @SuppressWarnings("deprecation")
-final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMessageChannel> {
+final class ServerConnectionOpenListener  implements ChannelListener<ConduitStreamSourceChannel> {
     private final RemoteConnection connection;
     private final ConnectionProviderContext connectionProviderContext;
     private final SaslAuthenticationFactory saslAuthenticationFactory;
@@ -82,13 +81,13 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         if (optionMap.contains(RemotingOptions.SERVER_NAME)) {
             serverName = optionMap.get(RemotingOptions.SERVER_NAME);
         } else {
-            serverName = connection.getChannel().getLocalAddress(InetSocketAddress.class).getHostName();
+            serverName = connection.getLocalAddress().getHostName();
         }
     }
 
 
 
-    public void handleEvent(final ConnectedMessageChannel channel) {
+    public void handleEvent(final ConduitStreamSourceChannel channel) {
         final Pooled<ByteBuffer> pooled = connection.allocate();
         boolean ok = false;
         try {
@@ -101,7 +100,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             ok = true;
             return;
         } catch (BufferUnderflowException | BufferOverflowException e) {
-            connection.handleException(RemoteLogger.log.invalidMessage(connection));
+            connection.handleException(log.invalidMessage(connection));
             return;
         } finally {
             if (! ok) pooled.free();
@@ -118,7 +117,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         }
     }
 
-    final class Initial implements ChannelListener<ConnectedMessageChannel> {
+    final class Initial implements ChannelListener<ConduitStreamSourceChannel> {
         private boolean starttls;
         private Set<String> allowedMechanisms;
         private int version;
@@ -134,7 +133,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
 
         void initialiseCapabilities() {
             final SslChannel sslChannel = connection.getSslChannel();
-            final boolean channelSecure = Channels.getOption(connection.getChannel(), Options.SECURE, false);
+            final boolean channelSecure = sslChannel != null && Channels.getOption(sslChannel, Options.SECURE, false);
             starttls = ! (sslChannel == null || channelSecure);
             final Set<String> foundMechanisms = new LinkedHashSet<String>();
             boolean enableExternal = false;
@@ -172,27 +171,26 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
 
 
 
-        public void handleEvent(final ConnectedMessageChannel channel) {
-            final Pooled<ByteBuffer> pooledBuffer = connection.allocate();
+        public void handleEvent(final ConduitStreamSourceChannel channel) {
+            final Pooled<ByteBuffer> message;
+            try {
+                message = connection.getMessageReader().getMessage();
+            } catch (IOException e) {
+                connection.handleException(e);
+                return;
+            }
+            if (message == MessageReader.EOF_MARKER) {
+                log.trace("Received connection end-of-stream");
+                connection.handlePreAuthCloseRequest();
+                return;
+            }
+            if (message == null) {
+                return;
+            }
             boolean free = true;
             try {
-                final ByteBuffer receiveBuffer = pooledBuffer.getResource();
-                final int res;
-                try {
-                    res = channel.receive(receiveBuffer);
-                } catch (IOException e) {
-                    connection.handleException(e);
-                    return;
-                }
-                if (res == 0) {
-                    return;
-                }
-                if (res == -1) {
-                    log.trace("Received connection end-of-stream");
-                    connection.handlePreAuthCloseRequest();
-                    return;
-                }
-                receiveBuffer.flip();
+                final ByteBuffer receiveBuffer = message.getResource();
+                server.tracef("Received %s", receiveBuffer);
                 final byte msgType = receiveBuffer.get();
                 switch (msgType) {
                     case Protocol.CONNECTION_CLOSE: {
@@ -260,22 +258,22 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             rejectAuthentication(mechName);
                             return;
                         }
-                        connection.getChannel().suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, pooledBuffer, remoteEndpointName, behavior, channelsIn, channelsOut));
+                        connection.getMessageReader().suspendReads();
+                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, message, remoteEndpointName, behavior, channelsIn, channelsOut));
                         free = false;
                         return;
                     }
                     default: {
                         server.unknownProtocolId(msgType);
-                        connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                        connection.handleException(log.invalidMessage(connection));
                         break;
                     }
                 }
             } catch (BufferUnderflowException | BufferOverflowException e) {
-                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                connection.handleException(log.invalidMessage(connection));
                 return;
             } finally {
-                if (free) pooledBuffer.free();
+                if (free) message.free();
             }
         }
 
@@ -463,7 +461,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     sendBuffer.flip();
                     connection.send(pooled, close);
                     ok = true;
-                    connection.getChannel().resumeReads();
+                    connection.getMessageReader().resumeReads();
                     return;
                 } finally {
                     if (!ok) {
@@ -476,7 +474,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         }
     }
 
-    final class Authentication implements ChannelListener<ConnectedMessageChannel> {
+    final class Authentication implements ChannelListener<ConduitStreamSourceChannel> {
 
         private final SaslServer saslServer;
         private final String remoteEndpointName;
@@ -492,30 +490,28 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             this.maxOutboundChannels = maxOutboundChannels;
         }
 
-        public void handleEvent(final ConnectedMessageChannel channel) {
-            final Pooled<ByteBuffer> pooledBuffer = connection.allocate();
+        public void handleEvent(final ConduitStreamSourceChannel channel) {
+            final Pooled<ByteBuffer> message;
+            try {
+                message = connection.getMessageReader().getMessage();
+            } catch (IOException e) {
+                connection.handleException(e);
+                saslDispose(saslServer);
+                return;
+            }
+            if (message == MessageReader.EOF_MARKER) {
+                log.trace("Received connection end-of-stream");
+                connection.handlePreAuthCloseRequest();
+                saslDispose(saslServer);
+                return;
+            }
+            if (message == null) {
+                return;
+            }
             boolean free = true;
             try {
-                final ByteBuffer buffer = pooledBuffer.getResource();
-                final int res;
-                try {
-                    res = channel.receive(buffer);
-                } catch (IOException e) {
-                    connection.handleException(e);
-                    saslDispose(saslServer);
-                    return;
-                }
-                if (res == -1) {
-                    log.trace("Received connection end-of-stream");
-                    connection.handlePreAuthCloseRequest();
-                    saslDispose(saslServer);
-                    return;
-                }
-                if (res == 0) {
-                    return;
-                }
+                final ByteBuffer buffer = message.getResource();
                 server.tracef("Received %s", buffer);
-                buffer.flip();
                 final byte msgType = buffer.get();
                 switch (msgType) {
                     case Protocol.CONNECTION_CLOSE: {
@@ -526,8 +522,8 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     }
                     case Protocol.AUTH_RESPONSE: {
                         server.tracef("Server received authentication response");
-                        connection.getChannel().suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, pooledBuffer, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels));
+                        connection.getMessageReader().suspendReads();
+                        connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, message, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels));
                         free = false;
                         return;
                     }
@@ -542,17 +538,17 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     }
                     default: {
                         server.unknownProtocolId(msgType);
-                        connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                        connection.handleException(log.invalidMessage(connection));
                         saslDispose(saslServer);
                         break;
                     }
                 }
             } catch (BufferUnderflowException | BufferOverflowException e) {
-                connection.handleException(RemoteLogger.log.invalidMessage(connection));
+                connection.handleException(log.invalidMessage(connection));
                 saslDispose(saslServer);
                 return;
             } finally {
-                if (free) pooledBuffer.free();
+                if (free) message.free();
             }
         }
     }

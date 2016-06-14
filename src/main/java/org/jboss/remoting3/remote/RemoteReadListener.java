@@ -25,6 +25,7 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.nio.charset.StandardCharsets;
 
 import org.jboss.remoting3.OpenListener;
@@ -36,7 +37,7 @@ import org.xnio.ChannelListener;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Pooled;
-import org.xnio.channels.ConnectedMessageChannel;
+import org.xnio.conduits.ConduitStreamSourceChannel;
 import org.xnio.sasl.SaslWrapper;
 
 import static org.jboss.remoting3.remote.RemoteLogger.log;
@@ -44,56 +45,50 @@ import static org.jboss.remoting3.remote.RemoteLogger.log;
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-final class RemoteReadListener implements ChannelListener<ConnectedMessageChannel> {
+final class RemoteReadListener implements ChannelListener<ConduitStreamSourceChannel> {
 
     private final RemoteConnectionHandler handler;
     private final RemoteConnection connection;
 
     RemoteReadListener(final RemoteConnectionHandler handler, final RemoteConnection connection) {
         synchronized (connection.getLock()) {
-            connection.getChannel().getCloseSetter().set(new ChannelListener<java.nio.channels.Channel>() {
-                public void handleEvent(final java.nio.channels.Channel channel) {
-                    connection.getExecutor().execute(new Runnable() {
-                        public void run() {
-                            handler.handleConnectionClose();
-                            handler.closeComplete();
-                        }
-                    });
-                }
-            });
+            connection.getConnection().getCloseSetter().set((ChannelListener<Channel>) channel -> connection.getExecutor().execute(() -> {
+                handler.handleConnectionClose();
+                handler.closeComplete();
+            }));
         }
         this.handler = handler;
         this.connection = connection;
     }
 
-    public void handleEvent(final ConnectedMessageChannel channel) {
-        int res;
+    public void handleEvent(final ConduitStreamSourceChannel channel) {
         SaslWrapper saslWrapper = connection.getSaslWrapper();
         final Object lock = connection.getLock();
+        final MessageReader messageReader = connection.getMessageReader();
         try {
-            Pooled<ByteBuffer> pooled = connection.allocate();
-            ByteBuffer buffer = pooled.getResource();
+            Pooled<ByteBuffer> message = null;
+            ByteBuffer buffer = null;
             try {
                 for (;;) try {
                     boolean exit = false;
                     synchronized (lock) {
-                        res = channel.receive(buffer);
+                        message = messageReader.getMessage();
                     }
-                    if (res == -1) {
+                    if (message == MessageReader.EOF_MARKER) {
                         log.trace("Received connection end-of-stream");
                         exit = true;
-                    } else if (res == 0) {
+                    } else if (message == null) {
                         log.trace("No message ready; returning");
                         return;
                     }
                     if (exit) {
                         synchronized (lock) {
-                            channel.shutdownReads();
+                            messageReader.shutdownReads();
                         }
                         handler.receiveCloseRequest();
                         return;
                     }
-                    buffer.flip();
+                    buffer = message.getResource();
                     if (saslWrapper != null) {
                         final ByteBuffer source = buffer.duplicate();
                         buffer.clear();
@@ -291,10 +286,9 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     log.tracef("Ignoring message data for expired channel");
                                     break;
                                 }
-                                connectionChannel.handleMessageData(pooled);
-                                // need a new buffer now
-                                pooled = connection.allocate();
-                                buffer = pooled.getResource();
+                                connectionChannel.handleMessageData(message);
+                                message = null;
+                                buffer = null;
                                 break;
                             }
                             case Protocol.MESSAGE_WINDOW_OPEN: {
@@ -306,7 +300,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                     log.tracef("Ignoring window open for expired channel");
                                     break;
                                 }
-                                connectionChannel.handleWindowOpen(pooled);
+                                connectionChannel.handleWindowOpen(message);
                                 break;
                             }
                             case Protocol.MESSAGE_CLOSE: {
@@ -316,7 +310,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                                 if (connectionChannel == null) {
                                     break;
                                 }
-                                connectionChannel.handleAsyncClose(pooled);
+                                connectionChannel.handleAsyncClose(message);
                                 break;
                             }
                             case Protocol.CHANNEL_CLOSED: {
@@ -452,7 +446,7 @@ final class RemoteReadListener implements ChannelListener<ConnectedMessageChanne
                     if (buffer != null) buffer.clear();
                 }
             } finally {
-                if (pooled != null) pooled.free();
+                if (message != null) message.free();
             }
         } catch (IOException e) {
             connection.handleException(e);

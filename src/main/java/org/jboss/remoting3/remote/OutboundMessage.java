@@ -34,9 +34,9 @@ import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.NotOpenException;
 import org.xnio.BrokenPipeException;
+import org.xnio.Connection;
 import org.xnio.IoUtils;
 import org.xnio.Pooled;
-import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.streams.BufferPipeOutputStream;
 
 /**
@@ -98,7 +98,7 @@ final class OutboundMessage extends MessageOutputStream {
                     pipeOutputStream.notifyAll();
                 }
                 final ByteBuffer buffer = pooledBuffer.getResource();
-                final ConnectedMessageChannel messageChannel = channel.getRemoteConnection().getChannel();
+                final Connection connection = channel.getRemoteConnection().getConnection();
                 final boolean badMsgSize = channel.getConnectionHandler().isFaultyMessageSize();
                 final int msgSize = badMsgSize ? buffer.remaining() : buffer.remaining() - 8;
                 boolean sendCancel = cancelled && ! cancelSent;
@@ -136,7 +136,7 @@ final class OutboundMessage extends MessageOutputStream {
                     // EOF flag (sync close)
                     eofSent = true;
                     buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_EOF));
-                    log.tracef("Sending message (with EOF) (%s) to %s", buffer, messageChannel);
+                    log.tracef("Sending message (with EOF) (%s) to %s", buffer, connection);
                     if (! channel.getConnectionHandler().isMessageClose()) {
                         // free now, because we may never receive a close message
                         channel.free(OutboundMessage.this);

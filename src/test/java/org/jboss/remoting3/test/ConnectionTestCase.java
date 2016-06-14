@@ -25,6 +25,7 @@ package org.jboss.remoting3.test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -76,8 +77,6 @@ import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.XnioWorker;
-import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -87,7 +86,7 @@ public class ConnectionTestCase {
     protected final Endpoint clientEndpoint;
     protected final Endpoint serverEndpoint;
 
-    private AcceptingChannel<? extends ConnectedStreamChannel> server;
+    private Closeable server;
 
     private static String providerName;
 

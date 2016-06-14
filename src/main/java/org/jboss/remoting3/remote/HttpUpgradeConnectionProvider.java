@@ -28,7 +28,6 @@ import java.lang.reflect.Constructor;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -36,13 +35,12 @@ import java.security.PrivilegedExceptionAction;
 import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ExternalConnectionProvider;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
-import org.xnio.BufferAllocator;
-import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.ChannelListeners;
 import org.xnio.FailedIoFuture;
@@ -50,14 +48,12 @@ import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.Options;
-import org.xnio.Pool;
-import org.xnio.channels.AssembledConnectedSslStreamChannel;
-import org.xnio.channels.AssembledConnectedStreamChannel;
-import org.xnio.channels.ConnectedSslStreamChannel;
-import org.xnio.channels.ConnectedStreamChannel;
-import org.xnio.channels.FramedMessageChannel;
+import org.xnio.StreamConnection;
+import org.xnio.channels.SslChannel;
+import org.xnio.conduits.ConduitStreamSourceChannel;
 import org.xnio.http.HandshakeChecker;
 import org.xnio.http.HttpUpgrade;
+import org.xnio.ssl.SslConnection;
 
 /**
  *
@@ -94,24 +90,22 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         super(optionMap, connectionProviderContext);
     }
 
-    protected IoFuture<ConnectedStreamChannel> createConnection(final URI uri, final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<ConnectedStreamChannel> openListener) {
+    protected IoFuture<StreamConnection> createConnection(final URI uri, final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<StreamConnection> openListener) {
         final URI newUri;
         try {
             newUri = new URI("http", "", uri.getHost(), uri.getPort(), "/", "", "");
         } catch (URISyntaxException e) {
-            return new FailedIoFuture<ConnectedStreamChannel>(new IOException(e));
+            return new FailedIoFuture<>(new IOException(e));
         }
         final Map<String, String> headers = new HashMap<String, String>();
         headers.put(UPGRADE, "jboss-remoting");
         final String secKey = createSecKey();
         headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
 
-        final FutureResult<ConnectedStreamChannel> future = new FutureResult<ConnectedStreamChannel>(getExecutor());
+        final FutureResult<StreamConnection> future = new FutureResult<>(getExecutor());
 
         HttpUpgrade.performUpgrade(getXnioWorker(), null, newUri, headers, channel -> {
-            AssembledConnectedStreamChannel newChannel = new AssembledConnectedStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
-            future.setResult(newChannel);
-            ChannelListeners.invokeChannelListener(newChannel, openListener);
+            ChannelListeners.invokeChannelListener(channel, openListener);
         }, null, connectOptions, new RemotingHandshakeChecker(secKey))
                 .addNotifier((ioFuture, attachment) -> {
                     if (ioFuture.getStatus() == IoFuture.Status.FAILED) {
@@ -122,12 +116,12 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         return future.getIoFuture();
     }
 
-    protected IoFuture<ConnectedSslStreamChannel> createSslConnection(final URI uri, final InetSocketAddress destination, final OptionMap options, final AuthenticationContext authenticationContext, final ChannelListener<ConnectedStreamChannel> openListener) {
+    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress destination, final OptionMap options, final AuthenticationContext authenticationContext, final ChannelListener<StreamConnection> openListener) {
         final URI newUri;
         try {
             newUri = new URI("https", "", uri.getHost(), uri.getPort(), "/", "", "");
         } catch (URISyntaxException e) {
-            return new FailedIoFuture<ConnectedSslStreamChannel>(new IOException(e));
+            return new FailedIoFuture<>(new IOException(e));
         }
         final OptionMap modifiedOptions = OptionMap.builder().addAll(options).set(Options.SSL_STARTTLS, false).getMap();
         final Map<String, String> headers = new HashMap<String, String>();
@@ -135,13 +129,11 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         final String secKey = createSecKey();
         headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
 
-        final FutureResult<ConnectedSslStreamChannel> future = new FutureResult<ConnectedSslStreamChannel>(getExecutor());
+        final FutureResult<SslConnection> future = new FutureResult<>(getExecutor());
 
         // TODO: perform upgrade using existing SSL connection
         HttpUpgrade.performUpgrade(getXnioWorker(), null, null, newUri, headers, channel -> {
-            AssembledConnectedSslStreamChannel newChannel = new AssembledConnectedSslStreamChannel(channel, channel.getSourceChannel(), channel.getSinkChannel());
-            future.setResult(newChannel);
-            ChannelListeners.invokeChannelListener(newChannel, openListener);
+            ChannelListeners.invokeChannelListener(channel, openListener);
         }, null, modifiedOptions, new RemotingHandshakeChecker(secKey))
                 .addNotifier((ioFuture, attachment) -> {
                     if (ioFuture.getStatus() == IoFuture.Status.FAILED) {
@@ -179,12 +171,12 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
     final class ProviderInterface implements ExternalConnectionProvider {
 
-        public ConnectionAdaptor createConnectionAdaptor(final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory) throws IOException {
+        public ConnectionAdaptorImpl createConnectionAdaptor(final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory) throws IOException {
             return new ConnectionAdaptorImpl(optionMap, saslAuthenticationFactory);
         }
     }
 
-    private final class ConnectionAdaptorImpl implements ExternalConnectionProvider.ConnectionAdaptor {
+    private final class ConnectionAdaptorImpl implements Consumer<StreamConnection> {
         private final OptionMap optionMap;
         private final SaslAuthenticationFactory saslAuthenticationFactory;
 
@@ -194,8 +186,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
             this.saslAuthenticationFactory = saslAuthenticationFactory;
         }
 
-        @Override
-        public void adapt(final ConnectedStreamChannel channel) {
+        public void accept(final StreamConnection channel) {
             if (channel.getWorker() != getXnioWorker()) {
                 throw RemoteLogger.log.invalidWorker();
             }
@@ -206,14 +197,13 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
                 // ignore
             }
 
-            Pool<ByteBuffer> messageBufferPool = RemoteConnectionProvider.USE_POOLING ? GLOBAL_POOL : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, 8192);
-            if (RemoteConnectionProvider.LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
-            final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, ByteBuffer.allocate(8192 + 4), ByteBuffer.allocate(8192 + 4));
-            final RemoteConnection connection = new RemoteConnection(messageBufferPool, channel, messageChannel, optionMap, HttpUpgradeConnectionProvider.this);
+            final SslChannel sslChannel = channel instanceof SslConnection ? (SslConnection) channel : null;
+            final ConduitStreamSourceChannel sourceChannel = channel.getSourceChannel();
+            final RemoteConnection connection = new RemoteConnection(channel, new MessageReader(sourceChannel), sslChannel, optionMap, HttpUpgradeConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), saslAuthenticationFactory, optionMap);
-            messageChannel.getWriteSetter().set(connection.getWriteListener());
+            channel.getSinkChannel().setWriteListener(connection.getWriteListener());
             RemoteLogger.log.tracef("Accepted connection from %s to %s", channel.getPeerAddress(), channel.getLocalAddress());
-            openListener.handleEvent(messageChannel);
+            openListener.handleEvent(sourceChannel);
         }
     }
 

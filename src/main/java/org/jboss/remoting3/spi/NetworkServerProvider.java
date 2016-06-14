@@ -27,8 +27,8 @@ import java.net.SocketAddress;
 
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.OptionMap;
+import org.xnio.StreamConnection;
 import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * A provider interface implemented by connection providers which can be connected to across the network.
@@ -40,9 +40,9 @@ public interface NetworkServerProvider {
      *
      * @param bindAddress the address to bind to
      * @param optionMap the server options
-     * @param saslAuthenticationFactory
+     * @param saslAuthenticationFactory the authentication factory
      * @return the server channel
      * @throws IOException if the server could not be created
      */
-    AcceptingChannel<? extends ConnectedStreamChannel> createServer(SocketAddress bindAddress, OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory) throws IOException;
+    AcceptingChannel<StreamConnection> createServer(SocketAddress bindAddress, OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory) throws IOException;
 }

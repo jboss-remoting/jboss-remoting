@@ -24,6 +24,7 @@ package org.jboss.remoting3.test;
 
 import static org.junit.Assert.assertNotNull;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -68,8 +69,6 @@ import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
-import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * Test that the channel {@link CloseHandler}s are invoked when the channel is closed for whatever reasons
@@ -83,7 +82,7 @@ public class RemoteChannelCloseTest {
     private Channel clientChannel;
     private Channel serverChannel;
 
-    private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
+    private static Closeable streamServer;
     private Connection connection;
     private Registration serviceRegistration;
 

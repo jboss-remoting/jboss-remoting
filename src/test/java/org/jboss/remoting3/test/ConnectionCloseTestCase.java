@@ -24,6 +24,7 @@ package org.jboss.remoting3.test;
 
 import static org.junit.Assert.assertNotNull;
 
+import java.io.Closeable;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -66,8 +67,6 @@ import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Sequence;
-import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * A testcase to ensure that threads don't hang when the client side closes a {@link Connection} while the
@@ -83,7 +82,7 @@ public class ConnectionCloseTestCase {
     private Channel clientChannel;
     private Channel serverChannel;
 
-    private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
+    private static Closeable streamServer;
     private Connection connection;
     private Registration serviceRegistration;
     private static String providerName;

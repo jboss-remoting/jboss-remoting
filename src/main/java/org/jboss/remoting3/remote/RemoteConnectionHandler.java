@@ -50,11 +50,11 @@ import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.Bits;
 import org.xnio.Cancellable;
+import org.xnio.Connection;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Pooled;
 import org.xnio.Result;
-import org.xnio.channels.ConnectedMessageChannel;
 import org.xnio.channels.SslChannel;
 
 @SuppressWarnings("deprecation")
@@ -407,11 +407,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     }
 
     public SocketAddress getLocalAddress() {
-        return remoteConnection.getChannel().getLocalAddress();
+        return remoteConnection.getLocalAddress();
     }
 
     public SocketAddress getPeerAddress() {
-        return remoteConnection.getChannel().getPeerAddress();
+        return remoteConnection.getPeerAddress();
     }
 
     public SecurityIdentity getLocalIdentity() {
@@ -496,11 +496,11 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             final boolean receivedCloseReq = Bits.allAreSet(state, RECEIVED_CLOSE_REQ);
             final int inboundChannels = (state & INBOUND_CHANNELS_MASK) >>> Integer.numberOfTrailingZeros(ONE_INBOUND_CHANNEL);
             final int outboundChannels = (state & OUTBOUND_CHANNELS_MASK) >>> Integer.numberOfTrailingZeros(ONE_OUTBOUND_CHANNEL);
-            final ConnectedMessageChannel channel = remoteConnection.getChannel();
-            final SocketAddress localAddress = channel.getLocalAddress();
-            final SocketAddress peerAddress = channel.getPeerAddress();
+            final Connection connection = remoteConnection.getConnection();
+            final SocketAddress localAddress = connection.getLocalAddress();
+            final SocketAddress peerAddress = connection.getPeerAddress();
             b.append("    ").append("Connection ").append(localAddress).append(" <-> ").append(peerAddress).append('\n');
-            b.append("    ").append("Channel: ").append(channel).append('\n');
+            b.append("    ").append("Raw: ").append(connection).append('\n');
             b.append("    ").append("* Flags: ");
             if (Bits.allAreSet(behavior, Protocol.BH_MESSAGE_CLOSE)) b.append("supports-message-close ");
             if (Bits.allAreSet(behavior, Protocol.BH_FAULTY_MSG_SIZE)) b.append("remote-faulty-message-size ");

@@ -25,6 +25,7 @@ package org.jboss.remoting3.test;
 import static org.junit.Assert.assertNotNull;
 import static org.xnio.IoUtils.safeClose;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -74,8 +75,6 @@ import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
-import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * Tests that a {@link org.jboss.remoting3.MessageOutputStream#close() closing the message on the channel}
@@ -91,7 +90,7 @@ public class OutboundMessageCountTestCase {
     private Channel clientChannel;
     private Channel serverChannel;
 
-    private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
+    private static Closeable streamServer;
     private Connection connection;
     private Registration serviceRegistration;
 

@@ -249,7 +249,7 @@ final class InboundMessage {
         // this method is called when the remote side forgot about us.  Our mapping will have been already replaced.
         // We must not send anything to the peer from here on because things may be in a broken state.
         // Though this is a best-effort strategy as everything is screwed up in this case anyway.
-        RemoteLogger.conn.duplicateMessageId(messageId, channel.getRemoteConnection().getChannel().getPeerAddress());
+        RemoteLogger.conn.duplicateMessageId(messageId, channel.getRemoteConnection().getPeerAddress());
         synchronized (inputStream) {
             if (! streamClosed) {
                 eofReceived = true; // it wasn't really, but we should act like it was

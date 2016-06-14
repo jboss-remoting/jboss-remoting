@@ -27,6 +27,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.xnio.IoUtils.safeClose;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -73,7 +74,7 @@ import org.xnio.channels.ConnectedStreamChannel;
  */
 public final class RemoteChannelTest extends ChannelTestBase {
     protected static Endpoint endpoint;
-    private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
+    private static Closeable streamServer;
     private Connection connection;
     private Registration serviceRegistration;
 

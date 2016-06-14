@@ -24,6 +24,7 @@ package org.jboss.remoting3.test;
 
 import static org.junit.Assert.assertNotNull;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -64,8 +65,6 @@ import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Sequence;
-import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * Test for remote channel communication with SSL enabled.
@@ -76,7 +75,7 @@ import org.xnio.channels.ConnectedStreamChannel;
 @Ignore // until SSL works in Elytron for both client and server
 public final class RemoteSslChannelTest extends ChannelTestBase {
     protected static Endpoint endpoint;
-    private static AcceptingChannel<? extends ConnectedStreamChannel> streamServer;
+    private static Closeable streamServer;
     private Connection connection;
     private Registration serviceRegistration;
 

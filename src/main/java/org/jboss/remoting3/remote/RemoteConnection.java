@@ -23,6 +23,7 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Queue;
@@ -33,16 +34,18 @@ import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.Buffers;
+import org.xnio.ByteBufferPool;
 import org.xnio.ChannelListener;
+import org.xnio.Connection;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
-import org.xnio.Pool;
 import org.xnio.Pooled;
 import org.xnio.Result;
+import org.xnio.StreamConnection;
 import org.xnio.XnioExecutor;
-import org.xnio.channels.ConnectedMessageChannel;
-import org.xnio.channels.ConnectedStreamChannel;
 import org.xnio.channels.SslChannel;
+import org.xnio.conduits.ConduitStreamSinkChannel;
+import org.xnio.conduits.ConduitStreamSourceChannel;
 import org.xnio.sasl.SaslWrapper;
 
 /**
@@ -53,9 +56,9 @@ final class RemoteConnection {
     static final Pooled<ByteBuffer> STARTTLS_SENTINEL = Buffers.emptyPooledByteBuffer();
 
     private static final String FQCN = RemoteConnection.class.getName();
-    private final Pool<ByteBuffer> messageBufferPool;
-    private final ConnectedMessageChannel channel;
-    private final ConnectedStreamChannel underlyingChannel;
+    private final StreamConnection connection;
+    private final MessageReader messageReader;
+    private final SslChannel sslChannel;
     private final OptionMap optionMap;
     private final RemoteWriteListener writeListener = new RemoteWriteListener();
     private final Executor executor;
@@ -65,10 +68,10 @@ final class RemoteConnection {
     private volatile SecurityIdentity identity;
     private final RemoteConnectionProvider remoteConnectionProvider;
 
-    RemoteConnection(final Pool<ByteBuffer> messageBufferPool, final ConnectedStreamChannel underlyingChannel, final ConnectedMessageChannel channel, final OptionMap optionMap, final RemoteConnectionProvider remoteConnectionProvider) {
-        this.messageBufferPool = messageBufferPool;
-        this.underlyingChannel = underlyingChannel;
-        this.channel = channel;
+    RemoteConnection(final StreamConnection connection, final MessageReader messageReader, final SslChannel sslChannel, final OptionMap optionMap, final RemoteConnectionProvider remoteConnectionProvider) {
+        this.connection = connection;
+        this.messageReader = messageReader;
+        this.sslChannel = sslChannel;
         this.optionMap = optionMap;
         heartbeatInterval = optionMap.get(RemotingOptions.HEARTBEAT_INTERVAL, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL);
         this.executor = remoteConnectionProvider.getExecutor();
@@ -76,14 +79,14 @@ final class RemoteConnection {
     }
 
     Pooled<ByteBuffer> allocate() {
-        return messageBufferPool.allocate();
+        return Buffers.globalPooledWrapper(ByteBufferPool.MEDIUM_DIRECT.allocate());
     }
 
-    void setReadListener(ChannelListener<? super ConnectedMessageChannel> listener, final boolean resume) {
+    void setReadListener(ChannelListener<ConduitStreamSourceChannel> listener, final boolean resume) {
         RemoteLogger.log.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, null, "Setting read listener to %s", listener);
-        channel.getReadSetter().set(listener);
+        messageReader.setReadListener(listener);
         if (listener != null && resume) {
-            channel.resumeReads();
+            messageReader.resumeReads();
         }
     }
 
@@ -112,7 +115,7 @@ final class RemoteConnection {
         if (key != null) {
             key.remove();
         }
-        IoUtils.safeClose(channel);
+        IoUtils.safeClose(connection);
         final Result<ConnectionHandlerFactory> result = this.result;
         if (result != null) {
             result.setException(e);
@@ -136,11 +139,11 @@ final class RemoteConnection {
         return optionMap;
     }
 
-    ConnectedMessageChannel getChannel() {
-        return channel;
+    MessageReader getMessageReader() {
+        return messageReader;
     }
 
-    ChannelListener<ConnectedMessageChannel> getWriteListener() {
+    RemoteWriteListener getWriteListener() {
         return writeListener;
     }
 
@@ -149,7 +152,7 @@ final class RemoteConnection {
     }
 
     public SslChannel getSslChannel() {
-        return underlyingChannel instanceof SslChannel ? (SslChannel) underlyingChannel : null;
+        return sslChannel;
     }
 
     SaslWrapper getSaslWrapper() {
@@ -163,7 +166,7 @@ final class RemoteConnection {
     void handlePreAuthCloseRequest() {
         try {
             terminateHeartbeat();
-            channel.close();
+            connection.close();
         } catch (IOException e) {
             RemoteLogger.conn.debug("Error closing remoting channel", e);
         }
@@ -180,7 +183,7 @@ final class RemoteConnection {
             buffer.flip();
             send(pooled);
             ok = true;
-            channel.wakeupReads();
+            messageReader.wakeupReads();
         } finally {
             if (! ok) pooled.free();
         }
@@ -221,30 +224,57 @@ final class RemoteConnection {
         this.identity = identity;
     }
 
-    final class RemoteWriteListener implements ChannelListener<ConnectedMessageChannel> {
+    InetSocketAddress getPeerAddress() {
+        return connection.getPeerAddress(InetSocketAddress.class);
+    }
+
+    InetSocketAddress getLocalAddress() {
+        return connection.getLocalAddress(InetSocketAddress.class);
+    }
+
+    Connection getConnection() {
+        return connection;
+    }
+
+    final class RemoteWriteListener implements ChannelListener<ConduitStreamSinkChannel> {
 
         private final Queue<Pooled<ByteBuffer>> queue = new ArrayDeque<Pooled<ByteBuffer>>();
         private XnioExecutor.Key heartKey;
         private boolean closed;
+        private ByteBuffer headerBuffer = ByteBuffer.allocateDirect(4);
+        private final ByteBuffer[] cachedArray = new ByteBuffer[] { headerBuffer, null };
 
         RemoteWriteListener() {
         }
 
-        public void handleEvent(final ConnectedMessageChannel channel) {
+        public void handleEvent(final ConduitStreamSinkChannel channel) {
+            final ByteBuffer[] cachedArray = this.cachedArray;
             synchronized (queue) {
-                assert channel == getChannel();
                 Pooled<ByteBuffer> pooled;
                 final Queue<Pooled<ByteBuffer>> queue = this.queue;
                 try {
-                    while ((pooled = queue.peek()) != null) {
-                        final ByteBuffer buffer = pooled.getResource();
+                    ByteBuffer buffer = cachedArray[1];
+                    if (buffer != null) {
+                        channel.write(cachedArray);
                         if (buffer.hasRemaining()) {
-                            if (channel.send(buffer)) {
-                                RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
-                                queue.poll().free();
-                            } else {
+                            return;
+                        }
+                    }
+                    cachedArray[1] = null;
+                    while ((pooled = queue.peek()) != null) {
+                        buffer = pooled.getResource();
+                        if (buffer.hasRemaining()) { // no empty messages
+                            headerBuffer.putInt(0, buffer.remaining());
+                            headerBuffer.position(0);
+                            cachedArray[1] = buffer;
+                            channel.write(cachedArray);
+                            if (buffer.hasRemaining()) {
                                 // try again later
                                 return;
+                            } else {
+                                RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
+                                cachedArray[1] = null;
+                                queue.poll().free();
                             }
                         } else {
                             if (pooled == STARTTLS_SENTINEL) {
@@ -281,7 +311,6 @@ final class RemoteConnection {
                     }
                 } catch (IOException e) {
                     handleException(e, false);
-                    channel.wakeupReads();
                     while ((pooled = queue.poll()) != null) {
                         pooled.free();
                     }
@@ -294,21 +323,20 @@ final class RemoteConnection {
             synchronized (queue) {
                 closed = true;
                 terminateHeartbeat();
-                final ConnectedMessageChannel channel = getChannel();
+                final ConduitStreamSinkChannel sinkChannel = connection.getSinkChannel();
                 try {
                     if (! queue.isEmpty()) {
-                        channel.resumeWrites();
+                        sinkChannel.resumeWrites();
                         return;
                     }
-                    channel.shutdownWrites();
-                    if (! channel.flush()) {
-                        channel.resumeWrites();
+                    sinkChannel.shutdownWrites();
+                    if (! sinkChannel.flush()) {
+                        sinkChannel.resumeWrites();
                         return;
                     }
                     RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
                 } catch (IOException e) {
                     handleException(e, false);
-                    channel.wakeupReads();
                     Pooled<ByteBuffer> unqueued;
                     while ((unqueued = queue.poll()) != null) {
                         unqueued.free();
@@ -318,13 +346,12 @@ final class RemoteConnection {
         }
 
         public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
-            channel.getIoThread().execute(() -> {
+            connection.getIoThread().execute(() -> {
                 synchronized (queue) {
                     XnioExecutor.Key heartKey1 = RemoteWriteListener.this.heartKey;
                     if (heartKey1 != null) heartKey1.remove();
                     if (closed) { pooled.free(); return; }
                     if (close) { closed = true; }
-                    final ConnectedMessageChannel channel1 = getChannel();
                     boolean free = true;
                     try {
                         final SaslWrapper wrapper = saslWrapper;
@@ -341,11 +368,10 @@ final class RemoteConnection {
                         queue.add(pooled);
                         free = false;
                         if (empty) {
-                            channel1.resumeWrites();
+                            connection.getSinkChannel().resumeWrites();
                         }
                     } catch (IOException e) {
                         handleException(e, false);
-                        channel1.wakeupReads();
                         Pooled<ByteBuffer> unqueued;
                         while ((unqueued = queue.poll()) != null) {
                             unqueued.free();
@@ -363,6 +389,6 @@ final class RemoteConnection {
     private final Runnable heartbeatCommand = this::sendAlive;
 
     public String toString() {
-        return String.format("Remoting connection %08x to %s of %s", Integer.valueOf(hashCode()), channel.getPeerAddress(), getRemoteConnectionProvider().getConnectionProviderContext().getEndpoint());
+        return String.format("Remoting connection %08x to %s of %s", Integer.valueOf(hashCode()), connection.getPeerAddress(), getRemoteConnectionProvider().getConnectionProviderContext().getEndpoint());
     }
 }
