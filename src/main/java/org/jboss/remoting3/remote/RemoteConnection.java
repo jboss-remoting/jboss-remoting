@@ -68,9 +68,9 @@ final class RemoteConnection {
     private volatile SecurityIdentity identity;
     private final RemoteConnectionProvider remoteConnectionProvider;
 
-    RemoteConnection(final StreamConnection connection, final MessageReader messageReader, final SslChannel sslChannel, final OptionMap optionMap, final RemoteConnectionProvider remoteConnectionProvider) {
+    RemoteConnection(final StreamConnection connection, final SslChannel sslChannel, final OptionMap optionMap, final RemoteConnectionProvider remoteConnectionProvider) {
         this.connection = connection;
-        this.messageReader = messageReader;
+        this.messageReader = new MessageReader(connection.getSourceChannel(), writeListener.queue);
         this.sslChannel = sslChannel;
         this.optionMap = optionMap;
         heartbeatInterval = optionMap.get(RemotingOptions.HEARTBEAT_INTERVAL, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL);
@@ -267,23 +267,25 @@ final class RemoteConnection {
                             headerBuffer.putInt(0, buffer.remaining());
                             headerBuffer.position(0);
                             cachedArray[1] = buffer;
-                            channel.write(cachedArray);
+                            final long res = channel.write(cachedArray);
+                            RemoteLogger.conn.tracef("Sent %d bytes", res);
                             if (buffer.hasRemaining()) {
                                 // try again later
                                 return;
                             } else {
-                                RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Sent message %s (via queue)", buffer);
                                 cachedArray[1] = null;
                                 queue.poll().free();
                             }
                         } else {
                             if (pooled == STARTTLS_SENTINEL) {
                                 if (channel.flush()) {
+                                    RemoteLogger.conn.trace("Flushed channel");
                                     final SslChannel sslChannel = getSslChannel();
                                     assert sslChannel != null; // because STARTTLS would be false in this case
                                     sslChannel.startHandshake();
                                 } else {
                                     // try again later
+                                    RemoteLogger.conn.trace("Flush stalled");
                                     return;
                                 }
                             }
@@ -292,13 +294,13 @@ final class RemoteConnection {
                         }
                     }
                     if (channel.flush()) {
-                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Flushed channel");
+                        RemoteLogger.conn.trace("Flushed channel");
                         if (closed) {
                             terminateHeartbeat();
                             // End of queue reached; shut down and try to flush the remainder
                             channel.shutdownWrites();
                             if (channel.flush()) {
-                                RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
+                                RemoteLogger.conn.trace("Shut down writes on channel");
                                 return;
                             }
                             // either this is successful and no more notifications will come, or not and it will be retried
@@ -362,8 +364,6 @@ final class RemoteConnection {
                             wrapper.wrap(buffer, source);
                             buffer.flip();
                         }
-                        final ByteBuffer buffer = pooled.getResource();
-                        RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Can't directly send message %s, enqueued", buffer);
                         final boolean empty = queue.isEmpty();
                         queue.add(pooled);
                         free = false;

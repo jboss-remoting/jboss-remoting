@@ -71,9 +71,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
             try {
                 for (;;) try {
                     boolean exit = false;
-                    synchronized (lock) {
-                        message = messageReader.getMessage();
-                    }
+                    message = messageReader.getMessage();
                     if (message == MessageReader.EOF_MARKER) {
                         log.trace("Received connection end-of-stream");
                         exit = true;
@@ -82,9 +80,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                         return;
                     }
                     if (exit) {
-                        synchronized (lock) {
-                            messageReader.shutdownReads();
-                        }
+                        messageReader.shutdownReads();
                         handler.receiveCloseRequest();
                         return;
                     }

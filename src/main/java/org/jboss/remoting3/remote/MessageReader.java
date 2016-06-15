@@ -41,11 +41,13 @@ final class MessageReader {
 
     private final ConduitStreamSourceChannel sourceChannel;
     private final ArrayDeque<ByteBuffer> queue = new ArrayDeque<>();
+    private final Object lock;
 
     static final Pooled<ByteBuffer> EOF_MARKER = Buffers.emptyPooledByteBuffer();
 
-    MessageReader(final ConduitStreamSourceChannel sourceChannel) {
+    MessageReader(final ConduitStreamSourceChannel sourceChannel, final Object lock) {
         this.sourceChannel = sourceChannel;
+        this.lock = lock;
     }
 
     ConduitStreamSourceChannel getSourceChannel() {
@@ -53,52 +55,57 @@ final class MessageReader {
     }
 
     Pooled<ByteBuffer> getMessage() throws IOException {
-        for (;;) {
-            ByteBuffer first = queue.peekFirst();
-            if (first != null && first.remaining() >= 4) {
-                int size = first.getInt(first.position());
-                if (remaining(size + 4)) {
-                    ByteBuffer message = ByteBufferPool.MEDIUM_HEAP.allocate();
-                    first.getInt();
-                    int cnt = 0;
-                    while (cnt < size) {
-                        cnt += Buffers.copy(size - cnt, message, first);
-                        if (! first.hasRemaining()) {
-                            queue.pollFirst();
-                            first = queue.peekFirst();
+        synchronized (lock) {
+            for (;;) {
+                ByteBuffer first = queue.peekFirst();
+                if (first != null && first.remaining() >= 4) {
+                    int size = first.getInt(first.position());
+                    if (remaining(size + 4)) {
+                        ByteBuffer message = ByteBufferPool.MEDIUM_HEAP.allocate();
+                        first.getInt();
+                        int cnt = 0;
+                        while (cnt < size) {
+                            cnt += Buffers.copy(size - cnt, message, first);
+                            if (! first.hasRemaining()) {
+                                queue.pollFirst();
+                                first = queue.peekFirst();
+                            }
                         }
+                        message.flip();
+                        return Buffers.globalPooledWrapper(message);
                     }
-                    message.flip();
-                    return Buffers.globalPooledWrapper(message);
                 }
-            }
-            ByteBuffer[] b = new ByteBuffer[8];
-            ByteBuffer last = queue.pollLast();
-            if (last != null) {
-                last.compact();
-                b[0] = last;
-                ByteBufferPool.MEDIUM_DIRECT.allocate(b, 1);
-            } else {
-                ByteBufferPool.MEDIUM_DIRECT.allocate(b, 0);
-            }
-            try {
-                long res = sourceChannel.read(b);
-                if (res == -1) {
-                    return EOF_MARKER;
+                ByteBuffer[] b = new ByteBuffer[8];
+                ByteBuffer last = queue.pollLast();
+                if (last != null) {
+                    last.compact();
+                    b[0] = last;
+                    ByteBufferPool.MEDIUM_DIRECT.allocate(b, 1);
+                } else {
+                    ByteBufferPool.MEDIUM_DIRECT.allocate(b, 0);
                 }
-                if (res == 0) {
-                    return null;
-                }
-            } finally {
-                for (int i = 0; i < b.length; i++) {
-                    final ByteBuffer buffer = b[i];
-                    if (buffer.position() > 0) {
-                        buffer.flip();
-                        queue.addLast(buffer);
-                    } else {
-                        ByteBufferPool.free(buffer);
+                try {
+                    long res = sourceChannel.read(b);
+                    if (res == -1) {
+                        RemoteLogger.conn.trace("Received EOF");
+                        return EOF_MARKER;
                     }
-                    b[i] = null;
+                    if (res == 0) {
+                        RemoteLogger.conn.trace("No read bytes available");
+                        return null;
+                    }
+                    RemoteLogger.conn.tracef("Received %d bytes", (int) res);
+                } finally {
+                    for (int i = 0; i < b.length; i++) {
+                        final ByteBuffer buffer = b[i];
+                        if (buffer.position() > 0) {
+                            buffer.flip();
+                            queue.addLast(buffer);
+                        } else {
+                            ByteBufferPool.free(buffer);
+                        }
+                        b[i] = null;
+                    }
                 }
             }
         }
@@ -114,30 +121,42 @@ final class MessageReader {
     }
 
     public void close() {
-        safeClose(sourceChannel);
-        ByteBuffer buffer;
-        while ((buffer = queue.pollFirst()) != null) {
-            ByteBufferPool.free(buffer);
+        synchronized (lock) {
+            safeClose(sourceChannel);
+            ByteBuffer buffer;
+            while ((buffer = queue.pollFirst()) != null) {
+                ByteBufferPool.free(buffer);
+            }
         }
     }
 
     public void setReadListener(final ChannelListener<? super ConduitStreamSourceChannel> readListener) {
-        sourceChannel.setReadListener(readListener);
+        synchronized (lock) {
+            sourceChannel.setReadListener(readListener);
+        }
     }
 
     public void suspendReads() {
-        getSourceChannel().suspendReads();
+        synchronized (lock) {
+            getSourceChannel().suspendReads();
+        }
     }
 
     public void resumeReads() {
-        getSourceChannel().resumeReads();
+        synchronized (lock) {
+            getSourceChannel().resumeReads();
+        }
     }
 
     public void wakeupReads() {
-        getSourceChannel().wakeupReads();
+        synchronized (lock) {
+            getSourceChannel().wakeupReads();
+        }
     }
 
     public void shutdownReads() throws IOException {
-        getSourceChannel().shutdownReads();
+        synchronized (lock) {
+            getSourceChannel().shutdownReads();
+        }
     }
 }

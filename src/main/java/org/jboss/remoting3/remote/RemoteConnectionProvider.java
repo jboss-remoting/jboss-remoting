@@ -177,9 +177,8 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 } catch (IOException e) {
                     // ignore
                 }
-                final MessageReader messageReader = new MessageReader(connection.getSourceChannel());
                 final SslChannel sslChannel = connection instanceof SslChannel ? (SslChannel) connection : null;
-                final RemoteConnection remoteConnection = new RemoteConnection(connection, messageReader, sslChannel, connectOptions, RemoteConnectionProvider.this);
+                final RemoteConnection remoteConnection = new RemoteConnection(connection, sslChannel, connectOptions, RemoteConnectionProvider.this);
                 cancellableResult.addCancelHandler(new Cancellable() {
                     @Override
                     public Cancellable cancel() {
@@ -346,9 +345,8 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 // ignore
             }
 
-            final MessageReader readableChannel = new MessageReader(accepted.getSourceChannel());
             final SslChannel sslChannel = accepted instanceof SslChannel ? (SslChannel) accepted : null;
-            final RemoteConnection connection = new RemoteConnection(accepted, readableChannel, sslChannel, serverOptionMap, RemoteConnectionProvider.this);
+            final RemoteConnection connection = new RemoteConnection(accepted, sslChannel, serverOptionMap, RemoteConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, saslAuthenticationFactory, serverOptionMap);
             accepted.getSinkChannel().setWriteListener(connection.getWriteListener());
             log.tracef("Accepted connection from %s to %s", connection.getPeerAddress(), connection.getLocalAddress());

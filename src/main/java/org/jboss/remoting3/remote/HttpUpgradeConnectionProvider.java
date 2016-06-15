@@ -50,7 +50,6 @@ import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.StreamConnection;
 import org.xnio.channels.SslChannel;
-import org.xnio.conduits.ConduitStreamSourceChannel;
 import org.xnio.http.HandshakeChecker;
 import org.xnio.http.HttpUpgrade;
 import org.xnio.ssl.SslConnection;
@@ -198,12 +197,11 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
             }
 
             final SslChannel sslChannel = channel instanceof SslConnection ? (SslConnection) channel : null;
-            final ConduitStreamSourceChannel sourceChannel = channel.getSourceChannel();
-            final RemoteConnection connection = new RemoteConnection(channel, new MessageReader(sourceChannel), sslChannel, optionMap, HttpUpgradeConnectionProvider.this);
+            final RemoteConnection connection = new RemoteConnection(channel, sslChannel, optionMap, HttpUpgradeConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), saslAuthenticationFactory, optionMap);
             channel.getSinkChannel().setWriteListener(connection.getWriteListener());
             RemoteLogger.log.tracef("Accepted connection from %s to %s", channel.getPeerAddress(), channel.getLocalAddress());
-            openListener.handleEvent(sourceChannel);
+            openListener.handleEvent(channel.getSourceChannel());
         }
     }
 
