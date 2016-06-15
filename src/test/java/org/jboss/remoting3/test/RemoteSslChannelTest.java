@@ -95,7 +95,7 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
         final SaslAuthenticationFactory.Builder builder = SaslAuthenticationFactory.builder();
         builder.setSecurityDomain(domainBuilder.build());
         builder.setFactory(saslServerFactory);
-        builder.addMechanism(SaslMechanismInformation.Names.SCRAM_SHA_256, MechanismConfiguration.EMPTY);
+        builder.setMechanismConfigurationSelector(mechanismInformation -> SaslMechanismInformation.Names.SCRAM_SHA_256.equals(mechanismInformation.getMechanismName()) ? MechanismConfiguration.EMPTY : null);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
         streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123),
                 OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE, Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), saslAuthenticationFactory);
