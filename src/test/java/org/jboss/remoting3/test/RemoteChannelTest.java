@@ -64,8 +64,6 @@ import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
-import org.xnio.channels.AcceptingChannel;
-import org.xnio.channels.ConnectedStreamChannel;
 
 /**
  * Test for remote channel communication.
