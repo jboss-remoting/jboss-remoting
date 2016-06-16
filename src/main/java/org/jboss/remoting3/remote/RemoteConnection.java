@@ -115,7 +115,9 @@ final class RemoteConnection {
         if (key != null) {
             key.remove();
         }
-        IoUtils.safeClose(connection);
+        synchronized (getLock()) {
+            IoUtils.safeClose(connection);
+        }
         final Result<ConnectionHandlerFactory> result = this.result;
         if (result != null) {
             result.setException(e);
@@ -166,7 +168,9 @@ final class RemoteConnection {
     void handlePreAuthCloseRequest() {
         try {
             terminateHeartbeat();
-            connection.close();
+            synchronized (getLock()) {
+                connection.close();
+            }
         } catch (IOException e) {
             RemoteLogger.conn.debug("Error closing remoting channel", e);
         }
