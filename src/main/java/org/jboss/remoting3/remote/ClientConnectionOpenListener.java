@@ -544,8 +544,9 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
 
         public void handleEvent(final ConduitStreamSourceChannel channel) {
             final Pooled<ByteBuffer> message;
+            final MessageReader messageReader = connection.getMessageReader();
             try {
-                message = connection.getMessageReader().getMessage();
+                message = messageReader.getMessage();
             } catch (IOException e) {
                 connection.handleException(e);
                 return;
@@ -580,7 +581,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                     }
                     case Protocol.AUTH_CHALLENGE: {
                         client.trace("Client received authentication challenge");
-                        channel.suspendReads();
+                        messageReader.suspendReads();
                         connection.getExecutor().execute(() -> {
                             try {
                                 final boolean clientComplete = saslClient.isComplete();
@@ -610,7 +611,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                     sendBuffer.flip();
                                     connection.send(pooled);
                                     ok = true;
-                                    channel.resumeReads();
+                                    messageReader.resumeReads();
                                 } finally {
                                     if (! ok) pooled.free();
                                 }
@@ -624,7 +625,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                     }
                     case Protocol.AUTH_COMPLETE: {
                         client.trace("Client received authentication complete");
-                        channel.suspendReads();
+                        messageReader.suspendReads();
                         connection.getExecutor().execute(() -> {
                             try {
                                 final boolean clientComplete = saslClient.isComplete();
@@ -663,7 +664,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                     return connectionHandler;
                                 };
                                 connection.getResult().setResult(connectionHandlerFactory);
-                                channel.resumeReads();
+                                messageReader.resumeReads();
                                 return;
                             } finally {
                                 message.free();
