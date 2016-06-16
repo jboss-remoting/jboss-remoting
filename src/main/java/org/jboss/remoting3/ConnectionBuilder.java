@@ -22,9 +22,13 @@
 
 package org.jboss.remoting3;
 
+import java.net.SocketAddress;
 import java.net.URI;
 
 import javax.security.sasl.SaslClientFactory;
+
+import org.wildfly.common.Assert;
+import org.wildfly.security.auth.client.AuthenticationContext;
 
 /**
 * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -34,6 +38,8 @@ public final class ConnectionBuilder {
     private final URI uri;
     private boolean immediate;
     private SaslClientFactory saslClientFactory;
+    private AuthenticationContext authenticationContext;
+    private SocketAddress bindAddress;
 
     ConnectionBuilder(final URI uri) {
         this.uri = uri;
@@ -45,7 +51,18 @@ public final class ConnectionBuilder {
     }
 
     public void setSaslClientFactory(final SaslClientFactory saslClientFactory) {
+        Assert.checkNotNullParam("saslClientFactory", saslClientFactory);
         this.saslClientFactory = saslClientFactory;
+    }
+
+    public void setAuthenticationContext(final AuthenticationContext authenticationContext) {
+        Assert.checkNotNullParam("authenticationContext", authenticationContext);
+        this.authenticationContext = authenticationContext;
+    }
+
+    public void setBindAddress(final SocketAddress bindAddress) {
+        Assert.checkNotNullParam("bindAddress", bindAddress);
+        this.bindAddress = bindAddress;
     }
 
     URI getUri() {
@@ -58,5 +75,13 @@ public final class ConnectionBuilder {
 
     SaslClientFactory getSaslClientFactory() {
         return saslClientFactory;
+    }
+
+    AuthenticationContext getAuthenticationContext() {
+        return authenticationContext;
+    }
+
+    SocketAddress getBindAddress() {
+        return bindAddress;
     }
 }

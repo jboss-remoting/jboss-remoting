@@ -23,6 +23,7 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +43,7 @@ public final class EndpointBuilder {
     private OptionMap xnioWorkerOptions;
     private List<ConnectionBuilder> connectionBuilders;
     private List<ConnectionProviderFactoryBuilder> connectionProviderFactoryBuilders;
+    private SocketAddress defaultBindAddress;
 
     EndpointBuilder() {
     }
@@ -79,6 +81,10 @@ public final class EndpointBuilder {
         return builder;
     }
 
+    public void setDefaultBindAddress(final SocketAddress defaultBindAddress) {
+        this.defaultBindAddress = defaultBindAddress;
+    }
+
     String getEndpointName() {
         return endpointName;
     }
@@ -97,6 +103,10 @@ public final class EndpointBuilder {
 
     List<ConnectionProviderFactoryBuilder> getConnectionProviderFactoryBuilders() {
         return connectionProviderFactoryBuilders;
+    }
+
+    SocketAddress getDefaultBindAddress() {
+        return defaultBindAddress;
     }
 
     public Endpoint build() throws IOException {

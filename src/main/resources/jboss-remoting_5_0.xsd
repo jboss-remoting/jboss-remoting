@@ -32,11 +32,24 @@
     <xs:element name="endpoint" type="endpoint-type"/>
 
     <xs:complexType name="endpoint-type">
+        <xs:all minOccurs="0" maxOccurs="1">
+            <xs:element name="providers" type="providers-type" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="connections" type="connections-type" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="default-bind" type="bind-address-type" minOccurs="0" maxOccurs="1"/>
+        </xs:all>
+        <xs:attribute name="name" use="optional" type="xs:string"/>
+    </xs:complexType>
+
+    <xs:complexType name="providers-type">
         <xs:choice minOccurs="0" maxOccurs="unbounded">
             <xs:element name="provider" type="provider-type"/>
+        </xs:choice>
+    </xs:complexType>
+
+    <xs:complexType name="connections-type">
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
             <xs:element name="connection" type="connection-type"/>
         </xs:choice>
-        <xs:attribute name="name" use="optional" type="xs:string"/>
     </xs:complexType>
 
     <xs:complexType name="provider-type">
@@ -47,12 +60,27 @@
     </xs:complexType>
 
     <xs:complexType name="connection-type">
+        <xs:all minOccurs="0" maxOccurs="1">
+            <xs:element name="bind" type="bind-address-type" minOccurs="0" maxOccurs="1"/>
+        </xs:all>
         <xs:attribute name="uri" use="required" type="xs:anyURI"/>
         <xs:attribute name="immediate" use="optional" type="xs:boolean" default="false"/>
     </xs:complexType>
 
+    <xs:complexType name="bind-address-type">
+        <xs:attribute name="address" use="required" type="xs:string"/>
+        <xs:attribute name="port" use="optional" type="port-type"/>
+    </xs:complexType>
+
     <xs:simpleType name="string-list-type">
         <xs:list itemType="xs:string"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="port-type">
+        <xs:restriction base="xs:integer">
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="65535"/>
+        </xs:restriction>
     </xs:simpleType>
 
 </xs:schema>

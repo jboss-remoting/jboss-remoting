@@ -22,20 +22,24 @@
 
 package org.jboss.remoting3;
 
+import java.util.Objects;
+
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class ConnectionKey {
     private final String hostName;
     private final String protocol;
+    private final String userInfo;
     private final int port;
     private final int hashCode;
 
-    ConnectionKey(final String hostName, final String protocol, final int port) {
+    ConnectionKey(final String hostName, final String protocol, final String userInfo, final int port) {
         this.hostName = hostName;
         this.protocol = protocol;
+        this.userInfo = userInfo;
         this.port = port;
-        hashCode = (hostName.hashCode() * 17 + protocol.hashCode()) * 17 + port;
+        hashCode = ((hostName.hashCode() * 17 + protocol.hashCode()) * 17 + port) * 17 + Objects.hashCode(userInfo);
     }
 
     public String getHostName() {
@@ -44,6 +48,10 @@ final class ConnectionKey {
 
     public String getProtocol() {
         return protocol;
+    }
+
+    public String getUserInfo() {
+        return userInfo;
     }
 
     public int getPort() {
@@ -59,10 +67,10 @@ final class ConnectionKey {
     }
 
     boolean equals(ConnectionKey other) {
-        return other != null && hashCode == other.hashCode && hostName.equals(other.hostName) && protocol.equals(other.protocol);
+        return other != null && hashCode == other.hashCode && hostName.equals(other.hostName) && protocol.equals(other.protocol) && Objects.equals(userInfo, other.userInfo);
     }
 
     public String toString() {
-        return String.format("Connection key for \"%s:%s:%d\"", protocol, hostName, Integer.valueOf(port));
+        return String.format("Connection key for \"%s:%s%s:%d\"", protocol, userInfo == null ? "" : userInfo + "@", hostName, Integer.valueOf(port));
     }
 }

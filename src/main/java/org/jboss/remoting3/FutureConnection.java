@@ -23,14 +23,18 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import javax.security.sasl.SaslClientFactory;
+
+import org.wildfly.security.auth.client.AuthenticationContext;
 import org.xnio.FailedIoFuture;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
-import org.xnio.IoUtils;
+import org.xnio.OptionMap;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -41,37 +45,19 @@ class FutureConnection {
     private final URI uri;
     private final AtomicReference<FutureResult<Connection>> futureConnectionRef = new AtomicReference<FutureResult<Connection>>();
     private final boolean immediate;
+    private final OptionMap options;
+    private final AuthenticationContext context;
+    private final SaslClientFactory clientFactory;
+    private final SocketAddress bindAddress;
 
-    static final IoFuture.Notifier<Connection, FutureConnection> HANDLER = new IoFuture.HandlingNotifier<Connection, FutureConnection>() {
-        public void handleCancelled(final FutureConnection attachment) {
-            attachment.futureConnectionRef.set(null);
-            if (attachment.immediate) {
-                attachment.reconnectAfterDelay();
-            }
-        }
-
-        public void handleFailed(final IOException exception, final FutureConnection attachment) {
-            attachment.futureConnectionRef.set(null);
-            if (attachment.immediate) {
-                attachment.reconnectAfterDelay();
-            }
-        }
-
-        public void handleDone(final Connection connection, final FutureConnection attachment) {
-            connection.addCloseHandler(new CloseHandler<Connection>() {
-                public void handleClose(final Connection closed, final IOException exception) {
-                    if (attachment.immediate) {
-                        attachment.connect(attachment.futureConnectionRef.get());
-                    }
-                }
-            });
-        }
-    };
-
-    FutureConnection(final EndpointImpl endpoint, final URI uri, final boolean immediate) {
+    FutureConnection(final EndpointImpl endpoint, final SocketAddress bindAddress, final URI uri, final boolean immediate, final OptionMap options, final AuthenticationContext context, final SaslClientFactory clientFactory) {
         this.endpoint = endpoint;
+        this.bindAddress = bindAddress;
         this.uri = uri;
         this.immediate = immediate;
+        this.options = options;
+        this.context = context;
+        this.clientFactory = clientFactory;
     }
 
     void reconnectAfterDelay() {
@@ -85,7 +71,19 @@ class FutureConnection {
     void splice(FutureResult<Connection> futureResult, IoFuture<Connection> realFuture) {
         // always add in this order
         futureResult.addCancelHandler(realFuture);
-        realFuture.addNotifier(IoUtils.resultNotifier(), futureResult);
+        realFuture.addNotifier(new IoFuture.HandlingNotifier<Connection, FutureResult<Connection>>() {
+            public void handleCancelled(final FutureResult<Connection> attachment) {
+                attachment.setCancelled();
+            }
+
+            public void handleFailed(final IOException exception, final FutureResult<Connection> attachment) {
+                attachment.setException(exception);
+            }
+
+            public void handleDone(final Connection data, final FutureResult<Connection> attachment) {
+                attachment.setResult(new ManagedConnection(data, FutureConnection.this, futureResult));
+            }
+        }, futureResult);
     }
 
     IoFuture<Connection> connect(FutureResult<Connection> orig) {
@@ -105,14 +103,41 @@ class FutureConnection {
         }
         IoFuture<Connection> realFuture;
         try {
-            realFuture = endpoint.connect(uri);
+            realFuture = endpoint.connect(uri, options, context, clientFactory);
         } catch (IOException e) {
             realFuture = new FailedIoFuture<>(e);
         }
         splice(futureResult, realFuture);
         final IoFuture<Connection> ioFuture = futureResult.getIoFuture();
-        ioFuture.addNotifier(HANDLER, this);
+        ioFuture.addNotifier(new IoFuture.HandlingNotifier<Connection, FutureConnection>() {
+            public void handleCancelled(final FutureConnection attachment) {
+                attachment.futureConnectionRef.set(null);
+                if (attachment.immediate) {
+                    attachment.reconnectAfterDelay();
+                }
+            }
+
+            public void handleFailed(final IOException exception, final FutureConnection attachment) {
+                attachment.futureConnectionRef.set(null);
+                if (attachment.immediate) {
+                    attachment.reconnectAfterDelay();
+                }
+            }
+
+            public void handleDone(final Connection connection, final FutureConnection attachment) {
+                connection.addCloseHandler((closed, exception) -> {
+                    FutureConnection.this.clearRef(futureResult);
+                    if (attachment.immediate) {
+                        attachment.connect(attachment.futureConnectionRef.get());
+                    }
+                });
+            }
+        }, this);
         return ioFuture;
+    }
+
+    void clearRef(FutureResult<Connection> futureResult) {
+        futureConnectionRef.compareAndSet(futureResult, null);
     }
 
     public IoFuture<Connection> get() {

@@ -147,7 +147,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return b.toString();
     }
 
-    public Cancellable connect(final URI destination, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationContext authenticationContext, final SaslClientFactory saslClientFactory) {
+    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationContext authenticationContext, final SaslClientFactory saslClientFactory) {
         if (! isOpen()) {
             throw new IllegalStateException("Connection provider is closed");
         }
@@ -200,9 +200,9 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         final InetSocketAddress address = configurationClient.getDestinationInetSocketAddress(destination, authenticationConfiguration, 0);
         final IoFuture<? extends StreamConnection> future;
         if (useSsl) {
-            future = createSslConnection(destination, address, connectOptions, authenticationContext, openListener);
+            future = createSslConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, authenticationContext, openListener);
         } else {
-            future = createConnection(destination, address, connectOptions, openListener);
+            future = createConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, openListener);
         }
         pendingInboundConnections.add(returnedFuture);
         // if the connection fails, we need to propagate that
@@ -232,12 +232,16 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return returnedFuture;
     }
 
-    protected IoFuture<StreamConnection> createConnection(final URI uri, final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<StreamConnection> openListener) {
-        return xnioWorker.openStreamConnection(destination, openListener, connectOptions);
+    protected IoFuture<StreamConnection> createConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<StreamConnection> openListener) {
+        return bindAddress == null ?
+               xnioWorker.openStreamConnection(destination, openListener, connectOptions) :
+               xnioWorker.openStreamConnection(bindAddress, destination, openListener, null, connectOptions);
     }
 
-    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext, final ChannelListener<StreamConnection> openListener) {
-        final IoFuture<StreamConnection> futureConnection = xnioWorker.openStreamConnection(destination, null, connectOptions);
+    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext, final ChannelListener<StreamConnection> openListener) {
+        final IoFuture<StreamConnection> futureConnection = bindAddress == null ?
+                                                            xnioWorker.openStreamConnection(destination, null, connectOptions) :
+                                                            xnioWorker.openStreamConnection(bindAddress, destination, null, null, connectOptions);
         final FutureResult<SslConnection> futureResult = new FutureResult<>(connectionProviderContext.getExecutor());
         futureResult.addCancelHandler(futureConnection);
         futureConnection.addNotifier(new IoFuture.HandlingNotifier<StreamConnection, FutureResult<SslConnection>>() {

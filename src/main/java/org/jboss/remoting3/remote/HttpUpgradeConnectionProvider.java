@@ -89,7 +89,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         super(optionMap, connectionProviderContext);
     }
 
-    protected IoFuture<StreamConnection> createConnection(final URI uri, final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<StreamConnection> openListener) {
+    protected IoFuture<StreamConnection> createConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<StreamConnection> openListener) {
         final URI newUri;
         try {
             newUri = new URI("http", "", uri.getHost(), uri.getPort(), "/", "", "");
@@ -115,7 +115,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         return future.getIoFuture();
     }
 
-    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress destination, final OptionMap options, final AuthenticationContext authenticationContext, final ChannelListener<StreamConnection> openListener) {
+    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options, final AuthenticationContext authenticationContext, final ChannelListener<StreamConnection> openListener) {
         final URI newUri;
         try {
             newUri = new URI("https", "", uri.getHost(), uri.getPort(), "/", "", "");

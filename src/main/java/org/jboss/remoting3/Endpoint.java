@@ -25,6 +25,7 @@ package org.jboss.remoting3;
 import static java.security.AccessController.doPrivileged;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.PrivilegedAction;
 
@@ -181,6 +182,24 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @throws IOException if an error occurs while starting the connect attempt
      */
     IoFuture<Connection> connect(URI destination, OptionMap connectOptions, AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException;
+
+    /**
+     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * This method does not block; use the return value to wait for a result if you wish to block.
+     * <p/>
+     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     *
+     * @param destination the destination
+     * @param bindAddress the local bind address
+     * @param connectOptions options to configure this connection
+     * @param authenticationContext the client authentication context to use
+     * @param saslClientFactory the SASL client factory to use for client authentication
+     *
+     * @return the future connection
+     *
+     * @throws IOException if an error occurs while starting the connect attempt
+     */
+    IoFuture<Connection> connect(URI destination, InetSocketAddress bindAddress, OptionMap connectOptions, AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException;
 
     /**
      * Try to ascertain whether there is currently a valid connection to the given URI.

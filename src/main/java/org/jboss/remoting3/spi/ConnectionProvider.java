@@ -22,6 +22,7 @@
 
 package org.jboss.remoting3.spi;
 
+import java.net.SocketAddress;
 import java.net.URI;
 
 import org.jboss.remoting3.HandleableCloseable;
@@ -43,14 +44,14 @@ public interface ConnectionProvider extends HandleableCloseable<ConnectionProvid
      * This method is expected to be non-blocking, with the result stored in the result variable possibly asynchronously.
      *
      * @param destination the destination URI, or {@code null} if none is given
+     * @param bindAddress the address to bind to, or {@code null} if none is given
      * @param connectOptions the options to use for this connection
      * @param result the result which should receive the connection
      * @param authenticationContext the context to use for authentication
-     * @param saslClientFactory the SASL client factory to use for authentication mechanisms
-     * @return a handle which may be used to cancel the connect attempt
+     * @param saslClientFactory the SASL client factory to use for authentication mechanisms     @return a handle which may be used to cancel the connect attempt
      * @throws IllegalArgumentException if any of the given arguments are not valid for this protocol
      */
-    Cancellable connect(URI destination, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory);
+    Cancellable connect(URI destination, final SocketAddress bindAddress, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory);
 
     /**
      * Get the user data associated with this connection provider.  This object should implement all of the

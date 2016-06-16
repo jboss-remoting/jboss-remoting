@@ -23,6 +23,8 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -118,13 +120,15 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final CloseHandler<Object> resourceCloseHandler = (closed, exception) -> closeTick1(closed);
     private final CloseHandler<Connection> connectionCloseHandler = (closed, exception) -> connections.remove(closed);
     private final boolean ourWorker;
+    private final SocketAddress defaultBindAddress;
 
-    private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name) throws NotOpenException {
+    private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name, final SocketAddress defaultBindAddress) throws NotOpenException {
         super(xnioWorker, true);
         worker = xnioWorker;
         this.ourWorker = ourWorker;
         this.xnio = xnioWorker.getXnio();
         this.name = name;
+        this.defaultBindAddress = defaultBindAddress;
         // initialize CPC
         connectionProviderContext = new ConnectionProviderContextImpl();
         // get XNIO worker
@@ -137,6 +141,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final List<ConnectionProviderFactoryBuilder> factoryBuilders = endpointBuilder.getConnectionProviderFactoryBuilders();
         final EndpointImpl endpoint;
         XnioWorker xnioWorker = endpointBuilder.getXnioWorker();
+        final SocketAddress defaultBindAddress = endpointBuilder.getDefaultBindAddress();
         if (xnioWorker == null) {
             Xnio xnio = Xnio.getInstance(EndpointImpl.class.getClassLoader());
             final OptionMap.Builder builder = OptionMap.builder();
@@ -153,9 +158,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     e.closeComplete();
                 }
             });
-            endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName));
+            endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName, defaultBindAddress));
         } else {
-            endpoint = new EndpointImpl(xnioWorker, false, endpointName);
+            endpoint = new EndpointImpl(xnioWorker, false, endpointName, defaultBindAddress);
         }
         boolean ok = false;
         try {
@@ -203,13 +208,27 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             // old
             endpoint.addConnectionProvider("http-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
             endpoint.addConnectionProvider("https-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
+            final AuthenticationContext captured = AuthenticationContext.captureCurrent();
             if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
                 SaslClientFactory saslClientFactory = connectionBuilder.getSaslClientFactory();
                 if (saslClientFactory == null) {
-                    saslClientFactory = SaslClientFactoryHolder.STANDARD_SASL_CLIENT_FACTORY;
+                    saslClientFactory = SaslFactories.getElytronSaslClientFactory();
                 }
+                AuthenticationContext context = connectionBuilder.getAuthenticationContext();
+                if (context == null) {
+                    context = captured;
+                }
+                final URI uri = connectionBuilder.getUri();
+                final boolean immediate = connectionBuilder.isImmediate();
                 // todo: connect options from builder
-                endpoint.connect(connectionBuilder.getUri(), OptionMap.EMPTY, saslClientFactory);
+                final FutureConnection futureConnection = new FutureConnection(endpoint, connectionBuilder.getBindAddress(), uri, immediate, OptionMap.EMPTY, context, saslClientFactory);
+                if (endpoint.configuredConnections.putIfAbsent(new ConnectionKey(uri.getHost(), uri.getScheme(), uri.getUserInfo(), uri.getPort()), futureConnection) == null) {
+                    // don't actually do this if there is a duplicate item configured
+                    if (immediate) {
+                        // initiate the connect attempt
+                        endpoint.getConnection(uri);
+                    }
+                }
             }
             ok = true;
             return endpoint;
@@ -350,15 +369,17 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (host == null) {
             throw new IllegalArgumentException("No host given in URI '" + destination + "'");
         }
+        final String userInfo = destination.getUserInfo();
         final int port = destination.getPort();
-        final ConnectionKey connectionKey = new ConnectionKey(host, scheme, port);
+        final ConnectionKey connectionKey = new ConnectionKey(host, scheme, userInfo, port);
 
         FutureConnection futureConnection = configuredConnections.get(connectionKey);
         if (futureConnection != null) {
             return futureConnection.get();
         }
+        // it's not presently managed; we'll use defaults to set it up
         FutureConnection appearing;
-        futureConnection = new FutureConnection(this, destination, false);
+        futureConnection = new FutureConnection(this, null, destination, false, OptionMap.EMPTY, RemotingXmlParser.getGlobalDefaultAuthCtxt(), SaslFactories.getElytronSaslClientFactory());
         if ((appearing = configuredConnections.putIfAbsent(connectionKey, futureConnection)) != null) {
             return appearing.get();
         }
@@ -366,7 +387,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
-        return connect(destination, connectOptions, AuthenticationContext.captureCurrent(), SaslClientFactoryHolder.STANDARD_SASL_CLIENT_FACTORY);
+        return connect(destination, connectOptions, AuthenticationContext.captureCurrent(), SaslFactories.getElytronSaslClientFactory());
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, SaslClientFactory saslClientFactory) throws IOException {
@@ -374,10 +395,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext) throws IOException {
-        return connect(destination, connectOptions, authenticationContext, SaslClientFactoryHolder.STANDARD_SASL_CLIENT_FACTORY);
+        return connect(destination, connectOptions, authenticationContext, SaslFactories.getElytronSaslClientFactory());
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException {
+        return connect(destination, null, connectOptions, authenticationContext, saslClientFactory);
+    }
+
+    public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException {
         Assert.checkNotNullParam("destination", destination);
         Assert.checkNotNullParam("connectOptions", connectOptions);
         Assert.checkNotNullParam("saslClientFactory", saslClientFactory);
@@ -448,7 +473,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         return true;
                     }
                 };
-                final Cancellable connect = connectionProvider.connect(destination, connectOptions, result, authenticationContext, saslClientFactory);
+                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, authenticationContext, saslClientFactory);
                 ok = true;
                 futureResult.addCancelHandler(connect);
                 return futureResult.getIoFuture();
@@ -472,15 +497,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (host == null) {
             return false;
         }
+        final String userInfo = uri.getUserInfo();
         final int port = uri.getPort();
-        final ConnectionKey connectionKey = new ConnectionKey(host, scheme, port);
+        final ConnectionKey connectionKey = new ConnectionKey(host, scheme, userInfo, port);
 
         FutureConnection futureConnection = configuredConnections.get(connectionKey);
-        if (futureConnection != null) {
-            return futureConnection.isConnected();
-        } else {
-            return false;
-        }
+        return futureConnection != null && futureConnection.isConnected();
     }
 
     public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory, final OptionMap optionMap) throws IOException {
@@ -683,10 +705,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         public OptionMap getOptionMap() {
             return optionMap;
         }
-    }
-
-    static class SaslClientFactoryHolder {
-        static final SaslClientFactory STANDARD_SASL_CLIENT_FACTORY = SaslFactories.getSearchSaslClientFactory(SaslClientFactoryHolder.class.getClassLoader());
     }
 
     final class TrackingExecutor implements Executor {

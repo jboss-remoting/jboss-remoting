@@ -22,16 +22,21 @@
 
 package org.jboss.remoting3;
 
+import static java.security.AccessController.doPrivileged;
 import static javax.xml.stream.XMLStreamConstants.END_ELEMENT;
 import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.URI;
+import java.security.PrivilegedAction;
 import java.util.Collections;
 
 import org.wildfly.client.config.ClientConfiguration;
 import org.wildfly.client.config.ConfigXMLParseException;
 import org.wildfly.client.config.ConfigurationXMLStreamReader;
+import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.sasl.util.SaslFactories;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -91,19 +96,87 @@ final class RemotingXmlParser {
                         default: throw reader.unexpectedElement();
                     }
                     switch (reader.getLocalName()) {
+                        case "providers": {
+                            parseProvidersElement(reader, builder);
+                            break;
+                        }
+
+                        case "connections": {
+                            parseConnectionsElement(reader, builder);
+                            break;
+                        }
+
+                        case "default-bind": {
+                            builder.setDefaultBindAddress(parseBind(reader));
+                            break;
+                        }
+                        default: throw reader.unexpectedElement();
+                    }
+                    break;
+                }
+                case END_ELEMENT: {
+                    return;
+                }
+            }
+        }
+    }
+
+    private static InetSocketAddress parseBind(final ConfigurationXMLStreamReader reader) throws ConfigXMLParseException {
+        final int attributeCount = reader.getAttributeCount();
+        String address = null;
+        int port = 0;
+        for (int i = 0; i < attributeCount; i++) {
+            switch (reader.getAttributeLocalName(i)) {
+                case "address": {
+                    address = reader.getAttributeValue(i);
+                    break;
+                }
+                case "port": {
+                    port = reader.getIntAttributeValue(i);
+                    if (port < 0 || port > 65535) {
+                        // todo: i18n range check inside of the config client
+                        throw new IllegalArgumentException("Port value out of range");
+                    }
+                    break;
+                }
+                default: {
+                    throw reader.unexpectedAttribute(i);
+                }
+            }
+        }
+        if (address == null) {
+            throw reader.missingRequiredAttribute(null, "address");
+        }
+        final InetSocketAddress bindAddress = InetSocketAddress.createUnresolved(address, port);
+        switch (reader.nextTag()) {
+            case END_ELEMENT: {
+                return bindAddress;
+            }
+            default: {
+                throw reader.unexpectedElement();
+            }
+        }
+    }
+
+    private static void parseProvidersElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
+        final int attributeCount = reader.getAttributeCount();
+        if (attributeCount > 0) {
+            throw reader.unexpectedAttribute(0);
+        }
+        while (reader.hasNext()) {
+            switch (reader.nextTag()) {
+                case START_ELEMENT: {
+                    switch (reader.getNamespaceURI()) {
+                        case NS_REMOTING_5_0: break;
+                        default: throw reader.unexpectedElement();
+                    }
+                    switch (reader.getLocalName()) {
                         case "provider": {
                             parseProviderElement(reader, builder);
                             break;
                         }
-
-                        case "connection": {
-                            parseConnectionElement(reader, builder);
-                            break;
-                        }
-
                         default: throw reader.unexpectedElement();
                     }
-                    break;
                 }
                 case END_ELEMENT: {
                     return;
@@ -167,6 +240,33 @@ final class RemotingXmlParser {
         }
     }
 
+    private static void parseConnectionsElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
+        final int attributeCount = reader.getAttributeCount();
+        if (attributeCount > 0) {
+            throw reader.unexpectedAttribute(0);
+        }
+        while (reader.hasNext()) {
+            switch (reader.nextTag()) {
+                case START_ELEMENT: {
+                    switch (reader.getNamespaceURI()) {
+                        case NS_REMOTING_5_0: break;
+                        default: throw reader.unexpectedElement();
+                    }
+                    switch (reader.getLocalName()) {
+                        case "connection": {
+                            parseConnectionElement(reader, builder);
+                            break;
+                        }
+                        default: throw reader.unexpectedElement();
+                    }
+                }
+                case END_ELEMENT: {
+                    return;
+                }
+            }
+        }
+    }
+
     private static void parseConnectionElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
         final int attributeCount = reader.getAttributeCount();
         URI uri = null;
@@ -194,13 +294,31 @@ final class RemotingXmlParser {
         }
         final ConnectionBuilder connectionBuilder = builder.addConnection(uri);
         connectionBuilder.setImmediate(immediate);
-        switch (reader.nextTag()) {
-            case END_ELEMENT: {
-                return;
-            }
-            default: {
-                throw reader.unexpectedElement();
+        connectionBuilder.setSaslClientFactory(SaslFactories.getElytronSaslClientFactory());
+        connectionBuilder.setAuthenticationContext(getGlobalDefaultAuthCtxt());
+        while (reader.hasNext()) {
+            switch (reader.nextTag()) {
+                case START_ELEMENT: {
+                    switch (reader.getNamespaceURI()) {
+                        case NS_REMOTING_5_0: break;
+                        default: throw reader.unexpectedElement();
+                    }
+                    switch (reader.getLocalName()) {
+                        case "bind": {
+                            connectionBuilder.setBindAddress(parseBind(reader));
+                            break;
+                        }
+                        default: throw reader.unexpectedElement();
+                    }
+                }
+                case END_ELEMENT: {
+                    return;
+                }
             }
         }
+    }
+
+    static AuthenticationContext getGlobalDefaultAuthCtxt() {
+        return doPrivileged((PrivilegedAction<AuthenticationContext>) AuthenticationContext.getContextManager()::getGlobalDefault);
     }
 }
