@@ -34,6 +34,7 @@ import java.security.Security;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslServerFactory;
 
 import org.jboss.logging.Logger;
@@ -106,7 +107,7 @@ public class RemoteChannelCloseTest {
         builder.setFactory(saslServerFactory);
         builder.setMechanismConfigurationSelector(mechanismInformation -> SaslMechanismInformation.Names.SCRAM_SHA_256.equals(mechanismInformation.getMechanismName()) ? MechanismConfiguration.EMPTY : null);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
-        streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, saslAuthenticationFactory);
+        streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, saslAuthenticationFactory, SSLContext.getDefault());
     }
 
     @Rule

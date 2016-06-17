@@ -34,6 +34,7 @@ import java.security.NoSuchProviderException;
 import java.security.PrivilegedAction;
 import java.security.spec.InvalidKeySpecException;
 
+import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslServerFactory;
 
 import org.jboss.remoting3.Channel;
@@ -98,7 +99,7 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
         builder.setMechanismConfigurationSelector(mechanismInformation -> SaslMechanismInformation.Names.SCRAM_SHA_256.equals(mechanismInformation.getMechanismName()) ? MechanismConfiguration.EMPTY : null);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
         streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123),
-                OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE, Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), saslAuthenticationFactory);
+                OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE, Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), saslAuthenticationFactory, SSLContext.getDefault());
     }
 
     @Before

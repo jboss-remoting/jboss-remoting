@@ -68,7 +68,7 @@ interface RemoteLogger extends BasicLogger {
 
     @LogMessage(level = DEBUG)
     @Message(id = 205, value = "Failed to accept a connection: %s")
-    void failedToAccept(/* ! @Cause */ IOException e);
+    void failedToAccept(/* ! @Cause */ Exception e);
 
     @Message(id = 206, value = "Channel is not open")
     NotOpenException channelNotOpen();

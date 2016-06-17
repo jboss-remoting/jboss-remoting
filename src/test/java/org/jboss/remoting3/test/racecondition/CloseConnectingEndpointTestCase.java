@@ -30,6 +30,7 @@ import java.net.URISyntaxException;
 import java.security.Security;
 import java.util.concurrent.CancellationException;
 
+import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslServerFactory;
 
 import org.jboss.byteman.contrib.bmunit.BMScript;
@@ -126,7 +127,7 @@ public class CloseConnectingEndpointTestCase {
         builder.setFactory(saslServerFactory);
         builder.setMechanismConfigurationSelector(mechanismInformation -> SaslMechanismInformation.Names.SCRAM_SHA_256.equals(mechanismInformation.getMechanismName()) ? MechanismConfiguration.EMPTY : null);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
-        networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), saslAuthenticationFactory);
+        networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SASL_MECHANISMS, Sequence.of("CRAM-MD5")), saslAuthenticationFactory, SSLContext.getDefault());
         // create connect and close endpoint threads
         Connect connectRunnable = new Connect(endpoint);
         Thread connectThread = new Thread(connectRunnable);

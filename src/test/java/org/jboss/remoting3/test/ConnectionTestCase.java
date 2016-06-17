@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslServerFactory;
 
 import org.jboss.logging.Logger;
@@ -134,7 +135,7 @@ public class ConnectionTestCase {
         builder.setFactory(saslServerFactory);
         builder.setMechanismConfigurationSelector(mechanismInformation -> SaslMechanismInformation.Names.SCRAM_SHA_256.equals(mechanismInformation.getMechanismName()) ? MechanismConfiguration.EMPTY : null);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
-        server = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, saslAuthenticationFactory);
+        server = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.EMPTY, saslAuthenticationFactory, SSLContext.getDefault());
     }
 
     @After

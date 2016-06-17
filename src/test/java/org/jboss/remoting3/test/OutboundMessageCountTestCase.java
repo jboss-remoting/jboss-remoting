@@ -39,6 +39,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 
+import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslServerFactory;
 
 import org.jboss.logging.Logger;
@@ -123,7 +124,7 @@ public class OutboundMessageCountTestCase {
         builder.setFactory(saslServerFactory);
         builder.setMechanismConfigurationSelector(mechanismInformation -> SaslMechanismInformation.Names.SCRAM_SHA_256.equals(mechanismInformation.getMechanismName()) ? MechanismConfiguration.EMPTY : null);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
-        streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.EMPTY, saslAuthenticationFactory);
+        streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.EMPTY, saslAuthenticationFactory, SSLContext.getDefault());
     }
 
     @Before

@@ -39,6 +39,7 @@ import java.util.concurrent.Executor;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.security.sasl.SaslClientFactory;
 
@@ -88,7 +89,6 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     }
 
     private final ProviderInterface providerInterface = new ProviderInterface();
-    private final Xnio xnio;
     private final XnioWorker xnioWorker;
     private final ConnectionProviderContext connectionProviderContext;
     private final boolean sslRequired;
@@ -100,7 +100,6 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
 
     RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
         super(connectionProviderContext.getExecutor());
-        xnio = connectionProviderContext.getXnio();
         sslRequired = optionMap.get(Options.SECURE, false);
         sslEnabled = optionMap.get(Options.SSL_ENABLED, true);
         xnioWorker = connectionProviderContext.getXnioWorker();
@@ -168,8 +167,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         });
         final IoFuture<ConnectionHandlerFactory> returnedFuture = cancellableResult.getIoFuture();
         returnedFuture.addNotifier(IoUtils.<ConnectionHandlerFactory>resultNotifier(), result);
-        final boolean sslCapable = sslEnabled;
-        final boolean useSsl = sslRequired || sslCapable && connectOptions.get(Options.SSL_ENABLED, true) && !connectOptions.get(Options.SECURE, false);
+        final boolean useSsl = sslRequired || sslEnabled && connectOptions.get(Options.SSL_ENABLED, true);
         final ChannelListener<StreamConnection> openListener = new ChannelListener<StreamConnection>() {
             public void handleEvent(final StreamConnection connection) {
                 try {
@@ -261,12 +259,20 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 final SSLEngine engine;
                 try {
                     engine = configurationClient.getSslContext(configuration).createSSLEngine(realHost, realPort);
+                    engine.setUseClientMode(true);
                 } catch (GeneralSecurityException e) {
                     result.setException(new IOException(e));
                     safeClose(streamConnection);
                     return;
                 }
                 final JsseSslConnection sslConnection = new JsseSslConnection(streamConnection, engine);
+                if (sslRequired || ! connectOptions.get(Options.SSL_STARTTLS, false)) try {
+                    sslConnection.startHandshake();
+                } catch (IOException e) {
+                    result.setException(new IOException(e));
+                    safeClose(streamConnection);
+                    return;
+                }
                 result.setResult(sslConnection);
                 openListener.handleEvent(sslConnection);
             }
@@ -309,53 +315,77 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
 
     final class ProviderInterface implements NetworkServerProvider {
 
-        public AcceptingChannel<StreamConnection> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory) throws IOException {
-            final AcceptListener acceptListener = new AcceptListener(optionMap, saslAuthenticationFactory);
-            final AcceptingChannel<StreamConnection> result = xnioWorker.createStreamConnectionServer(bindAddress, acceptListener, optionMap);
+        public AcceptingChannel<StreamConnection> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory, final SSLContext sslContext) throws IOException {
+            final AcceptingChannel<StreamConnection> result;
+            // SSL_ENABLED only defaults to true when sslEnabled is set
+            if (sslContext != null && (sslRequired || sslEnabled && optionMap.get(Options.SSL_ENABLED, true))) {
+                result = xnioWorker.createStreamConnectionServer(bindAddress, channel -> {
+                    final StreamConnection streamConnection = acceptAndConfigure(channel);
+                    if (streamConnection == null) return;
+                    final InetSocketAddress peerAddress = streamConnection.getPeerAddress(InetSocketAddress.class);
+                    final String realHost;
+                    final int realPort;
+                    if (peerAddress != null) {
+                        realHost = peerAddress.getHostString();
+                        realPort = peerAddress.getPort();
+                    } else {
+                        realHost = null;
+                        realPort = 0;
+                    }
+                    final SSLEngine engine;
+                    engine = sslContext.createSSLEngine(realHost, realPort);
+                    engine.setUseClientMode(false);
+                    final JsseSslConnection sslConnection = new JsseSslConnection(streamConnection, engine);
+                    if (sslRequired || ! optionMap.get(Options.SSL_STARTTLS, false)) try {
+                        sslConnection.startHandshake();
+                    } catch (IOException e) {
+                        safeClose(sslConnection);
+                        log.failedToAccept(e);
+                    }
+                    handleAccepted(sslConnection, sslConnection, optionMap, saslAuthenticationFactory);
+                }, optionMap);
+            } else {
+                result = xnioWorker.createStreamConnectionServer(bindAddress, channel -> {
+                    final StreamConnection streamConnection = acceptAndConfigure(channel);
+                    if (streamConnection == null) return;
+                    handleAccepted(streamConnection, null, optionMap, saslAuthenticationFactory);
+                }, optionMap);
+            }
             addCloseHandler((closed, exception) -> safeClose(result));
             result.resumeAccepts();
             return result;
         }
-    }
 
-    protected Executor getExecutor() {
-        return super.getExecutor();
-    }
-
-    private final class AcceptListener implements ChannelListener<AcceptingChannel<? extends StreamConnection>> {
-
-        private final OptionMap serverOptionMap;
-        private final SaslAuthenticationFactory saslAuthenticationFactory;
-
-        AcceptListener(final OptionMap serverOptionMap, final SaslAuthenticationFactory saslAuthenticationFactory) {
-            this.serverOptionMap = serverOptionMap;
-            this.saslAuthenticationFactory = saslAuthenticationFactory;
-        }
-
-        public void handleEvent(final AcceptingChannel<? extends StreamConnection> channel) {
-            final StreamConnection accepted;
+        private StreamConnection acceptAndConfigure(final AcceptingChannel<StreamConnection> channel) {
+            final StreamConnection streamConnection;
             try {
-                accepted = channel.accept();
-                if (accepted == null) {
-                    return;
-                }
+                streamConnection = channel.accept();
             } catch (IOException e) {
                 log.failedToAccept(e);
-                return;
+                return null;
+            }
+            if (streamConnection == null) {
+                return null;
             }
             try {
-                accepted.setOption(Options.TCP_NODELAY, Boolean.TRUE);
+                streamConnection.setOption(Options.TCP_NODELAY, Boolean.TRUE);
             } catch (IOException e) {
                 // ignore
             }
+            return streamConnection;
+        }
 
-            final SslChannel sslChannel = accepted instanceof SslChannel ? (SslChannel) accepted : null;
+        private void handleAccepted(final StreamConnection accepted, final SslChannel sslChannel, final OptionMap serverOptionMap, final SaslAuthenticationFactory saslAuthenticationFactory) {
             final RemoteConnection connection = new RemoteConnection(accepted, sslChannel, serverOptionMap, RemoteConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, saslAuthenticationFactory, serverOptionMap);
             accepted.getSinkChannel().setWriteListener(connection.getWriteListener());
             log.tracef("Accepted connection from %s to %s", connection.getPeerAddress(), connection.getLocalAddress());
             openListener.handleEvent(accepted.getSourceChannel());
         }
+    }
+
+    protected Executor getExecutor() {
+        return super.getExecutor();
     }
 
     public String toString() {
