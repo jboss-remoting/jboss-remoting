@@ -41,7 +41,7 @@ public final class ConfigurationEndpointSupplier implements Supplier<Endpoint> {
     static {
         CONFIGURED_ENDPOINT = AccessController.doPrivileged((PrivilegedAction<Endpoint>) () -> {
             try {
-                return RemotingXmlParser.parseEndpoint();
+                return new UncloseableEndpoint(RemotingXmlParser.parseEndpoint());
             } catch (ConfigXMLParseException | IOException e) {
                 try {
                     return new EndpointBuilder().build();
