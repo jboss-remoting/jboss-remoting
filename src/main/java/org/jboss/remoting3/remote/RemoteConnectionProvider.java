@@ -62,7 +62,6 @@ import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Result;
 import org.xnio.StreamConnection;
-import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.channels.SslChannel;
@@ -316,6 +315,9 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     final class ProviderInterface implements NetworkServerProvider {
 
         public AcceptingChannel<StreamConnection> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory, final SSLContext sslContext) throws IOException {
+            Assert.checkNotNullParam("bindAddress", bindAddress);
+            Assert.checkNotNullParam("optionMap", optionMap);
+            Assert.checkNotNullParam("saslAuthenticationFactory", saslAuthenticationFactory);
             final AcceptingChannel<StreamConnection> result;
             // SSL_ENABLED only defaults to true when sslEnabled is set
             if (sslContext != null && (sslRequired || sslEnabled && optionMap.get(Options.SSL_ENABLED, true))) {

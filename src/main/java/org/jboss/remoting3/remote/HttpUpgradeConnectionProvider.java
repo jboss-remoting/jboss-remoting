@@ -39,6 +39,7 @@ import java.util.function.Consumer;
 
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ExternalConnectionProvider;
+import org.wildfly.common.Assert;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.ChannelListener;
@@ -171,6 +172,8 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
     final class ProviderInterface implements ExternalConnectionProvider {
 
         public ConnectionAdaptorImpl createConnectionAdaptor(final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory) throws IOException {
+            Assert.checkNotNullParam("optionMap", optionMap);
+            Assert.checkNotNullParam("saslAuthenticationFactory", saslAuthenticationFactory);
             return new ConnectionAdaptorImpl(optionMap, saslAuthenticationFactory);
         }
     }
