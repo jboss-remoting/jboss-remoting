@@ -388,7 +388,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                             return;
                         }
                         if (saslClient == null) {
-                            connection.handleException(allMechanismsFailed());
+                            if (failedMechs.isEmpty()) {
+                                connection.handleException(new SaslException("Authentication failed: none of the mechanisms presented by the server are supported"));
+                            } else {
+                                connection.handleException(allMechanismsFailed());
+                            }
                             return;
                         }
                         final String mechanismName = saslClient.getMechanismName();
