@@ -49,6 +49,7 @@ import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.sasl.WildFlySasl;
 import org.wildfly.security.sasl.util.ProtocolSaslServerFactory;
+import org.wildfly.security.sasl.util.ServerNameSaslServerFactory;
 import org.wildfly.security.ssl.SSLUtils;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
@@ -249,7 +250,9 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                         final String protocol = optionMap.get(RemotingOptions.SASL_PROTOCOL, RemotingOptions.DEFAULT_SASL_PROTOCOL);
                         SaslServer saslServer;
                         try {
-                            saslServer = saslAuthenticationFactory.createMechanism(mechName, saslServerFactory -> new ProtocolSaslServerFactory(saslServerFactory, protocol));
+                            saslServer = saslAuthenticationFactory.createMechanism(mechName,
+                                    saslServerFactory -> new ProtocolSaslServerFactory(
+                                            new ServerNameSaslServerFactory(saslServerFactory, serverName), protocol));
                         } catch (SaslException e) {
                             server.trace("Unable to create SaslServer", e);
                             saslServer = null;
