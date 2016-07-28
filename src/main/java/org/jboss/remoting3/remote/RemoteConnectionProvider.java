@@ -50,7 +50,6 @@ import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.wildfly.common.Assert;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
-import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.Cancellable;
@@ -145,14 +144,14 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return b.toString();
     }
 
-    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationContext authenticationContext, final SaslClientFactory saslClientFactory) {
+    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationConfiguration authenticationConfiguration, final SaslClientFactory saslClientFactory) {
         if (! isOpen()) {
             throw new IllegalStateException("Connection provider is closed");
         }
         Assert.checkNotNullParam("destination", destination);
         Assert.checkNotNullParam("connectOptions", connectOptions);
         Assert.checkNotNullParam("result", result);
-        Assert.checkNotNullParam("authenticationContext", authenticationContext);
+        Assert.checkNotNullParam("authenticationConfiguration", authenticationConfiguration);
         Assert.checkNotNullParam("saslClientFactory", saslClientFactory);
         log.tracef("Attempting to connect to \"%s\" with options %s", destination, connectOptions);
         // cancellable that will be returned by this method
@@ -187,17 +186,16 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 if (connection.isOpen()) {
                     remoteConnection.setResult(cancellableResult);
                     connection.getSinkChannel().setWriteListener(remoteConnection.getWriteListener());
-                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(destination, remoteConnection, connectionProviderContext, authenticationContext, saslClientFactory, connectOptions);
+                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(destination, remoteConnection, connectionProviderContext, authenticationConfiguration, saslClientFactory, connectOptions);
                     openListener.handleEvent(connection.getSourceChannel());
                 }
             }
         };
         final AuthenticationContextConfigurationClient configurationClient = ClientConnectionOpenListener.AUTH_CONFIGURATION_CLIENT;
-        final AuthenticationConfiguration authenticationConfiguration = configurationClient.getAuthenticationConfiguration(destination, authenticationContext);
         final InetSocketAddress address = configurationClient.getDestinationInetSocketAddress(destination, authenticationConfiguration, 0);
         final IoFuture<? extends StreamConnection> future;
         if (useSsl) {
-            future = createSslConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, authenticationContext, openListener);
+            future = createSslConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, authenticationConfiguration, openListener);
         } else {
             future = createConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, openListener);
         }
@@ -235,7 +233,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                xnioWorker.openStreamConnection(bindAddress, destination, openListener, null, connectOptions);
     }
 
-    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext, final ChannelListener<StreamConnection> openListener) {
+    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final ChannelListener<StreamConnection> openListener) {
         final IoFuture<StreamConnection> futureConnection = bindAddress == null ?
                                                             xnioWorker.openStreamConnection(destination, null, connectOptions) :
                                                             xnioWorker.openStreamConnection(bindAddress, destination, null, null, connectOptions);
@@ -252,7 +250,6 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
 
             public void handleDone(final StreamConnection streamConnection, final FutureResult<SslConnection> result) {
                 final AuthenticationContextConfigurationClient configurationClient = ClientConnectionOpenListener.AUTH_CONFIGURATION_CLIENT;
-                final AuthenticationConfiguration configuration = configurationClient.getAuthenticationConfiguration(uri, authenticationContext);
                 final String realHost = configurationClient.getRealHost(uri, configuration);
                 final int realPort = configurationClient.getRealPort(uri, configuration);
                 final SSLEngine engine;

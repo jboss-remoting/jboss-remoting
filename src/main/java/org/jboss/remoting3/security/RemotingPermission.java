@@ -39,7 +39,8 @@ public class RemotingPermission extends AbstractNameSetOnlyPermission<RemotingPe
         "connect",
         "addConnectionProvider",
         "registerService",
-        "getConnectionProviderInterface"
+        "getConnectionProviderInterface",
+        "getConnectionPeerIdentity"
     );
 
     private static final StringMapping<RemotingPermission> mapping = new StringMapping<>(names, RemotingPermission::new);
@@ -49,6 +50,7 @@ public class RemotingPermission extends AbstractNameSetOnlyPermission<RemotingPe
     public static final RemotingPermission ADD_CONNECTION_PROVIDER = mapping.getItemById(2);
     public static final RemotingPermission REGISTER_SERVICE = mapping.getItemById(3);
     public static final RemotingPermission GET_CONNECTION_PROVIDER_INTERFACE = mapping.getItemById(4);
+    public static final RemotingPermission GET_CONNECTION_PEER_IDENTITY = mapping.getItemById(5);
 
     public static final RemotingPermission ALL_PERMISSION = new RemotingPermission("*");
 

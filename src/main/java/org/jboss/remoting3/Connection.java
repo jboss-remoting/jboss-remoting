@@ -27,7 +27,10 @@ import java.net.URI;
 
 import javax.net.ssl.SSLSession;
 
+import org.jboss.remoting3.security.RemotingPermission;
 import org.wildfly.security.auth.AuthenticationException;
+import org.wildfly.security.auth.client.PeerIdentity;
+import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -140,4 +143,31 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * @throws AuthenticationException if an authentication was required to get the ID, but the authentication failed
      */
     int getPeerIdentityId() throws AuthenticationException;
+
+    /**
+     * Get the peer identity for the connection.  This is the identity that corresponds to the connection's own authentication
+     * result.
+     *
+     * @return the peer identity for the connection
+     *
+     * @throws SecurityException if a security manager is installed and the caller is not granted the {@code getConnectionPeerIdentity} {@link RemotingPermission}
+     */
+    PeerIdentity getConnectionPeerIdentity() throws SecurityException;
+
+    /**
+     * Get the anonymous peer identity for the connection.  When this identity is in force, the peer will use its local
+     * anonymous identity.
+     *
+     * @return the anonymous peer identity for the connection
+     */
+    PeerIdentity getConnectionAnonymousIdentity();
+
+    /**
+     * Get the peer identity context for the connection.  This context can be used to authenticate additional identities
+     * to the peer which can then be propagated to that peer.  If the connection is managed, the lifespan of the context
+     * may encompass several connection lifespans when the managed connection is broken and subsequently re-established.
+     *
+     * @return the peer identity context
+     */
+    PeerIdentityContext getPeerIdentityContext();
 }

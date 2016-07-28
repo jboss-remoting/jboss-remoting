@@ -28,10 +28,14 @@ import java.net.URI;
 
 import javax.net.ssl.SSLSession;
 
+import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
+import org.wildfly.common.Assert;
+import org.wildfly.security.auth.client.PeerIdentity;
+import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
@@ -110,5 +114,24 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
 
     public String toString() {
         return String.format("Remoting connection <%x> on %s", Integer.valueOf(hashCode()), endpoint);
+    }
+
+    public PeerIdentity getConnectionPeerIdentity() throws SecurityException {
+        final SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(RemotingPermission.GET_CONNECTION_PEER_IDENTITY);
+        }
+        // not presently implemented
+        throw Assert.unsupported();
+    }
+
+    public PeerIdentity getConnectionAnonymousIdentity() {
+        // not presently implemented
+        throw Assert.unsupported();
+    }
+
+    public PeerIdentityContext getPeerIdentityContext() {
+        // not presently implemented
+        throw Assert.unsupported();
     }
 }

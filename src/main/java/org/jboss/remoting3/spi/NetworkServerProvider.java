@@ -43,9 +43,9 @@ public interface NetworkServerProvider {
      * @param bindAddress the address to bind to
      * @param optionMap the server options
      * @param saslAuthenticationFactory the authentication factory
-     * @param sslContext
+     * @param sslContext the SSL context to use (may be {@code null})
      * @return the server channel
      * @throws IOException if the server could not be created
      */
-    AcceptingChannel<StreamConnection> createServer(SocketAddress bindAddress, OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory, final SSLContext sslContext) throws IOException;
+    AcceptingChannel<StreamConnection> createServer(SocketAddress bindAddress, OptionMap optionMap, SaslAuthenticationFactory saslAuthenticationFactory, SSLContext sslContext) throws IOException;
 }

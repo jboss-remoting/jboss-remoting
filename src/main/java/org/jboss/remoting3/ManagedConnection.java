@@ -29,6 +29,8 @@ import java.net.URI;
 import javax.net.ssl.SSLSession;
 
 import org.wildfly.security.auth.AuthenticationException;
+import org.wildfly.security.auth.client.PeerIdentity;
+import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
@@ -120,5 +122,17 @@ final class ManagedConnection implements Connection {
 
     public Attachments getAttachments() {
         return delegate.getAttachments();
+    }
+
+    public PeerIdentity getConnectionPeerIdentity() throws SecurityException {
+        return delegate.getConnectionPeerIdentity();
+    }
+
+    public PeerIdentity getConnectionAnonymousIdentity() {
+        return delegate.getConnectionAnonymousIdentity();
+    }
+
+    public PeerIdentityContext getPeerIdentityContext() {
+        return delegate.getPeerIdentityContext();
     }
 }

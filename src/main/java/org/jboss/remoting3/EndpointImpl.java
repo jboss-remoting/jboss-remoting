@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3;
 
+import static java.security.AccessController.doPrivileged;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -60,7 +62,9 @@ import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 
 import org.wildfly.common.Assert;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
 import org.wildfly.security.sasl.util.PrivilegedSaslClientFactory;
 import org.wildfly.security.sasl.util.ProtocolSaslClientFactory;
 import org.wildfly.security.sasl.util.SaslFactories;
@@ -111,6 +115,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private volatile int resourceCount = 0;
 
     private static final Pattern VALID_SERVICE_PATTERN = Pattern.compile("[-.:a-zA-Z_0-9]+");
+
+    static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
 
     /**
      * The name of this endpoint.
@@ -473,7 +479,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         return true;
                     }
                 };
-                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, authenticationContext, saslClientFactory);
+                final AuthenticationConfiguration configuration = AUTH_CONFIGURATION_CLIENT.getAuthenticationConfiguration(destination, authenticationContext);
+                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, saslClientFactory);
                 ok = true;
                 futureResult.addCancelHandler(connect);
                 return futureResult.getIoFuture();

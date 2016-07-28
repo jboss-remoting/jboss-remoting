@@ -40,7 +40,6 @@ import org.jboss.remoting3.Version;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
-import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
@@ -68,7 +67,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
     private final URI uri;
     private final RemoteConnection connection;
     private final ConnectionProviderContext connectionProviderContext;
-    private final AuthenticationContext authenticationContext;
+    private final AuthenticationConfiguration configuration;
     private final SaslClientFactory saslClientFactory;
     private final OptionMap optionMap;
     private final Map<String, String> failedMechs = new LinkedHashMap<String, String>();
@@ -76,11 +75,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
     private final Set<String> disallowedMechs;
     static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
 
-    ClientConnectionOpenListener(final URI uri, final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final AuthenticationContext authenticationContext, final SaslClientFactory saslClientFactory, final OptionMap optionMap) {
+    ClientConnectionOpenListener(final URI uri, final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final AuthenticationConfiguration configuration, final SaslClientFactory saslClientFactory, final OptionMap optionMap) {
         this.uri = uri;
         this.connection = connection;
         this.connectionProviderContext = connectionProviderContext;
-        this.authenticationContext = authenticationContext;
+        this.configuration = configuration;
         this.saslClientFactory = saslClientFactory;
         this.optionMap = optionMap;
         final Sequence<String> allowedMechs = optionMap.get(Options.SASL_MECHANISMS);
@@ -378,7 +377,6 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
 
                         // OK now send our authentication request
                         final AuthenticationContextConfigurationClient configurationClient = AUTH_CONFIGURATION_CLIENT;
-                        AuthenticationConfiguration configuration = configurationClient.getAuthenticationConfiguration(uri, authenticationContext);
                         final SaslClient saslClient;
                         try {
                             saslClient = configurationClient.createSaslClient(uri, configuration, saslClientFactory, serverSaslMechs);
