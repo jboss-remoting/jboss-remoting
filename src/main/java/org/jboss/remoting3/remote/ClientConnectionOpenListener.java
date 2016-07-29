@@ -377,6 +377,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
 
                         // OK now send our authentication request
                         final AuthenticationContextConfigurationClient configurationClient = AUTH_CONFIGURATION_CLIENT;
+                        final AuthenticationConfiguration configuration = ClientConnectionOpenListener.this.configuration.useHost(remoteServerName);
                         final SaslClient saslClient;
                         try {
                             saslClient = configurationClient.createSaslClient(uri, configuration, saslClientFactory, serverSaslMechs);
