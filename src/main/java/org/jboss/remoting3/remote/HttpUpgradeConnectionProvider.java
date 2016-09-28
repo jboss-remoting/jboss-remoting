@@ -110,7 +110,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         final String secKey = createSecKey();
         headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
 
-        final FutureResult<ConnectedStreamChannel> future = new FutureResult<ConnectedStreamChannel>();
+        final FutureResult<ConnectedStreamChannel> future = new FutureResult<ConnectedStreamChannel>(getExecutor());
 
         HttpUpgrade.performUpgrade(getXnioWorker(), (InetSocketAddress) bindAddress, uri, headers, new ChannelListener<StreamConnection>() {
             @Override
@@ -146,7 +146,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         final String secKey = createSecKey();
         headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
 
-        final FutureResult<ConnectedSslStreamChannel> future = new FutureResult<ConnectedSslStreamChannel>();
+        final FutureResult<ConnectedSslStreamChannel> future = new FutureResult<ConnectedSslStreamChannel>(getExecutor());
 
         HttpUpgrade.performUpgrade(getXnioWorker(), xnioSsl, (InetSocketAddress) bindAddress, uri, headers, new ChannelListener<SslConnection>() {
             @Override

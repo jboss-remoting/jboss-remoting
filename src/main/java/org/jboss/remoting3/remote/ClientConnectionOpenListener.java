@@ -382,7 +382,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         }
 
                         if (serverSaslMechs.isEmpty()) {
-                            connection.handleException(new SaslException("Authentication failed: the server presented no authentication mechanisms"));
+                            if (failedMechs.isEmpty()) {
+                                connection.handleException(new SaslException("Authentication failed: the server presented no authentication mechanisms"));
+                            } else {
+                                // At this point we have been attempting to use mechanisms as they have been presented to us but we have now exhausted the list.
+                                connection.handleException(allMechanismsFailed());
+                            }
                             return;
                         }
 

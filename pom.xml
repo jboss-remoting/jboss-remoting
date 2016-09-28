@@ -38,7 +38,7 @@
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>16</version>
+        <version>20</version>
     </parent>
 
     <properties>
@@ -52,7 +52,7 @@
         <logging-tools.version>1.1.0.Final</logging-tools.version>
         <logmanager.version>1.5.2.Final</logmanager.version>
         <junit.version>4.8.2</junit.version>
-        <byteman-version>2.2.0.1</byteman-version>
+        <byteman-version>3.0.3</byteman-version>
         <test.level>INFO</test.level>
         <leak.debug>false</leak.debug>
 
@@ -236,12 +236,6 @@
                     <enableAssertions>true</enableAssertions>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
                 </configuration>
-            </plugin>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <artifactId>maven-source-plugin</artifactId>
             </plugin>
             <plugin>
                 <artifactId>maven-jar-plugin</artifactId>
