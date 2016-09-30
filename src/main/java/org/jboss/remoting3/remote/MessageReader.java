@@ -60,40 +60,59 @@ final class MessageReader {
         synchronized (lock) {
             for (;;) {
                 ByteBuffer first = queue.peekFirst();
-                if (first != null && remaining(4)) {
-                    int size = getInt(false);
-                    if (remaining(size + 4)) {
-                        ByteBuffer message = (size <= 64 ? ByteBufferPool.SMALL_HEAP : ByteBufferPool.MEDIUM_HEAP).allocate();
-                        getInt(true);
-                        int cnt = 0;
-                        while (cnt < size) {
-                            cnt += Buffers.copy(size - cnt, message, first);
-                            if (! first.hasRemaining()) {
-                                queue.pollFirst();
-                                first = queue.peekFirst();
+                if (first != null) {
+                    if (first.remaining() >= 4) {
+                        int size = first.getInt(first.position());
+                        if (remaining(size + 4)) {
+                            ByteBuffer message = ByteBufferPool.MEDIUM_HEAP.allocate();
+                            first.getInt();
+                            int cnt = 0;
+                            while (cnt < size) {
+                                cnt += Buffers.copy(size - cnt, message, first);
+                                if (! first.hasRemaining()) {
+                                    queue.pollFirst();
+                                    first = queue.peekFirst();
+                                }
+                            }
+                            message.flip();
+                            if (first != null && first.position() + 4 > first.limit()) {
+                                // compact & reflip just to make sure there's space for next time
+                                first.compact();
+                                first.flip();
+                            }
+                            RemoteLogger.conn.tracef("Received message %s", message);
+                            return Buffers.globalPooledWrapper(message);
+                        } else {
+                            if (RemoteLogger.conn.isTraceEnabled()) {
+                                RemoteLogger.conn.tracef("Not enough buffered bytes for message of size %d+4 (%s)", Integer.valueOf(size), first);
                             }
                         }
-                        message.flip();
-                        if (first != null && first.position() + 4 > first.limit()) {
-                            // compact & reflip just to make sure there's space for next time
-                            first.compact();
-                            first.flip();
-                        }
-                        RemoteLogger.conn.tracef("Received message %s", message);
-                        return Buffers.globalPooledWrapper(message);
                     } else {
-                        if (RemoteLogger.conn.isTraceEnabled()) {
-                            RemoteLogger.conn.tracef("Not enough buffered bytes for message of size %d+4 (%s)", Integer.valueOf(size), first);
+                        if (queue.peekLast() == first) {
+                            // ready for re-filling
+                            first.compact().flip();
+                        } else {
+                            // first can never be full enough; we have to copy a few bytes out of the next one
+                            first.compact();
+                            try {
+                                final Iterator<ByteBuffer> iterator = queue.iterator();
+                                iterator.next(); // skip first
+                                assert iterator.hasNext(); // at least one more buffer is present because last != first
+                                do {
+                                    final ByteBuffer next = iterator.next();
+                                    if (next.remaining() > 4) {
+                                        first.putInt(next.getInt());
+                                    } else {
+                                        Buffers.copy(first, next);
+                                    }
+                                } while (first.position() < 4 && iterator.hasNext());
+                            } finally {
+                                first.flip();
+                            }
                         }
                     }
                 } else {
-                    if (RemoteLogger.conn.isTraceEnabled()) {
-                        if (first != null) {
-                            RemoteLogger.conn.tracef("Not enough buffered bytes for message header (%s)", first);
-                        } else {
-                            RemoteLogger.conn.trace("No buffers in queue for message header");
-                        }
-                    }
+                    RemoteLogger.conn.trace("No buffers in queue for message header");
                 }
                 ByteBuffer[] b = array;
                 ByteBuffer last = queue.pollLast();
@@ -142,37 +161,6 @@ final class MessageReader {
             if (rem >= cnt) return true;
         }
         return false;
-    }
-
-    private int getInt(boolean consume) {
-        // NOTE only works for 31-bit ints
-        int a = 0;
-        int i = 0;
-        Iterator<ByteBuffer> iterator = queue.iterator();
-        if (consume) {
-            while (iterator.hasNext()) {
-                ByteBuffer buffer = iterator.next();
-                while (buffer.hasRemaining()) {
-                    a = buffer.get() & 0xff | a << 8;
-                    if (i ++ == 3) {
-                        return a;
-                    }
-                }
-            }
-        } else {
-            int p;
-            while (iterator.hasNext()) {
-                ByteBuffer buffer = iterator.next();
-                p = buffer.position();
-                while (p < buffer.limit()) {
-                    a = buffer.get(p++) & 0xff | a << 8;
-                    if (i ++ == 3) {
-                        return a;
-                    }
-                }
-            }
-        }
-        return -1;
     }
 
     public void close() {
