@@ -100,8 +100,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private final Attachments attachments = new Attachments();
 
-    private final ConcurrentMap<String, ConnectionProvider> connectionProviders = new UnlockedReadHashMap<String, ConnectionProvider>();
-    private final ConcurrentMap<String, RegisteredServiceImpl> registeredServices = new UnlockedReadHashMap<String, RegisteredServiceImpl>();
+    private final ConcurrentMap<String, ConnectionProvider> connectionProviders = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, RegisteredServiceImpl> registeredServices = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConnectionKey, FutureConnection> configuredConnections = new ConcurrentHashMap<>();
 
     private final Xnio xnio;

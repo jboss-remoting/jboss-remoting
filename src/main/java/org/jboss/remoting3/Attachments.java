@@ -22,13 +22,14 @@
 
 package org.jboss.remoting3;
 
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
  * A set of attachments for an entity.
  */
 public final class Attachments {
-    private final ConcurrentMap<Key<?>, Object> map = new UnlockedReadHashMap<Key<?>, Object>();
+    private final ConcurrentMap<Key<?>, Object> map = new ConcurrentHashMap<Key<?>, Object>();
 
     /** {@inheritDoc} */
     public <T> T attach(final Key<T> key, final T value) {
