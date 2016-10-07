@@ -336,10 +336,9 @@
             </plugin>
             <plugin>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.6.1</version>
                 <configuration>
                     <links>
-                        <link>http://java.sun.com/javase/7/docs/api/</link>
+                        <link>http://java.sun.com/javase/8/docs/api/</link>
                     </links>
                     <excludePackageNames>*._private</excludePackageNames>
                 </configuration>
@@ -368,25 +367,6 @@
                                         </versionRange>
                                         <goals>
                                             <goal>jar</goal>
-                                        </goals>
-                                    </pluginExecutionFilter>
-                                    <action>
-                                        <ignore></ignore>
-                                    </action>
-                                </pluginExecution>
-                                <pluginExecution>
-                                    <pluginExecutionFilter>
-                                        <groupId>
-                                            org.jboss.maven.plugins
-                                        </groupId>
-                                        <artifactId>
-                                            maven-injection-plugin
-                                        </artifactId>
-                                        <versionRange>
-                                            [1.0.2,)
-                                        </versionRange>
-                                        <goals>
-                                            <goal>bytecode</goal>
                                         </goals>
                                     </pluginExecutionFilter>
                                     <action>
