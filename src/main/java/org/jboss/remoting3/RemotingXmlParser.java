@@ -192,7 +192,8 @@ final class RemotingXmlParser {
         String module = null;
         String clazz = null;
         for (int i = 0; i < attributeCount; i ++) {
-            if (reader.getAttributeNamespace(i) != null) {
+            final String attributeNamespace = reader.getAttributeNamespace(i);
+            if (attributeNamespace != null && ! attributeNamespace.isEmpty()) {
                 throw reader.unexpectedAttribute(i);
             }
             switch (reader.getAttributeLocalName(i)) {
@@ -272,7 +273,8 @@ final class RemotingXmlParser {
         URI uri = null;
         boolean immediate = false;
         for (int i = 0; i < attributeCount; i ++) {
-            if (reader.getAttributeNamespace(i) != null) {
+            final String attributeNamespace = reader.getAttributeNamespace(i);
+            if (attributeNamespace != null && ! attributeNamespace.isEmpty()) {
                 throw reader.unexpectedAttribute(i);
             }
             switch (reader.getAttributeLocalName(i)) {
