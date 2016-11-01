@@ -32,7 +32,9 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -48,6 +50,7 @@ import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.sasl.WildFlySasl;
+import org.wildfly.security.sasl.util.PropertiesSaslServerFactory;
 import org.wildfly.security.sasl.util.ProtocolSaslServerFactory;
 import org.wildfly.security.sasl.util.ServerNameSaslServerFactory;
 import org.wildfly.security.ssl.SSLUtils;
@@ -56,6 +59,8 @@ import org.xnio.ChannelListener;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pooled;
+import org.xnio.Property;
+import org.xnio.Sequence;
 import org.xnio.channels.Channels;
 import org.xnio.channels.SslChannel;
 import org.xnio.conduits.ConduitStreamSourceChannel;
@@ -248,11 +253,15 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                             mechName = ProtocolUtils.readString(receiveBuffer);
                         }
                         final String protocol = optionMap.get(RemotingOptions.SASL_PROTOCOL, RemotingOptions.DEFAULT_SASL_PROTOCOL);
+                        final Map<String, String> saslProperties = getSaslProperties(optionMap);
                         SaslServer saslServer;
                         try {
                             saslServer = saslAuthenticationFactory.createMechanism(mechName,
-                                    saslServerFactory -> new ProtocolSaslServerFactory(
-                                            new ServerNameSaslServerFactory(saslServerFactory, serverName), protocol));
+                                    saslServerFactory -> saslProperties != null ?
+                                            new PropertiesSaslServerFactory(
+                                                    new ProtocolSaslServerFactory(new ServerNameSaslServerFactory(saslServerFactory, serverName), protocol),
+                                                    saslProperties)
+                                            : new ProtocolSaslServerFactory(new ServerNameSaslServerFactory(saslServerFactory, serverName), protocol));
                         } catch (SaslException e) {
                             server.trace("Unable to create SaslServer", e);
                             saslServer = null;
@@ -278,6 +287,18 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
             } finally {
                 if (free) message.free();
             }
+        }
+
+        private Map<String, String> getSaslProperties(final OptionMap optionMap) {
+            Map<String, String> saslProperties = null;
+            final Sequence<Property> value = optionMap.get(Options.SASL_PROPERTIES);
+            if (value != null) {
+                saslProperties = new HashMap<>(value.size());
+                for (Property property : value) {
+                    saslProperties.put(property.getKey(), (String) property.getValue());
+                }
+            }
+            return saslProperties;
         }
 
         void rejectAuthentication(String mechName) {
