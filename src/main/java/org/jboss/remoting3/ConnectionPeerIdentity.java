@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
+ * Copyright 2016, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -20,27 +20,38 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.remote;
+package org.jboss.remoting3;
 
-import org.jboss.logging.annotations.LogMessage;
-import org.jboss.logging.annotations.Message;
-import org.jboss.logging.annotations.MessageLogger;
-import org.jboss.logging.Logger;
+import java.security.Principal;
 
-import static org.jboss.logging.Logger.Level.*;
+import org.wildfly.security.auth.client.PeerIdentity;
 
 /**
- * "Remote" protocol authentication logger.  Message codes from 270-299.
+ * A connection peer identity.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-@MessageLogger(projectCode = "JBREM")
-interface RemoteAuthLogger {
-    RemoteAuthLogger authLog = Logger.getMessageLogger(RemoteAuthLogger.class, "org.jboss.remoting.auth");
+public final class ConnectionPeerIdentity extends PeerIdentity {
 
-    // non-i18n
+    private final int index;
+    private final Connection connection;
 
-    @LogMessage(level = TRACE)
-    @Message(value = "Rejected invalid SASL mechanism %s")
-    void rejectedInvalidMechanism(String name);
+    ConnectionPeerIdentity(final Configuration configuration, final Principal peerPrincipal, final int index, final Connection connection) {
+        super(configuration, peerPrincipal);
+        this.index = index;
+        this.connection = connection;
+    }
+
+    int getIndex() {
+        return index;
+    }
+
+    /**
+     * Get the connection of this identity.
+     *
+     * @return the connection of this identity (not {@code null})
+     */
+    public Connection getConnection() {
+        return connection;
+    }
 }

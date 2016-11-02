@@ -29,6 +29,7 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channel;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -58,7 +59,7 @@ import javax.security.sasl.SaslClientFactory;
 import javax.security.sasl.SaslException;
 
 import static java.security.AccessController.doPrivileged;
-import static org.jboss.remoting3.remote.RemoteLogger.client;
+import static org.jboss.remoting3._private.Messages.client;
 import static org.xnio.sasl.SaslUtils.EMPTY_BYTES;
 
 @SuppressWarnings("deprecation")
@@ -69,23 +70,25 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
     private final ConnectionProviderContext connectionProviderContext;
     private final AuthenticationConfiguration configuration;
     private final SaslClientFactory saslClientFactory;
+    private final Collection<String> serverMechs;
     private final OptionMap optionMap;
     private final Map<String, String> failedMechs = new LinkedHashMap<String, String>();
     private final Set<String> allowedMechs;
     private final Set<String> disallowedMechs;
     static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
 
-    ClientConnectionOpenListener(final URI uri, final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final AuthenticationConfiguration configuration, final SaslClientFactory saslClientFactory, final OptionMap optionMap) {
+    ClientConnectionOpenListener(final URI uri, final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final AuthenticationConfiguration configuration, final SaslClientFactory saslClientFactory, final Collection<String> serverMechs, final OptionMap optionMap) {
         this.uri = uri;
         this.connection = connection;
         this.connectionProviderContext = connectionProviderContext;
         this.configuration = configuration;
         this.saslClientFactory = saslClientFactory;
+        this.serverMechs = serverMechs;
         this.optionMap = optionMap;
         final Sequence<String> allowedMechs = optionMap.get(Options.SASL_MECHANISMS);
         final Sequence<String> disallowedMechs = optionMap.get(Options.SASL_DISALLOWED_MECHANISMS);
         this.allowedMechs = allowedMechs == null ? null : new HashSet<String>(allowedMechs);
-        this.disallowedMechs = disallowedMechs == null ? Collections.<String>emptySet() : new HashSet<String>(disallowedMechs);
+        this.disallowedMechs = disallowedMechs == null ? Collections.emptySet() : new HashSet<String>(disallowedMechs);
     }
 
     public void handleEvent(final ConduitStreamSourceChannel channel) {
@@ -120,6 +123,13 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
             ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.getVersionString());
             ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_IN, optionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_INBOUND_CHANNELS));
             ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_OUT, optionMap.get(RemotingOptions.MAX_OUTBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_OUTBOUND_CHANNELS));
+            ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_AUTHENTICATION);
+            final Collection<String> serverMechs = this.serverMechs;
+            if (serverMechs != null) {
+                for (String name : serverMechs) {
+                    ProtocolUtils.writeString(sendBuffer, Protocol.CAP_SASL_MECH, name);
+                }
+            }
             sendBuffer.flip();
             connection.setReadListener(new Capabilities(remoteServerName, uri), true);
             connection.send(pooledSendBuffer);
@@ -275,6 +285,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         boolean useDefaultChannels = true;
                         int channelsIn = 40;
                         int channelsOut = 40;
+                        boolean authCap = false;
                         while (receiveBuffer.hasRemaining()) {
                             final byte type = receiveBuffer.get();
                             final int len = receiveBuffer.get() & 0xff;
@@ -331,6 +342,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                     // their channels out is our channels in
                                     channelsIn = ProtocolUtils.readIntData(data, len);
                                     client.tracef("Client received capability: remote channels out is \"%d\"", channelsIn);
+                                    break;
+                                }
+                                case Protocol.CAP_AUTHENTICATION: {
+                                    authCap = true;
+                                    client.trace("Client received capability: authentication service");
                                     break;
                                 }
                                 default: {
@@ -400,7 +416,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         connection.getMessageReader().suspendReads();
                         final int negotiatedVersion = version;
                         final SaslClient usedSaslClient = saslClient;
-                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, remoteEndpointName, behavior, channelsIn, channelsOut);
+                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, remoteEndpointName, behavior, channelsIn, channelsOut, authCap);
                         connection.getExecutor().execute(() -> {
                             final byte[] response;
                             try {
@@ -535,14 +551,16 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
         private final int behavior;
         private final int maxInboundChannels;
         private final int maxOutboundChannels;
+        private final boolean authCap;
 
-        Authentication(final SaslClient saslClient, final String serverName, final String endpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels) {
+        Authentication(final SaslClient saslClient, final String serverName, final String endpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels, final boolean authCap) {
             this.saslClient = saslClient;
             this.serverName = serverName;
             this.behavior = behavior;
             this.remoteEndpointName = endpointName;
             this.maxInboundChannels = maxInboundChannels;
             this.maxOutboundChannels = maxOutboundChannels;
+            this.authCap = authCap;
         }
 
         public void handleEvent(final ConduitStreamSourceChannel channel) {
@@ -661,7 +679,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 final ConnectionHandlerFactory connectionHandlerFactory = connectionContext -> {
 
                                     // this happens immediately.
-                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
+                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior, authCap);
                                     connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                     connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                     return connectionHandler;

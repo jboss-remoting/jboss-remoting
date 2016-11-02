@@ -197,6 +197,58 @@ final class Protocol {
      */
     static final byte MESSAGE_CLOSE = 0x32;
 
+    // Messages for app authentication
+
+    /**
+     * byte 0: APP_AUTH_REQUEST (client -> server)
+     * byte 1..4: identity (!= 0 or 1)
+     * byte 5: mech name length in bytes (unsigned 1-256)
+     * byte 6..n: mech name
+     * byte n+1..m: initial response
+     */
+    static final byte APP_AUTH_REQUEST = 0x40;
+
+    /**
+     * byte 0: APP_AUTH_CHALLENGE (server -> client)
+     * byte 1..4: identity from auth request
+     * byte 5..n: challenge body
+     */
+    static final byte APP_AUTH_CHALLENGE = 0x41;
+
+    /**
+     * byte 0: APP_AUTH_RESPONSE (client -> server)
+     * byte 1..4: identity from auth request
+     * byte 5..n: response body
+     */
+    static final byte APP_AUTH_RESPONSE = 0x42;
+
+    /**
+     * byte 0: APP_AUTH_SUCCESS (server -> client)
+     * byte 1..4: identity from auth request
+     * byte 5..n: final challenge (update) body (0 = null)
+     */
+    static final byte APP_AUTH_SUCCESS = 0x43;
+
+    /**
+     * byte 0: APP_AUTH_REJECT (server -> client)
+     * byte 1..4: identity from auth request
+     */
+    static final byte APP_AUTH_REJECT = 0x44;
+
+    /**
+     * byte 0: APP_AUTH_DELETE (client -> server)
+     * byte 1..4: identity from auth request
+     */
+    static final byte APP_AUTH_DELETE = 0x45;
+
+    /**
+     * byte 0: APP_AUTH_DELETE_ACK (server -> client)
+     * byte 1..4: identity from auth request
+     *
+     * Must only be sent in response to an APP_AUTH_DELETE else spurious failures may result.
+     */
+    static final byte APP_AUTH_DELETE_ACK = 0x46;
+
     // Messages for handling connection status
 
     /**
@@ -256,13 +308,14 @@ final class Protocol {
     // Capabilities
 
     static final byte CAP_VERSION = 0;   // sent by client & server - max version supported (must be first)
-    static final byte CAP_SASL_MECH = 1; // sent by server; content = mechanism name (utf-8)
+    static final byte CAP_SASL_MECH = 1; // sent by server and client; content = mechanism name (utf-8)
     static final byte CAP_STARTTLS = 2;  // sent by server; content = empty
     static final byte CAP_ENDPOINT_NAME = 3; // sent by client & server - our endpoint name if not anonymous
     static final byte CAP_MESSAGE_CLOSE = 4; // sent by client & server - if present, use message close protocol
     static final byte CAP_VERSION_STRING = 5; // sent by client & server
     static final byte CAP_CHANNELS_IN = 6; // sent by client & server, if missing peer does not support it
     static final byte CAP_CHANNELS_OUT = 7; // sent by client & server, if missing peer does not support it
+    static final byte CAP_AUTHENTICATION = 8; // sent by client & server, if missing peer does not support it
 
     // Greeting messages
 

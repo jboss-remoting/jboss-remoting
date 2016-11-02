@@ -24,6 +24,7 @@ package org.jboss.remoting3;
 
 import java.net.SocketAddress;
 import java.net.URI;
+import java.security.Principal;
 
 import javax.net.ssl.SSLSession;
 
@@ -31,6 +32,7 @@ import org.jboss.remoting3.security.RemotingPermission;
 import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.client.PeerIdentity;
 import org.wildfly.security.auth.client.PeerIdentityContext;
+import org.wildfly.security.auth.principal.AnonymousPrincipal;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -170,4 +172,11 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * @return the peer identity context
      */
     PeerIdentityContext getPeerIdentityContext();
+
+    /**
+     * Get the local principal that was authenticated to the peer.  May be {@linkplain AnonymousPrincipal anonymous}.
+     *
+     * @return the peer principal (must not be {@code null})
+     */
+    Principal getPrincipal();
 }

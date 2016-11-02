@@ -23,7 +23,6 @@
 package org.jboss.remoting3.spi;
 
 import org.jboss.remoting3.Connection;
-import org.jboss.remoting3.OpenListener;
 
 /**
  * The context for connection handlers.  Used to inform the endpoint of incoming events on an established connection.
@@ -36,15 +35,6 @@ public interface ConnectionHandlerContext {
      * @return the connection provider context
      */
     ConnectionProviderContext getConnectionProviderContext();
-
-    /**
-     * Get the open listener for a service.  This method should return immediately.
-     *
-     * @param serviceType the service type string
-     * @return the open listener
-     */
-    @Deprecated
-    OpenListener getServiceOpenListener(String serviceType);
 
     /**
      * Get a registered service.  This method will return immediately.
@@ -65,4 +55,58 @@ public interface ConnectionHandlerContext {
      * @return the connection
      */
     Connection getConnection();
+
+    /**
+     * Receive an authentication request.
+     *
+     * @param id the ID number to use
+     * @param mechName the mechanism name (not {@code null})
+     * @param initialResponse the initial response (possibly {@code null})
+     */
+    void receiveAuthRequest(int id, String mechName, byte[] initialResponse);
+
+    /**
+     * Receive an authentication challenge.
+     *
+     * @param id the ID number to use
+     * @param challenge the challenge body (not {@code null})
+     */
+    void receiveAuthChallenge(int id, byte[] challenge);
+
+    /**
+     * Receive an authentication response.
+     *
+     * @param id the ID number to use
+     * @param response the response body (not {@code null})
+     */
+    void receiveAuthResponse(int id, byte[] response);
+
+    /**
+     * Receive an authentication complete message.
+     *
+     * @param id the ID number to use
+     * @param challenge the final challenge (may be {@code null} if none is needed)
+     */
+    void receiveAuthSuccess(int id, byte[] challenge);
+
+    /**
+     * Receive an authentication reject message.
+     *
+     * @param id the ID number to use
+     */
+    void receiveAuthReject(int id);
+
+    /**
+     * Receive an authentication delete message.
+     *
+     * @param id the ID number to use
+     */
+    void receiveAuthDelete(int id);
+
+    /**
+     * Receive an authentication delete acknowledgement message.
+     *
+     * @param id the ID number to use
+     */
+    void receiveAuthDeleteAck(int id);
 }

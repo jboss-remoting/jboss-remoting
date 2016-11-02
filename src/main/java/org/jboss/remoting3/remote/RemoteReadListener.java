@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Buffers;
@@ -40,7 +41,7 @@ import org.xnio.Pooled;
 import org.xnio.conduits.ConduitStreamSourceChannel;
 import org.xnio.sasl.SaslWrapper;
 
-import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.jboss.remoting3._private.Messages.log;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -428,6 +429,80 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                                 pendingChannel.getResult().setException(new IOException(reason));
                                 break;
                             }
+                            case Protocol.APP_AUTH_REQUEST: {
+                                int id = buffer.getInt();
+                                final int length = (buffer.get() - 1 & 0xff) + 1; // range: 1 - 256
+                                final byte[] mechNameBytes = new byte[length];
+                                buffer.get(mechNameBytes);
+                                String mechName = new String(mechNameBytes, StandardCharsets.UTF_8);
+                                log.tracef("Received authentication request, id %08x, mech %s", id, mechName);
+                                ConnectionHandlerContext c = handler.getConnectionContext();
+                                final byte[] saslBytes;
+                                if (buffer.hasRemaining()) {
+                                    saslBytes = new byte[buffer.remaining()];
+                                    buffer.get(saslBytes);
+                                } else {
+                                    saslBytes = null;
+                                }
+                                c.receiveAuthRequest(id, mechName, saslBytes);
+                                break;
+                            }
+                            case Protocol.APP_AUTH_CHALLENGE: {
+                                int id = buffer.getInt();
+                                log.tracef("Received authentication challenge, id %08x", id);
+                                ConnectionHandlerContext c = handler.getConnectionContext();
+                                final byte[] saslBytes;
+                                saslBytes = new byte[buffer.remaining()];
+                                buffer.get(saslBytes);
+                                c.receiveAuthChallenge(id, saslBytes);
+                                break;
+                            }
+                            case Protocol.APP_AUTH_RESPONSE: {
+                                int id = buffer.getInt();
+                                log.tracef("Received authentication response, id %08x", id);
+                                ConnectionHandlerContext c = handler.getConnectionContext();
+                                final byte[] saslBytes;
+                                saslBytes = new byte[buffer.remaining()];
+                                buffer.get(saslBytes);
+                                c.receiveAuthResponse(id, saslBytes);
+                                break;
+                            }
+                            case Protocol.APP_AUTH_SUCCESS: {
+                                int id = buffer.getInt();
+                                log.tracef("Received authentication success, id %08x", id);
+                                ConnectionHandlerContext c = handler.getConnectionContext();
+                                final byte[] saslBytes;
+                                if (buffer.hasRemaining()) {
+                                    saslBytes = new byte[buffer.remaining()];
+                                    buffer.get(saslBytes);
+                                } else {
+                                    saslBytes = null;
+                                }
+                                c.receiveAuthSuccess(id, saslBytes);
+                                break;
+                            }
+                            case Protocol.APP_AUTH_REJECT: {
+                                int id = buffer.getInt();
+                                log.tracef("Received authentication reject, id %08x", id);
+                                ConnectionHandlerContext c = handler.getConnectionContext();
+                                c.receiveAuthReject(id);
+                                break;
+                            }
+                            case Protocol.APP_AUTH_DELETE: {
+                                int id = buffer.getInt();
+                                log.tracef("Received authentication delete, id %08x", id);
+                                ConnectionHandlerContext c = handler.getConnectionContext();
+                                c.receiveAuthDelete(id);
+                                break;
+                            }
+                            case Protocol.APP_AUTH_DELETE_ACK: {
+                                int id = buffer.getInt();
+                                log.tracef("Received authentication delete ack, id %08x", id);
+                                ConnectionHandlerContext c = handler.getConnectionContext();
+                                c.receiveAuthDeleteAck(id);
+                                break;
+                            }
+
                             default: {
                                 log.unknownProtocolId(protoId);
                                 break;

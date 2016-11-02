@@ -22,6 +22,7 @@
 
 package org.jboss.remoting3.spi;
 
+import java.io.IOException;
 import java.net.SocketAddress;
 
 import javax.net.ssl.SSLSession;
@@ -79,26 +80,78 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
 
     /**
      * Get the local identity corresponding to the peer authentication which was performed on this connection, if it
-     * is an incoming connection.  Outbound connections will always return {@code null} for this property.
+     * is an incoming connection.  Outbound connections may return {@code null} for this property.
      *
-     * @return the local identity of inbound connections, or {@code null} if the connection is not inbound
+     * @return the local identity of a connection, or {@code null} if the connection has no local identity and no
+     * local security domain configuration
      */
     SecurityIdentity getLocalIdentity();
 
     /**
-     * Get the local identity associated with the given ID that was previously shared to the peer.
+     * Determine if the connection handler supports the remote authentication protocol.
      *
-     * @param id the numeric ID
-     * @return the identity, or {@code null} if the the given ID is not valid
+     * @return {@code true} if remote authentication is supported, {@code false} otherwise
      */
-    SecurityIdentity getLocalIdentity(int id);
+    boolean supportsRemoteAuth();
 
     /**
-     * The the ID number for the peer identity which is currently associated with the calling thread.  The special
-     * value 0 indicates that the connection's identity is in use; the special value 1 indicates that the anonymous
-     * identity is in use.
+     * Send an authentication request.
      *
-     * @return the numeric ID
+     * @param id the ID number to use
+     * @param mechName the mechanism name (not {@code null})
+     * @param initialResponse the initial response (possibly {@code null})
+     * @throws IOException if a transmission error occurs
      */
-    int getPeerIdentityId();
+    void sendAuthRequest(int id, String mechName, byte[] initialResponse) throws IOException;
+
+    /**
+     * Send an authentication challenge.
+     *
+     * @param id the ID number to use
+     * @param challenge the challenge body (not {@code null})
+     * @throws IOException if a transmission error occurs
+     */
+    void sendAuthChallenge(int id, byte[] challenge) throws IOException;
+
+    /**
+     * Send an authentication response.
+     *
+     * @param id the ID number to use
+     * @param response the response body (not {@code null})
+     * @throws IOException if a transmission error occurs
+     */
+    void sendAuthResponse(int id, byte[] response) throws IOException;
+
+    /**
+     * Send an authentication complete message.
+     *
+     * @param id the ID number to use
+     * @param challenge the final challenge (may be {@code null} if none is needed)
+     * @throws IOException if a transmission error occurs
+     */
+    void sendAuthSuccess(int id, byte[] challenge) throws IOException;
+
+    /**
+     * Send an authentication reject message.
+     *
+     * @param id the ID number to use
+     * @throws IOException if a transmission error occurs
+     */
+    void sendAuthReject(int id) throws IOException;
+
+    /**
+     * Send an authentication delete message.
+     *
+     * @param id the ID number to use
+     * @throws IOException if a transmission error occurs
+     */
+    void sendAuthDelete(int id) throws IOException;
+
+    /**
+     * Send an authentication delete acknowledgement message.
+     *
+     * @param id the ID number to use
+     * @throws IOException if a transmission error occurs
+     */
+    void sendAuthDeleteAck(int id) throws IOException;
 }

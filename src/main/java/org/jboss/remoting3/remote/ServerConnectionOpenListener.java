@@ -23,9 +23,8 @@
 package org.jboss.remoting3.remote;
 
 import static java.lang.Math.min;
-import static org.jboss.remoting3.remote.RemoteAuthLogger.authLog;
-import static org.jboss.remoting3.remote.RemoteLogger.log;
-import static org.jboss.remoting3.remote.RemoteLogger.server;
+import static org.jboss.remoting3._private.Messages.log;
+import static org.jboss.remoting3._private.Messages.server;
 
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -131,6 +130,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
         private int channelsOut = 40;
         private String remoteEndpointName;
         private int behavior = Protocol.BH_FAULTY_MSG_SIZE;
+        private boolean authCap;
 
         Initial() {
             // Calculate our capabilities
@@ -271,7 +271,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                             return;
                         }
                         connection.getMessageReader().suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, message, remoteEndpointName, behavior, channelsIn, channelsOut));
+                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, message, remoteEndpointName, behavior, channelsIn, channelsOut, authCap));
                         free = false;
                         return;
                     }
@@ -303,7 +303,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
 
         void rejectAuthentication(String mechName) {
             // reject
-            authLog.rejectedInvalidMechanism(mechName);
+            log.rejectedInvalidMechanism(mechName);
             final Pooled<ByteBuffer> pooled = connection.allocate();
             boolean ok = false;
             try {
@@ -321,6 +321,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
             boolean useDefaultChannels = true;
             int channelsIn = 40;
             int channelsOut = 40;
+            boolean authCap = false;
             while (receiveBuffer.hasRemaining()) {
                 final byte type = receiveBuffer.get();
                 final int len = receiveBuffer.get() & 0xff;
@@ -366,6 +367,11 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                         server.tracef("Server received capability: remote channels out is \"%d\"", channelsIn);
                         break;
                     }
+                    case Protocol.CAP_AUTHENTICATION: {
+                        authCap = true;
+                        server.trace("Server received capability: authentication service");
+                        break;
+                    }
                     default: {
                         server.tracef("Server received unknown capability %02x", Integer.valueOf(type & 0xff));
                         // unknown, skip it for forward compatibility.
@@ -377,6 +383,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                 this.channelsIn = channelsIn;
                 this.channelsOut = channelsOut;
             }
+            this.authCap = authCap;
         }
 
 
@@ -406,6 +413,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                 ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.getVersionString());
                 ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_IN, optionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_INBOUND_CHANNELS));
                 ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_OUT, optionMap.get(RemotingOptions.MAX_OUTBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_OUTBOUND_CHANNELS));
+                ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_AUTHENTICATION);
                 sendBuffer.flip();
                 connection.send(pooled);
                 ok = true;
@@ -425,8 +433,9 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
         private final int behavior;
         private final int maxInboundChannels;
         private final int maxOutboundChannels;
+        private final boolean authCap;
 
-        AuthStepRunnable(final boolean isInitial, final SaslServer saslServer, final Pooled<ByteBuffer> buffer, final String remoteEndpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels) {
+        AuthStepRunnable(final boolean isInitial, final SaslServer saslServer, final Pooled<ByteBuffer> buffer, final String remoteEndpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels, final boolean authCap) {
             this.isInitial = isInitial;
             this.saslServer = saslServer;
             this.buffer = buffer;
@@ -434,6 +443,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
             this.behavior = behavior;
             this.maxInboundChannels = maxInboundChannels;
             this.maxOutboundChannels = maxOutboundChannels;
+            this.authCap = authCap;
         }
 
         @Override
@@ -456,18 +466,18 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                                     connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                 }
                                 final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                    connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
+                                    connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior, authCap);
                                 connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                 final SecurityIdentity identity = (SecurityIdentity) saslServer.getNegotiatedProperty(WildFlySasl.SECURITY_IDENTITY);
                                 connection.setIdentity(identity == null ? saslAuthenticationFactory.getSecurityDomain().getAnonymousSecurityIdentity() : identity);
                                 connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                 return connectionHandler;
-                            });
+                            }, saslAuthenticationFactory);
                         } else {
                             server.tracef("Server sending authentication challenge");
                             sendBuffer.put(p, Protocol.AUTH_CHALLENGE);
                             if (isInitial) {
-                                connection.setReadListener(new Authentication(saslServer, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels), false);
+                                connection.setReadListener(new Authentication(saslServer, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels, authCap), false);
                             }
                         }
                     } catch (Throwable e) {
@@ -505,13 +515,15 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
         private final int behavior;
         private final int maxInboundChannels;
         private final int maxOutboundChannels;
+        private final boolean authCap;
 
-        Authentication(final SaslServer saslServer, final String remoteEndpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels) {
+        Authentication(final SaslServer saslServer, final String remoteEndpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels, final boolean authCap) {
             this.saslServer = saslServer;
             this.remoteEndpointName = remoteEndpointName;
             this.behavior = behavior;
             this.maxInboundChannels = maxInboundChannels;
             this.maxOutboundChannels = maxOutboundChannels;
+            this.authCap = authCap;
         }
 
         public void handleEvent(final ConduitStreamSourceChannel channel) {
@@ -547,7 +559,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                     case Protocol.AUTH_RESPONSE: {
                         server.tracef("Server received authentication response");
                         connection.getMessageReader().suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, message, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels));
+                        connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, message, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels, authCap));
                         free = false;
                         return;
                     }

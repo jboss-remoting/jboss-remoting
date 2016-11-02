@@ -31,7 +31,8 @@ import org.jboss.remoting3.MessageInputStream;
 import org.xnio.Pooled;
 import org.xnio.streams.BufferPipeInputStream;
 
-import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.jboss.remoting3._private.Messages.conn;
+import static org.jboss.remoting3._private.Messages.log;
 import static java.lang.Thread.holdsLock;
 import static org.xnio.IoUtils.safeClose;
 
@@ -249,13 +250,13 @@ final class InboundMessage {
         // this method is called when the remote side forgot about us.  Our mapping will have been already replaced.
         // We must not send anything to the peer from here on because things may be in a broken state.
         // Though this is a best-effort strategy as everything is screwed up in this case anyway.
-        RemoteLogger.conn.duplicateMessageId(messageId, channel.getRemoteConnection().getPeerAddress());
+        conn.duplicateMessageId(messageId, channel.getRemoteConnection().getPeerAddress());
         synchronized (inputStream) {
             if (! streamClosed) {
                 eofReceived = true; // it wasn't really, but we should act like it was
                 closeSent = true; // we didn't really, but we should act like we did
                 cancelled = true; // just not the usual way...
-                inputStream.pushException(RemoteLogger.conn.duplicateMessageIdException());
+                inputStream.pushException(conn.duplicateMessageIdException());
             }
         }
     }

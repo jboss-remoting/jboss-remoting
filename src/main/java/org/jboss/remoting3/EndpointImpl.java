@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
+import java.security.Principal;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -50,6 +51,7 @@ import org.jboss.logging.Logger;
 import org.jboss.modules.Module;
 import org.jboss.modules.ModuleIdentifier;
 import org.jboss.modules.ModuleLoadException;
+import org.jboss.remoting3._private.IntIndexHashMap;
 import org.jboss.remoting3.remote.HttpUpgradeConnectionProviderFactory;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.RemotingPermission;
@@ -67,6 +69,8 @@ import org.wildfly.security.SecurityFactory;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.wildfly.security.auth.principal.AnonymousPrincipal;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.sasl.util.PrivilegedSaslClientFactory;
 import org.wildfly.security.sasl.util.ProtocolSaslClientFactory;
 import org.wildfly.security.sasl.util.SaslFactories;
@@ -436,6 +440,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
                 // Mark the stack because otherwise debugging connect problems can be incredibly tough
                 final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
+                final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
+                final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, authenticationContext);
+                final SecurityFactory<SSLContext> sslContextFactory = () -> client.getSSLContext(destination, authenticationContext);
+                final Principal principal = client.getPrincipal(configuration);
+                final SaslClientFactory finalSaslClientFactory = saslClientFactory;
                 final Result<ConnectionHandlerFactory> result = new Result<ConnectionHandlerFactory>() {
                     private final AtomicBoolean flag = new AtomicBoolean();
                     public boolean setCancelled() {
@@ -465,7 +474,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         }
                         synchronized (connectionLock) {
                             log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext, destination);
+                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext, destination, principal, finalSaslClientFactory, null);
                             connections.add(connection);
                             connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                             connection.addCloseHandler(resourceCloseHandler);
@@ -481,10 +490,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         return true;
                     }
                 };
-                final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
-                final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, authenticationContext);
-                final SecurityFactory<SSLContext> sslContextFactory = () -> client.getSSLContext(destination, authenticationContext);
-                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, saslClientFactory, sslContextFactory);
+                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContextFactory, saslClientFactory, Collections.emptyList());
                 ok = true;
                 futureResult.addCancelHandler(connect);
                 return futureResult.getIoFuture();
@@ -627,21 +633,16 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     final class LocalConnectionContext implements ConnectionHandlerContext {
         private final ConnectionProviderContext connectionProviderContext;
-        private final Connection connection;
+        private final ConnectionImpl connection;
+        private final IntIndexHashMap<ConnectionImpl.Auth> authMap = new IntIndexHashMap<ConnectionImpl.Auth>(ConnectionImpl.Auth::getId);
 
-        LocalConnectionContext(final ConnectionProviderContext connectionProviderContext, final Connection connection) {
+        LocalConnectionContext(final ConnectionProviderContext connectionProviderContext, final ConnectionImpl connection) {
             this.connectionProviderContext = connectionProviderContext;
             this.connection = connection;
         }
 
         public ConnectionProviderContext getConnectionProviderContext() {
             return connectionProviderContext;
-        }
-
-        @Deprecated
-        public OpenListener getServiceOpenListener(final String serviceType) {
-            final RegisteredServiceImpl registeredService = registeredServices.get(serviceType);
-            return registeredService == null ? null : registeredService.getOpenListener();
         }
 
         public RegisteredServiceImpl getRegisteredService(final String serviceType) {
@@ -655,6 +656,54 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         public void remoteClosed() {
             connection.closeAsync();
         }
+
+        // client -> server
+
+        public void receiveAuthRequest(final int id, final String mechName, final byte[] initialResponse) {
+            connection.receiveAuthRequest(id, mechName, initialResponse);
+        }
+
+        public void receiveAuthResponse(final int id, final byte[] response) {
+            connection.receiveAuthResponse(id, response);
+        }
+
+        public void receiveAuthDelete(final int id) {
+            connection.receiveAuthDelete(id);
+        }
+
+        // server -> client
+
+        public void receiveAuthChallenge(final int id, final byte[] challenge) {
+            if (id == 0 || id == 1) {
+                // ignore
+                return;
+            }
+            connection.getPeerIdentityContext().receiveChallenge(id, challenge);
+        }
+
+        public void receiveAuthSuccess(final int id, final byte[] challenge) {
+            if (id == 0 || id == 1) {
+                // ignore
+                return;
+            }
+            connection.getPeerIdentityContext().receiveSuccess(id, challenge);
+        }
+
+        public void receiveAuthReject(final int id) {
+            if (id == 0 || id == 1) {
+                // ignore
+                return;
+            }
+            connection.getPeerIdentityContext().receiveReject(id);
+        }
+
+        public void receiveAuthDeleteAck(final int id) {
+            if (id == 0 || id == 1) {
+                // ignore
+                return;
+            }
+            connection.getPeerIdentityContext().receiveDeleteAck(id);
+        }
     }
 
     private final class ConnectionProviderContextImpl implements ConnectionProviderContext {
@@ -662,7 +711,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         private ConnectionProviderContextImpl() {
         }
 
-        public void accept(final ConnectionHandlerFactory connectionHandlerFactory) {
+        public void accept(final ConnectionHandlerFactory connectionHandlerFactory, final SaslAuthenticationFactory authenticationFactory) {
             synchronized (connectionLock) {
                 try {
                     resourceUntick("an inbound connection");
@@ -671,7 +720,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 }
                 boolean ok = false;
                 try {
-                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null);
+                    // XXX: we need to know if we in fact authenticated to the client via SSL, in which case we actually have an X500Principal
+                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, AnonymousPrincipal.getInstance(), SaslFactories.getElytronSaslClientFactory(), authenticationFactory);
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                     connection.addCloseHandler(connectionCloseHandler);

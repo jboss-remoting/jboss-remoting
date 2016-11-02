@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3.remote;
 
+import static org.jboss.remoting3._private.Messages.conn;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Constructor;
@@ -119,7 +121,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         return future.getIoFuture();
     }
 
-    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options, final AuthenticationConfiguration configuration, final ChannelListener<StreamConnection> openListener, final SecurityFactory<SSLContext> sslContextFactory) {
+    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options, final AuthenticationConfiguration configuration, final SecurityFactory<SSLContext> sslContextFactory, final ChannelListener<StreamConnection> openListener) {
         final URI newUri;
         try {
             newUri = new URI("https", "", uri.getHost(), uri.getPort(), "/", "", "");
@@ -193,7 +195,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
         public void accept(final StreamConnection channel) {
             if (channel.getWorker() != getXnioWorker()) {
-                throw RemoteLogger.log.invalidWorker();
+                throw conn.invalidWorker();
             }
 
             try {
@@ -206,7 +208,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
             final RemoteConnection connection = new RemoteConnection(channel, sslChannel, optionMap, HttpUpgradeConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), saslAuthenticationFactory, optionMap);
             channel.getSinkChannel().setWriteListener(connection.getWriteListener());
-            RemoteLogger.log.tracef("Accepted connection from %s to %s", channel.getPeerAddress(), channel.getLocalAddress());
+            conn.tracef("Accepted connection from %s to %s", channel.getPeerAddress(), channel.getLocalAddress());
             openListener.handleEvent(channel.getSourceChannel());
         }
     }
