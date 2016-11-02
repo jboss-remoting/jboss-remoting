@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
+import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslClientFactory;
 
 import org.jboss.logging.Logger;
@@ -62,6 +63,7 @@ import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 
 import org.wildfly.common.Assert;
+import org.wildfly.security.SecurityFactory;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
@@ -479,8 +481,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         return true;
                     }
                 };
-                final AuthenticationConfiguration configuration = AUTH_CONFIGURATION_CLIENT.getAuthenticationConfiguration(destination, authenticationContext);
-                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, saslClientFactory);
+                final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
+                final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, authenticationContext);
+                final SecurityFactory<SSLContext> sslContextFactory = () -> client.getSSLContext(destination, authenticationContext);
+                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, saslClientFactory, sslContextFactory);
                 ok = true;
                 futureResult.addCancelHandler(connect);
                 return futureResult.getIoFuture();

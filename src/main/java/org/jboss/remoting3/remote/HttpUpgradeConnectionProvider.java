@@ -37,9 +37,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import javax.net.ssl.SSLContext;
+
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ExternalConnectionProvider;
 import org.wildfly.common.Assert;
+import org.wildfly.security.SecurityFactory;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.ChannelListener;
@@ -116,7 +119,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         return future.getIoFuture();
     }
 
-    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options, final AuthenticationConfiguration configuration, final ChannelListener<StreamConnection> openListener) {
+    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options, final AuthenticationConfiguration configuration, final ChannelListener<StreamConnection> openListener, final SecurityFactory<SSLContext> sslContextFactory) {
         final URI newUri;
         try {
             newUri = new URI("https", "", uri.getHost(), uri.getPort(), "/", "", "");

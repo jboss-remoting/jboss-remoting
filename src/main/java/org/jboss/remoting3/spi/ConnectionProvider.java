@@ -26,11 +26,13 @@ import java.net.SocketAddress;
 import java.net.URI;
 
 import org.jboss.remoting3.HandleableCloseable;
+import org.wildfly.security.SecurityFactory;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.xnio.Cancellable;
 import org.xnio.OptionMap;
 import org.xnio.Result;
 
+import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslClientFactory;
 
 /**
@@ -49,10 +51,11 @@ public interface ConnectionProvider extends HandleableCloseable<ConnectionProvid
      * @param result the result which should receive the connection
      * @param authenticationConfiguration the configuration to use for authentication of the connection
      * @param saslClientFactory the SASL client factory to use for authentication mechanisms
+     * @param sslContextFactory the SSL context factory to use
      * @return a handle which may be used to cancel the connect attempt
      * @throws IllegalArgumentException if any of the given arguments are not valid for this protocol
      */
-    Cancellable connect(URI destination, SocketAddress bindAddress, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, AuthenticationConfiguration authenticationConfiguration, SaslClientFactory saslClientFactory);
+    Cancellable connect(URI destination, SocketAddress bindAddress, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, AuthenticationConfiguration authenticationConfiguration, SaslClientFactory saslClientFactory, final SecurityFactory<SSLContext> sslContextFactory);
 
     /**
      * Get the user data associated with this connection provider.  This object should implement all of the

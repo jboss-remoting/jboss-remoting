@@ -49,6 +49,7 @@ import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.wildfly.common.Assert;
+import org.wildfly.security.SecurityFactory;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
@@ -144,7 +145,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return b.toString();
     }
 
-    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationConfiguration authenticationConfiguration, final SaslClientFactory saslClientFactory) {
+    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationConfiguration authenticationConfiguration, final SaslClientFactory saslClientFactory, final SecurityFactory<SSLContext> sslContextFactory) {
         if (! isOpen()) {
             throw new IllegalStateException("Connection provider is closed");
         }
@@ -195,7 +196,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         final InetSocketAddress address = configurationClient.getDestinationInetSocketAddress(destination, authenticationConfiguration, 0);
         final IoFuture<? extends StreamConnection> future;
         if (useSsl) {
-            future = createSslConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, authenticationConfiguration, openListener);
+            future = createSslConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, authenticationConfiguration, openListener, sslContextFactory);
         } else {
             future = createConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, openListener);
         }
@@ -233,7 +234,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                xnioWorker.openStreamConnection(bindAddress, destination, openListener, null, connectOptions);
     }
 
-    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final ChannelListener<StreamConnection> openListener) {
+    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final ChannelListener<StreamConnection> openListener, final SecurityFactory<SSLContext> sslContextFactory) {
         final IoFuture<StreamConnection> futureConnection = bindAddress == null ?
                                                             xnioWorker.openStreamConnection(destination, null, connectOptions) :
                                                             xnioWorker.openStreamConnection(bindAddress, destination, null, null, connectOptions);
@@ -254,7 +255,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 final int realPort = configurationClient.getRealPort(uri, configuration);
                 final SSLEngine engine;
                 try {
-                    engine = configurationClient.getSslContext(configuration).createSSLEngine(realHost, realPort);
+                    engine = sslContextFactory.create().createSSLEngine(realHost, realPort);
                     engine.setUseClientMode(true);
                 } catch (GeneralSecurityException e) {
                     result.setException(new IOException(e));
