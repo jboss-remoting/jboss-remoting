@@ -22,12 +22,18 @@
 
 package org.jboss.remoting3;
 
+import static org.jboss.remoting3._private.Messages.log;
+
 import java.io.IOError;
 import java.io.IOException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Iterator;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
 import java.util.function.Supplier;
 
+import org.jboss.remoting3.spi.EndpointConfigurator;
 import org.wildfly.client.config.ConfigXMLParseException;
 
 /**
@@ -40,15 +46,30 @@ public final class ConfigurationEndpointSupplier implements Supplier<Endpoint> {
 
     static {
         CONFIGURED_ENDPOINT = AccessController.doPrivileged((PrivilegedAction<Endpoint>) () -> {
+            Endpoint endpoint = null;
             try {
-                return new UncloseableEndpoint(RemotingXmlParser.parseEndpoint());
+                endpoint = RemotingXmlParser.parseEndpoint();
             } catch (ConfigXMLParseException | IOException e) {
-                try {
-                    return new EndpointBuilder().build();
-                } catch (IOException e1) {
-                    throw new IOError(e1);
+                log.trace("Failed to parse endpoint XML definition", e);
+            }
+            if (endpoint == null) {
+                final Iterator<EndpointConfigurator> iterator = ServiceLoader.load(EndpointConfigurator.class, ConfigurationEndpointSupplier.class.getClassLoader()).iterator();
+                while (endpoint == null) try {
+                    if (! iterator.hasNext()) break;
+                    final EndpointConfigurator configurator = iterator.next();
+                    if (configurator != null) {
+                        endpoint = configurator.getConfiguredEndpoint();
+                    }
+                } catch (ServiceConfigurationError e) {
+                    log.trace("Failed to configure a service", e);
                 }
             }
+            if (endpoint == null) try {
+                endpoint = new EndpointBuilder().build();
+            } catch (IOException e) {
+                throw new IOError(e);
+            }
+            return new UncloseableEndpoint(endpoint);
         });
     }
 

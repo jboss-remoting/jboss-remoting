@@ -49,8 +49,10 @@ final class RemotingXmlParser {
         final EndpointBuilder builder = new EndpointBuilder();
         if (clientConfiguration != null) try (final ConfigurationXMLStreamReader streamReader = clientConfiguration.readConfiguration(Collections.singleton(NS_REMOTING_5_0))) {
             parseDocument(streamReader, builder);
+            return builder.build();
+        } else {
+            return null;
         }
-        return builder.build();
     }
 
     private static void parseDocument(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
