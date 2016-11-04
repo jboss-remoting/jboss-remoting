@@ -233,12 +233,32 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 }
                 final URI uri = connectionBuilder.getUri();
                 final boolean immediate = connectionBuilder.isImmediate();
-                // todo: connect options from builder
+                final OptionMap optionMap = connectionBuilder.getOptions();
+                final boolean configureSsl;
+                // known schemes
+                switch (uri.getScheme()) {
+                    case "remote+http":
+                    case "remote+https":
+                    case "http-remoting":
+                    case "https-remoting":
+                    case "remote": configureSsl = false; break;
+                    case "remote+tls": configureSsl = true; break;
+                    case "remoting": {
+                        // in this case SSL may or may not be used; this is why the new protocol names are recommended
+                        configureSsl = optionMap.get(Options.SSL_ENABLED, true);
+                        break;
+                    }
+                    default: {
+                        configureSsl = true; // can't know
+                        break;
+                    }
+                }
                 final String abstractType = connectionBuilder.getAbstractType();
                 final String abstractTypeAuthority = connectionBuilder.getAbstractTypeAuthority();
                 final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(uri, context, - 1, abstractType, abstractTypeAuthority, "connect");
-                final FutureConnection futureConnection = new FutureConnection(endpoint, connectionBuilder.getBindAddress(), uri, immediate, OptionMap.EMPTY, context, configuration, saslClientFactory);
-                if (endpoint.configuredConnections.putIfAbsent(new ConnectionKey(uri.getScheme(), abstractType, abstractTypeAuthority, configuration), futureConnection) == null) {
+                final SecurityFactory<SSLContext> sslContextFactory = configureSsl ? client.getSSLContextFactory(uri, context, abstractType, abstractTypeAuthority, null) : null;
+                final FutureConnection futureConnection = new FutureConnection(endpoint, connectionBuilder.getBindAddress(), uri, immediate, optionMap, configuration, saslClientFactory, sslContextFactory);
+                if (endpoint.configuredConnections.putIfAbsent(new ConnectionKey(uri.getScheme(), abstractType, abstractTypeAuthority, configuration, sslContextFactory), futureConnection) == null) {
                     // don't actually do this if there is a duplicate item configured
                     if (immediate) {
                         // initiate the connect attempt
@@ -380,6 +400,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final AuthenticationContext context = AuthenticationContext.captureCurrent();
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
         final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority, "connect");
+        final SecurityFactory<SSLContext> sslContextFactory = client.getSSLContextFactory(destination, context, abstractType, abstractTypeAuthority, null);
         final String scheme = destination.getScheme();
         if (scheme == null) {
             throw new IllegalArgumentException("No scheme given in URI '" + destination + "'");
@@ -390,14 +411,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
         final Principal principal = client.getPrincipal(configuration);
         final int port = client.getRealPort(configuration);
-        final ConnectionKey connectionKey = new ConnectionKey(scheme, abstractType, abstractTypeAuthority, configuration);
+        final ConnectionKey connectionKey = new ConnectionKey(scheme, abstractType, abstractTypeAuthority, configuration, sslContextFactory);
         FutureConnection futureConnection = configuredConnections.get(connectionKey);
         if (futureConnection != null) {
             return futureConnection.get();
         }
         // it's not presently managed; we'll use defaults to set it up
         FutureConnection appearing;
-        futureConnection = new FutureConnection(this, null, destination, false, OptionMap.EMPTY, context, configuration, SaslFactories.getElytronSaslClientFactory());
+        futureConnection = new FutureConnection(this, null, destination, false, OptionMap.EMPTY, configuration, SaslFactories.getElytronSaslClientFactory(), sslContextFactory);
         if ((appearing = configuredConnections.putIfAbsent(connectionKey, futureConnection)) != null) {
             return appearing.get();
         }
@@ -421,6 +442,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException {
+        final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
+        final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, authenticationContext, - 1, null, null, "connect");
+        final SecurityFactory<SSLContext> sslContextFactory = client.getSSLContextFactory(destination, authenticationContext, null, null, null);
+        return connect(destination, bindAddress, connectOptions, configuration, saslClientFactory, sslContextFactory);
+    }
+
+    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, SaslClientFactory saslClientFactory, final SecurityFactory<SSLContext> sslContextFactory) throws UnknownURISchemeException, NotOpenException {
         Assert.checkNotNullParam("destination", destination);
         Assert.checkNotNullParam("connectOptions", connectOptions);
         Assert.checkNotNullParam("saslClientFactory", saslClientFactory);
@@ -446,10 +474,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
                 // Mark the stack because otherwise debugging connect problems can be incredibly tough
                 final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
-                final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
-                final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, authenticationContext);
-                final SecurityFactory<SSLContext> sslContextFactory = () -> client.getSSLContext(destination, authenticationContext);
-                final Principal principal = client.getPrincipal(configuration);
+                final Principal principal = AUTH_CONFIGURATION_CLIENT.getPrincipal(configuration);
                 final SaslClientFactory finalSaslClientFactory = saslClientFactory;
                 final Result<ConnectionHandlerFactory> result = new Result<ConnectionHandlerFactory>() {
                     private final AtomicBoolean flag = new AtomicBoolean();

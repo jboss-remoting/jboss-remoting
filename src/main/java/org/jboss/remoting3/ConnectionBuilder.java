@@ -24,11 +24,15 @@ package org.jboss.remoting3;
 
 import java.net.SocketAddress;
 import java.net.URI;
+import java.util.Map;
 
 import javax.security.sasl.SaslClientFactory;
 
 import org.wildfly.common.Assert;
 import org.wildfly.security.auth.client.AuthenticationContext;
+import org.xnio.Option;
+import org.xnio.OptionMap;
+import org.xnio.Sequence;
 
 /**
  * A builder for a connection definition.
@@ -44,6 +48,7 @@ public final class ConnectionBuilder {
     private SocketAddress bindAddress;
     private String abstractType;
     private String abstractTypeAuthority;
+    private final OptionMap.Builder optionMapBuilder = OptionMap.builder();
 
     ConnectionBuilder(final URI uri) {
         this.uri = uri;
@@ -84,6 +89,57 @@ public final class ConnectionBuilder {
         return this;
     }
 
+    public <T> ConnectionBuilder setOption(final Option<T> key, final T value) {
+        optionMapBuilder.set(key, value);
+        return this;
+    }
+
+    public ConnectionBuilder setOption(final Option<Integer> key, final int value) {
+        optionMapBuilder.set(key, value);
+        return this;
+    }
+
+    public ConnectionBuilder setSequenceOption(final Option<Sequence<Integer>> key, final int... values) {
+        optionMapBuilder.setSequence(key, values);
+        return this;
+    }
+
+    public ConnectionBuilder setOption(final Option<Long> key, final long value) {
+        optionMapBuilder.set(key, value);
+        return this;
+    }
+
+    public ConnectionBuilder setSequenceOption(final Option<Sequence<Long>> key, final long... values) {
+        optionMapBuilder.setSequence(key, values);
+        return this;
+    }
+
+    public ConnectionBuilder setOption(final Option<Boolean> key, final boolean value) {
+        optionMapBuilder.set(key, value);
+        return this;
+    }
+
+    public ConnectionBuilder setSequenceOption(final Option<Sequence<Boolean>> key, final boolean... values) {
+        optionMapBuilder.setSequence(key, values);
+        return this;
+    }
+
+    @SafeVarargs
+    public final <T> ConnectionBuilder setSequenceOption(final Option<Sequence<T>> key, final T... values) {
+        optionMapBuilder.setSequence(key, values);
+        return this;
+    }
+
+    public ConnectionBuilder addAllOptions(final Map<?, ?> map) throws ClassCastException {
+        optionMapBuilder.add(map);
+        return this;
+    }
+
+    public ConnectionBuilder addAllOptions(final OptionMap optionMap) {
+        optionMapBuilder.addAll(optionMap);
+        return this;
+    }
+
     URI getUri() {
         return uri;
     }
@@ -110,5 +166,9 @@ public final class ConnectionBuilder {
 
     String getAbstractTypeAuthority() {
         return abstractTypeAuthority;
+    }
+
+    OptionMap getOptions() {
+        return optionMapBuilder.getMap();
     }
 }

@@ -24,6 +24,9 @@ package org.jboss.remoting3;
 
 import java.util.Objects;
 
+import javax.net.ssl.SSLContext;
+
+import org.wildfly.security.SecurityFactory;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 
 /**
@@ -34,14 +37,16 @@ final class ConnectionKey {
     private final String abstractType;
     private final String abstractTypeAuthority;
     private final AuthenticationConfiguration configuration;
+    private final SecurityFactory<SSLContext> sslContextFactory;
     private final int hashCode;
 
-    ConnectionKey(final String protocol, final String abstractType, final String abstractTypeAuthority, final AuthenticationConfiguration configuration) {
+    ConnectionKey(final String protocol, final String abstractType, final String abstractTypeAuthority, final AuthenticationConfiguration configuration, final SecurityFactory<SSLContext> sslContextFactory) {
         this.protocol = protocol;
         this.abstractType = abstractType;
         this.abstractTypeAuthority = abstractTypeAuthority;
         this.configuration = configuration;
-        hashCode = ((protocol.hashCode() * 17 + Objects.hashCode(abstractType)) * 17 + Objects.hashCode(abstractTypeAuthority)) * 17 + configuration.hashCode();
+        this.sslContextFactory = sslContextFactory;
+        hashCode = Objects.hash(protocol, abstractType, abstractTypeAuthority, configuration, sslContextFactory);
     }
 
     String getProtocol() {
@@ -82,7 +87,7 @@ final class ConnectionKey {
             }
             b.append('"');
         }
-        b.append(" config=").append(configuration);
+        b.append(" config=").append(configuration).append(" ssl=").append(sslContextFactory);
         return b.toString();
     }
 }
