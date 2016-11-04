@@ -312,6 +312,10 @@ final class RemotingXmlParser {
                             connectionBuilder.setBindAddress(parseBind(reader));
                             break;
                         }
+                        case "abstract-type": {
+                            parseAbstractType(reader, connectionBuilder);
+                            break;
+                        }
                         default: throw reader.unexpectedElement();
                     }
                 }
@@ -320,6 +324,36 @@ final class RemotingXmlParser {
                 }
             }
         }
+    }
+
+    private static void parseAbstractType(final ConfigurationXMLStreamReader reader, final ConnectionBuilder connectionBuilder) throws ConfigXMLParseException {
+        final int attributeCount = reader.getAttributeCount();
+        String name = null;
+        String authority = null;
+        for (int i = 0; i < attributeCount; i ++) {
+            final String attributeNamespace = reader.getAttributeNamespace(i);
+            if (attributeNamespace != null && ! attributeNamespace.isEmpty()) {
+                throw reader.unexpectedAttribute(i);
+            }
+            switch (reader.getAttributeLocalName(i)) {
+                case "name": {
+                    name = reader.getAttributeValue(i);
+                    break;
+                }
+                case "authority": {
+                    authority = reader.getAttributeValue(i);
+                    break;
+                }
+                default: {
+                    throw reader.unexpectedAttribute(i);
+                }
+            }
+        }
+        if (name == null) throw reader.missingRequiredAttribute(null, "name");
+        if (! reader.hasNext()) throw reader.unexpectedDocumentEnd();
+        if (reader.nextTag() != END_ELEMENT) throw reader.unexpectedElement();
+        if (authority != null) connectionBuilder.setAbstractTypeAuthority(authority);
+        connectionBuilder.setAbstractType(name);
     }
 
     static AuthenticationContext getGlobalDefaultAuthCtxt() {

@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import javax.security.sasl.SaslClientFactory;
 
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.xnio.FailedIoFuture;
 import org.xnio.FutureResult;
@@ -53,7 +54,7 @@ class FutureConnection {
 
     // TODO: make a PIContext for the connection that auto-re-auths to each new real connection
 
-    FutureConnection(final EndpointImpl endpoint, final SocketAddress bindAddress, final URI uri, final boolean immediate, final OptionMap options, final AuthenticationContext context, final SaslClientFactory clientFactory) {
+    FutureConnection(final EndpointImpl endpoint, final SocketAddress bindAddress, final URI uri, final boolean immediate, final OptionMap options, final AuthenticationContext context, final AuthenticationConfiguration configuration, final SaslClientFactory clientFactory) {
         this.endpoint = endpoint;
         this.bindAddress = bindAddress;
         this.uri = uri;

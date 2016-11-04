@@ -25,32 +25,12 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.security.PrivilegedAction;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
-import java.util.concurrent.Callable;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.IntFunction;
-import java.util.function.LongFunction;
-import java.util.function.Predicate;
 
 import javax.security.sasl.SaslClientFactory;
 
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.wildfly.common.Assert;
 import org.wildfly.common.context.ContextManager;
-import org.wildfly.common.function.ExceptionBiConsumer;
-import org.wildfly.common.function.ExceptionBiFunction;
-import org.wildfly.common.function.ExceptionBiPredicate;
-import org.wildfly.common.function.ExceptionConsumer;
-import org.wildfly.common.function.ExceptionFunction;
-import org.wildfly.common.function.ExceptionIntFunction;
-import org.wildfly.common.function.ExceptionLongFunction;
-import org.wildfly.common.function.ExceptionPredicate;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -75,12 +55,8 @@ final class UncloseableEndpoint implements Endpoint {
         return endpoint.registerService(serviceType, openListener, optionMap);
     }
 
-    public IoFuture<Connection> getConnection(final URI destination) {
-        return endpoint.getConnection(destination);
-    }
-
-    public IoFuture<Connection> connect(final URI destination) throws IOException {
-        return endpoint.connect(destination);
+    public IoFuture<Connection> getConnection(final URI destination, final String abstractType, final String abstractTypeAuthority) {
+        return endpoint.getConnection(destination, abstractType, abstractTypeAuthority);
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
@@ -101,10 +77,6 @@ final class UncloseableEndpoint implements Endpoint {
 
     public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationContext authenticationContext, final SaslClientFactory saslClientFactory) throws IOException {
         return endpoint.connect(destination, bindAddress, connectOptions, authenticationContext, saslClientFactory);
-    }
-
-    public boolean isConnected(final URI uri) {
-        return endpoint.isConnected(uri);
     }
 
     public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory, final OptionMap optionMap) throws DuplicateRegistrationException, IOException {
@@ -129,86 +101,6 @@ final class UncloseableEndpoint implements Endpoint {
 
     public Attachments getAttachments() {
         return endpoint.getAttachments();
-    }
-
-    public void run(final Runnable runnable) {
-        endpoint.run(runnable);
-    }
-
-    public <R> R runAction(final PrivilegedAction<R> action) {
-        return endpoint.runAction(action);
-    }
-
-    public <R> R runExceptionAction(final PrivilegedExceptionAction<R> action) throws PrivilegedActionException {
-        return endpoint.runExceptionAction(action);
-    }
-
-    public <V> V runCallable(final Callable<V> callable) throws Exception {
-        return endpoint.runCallable(callable);
-    }
-
-    public <T, U> void runBiConsumer(final BiConsumer<T, U> consumer, final T param1, final U param2) {
-        endpoint.runBiConsumer(consumer, param1, param2);
-    }
-
-    public <T, U, E extends Exception> void runExBiConsumer(final ExceptionBiConsumer<T, U, E> consumer, final T param1, final U param2) throws E {
-        endpoint.runExBiConsumer(consumer, param1, param2);
-    }
-
-    public <T> void runConsumer(final Consumer<T> consumer, final T param) {
-        endpoint.runConsumer(consumer, param);
-    }
-
-    public <T, E extends Exception> void runExConsumer(final ExceptionConsumer<T, E> consumer, final T param) throws E {
-        endpoint.runExConsumer(consumer, param);
-    }
-
-    public <T, U, R> R runBiFunction(final BiFunction<T, U, R> function, final T param1, final U param2) {
-        return endpoint.runBiFunction(function, param1, param2);
-    }
-
-    public <T, U, R, E extends Exception> R runExBiFunction(final ExceptionBiFunction<T, U, R, E> function, final T param1, final U param2) throws E {
-        return endpoint.runExBiFunction(function, param1, param2);
-    }
-
-    public <T, R> R runFunction(final Function<T, R> function, final T param) {
-        return endpoint.runFunction(function, param);
-    }
-
-    public <T, R, E extends Exception> R runExFunction(final ExceptionFunction<T, R, E> function, final T param) throws E {
-        return endpoint.runExFunction(function, param);
-    }
-
-    public <T, U> boolean runBiPredicate(final BiPredicate<T, U> predicate, final T param1, final U param2) {
-        return endpoint.runBiPredicate(predicate, param1, param2);
-    }
-
-    public <T, U, E extends Exception> boolean runExBiPredicate(final ExceptionBiPredicate<T, U, E> predicate, final T param1, final U param2) throws E {
-        return endpoint.runExBiPredicate(predicate, param1, param2);
-    }
-
-    public <T> boolean runPredicate(final Predicate<T> predicate, final T param) {
-        return endpoint.runPredicate(predicate, param);
-    }
-
-    public <T, E extends Exception> boolean runExPredicate(final ExceptionPredicate<T, E> predicate, final T param) throws E {
-        return endpoint.runExPredicate(predicate, param);
-    }
-
-    public <T> T runIntFunction(final IntFunction<T> function, final int value) {
-        return endpoint.runIntFunction(function, value);
-    }
-
-    public <T, E extends Exception> T runExIntFunction(final ExceptionIntFunction<T, E> function, final int value) throws E {
-        return endpoint.runExIntFunction(function, value);
-    }
-
-    public <T> T runLongFunction(final LongFunction<T> function, final long value) {
-        return endpoint.runLongFunction(function, value);
-    }
-
-    public <T, E extends Exception> T runExLongFunction(final ExceptionLongFunction<T, E> function, final long value) throws E {
-        return endpoint.runExLongFunction(function, value);
     }
 
     public void awaitClosedUninterruptibly() {

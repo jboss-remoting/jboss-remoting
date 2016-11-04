@@ -221,6 +221,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             endpoint.addConnectionProvider("http-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
             endpoint.addConnectionProvider("https-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
             final AuthenticationContext captured = AuthenticationContext.captureCurrent();
+            final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
             if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
                 SaslClientFactory saslClientFactory = connectionBuilder.getSaslClientFactory();
                 if (saslClientFactory == null) {
@@ -233,8 +234,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 final URI uri = connectionBuilder.getUri();
                 final boolean immediate = connectionBuilder.isImmediate();
                 // todo: connect options from builder
-                final FutureConnection futureConnection = new FutureConnection(endpoint, connectionBuilder.getBindAddress(), uri, immediate, OptionMap.EMPTY, context, saslClientFactory);
-                if (endpoint.configuredConnections.putIfAbsent(new ConnectionKey(uri.getHost(), uri.getScheme(), uri.getUserInfo(), uri.getPort()), futureConnection) == null) {
+                final String abstractType = connectionBuilder.getAbstractType();
+                final String abstractTypeAuthority = connectionBuilder.getAbstractTypeAuthority();
+                final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(uri, context, - 1, abstractType, abstractTypeAuthority, "connect");
+                final FutureConnection futureConnection = new FutureConnection(endpoint, connectionBuilder.getBindAddress(), uri, immediate, OptionMap.EMPTY, context, configuration, saslClientFactory);
+                if (endpoint.configuredConnections.putIfAbsent(new ConnectionKey(uri.getScheme(), abstractType, abstractTypeAuthority, configuration), futureConnection) == null) {
                     // don't actually do this if there is a duplicate item configured
                     if (immediate) {
                         // initiate the connect attempt
@@ -371,27 +375,29 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return registration;
     }
 
-    public IoFuture<Connection> getConnection(final URI destination) {
+    public IoFuture<Connection> getConnection(final URI destination, final String abstractType, final String abstractTypeAuthority) {
         Assert.checkNotNullParam("destination", destination);
+        final AuthenticationContext context = AuthenticationContext.captureCurrent();
+        final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
+        final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority, "connect");
         final String scheme = destination.getScheme();
         if (scheme == null) {
             throw new IllegalArgumentException("No scheme given in URI '" + destination + "'");
         }
-        final String host = destination.getHost();
+        final String host = client.getRealHost(configuration);
         if (host == null) {
             throw new IllegalArgumentException("No host given in URI '" + destination + "'");
         }
-        final String userInfo = destination.getUserInfo();
-        final int port = destination.getPort();
-        final ConnectionKey connectionKey = new ConnectionKey(host, scheme, userInfo, port);
-
+        final Principal principal = client.getPrincipal(configuration);
+        final int port = client.getRealPort(configuration);
+        final ConnectionKey connectionKey = new ConnectionKey(scheme, abstractType, abstractTypeAuthority, configuration);
         FutureConnection futureConnection = configuredConnections.get(connectionKey);
         if (futureConnection != null) {
             return futureConnection.get();
         }
         // it's not presently managed; we'll use defaults to set it up
         FutureConnection appearing;
-        futureConnection = new FutureConnection(this, null, destination, false, OptionMap.EMPTY, RemotingXmlParser.getGlobalDefaultAuthCtxt(), SaslFactories.getElytronSaslClientFactory());
+        futureConnection = new FutureConnection(this, null, destination, false, OptionMap.EMPTY, context, configuration, SaslFactories.getElytronSaslClientFactory());
         if ((appearing = configuredConnections.putIfAbsent(connectionKey, futureConnection)) != null) {
             return appearing.get();
         }
@@ -500,26 +506,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 }
             }
         }
-    }
-
-    public boolean isConnected(final URI uri) {
-        if (uri == null) {
-            return false;
-        }
-        final String scheme = uri.getScheme();
-        if (scheme == null) {
-            return false;
-        }
-        final String host = uri.getHost();
-        if (host == null) {
-            return false;
-        }
-        final String userInfo = uri.getUserInfo();
-        final int port = uri.getPort();
-        final ConnectionKey connectionKey = new ConnectionKey(host, scheme, userInfo, port);
-
-        FutureConnection futureConnection = configuredConnections.get(connectionKey);
-        return futureConnection != null && futureConnection.isConnected();
     }
 
     public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory, final OptionMap optionMap) throws IOException {

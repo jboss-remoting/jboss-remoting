@@ -31,8 +31,10 @@ import org.wildfly.common.Assert;
 import org.wildfly.security.auth.client.AuthenticationContext;
 
 /**
-* @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
-*/
+ * A builder for a connection definition.
+ *
+ * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
+ */
 public final class ConnectionBuilder {
 
     private final URI uri;
@@ -40,6 +42,8 @@ public final class ConnectionBuilder {
     private SaslClientFactory saslClientFactory;
     private AuthenticationContext authenticationContext;
     private SocketAddress bindAddress;
+    private String abstractType;
+    private String abstractTypeAuthority;
 
     ConnectionBuilder(final URI uri) {
         this.uri = uri;
@@ -50,19 +54,34 @@ public final class ConnectionBuilder {
         return this;
     }
 
-    public void setSaslClientFactory(final SaslClientFactory saslClientFactory) {
+    public ConnectionBuilder setSaslClientFactory(final SaslClientFactory saslClientFactory) {
         Assert.checkNotNullParam("saslClientFactory", saslClientFactory);
         this.saslClientFactory = saslClientFactory;
+        return this;
     }
 
-    public void setAuthenticationContext(final AuthenticationContext authenticationContext) {
+    public ConnectionBuilder setAuthenticationContext(final AuthenticationContext authenticationContext) {
         Assert.checkNotNullParam("authenticationContext", authenticationContext);
         this.authenticationContext = authenticationContext;
+        return this;
     }
 
-    public void setBindAddress(final SocketAddress bindAddress) {
+    public ConnectionBuilder setBindAddress(final SocketAddress bindAddress) {
         Assert.checkNotNullParam("bindAddress", bindAddress);
         this.bindAddress = bindAddress;
+        return this;
+    }
+
+    public ConnectionBuilder setAbstractType(final String abstractType) {
+        Assert.checkNotNullParam("abstractType", abstractType);
+        this.abstractType = abstractType;
+        return this;
+    }
+
+    public ConnectionBuilder setAbstractTypeAuthority(final String abstractTypeAuthority) {
+        Assert.checkNotNullParam("abstractTypeAuthority", abstractTypeAuthority);
+        this.abstractTypeAuthority = abstractTypeAuthority;
+        return this;
     }
 
     URI getUri() {
@@ -83,5 +102,13 @@ public final class ConnectionBuilder {
 
     SocketAddress getBindAddress() {
         return bindAddress;
+    }
+
+    String getAbstractType() {
+        return abstractType;
+    }
+
+    String getAbstractTypeAuthority() {
+        return abstractTypeAuthority;
     }
 }
