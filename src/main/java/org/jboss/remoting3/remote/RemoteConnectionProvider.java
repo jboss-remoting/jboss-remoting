@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3.remote;
 
-import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.jboss.remoting3._private.Messages.log;
 import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
@@ -145,7 +145,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return b.toString();
     }
 
-    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationConfiguration authenticationConfiguration, final SaslClientFactory saslClientFactory, final SecurityFactory<SSLContext> sslContextFactory) {
+    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationConfiguration authenticationConfiguration, final SecurityFactory<SSLContext> sslContextFactory, final SaslClientFactory saslClientFactory, final Collection<String> serverMechs) {
         if (! isOpen()) {
             throw new IllegalStateException("Connection provider is closed");
         }
@@ -187,7 +187,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 if (connection.isOpen()) {
                     remoteConnection.setResult(cancellableResult);
                     connection.getSinkChannel().setWriteListener(remoteConnection.getWriteListener());
-                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(destination, remoteConnection, connectionProviderContext, authenticationConfiguration, saslClientFactory, connectOptions);
+                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(destination, remoteConnection, connectionProviderContext, authenticationConfiguration, saslClientFactory, serverMechs, connectOptions);
                     openListener.handleEvent(connection.getSourceChannel());
                 }
             }
@@ -196,7 +196,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         final InetSocketAddress address = configurationClient.getDestinationInetSocketAddress(destination, authenticationConfiguration, 0);
         final IoFuture<? extends StreamConnection> future;
         if (useSsl) {
-            future = createSslConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, authenticationConfiguration, openListener, sslContextFactory);
+            future = createSslConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, authenticationConfiguration, sslContextFactory, openListener);
         } else {
             future = createConnection(destination, (InetSocketAddress) bindAddress, address, connectOptions, openListener);
         }
@@ -234,7 +234,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                xnioWorker.openStreamConnection(bindAddress, destination, openListener, null, connectOptions);
     }
 
-    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final ChannelListener<StreamConnection> openListener, final SecurityFactory<SSLContext> sslContextFactory) {
+    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final SecurityFactory<SSLContext> sslContextFactory, final ChannelListener<StreamConnection> openListener) {
         final IoFuture<StreamConnection> futureConnection = bindAddress == null ?
                                                             xnioWorker.openStreamConnection(destination, null, connectOptions) :
                                                             xnioWorker.openStreamConnection(bindAddress, destination, null, null, connectOptions);

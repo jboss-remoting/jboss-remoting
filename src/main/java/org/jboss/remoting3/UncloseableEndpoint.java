@@ -67,10 +67,6 @@ final class UncloseableEndpoint implements Endpoint {
         return endpoint.getInstanceContextManager();
     }
 
-    public static Endpoint getCurrent() {
-        return Endpoint.getCurrent();
-    }
-
     public String getName() {
         return endpoint.getName();
     }
@@ -127,12 +123,8 @@ final class UncloseableEndpoint implements Endpoint {
         return endpoint.getXnioWorker();
     }
 
-    public static EndpointBuilder builder() {
-        return Endpoint.builder();
-    }
-
     public Key addCloseHandler(final CloseHandler<? super Endpoint> handler) {
-        return endpoint.addCloseHandler(handler);
+        return endpoint.addCloseHandler((endpoint, ex) -> handler.handleClose(this, ex));
     }
 
     public Attachments getAttachments() {

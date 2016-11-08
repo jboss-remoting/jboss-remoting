@@ -31,6 +31,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3._private.Messages;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.Buffers;
@@ -83,7 +84,7 @@ final class RemoteConnection {
     }
 
     void setReadListener(ChannelListener<ConduitStreamSourceChannel> listener, final boolean resume) {
-        RemoteLogger.log.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, null, "Setting read listener to %s", listener);
+        Messages.log.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, null, "Setting read listener to %s", listener);
         messageReader.setReadListener(listener);
         if (listener != null && resume) {
             messageReader.resumeReads();
@@ -107,9 +108,9 @@ final class RemoteConnection {
     }
 
     void handleException(IOException e, boolean log) {
-        RemoteLogger.conn.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, e, "Connection error detail");
+        Messages.conn.logf(RemoteConnection.class.getName(), Logger.Level.TRACE, e, "Connection error detail");
         if (log) {
-            RemoteLogger.conn.connectionError(e);
+            Messages.conn.connectionError(e);
         }
         final XnioExecutor.Key key = writeListener.heartKey;
         if (key != null) {
@@ -172,7 +173,7 @@ final class RemoteConnection {
                 connection.close();
             }
         } catch (IOException e) {
-            RemoteLogger.conn.debug("Error closing remoting channel", e);
+            Messages.conn.debug("Error closing remoting channel", e);
         }
     }
 
@@ -272,7 +273,7 @@ final class RemoteConnection {
                             headerBuffer.position(0);
                             cachedArray[1] = buffer;
                             final long res = channel.write(cachedArray);
-                            RemoteLogger.conn.tracef("Sent %d bytes", res);
+                            Messages.conn.tracef("Sent %d bytes", res);
                             if (buffer.hasRemaining()) {
                                 // try again later
                                 return;
@@ -283,13 +284,13 @@ final class RemoteConnection {
                         } else {
                             if (pooled == STARTTLS_SENTINEL) {
                                 if (channel.flush()) {
-                                    RemoteLogger.conn.trace("Flushed channel");
+                                    Messages.conn.trace("Flushed channel");
                                     final SslChannel sslChannel = getSslChannel();
                                     assert sslChannel != null; // because STARTTLS would be false in this case
                                     sslChannel.startHandshake();
                                 } else {
                                     // try again later
-                                    RemoteLogger.conn.trace("Flush stalled");
+                                    Messages.conn.trace("Flush stalled");
                                     return;
                                 }
                             }
@@ -298,13 +299,13 @@ final class RemoteConnection {
                         }
                     }
                     if (channel.flush()) {
-                        RemoteLogger.conn.trace("Flushed channel");
+                        Messages.conn.trace("Flushed channel");
                         if (closed) {
                             terminateHeartbeat();
                             // End of queue reached; shut down and try to flush the remainder
                             channel.shutdownWrites();
                             if (channel.flush()) {
-                                RemoteLogger.conn.trace("Shut down writes on channel");
+                                Messages.conn.trace("Shut down writes on channel");
                                 return;
                             }
                             // either this is successful and no more notifications will come, or not and it will be retried
@@ -340,7 +341,7 @@ final class RemoteConnection {
                         sinkChannel.resumeWrites();
                         return;
                     }
-                    RemoteLogger.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
+                    Messages.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
                 } catch (IOException e) {
                     handleException(e, false);
                     Pooled<ByteBuffer> unqueued;

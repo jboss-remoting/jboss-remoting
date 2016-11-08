@@ -25,6 +25,7 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.URI;
+import java.security.Principal;
 
 import javax.net.ssl.SSLSession;
 
@@ -134,5 +135,9 @@ final class ManagedConnection implements Connection {
 
     public PeerIdentityContext getPeerIdentityContext() {
         return delegate.getPeerIdentityContext();
+    }
+
+    public Principal getPrincipal() {
+        return delegate.getPrincipal();
     }
 }

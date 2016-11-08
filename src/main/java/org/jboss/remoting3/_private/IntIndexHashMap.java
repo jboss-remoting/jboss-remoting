@@ -30,6 +30,7 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.IntFunction;
 import java.util.function.ToIntFunction;
 
 /**
@@ -153,6 +154,18 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
     public V putIfAbsent(final V value) {
         final V result = doPut(value, true, table);
         return result == NONEXISTENT ? null : result;
+    }
+
+    public V computeIfAbsent(final int index, final IntFunction<V> producer) {
+        final Table<V> table = this.table;
+        V result = doGet(table, index);
+        if (result == NONEXISTENT) {
+            final V newVal = producer.apply(index);
+            result = doPut(newVal, true, table);
+            return result == NONEXISTENT ? newVal : result;
+        } else {
+            return result;
+        }
     }
 
     public V removeKey(final int index) {

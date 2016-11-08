@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3.remote;
 
-import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.jboss.remoting3._private.Messages.log;
 import static org.xnio.Bits.anyAreSet;
 
 import java.io.IOException;
@@ -80,6 +80,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private final String remoteEndpointName;
 
     private final int behavior;
+    private final boolean supportsRemoteAuth;
 
     private volatile int channelState = 0;
 
@@ -94,7 +95,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final int maxInboundChannels, final int maxOutboundChannels, final String remoteEndpointName, final int behavior) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final int maxInboundChannels, final int maxOutboundChannels, final String remoteEndpointName, final int behavior, final boolean supportsRemoteAuth) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
@@ -102,6 +103,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         this.maxOutboundChannels = maxOutboundChannels;
         this.remoteEndpointName = remoteEndpointName;
         this.behavior = behavior;
+        this.supportsRemoteAuth = supportsRemoteAuth;
     }
 
     /**
@@ -397,6 +399,148 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         }
     }
 
+    public void sendAuthRequest(final int id, final String mechName, final byte[] initialResponse) throws IOException {
+        log.tracef("Sending authentication request for ID %08x, mech %s", id, mechName);
+        final byte[] mechNameBytes = mechName.getBytes(StandardCharsets.UTF_8);
+        final int length = mechNameBytes.length;
+        if (length == 0 || length > 256) {
+            throw log.mechanismNameTooLong(mechName);
+        }
+        int requiredSize = 6 + length + initialResponse.length;
+        final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
+        boolean ok = false;
+        try {
+            final ByteBuffer buffer = pooled.getResource();
+            if (buffer.remaining() < requiredSize) {
+                throw log.authenticationMessageTooLarge();
+            }
+            buffer.put(Protocol.APP_AUTH_REQUEST);
+            buffer.putInt(id);
+            buffer.put((byte) length);
+            buffer.put(mechNameBytes);
+            buffer.put(initialResponse);
+            buffer.flip();
+            remoteConnection.send(pooled);
+            ok = true;
+        } finally {
+            if (! ok) pooled.free();
+        }
+    }
+
+    public void sendAuthChallenge(final int id, final byte[] challenge) throws IOException {
+        log.tracef("Sending authentication challenge for ID %08x", id);
+        int requiredSize = 5 + challenge.length;
+        final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
+        boolean ok = false;
+        try {
+            final ByteBuffer buffer = pooled.getResource();
+            if (buffer.remaining() < requiredSize) {
+                throw log.authenticationMessageTooLarge();
+            }
+            buffer.put(Protocol.APP_AUTH_CHALLENGE);
+            buffer.putInt(id);
+            buffer.put(challenge);
+            buffer.flip();
+            remoteConnection.send(pooled);
+            ok = true;
+        } finally {
+            if (! ok) pooled.free();
+        }
+    }
+
+    public void sendAuthResponse(final int id, final byte[] response) throws IOException {
+        log.tracef("Sending authentication response for ID %08x", id);
+        int requiredSize = 5 + response.length;
+        final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
+        boolean ok = false;
+        try {
+            final ByteBuffer buffer = pooled.getResource();
+            if (buffer.remaining() < requiredSize) {
+                throw log.authenticationMessageTooLarge();
+            }
+            buffer.put(Protocol.APP_AUTH_RESPONSE);
+            buffer.putInt(id);
+            buffer.put(response);
+            buffer.flip();
+            remoteConnection.send(pooled);
+            ok = true;
+        } finally {
+            if (! ok) pooled.free();
+        }
+    }
+
+    public void sendAuthSuccess(final int id, final byte[] challenge) throws IOException {
+        log.tracef("Sending authentication success for ID %08x", id);
+        int requiredSize = 5 + challenge.length;
+        final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
+        boolean ok = false;
+        try {
+            final ByteBuffer buffer = pooled.getResource();
+            if (buffer.remaining() < requiredSize) {
+                throw log.authenticationMessageTooLarge();
+            }
+            buffer.put(Protocol.APP_AUTH_SUCCESS);
+            buffer.putInt(id);
+            buffer.put(challenge);
+            buffer.flip();
+            remoteConnection.send(pooled);
+            ok = true;
+        } finally {
+            if (! ok) pooled.free();
+        }
+    }
+
+    public void sendAuthReject(final int id) throws IOException {
+        log.tracef("Sending authentication reject for ID %08x", id);
+        // todo: allocate small buffer
+        final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
+        boolean ok = false;
+        try {
+            final ByteBuffer buffer = pooled.getResource();
+            buffer.put(Protocol.APP_AUTH_REJECT);
+            buffer.putInt(id);
+            buffer.flip();
+            remoteConnection.send(pooled);
+            ok = true;
+        } finally {
+            if (! ok) pooled.free();
+        }
+    }
+
+    public void sendAuthDelete(final int id) throws IOException {
+        log.tracef("Sending authentication delete for ID %08x", id);
+        // todo: allocate small buffer
+        final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
+        boolean ok = false;
+        try {
+            final ByteBuffer buffer = pooled.getResource();
+            buffer.put(Protocol.APP_AUTH_DELETE);
+            buffer.putInt(id);
+            buffer.flip();
+            remoteConnection.send(pooled);
+            ok = true;
+        } finally {
+            if (! ok) pooled.free();
+        }
+    }
+
+    public void sendAuthDeleteAck(final int id) throws IOException {
+        log.tracef("Sending authentication delete ack for ID %08x", id);
+        // todo: allocate small buffer
+        final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
+        boolean ok = false;
+        try {
+            final ByteBuffer buffer = pooled.getResource();
+            buffer.put(Protocol.APP_AUTH_DELETE_ACK);
+            buffer.putInt(id);
+            buffer.flip();
+            remoteConnection.send(pooled);
+            ok = true;
+        } finally {
+            if (! ok) pooled.free();
+        }
+    }
+
     public SSLSession getSslSession() {
         SslChannel sslChannel = remoteConnection.getSslChannel();
         return sslChannel != null ? sslChannel.getSslSession() : null;
@@ -418,14 +562,8 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         return remoteConnection.getIdentity();
     }
 
-    public SecurityIdentity getLocalIdentity(final int id) {
-        // TODO: remote authentication endpoint
-        return null;
-    }
-
-    public int getPeerIdentityId() {
-        // TODO: remote authentication endpoint
-        return 0;
+    public boolean supportsRemoteAuth() {
+        return supportsRemoteAuth;
     }
 
     protected void closeAction() throws IOException {
@@ -504,6 +642,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             b.append("    ").append("* Flags: ");
             if (Bits.allAreSet(behavior, Protocol.BH_MESSAGE_CLOSE)) b.append("supports-message-close ");
             if (Bits.allAreSet(behavior, Protocol.BH_FAULTY_MSG_SIZE)) b.append("remote-faulty-message-size ");
+            if (supportsRemoteAuth) b.append("auth-cap ");
             if (receivedCloseReq) b.append("received-close-req ");
             if (sentCloseReq) b.append("set-close-req ");
             b.append('\n');

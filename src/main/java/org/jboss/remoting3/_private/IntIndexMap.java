@@ -23,6 +23,7 @@
 package org.jboss.remoting3._private;
 
 import java.util.Collection;
+import java.util.function.IntFunction;
 import java.util.function.ToIntFunction;
 
 /**
@@ -75,6 +76,15 @@ public interface IntIndexMap<E> extends Iterable<E>, ToIntFunction<E>, Collectio
      * @return the existing value, if any, or {@code null} if the existing value was {@code null} or the value was added successfully
      */
     E putIfAbsent(E value);
+
+    /**
+     * Compute a map value if no mapping exists.
+     *
+     * @param key the key
+     * @param producer the producer which creates a new value
+     * @return the existing or new value
+     */
+    E computeIfAbsent(int key, IntFunction<E> producer);
 
     /**
      * Put a value into the map only if there is an existing mapping for it.

@@ -22,7 +22,7 @@
 
 package org.jboss.remoting3.remote;
 
-import static org.jboss.remoting3.remote.RemoteLogger.log;
+import static org.jboss.remoting3._private.Messages.log;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

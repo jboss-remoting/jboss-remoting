@@ -1,8 +1,8 @@
 /*
- * JBoss, Home of Professional Open Source
- * Copyright 2011, JBoss Inc., and individual contributors as indicated
- * by the @authors tag. See the copyright.txt in the distribution for a
- * full listing of individual contributors.
+ * JBoss, Home of Professional Open Source.
+ * Copyright 2016, Red Hat, Inc., and individual contributors
+ * as indicated by the @author tags. See the copyright.txt file in the
+ * distribution for a full listing of individual contributors.
  *
  * This is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as
@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.remoting3.remote;
+package org.jboss.remoting3._private;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -33,30 +33,33 @@ import org.jboss.logging.BasicLogger;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.ChannelBusyException;
 import org.jboss.remoting3.NotOpenException;
+import org.wildfly.security.auth.AuthenticationException;
 
 import static org.jboss.logging.Logger.Level.*;
 
+import javax.security.sasl.SaslException;
+
 /**
- * "Remote" protocol logger.  Message codes from 200-269.
+ * All messages.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 @MessageLogger(projectCode = "JBREM")
-interface RemoteLogger extends BasicLogger {
-    RemoteLogger log = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote");
-    RemoteLogger conn = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote.connection");
-    RemoteLogger server = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote.server");
-    RemoteLogger client = Logger.getMessageLogger(RemoteLogger.class, "org.jboss.remoting.remote.client");
+public interface Messages extends BasicLogger {
+    Messages log = Logger.getMessageLogger(Messages.class, "org.jboss.remoting.remote");
+    Messages conn = Logger.getMessageLogger(Messages.class, "org.jboss.remoting.remote.connection");
+    Messages server = Logger.getMessageLogger(Messages.class, "org.jboss.remoting.remote.server");
+    Messages client = Logger.getMessageLogger(Messages.class, "org.jboss.remoting.remote.client");
 
     @Message(id = 200, value = "Remote connection failed: %s")
     @LogMessage(level = DEBUG)
     void connectionError(IOException cause);
 
     @Message(id = 201, value = "Received invalid message on %s")
-    IOException invalidMessage(RemoteConnection connection);
+    IOException invalidMessage(Object connection);
 
     @Message(id = 202, value = "Abrupt close on %s")
-    IOException abruptClose(RemoteConnection connection);
+    IOException abruptClose(Object connection);
 
     @LogMessage(level = WARN)
     @Message(id = 203, value = "Message missing protocol byte")
@@ -92,11 +95,45 @@ interface RemoteLogger extends BasicLogger {
     @Message(/* id = 210, */value = "Internal Error: received a message with a duplicate ID")
     IOException duplicateMessageIdException();
 
+    @Message(id = 211, value = "Invalid XNIO worker; the worker must match the Remoting Endpoint worker")
+    IllegalArgumentException invalidWorker();
+
     // non i18n
+
     @LogMessage(level = TRACE)
     @Message(value = "Message with unknown protocol ID %d received")
     void unknownProtocolId(int id);
 
-    @Message(id = 211, value = "Invalid XNIO worker; the worker must match the Remoting Endpoint worker")
-    IllegalArgumentException invalidWorker();
+    @LogMessage(level = TRACE)
+    @Message(value = "Rejected invalid SASL mechanism %s")
+    void rejectedInvalidMechanism(String name);
+
+    // user auth
+
+    @Message(id = 300, value = "Authentication failed due to I/O error")
+    AuthenticationException authenticationExceptionIo(@Cause IOException e);
+
+    @Message(id = 301, value = "Mechanism name \"%s\" is too long")
+    IOException mechanismNameTooLong(String mechName);
+
+    @Message(id = 302, value = "Authentication message too large")
+    IOException authenticationMessageTooLarge();
+
+    @Message(id = 303, value = "Authentication protocol failed (extra response)")
+    AuthenticationException authenticationExtraResponse();
+
+    @Message(id = 304, value = "Server rejected authentication")
+    AuthenticationException serverRejectedAuthentication();
+
+    @Message(id = 305, value = "Authentication failed (connection closed)")
+    AuthenticationException authenticationExceptionClosed();
+
+    @Message(id = 306, value = "Authentication failed (SASL client construction failure)")
+    AuthenticationException authenticationNoSaslClient(@Cause SaslException e);
+
+    @Message(id = 307, value = "Authentication interrupted")
+    AuthenticationException authenticationInterrupted();
+
+    @Message(id = 308, value = "Authentication failed (no mechanisms left), tried: %s")
+    AuthenticationException noAuthMechanismsLeft(String triedStr);
 }

@@ -22,6 +22,7 @@
 
 package org.jboss.remoting3.remote;
 
+import static org.jboss.remoting3._private.Messages.conn;
 import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
@@ -29,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Iterator;
 
+import org.jboss.remoting3._private.Messages;
 import org.xnio.Buffers;
 import org.xnio.ByteBufferPool;
 import org.xnio.ChannelListener;
@@ -80,11 +82,11 @@ final class MessageReader {
                                 first.compact();
                                 first.flip();
                             }
-                            RemoteLogger.conn.tracef("Received message %s", message);
+                            conn.tracef("Received message %s", message);
                             return Buffers.globalPooledWrapper(message);
                         } else {
-                            if (RemoteLogger.conn.isTraceEnabled()) {
-                                RemoteLogger.conn.tracef("Not enough buffered bytes for message of size %d+4 (%s)", Integer.valueOf(size), first);
+                            if (conn.isTraceEnabled()) {
+                                conn.tracef("Not enough buffered bytes for message of size %d+4 (%s)", Integer.valueOf(size), first);
                             }
                         }
                     } else {
@@ -112,7 +114,7 @@ final class MessageReader {
                         }
                     }
                 } else {
-                    RemoteLogger.conn.trace("No buffers in queue for message header");
+                    conn.trace("No buffers in queue for message header");
                 }
                 ByteBuffer[] b = array;
                 ByteBuffer last = queue.pollLast();
@@ -120,23 +122,23 @@ final class MessageReader {
                     last.compact();
                     b[0] = last;
                     ByteBufferPool.MEDIUM_DIRECT.allocate(b, 1);
-                    RemoteLogger.conn.tracef("Compacted existing buffer %s", last);
+                    conn.tracef("Compacted existing buffer %s", last);
                 } else {
                     ByteBufferPool.MEDIUM_DIRECT.allocate(b, 0);
-                    RemoteLogger.conn.tracef("Allocated fresh buffers");
+                    conn.tracef("Allocated fresh buffers");
                 }
                 try {
                     long res = sourceChannel.read(b);
                     if (res == -1) {
-                        RemoteLogger.conn.trace("Received EOF");
+                        conn.trace("Received EOF");
                         return EOF_MARKER;
                     }
                     if (res == 0) {
-                        RemoteLogger.conn.trace("No read bytes available");
+                        conn.trace("No read bytes available");
                         return null;
                     }
-                    if (RemoteLogger.conn.isTraceEnabled()) {
-                        RemoteLogger.conn.tracef("Received %d bytes", Long.valueOf(res));
+                    if (conn.isTraceEnabled()) {
+                        conn.tracef("Received %d bytes", Long.valueOf(res));
                     }
                 } finally {
                     for (int i = 0; i < b.length; i++) {

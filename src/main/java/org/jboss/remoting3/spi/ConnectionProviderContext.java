@@ -24,6 +24,7 @@ package org.jboss.remoting3.spi;
 
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.Endpoint;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 
@@ -37,8 +38,9 @@ public interface ConnectionProviderContext {
      * Accept a connection that was received by the corresponding protocol handler.
      *
      * @param connectionHandlerFactory the connection handler factory
+     * @param authenticationFactory the SASL authentication factory to use for server-side authentications
      */
-    void accept(ConnectionHandlerFactory connectionHandlerFactory);
+    void accept(ConnectionHandlerFactory connectionHandlerFactory, SaslAuthenticationFactory authenticationFactory);
 
     /**
      * Get the endpoint.

@@ -46,9 +46,12 @@ class FutureConnection {
     private final AtomicReference<FutureResult<Connection>> futureConnectionRef = new AtomicReference<FutureResult<Connection>>();
     private final boolean immediate;
     private final OptionMap options;
+    // TODO: make this AuthConfig
     private final AuthenticationContext context;
     private final SaslClientFactory clientFactory;
     private final SocketAddress bindAddress;
+
+    // TODO: make a PIContext for the connection that auto-re-auths to each new real connection
 
     FutureConnection(final EndpointImpl endpoint, final SocketAddress bindAddress, final URI uri, final boolean immediate, final OptionMap options, final AuthenticationContext context, final SaslClientFactory clientFactory) {
         this.endpoint = endpoint;

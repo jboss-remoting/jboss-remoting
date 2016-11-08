@@ -24,6 +24,7 @@ package org.jboss.remoting3.spi;
 
 import java.net.SocketAddress;
 import java.net.URI;
+import java.util.Collection;
 
 import org.jboss.remoting3.HandleableCloseable;
 import org.wildfly.security.SecurityFactory;
@@ -50,12 +51,13 @@ public interface ConnectionProvider extends HandleableCloseable<ConnectionProvid
      * @param connectOptions the options to use for this connection
      * @param result the result which should receive the connection
      * @param authenticationConfiguration the configuration to use for authentication of the connection
-     * @param saslClientFactory the SASL client factory to use for authentication mechanisms
      * @param sslContextFactory the SSL context factory to use
+     * @param saslClientFactory the SASL client factory to use for authentication mechanisms
+     * @param serverMechs the list of server mechanism names to advertise to the peer (may be empty; not {@code null})
      * @return a handle which may be used to cancel the connect attempt
      * @throws IllegalArgumentException if any of the given arguments are not valid for this protocol
      */
-    Cancellable connect(URI destination, SocketAddress bindAddress, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, AuthenticationConfiguration authenticationConfiguration, SaslClientFactory saslClientFactory, final SecurityFactory<SSLContext> sslContextFactory);
+    Cancellable connect(URI destination, SocketAddress bindAddress, OptionMap connectOptions, Result<ConnectionHandlerFactory> result, AuthenticationConfiguration authenticationConfiguration, SecurityFactory<SSLContext> sslContextFactory, SaslClientFactory saslClientFactory, final Collection<String> serverMechs);
 
     /**
      * Get the user data associated with this connection provider.  This object should implement all of the
