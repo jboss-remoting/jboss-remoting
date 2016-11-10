@@ -24,38 +24,45 @@ package org.jboss.remoting3;
 
 import java.util.Objects;
 
+import javax.net.ssl.SSLContext;
+
+import org.wildfly.security.SecurityFactory;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
+
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class ConnectionKey {
-    private final String hostName;
     private final String protocol;
-    private final String userInfo;
-    private final int port;
+    private final String abstractType;
+    private final String abstractTypeAuthority;
+    private final AuthenticationConfiguration configuration;
+    private final SecurityFactory<SSLContext> sslContextFactory;
     private final int hashCode;
 
-    ConnectionKey(final String hostName, final String protocol, final String userInfo, final int port) {
-        this.hostName = hostName;
+    ConnectionKey(final String protocol, final String abstractType, final String abstractTypeAuthority, final AuthenticationConfiguration configuration, final SecurityFactory<SSLContext> sslContextFactory) {
         this.protocol = protocol;
-        this.userInfo = userInfo;
-        this.port = port;
-        hashCode = ((hostName.hashCode() * 17 + protocol.hashCode()) * 17 + port) * 17 + Objects.hashCode(userInfo);
+        this.abstractType = abstractType;
+        this.abstractTypeAuthority = abstractTypeAuthority;
+        this.configuration = configuration;
+        this.sslContextFactory = sslContextFactory;
+        hashCode = Objects.hash(protocol, abstractType, abstractTypeAuthority, configuration, sslContextFactory);
     }
 
-    public String getHostName() {
-        return hostName;
-    }
-
-    public String getProtocol() {
+    String getProtocol() {
         return protocol;
     }
 
-    public String getUserInfo() {
-        return userInfo;
+    String getAbstractType() {
+        return abstractType;
     }
 
-    public int getPort() {
-        return port;
+    String getAbstractTypeAuthority() {
+        return abstractTypeAuthority;
+    }
+
+    AuthenticationConfiguration getConfiguration() {
+        return configuration;
     }
 
     public int hashCode() {
@@ -67,10 +74,20 @@ final class ConnectionKey {
     }
 
     boolean equals(ConnectionKey other) {
-        return other != null && hashCode == other.hashCode && hostName.equals(other.hostName) && protocol.equals(other.protocol) && Objects.equals(userInfo, other.userInfo);
+        return other != null && hashCode == other.hashCode && protocol.equals(other.protocol) && Objects.equals(abstractType, other.abstractType) && Objects.equals(abstractTypeAuthority, other.abstractTypeAuthority) && configuration.equals(other.configuration);
     }
 
     public String toString() {
-        return String.format("Connection key for \"%s:%s%s:%d\"", protocol, userInfo == null ? "" : userInfo + "@", hostName, Integer.valueOf(port));
+        StringBuilder b = new StringBuilder();
+        b.append("Connection key for \"").append(protocol).append('"');
+        if (abstractType != null) {
+            b.append(" (abstract type \"").append(abstractType);
+            if (abstractTypeAuthority != null) {
+                b.append('.').append(abstractTypeAuthority);
+            }
+            b.append('"');
+        }
+        b.append(" config=").append(configuration).append(" ssl=").append(sslContextFactory);
+        return b.toString();
     }
 }

@@ -60,8 +60,9 @@
     </xs:complexType>
 
     <xs:complexType name="connection-type">
-        <xs:all minOccurs="0" maxOccurs="1">
-            <xs:element name="bind" type="bind-address-type" minOccurs="0" maxOccurs="1"/>
+        <xs:all>
+            <xs:element name="bind" type="bind-address-type" minOccurs="0"/>
+            <xs:element name="abstract-type" type="abstract-type-type" minOccurs="0"/>
         </xs:all>
         <xs:attribute name="uri" use="required" type="xs:anyURI"/>
         <xs:attribute name="immediate" use="optional" type="xs:boolean" default="false"/>
@@ -83,4 +84,8 @@
         </xs:restriction>
     </xs:simpleType>
 
+    <xs:complexType name="abstract-type-type">
+        <xs:attribute name="name" type="xs:string"/>
+        <xs:attribute name="authority" type="xs:string" use="optional"/>
+    </xs:complexType>
 </xs:schema>

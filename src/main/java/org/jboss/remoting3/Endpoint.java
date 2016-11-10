@@ -101,7 +101,20 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @param destination the destination URI
      * @return the future (or existing) connection
      */
-    IoFuture<Connection> getConnection(URI destination);
+    default IoFuture<Connection> getConnection(URI destination) {
+        return getConnection(destination, null, null);
+    }
+
+    /**
+     * Get a possibly pre-existing connection to the destination.  The given abstract type and authority are used
+     * to locate the authentication configuration.
+     *
+     * @param destination the destination URI
+     * @param abstractType the abstract type of the connection (may be {@code null})
+     * @param abstractTypeAuthority the authority name of the abstract type of the connection (may be {@code null})
+     * @return the future (or existing) connection
+     */
+    IoFuture<Connection> getConnection(URI destination, String abstractType, String abstractTypeAuthority);
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
@@ -200,14 +213,6 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @throws IOException if an error occurs while starting the connect attempt
      */
     IoFuture<Connection> connect(URI destination, InetSocketAddress bindAddress, OptionMap connectOptions, AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException;
-
-    /**
-     * Try to ascertain whether there is currently a valid connection to the given URI.
-     *
-     * @param uri the URI
-     * @return {@code true} if there is likely to be a valid connection, or {@code false} if there is not likely to be a valid connection
-     */
-    boolean isConnected(URI uri);
 
     /**
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can

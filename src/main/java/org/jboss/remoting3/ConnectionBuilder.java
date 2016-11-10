@@ -24,15 +24,21 @@ package org.jboss.remoting3;
 
 import java.net.SocketAddress;
 import java.net.URI;
+import java.util.Map;
 
 import javax.security.sasl.SaslClientFactory;
 
 import org.wildfly.common.Assert;
 import org.wildfly.security.auth.client.AuthenticationContext;
+import org.xnio.Option;
+import org.xnio.OptionMap;
+import org.xnio.Sequence;
 
 /**
-* @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
-*/
+ * A builder for a connection definition.
+ *
+ * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
+ */
 public final class ConnectionBuilder {
 
     private final URI uri;
@@ -40,6 +46,9 @@ public final class ConnectionBuilder {
     private SaslClientFactory saslClientFactory;
     private AuthenticationContext authenticationContext;
     private SocketAddress bindAddress;
+    private String abstractType;
+    private String abstractTypeAuthority;
+    private final OptionMap.Builder optionMapBuilder = OptionMap.builder();
 
     ConnectionBuilder(final URI uri) {
         this.uri = uri;
@@ -50,19 +59,85 @@ public final class ConnectionBuilder {
         return this;
     }
 
-    public void setSaslClientFactory(final SaslClientFactory saslClientFactory) {
+    public ConnectionBuilder setSaslClientFactory(final SaslClientFactory saslClientFactory) {
         Assert.checkNotNullParam("saslClientFactory", saslClientFactory);
         this.saslClientFactory = saslClientFactory;
+        return this;
     }
 
-    public void setAuthenticationContext(final AuthenticationContext authenticationContext) {
+    public ConnectionBuilder setAuthenticationContext(final AuthenticationContext authenticationContext) {
         Assert.checkNotNullParam("authenticationContext", authenticationContext);
         this.authenticationContext = authenticationContext;
+        return this;
     }
 
-    public void setBindAddress(final SocketAddress bindAddress) {
+    public ConnectionBuilder setBindAddress(final SocketAddress bindAddress) {
         Assert.checkNotNullParam("bindAddress", bindAddress);
         this.bindAddress = bindAddress;
+        return this;
+    }
+
+    public ConnectionBuilder setAbstractType(final String abstractType) {
+        Assert.checkNotNullParam("abstractType", abstractType);
+        this.abstractType = abstractType;
+        return this;
+    }
+
+    public ConnectionBuilder setAbstractTypeAuthority(final String abstractTypeAuthority) {
+        Assert.checkNotNullParam("abstractTypeAuthority", abstractTypeAuthority);
+        this.abstractTypeAuthority = abstractTypeAuthority;
+        return this;
+    }
+
+    public <T> ConnectionBuilder setOption(final Option<T> key, final T value) {
+        optionMapBuilder.set(key, value);
+        return this;
+    }
+
+    public ConnectionBuilder setOption(final Option<Integer> key, final int value) {
+        optionMapBuilder.set(key, value);
+        return this;
+    }
+
+    public ConnectionBuilder setSequenceOption(final Option<Sequence<Integer>> key, final int... values) {
+        optionMapBuilder.setSequence(key, values);
+        return this;
+    }
+
+    public ConnectionBuilder setOption(final Option<Long> key, final long value) {
+        optionMapBuilder.set(key, value);
+        return this;
+    }
+
+    public ConnectionBuilder setSequenceOption(final Option<Sequence<Long>> key, final long... values) {
+        optionMapBuilder.setSequence(key, values);
+        return this;
+    }
+
+    public ConnectionBuilder setOption(final Option<Boolean> key, final boolean value) {
+        optionMapBuilder.set(key, value);
+        return this;
+    }
+
+    public ConnectionBuilder setSequenceOption(final Option<Sequence<Boolean>> key, final boolean... values) {
+        optionMapBuilder.setSequence(key, values);
+        return this;
+    }
+
+    @SafeVarargs
+    public final <T> ConnectionBuilder setSequenceOption(final Option<Sequence<T>> key, final T... values) {
+        optionMapBuilder.setSequence(key, values);
+        return this;
+    }
+
+    public ConnectionBuilder addAllOptions(final Map<?, ?> map) throws ClassCastException {
+        optionMapBuilder.add(map);
+        return this;
+    }
+
+    public ConnectionBuilder addAllOptions(final OptionMap optionMap) {
+        optionMapBuilder.addAll(optionMap);
+        return this;
     }
 
     URI getUri() {
@@ -83,5 +158,17 @@ public final class ConnectionBuilder {
 
     SocketAddress getBindAddress() {
         return bindAddress;
+    }
+
+    String getAbstractType() {
+        return abstractType;
+    }
+
+    String getAbstractTypeAuthority() {
+        return abstractTypeAuthority;
+    }
+
+    OptionMap getOptions() {
+        return optionMapBuilder.getMap();
     }
 }
