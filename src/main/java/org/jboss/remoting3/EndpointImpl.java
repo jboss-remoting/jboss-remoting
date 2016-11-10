@@ -505,7 +505,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         }
                         synchronized (connectionLock) {
                             log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext, destination, principal, finalSaslClientFactory, null);
+                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext, destination, principal, finalSaslClientFactory, null, configuration);
                             connections.add(connection);
                             connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                             connection.addCloseHandler(resourceCloseHandler);
@@ -732,7 +732,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 boolean ok = false;
                 try {
                     // XXX: we need to know if we in fact authenticated to the client via SSL, in which case we actually have an X500Principal
-                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, AnonymousPrincipal.getInstance(), SaslFactories.getElytronSaslClientFactory(), authenticationFactory);
+                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, AnonymousPrincipal.getInstance(), SaslFactories.getElytronSaslClientFactory(), authenticationFactory, AuthenticationConfiguration.EMPTY);
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                     connection.addCloseHandler(connectionCloseHandler);

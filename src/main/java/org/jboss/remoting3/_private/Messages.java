@@ -136,4 +136,7 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 308, value = "Authentication failed (no mechanisms left), tried: %s")
     AuthenticationException noAuthMechanismsLeft(String triedStr);
+
+    @Message(id = 309, value = "Authentication not supported for this peer")
+    AuthenticationException authenticationNotSupported();
 }
