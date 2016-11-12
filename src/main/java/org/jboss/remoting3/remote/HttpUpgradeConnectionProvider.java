@@ -121,32 +121,67 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         return future.getIoFuture();
     }
 
-    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options, final AuthenticationConfiguration configuration, final SecurityFactory<SSLContext> sslContextFactory, final ChannelListener<StreamConnection> openListener) {
+    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options,
+            final AuthenticationConfiguration configuration, final SecurityFactory<SSLContext> sslContextFactory, final ChannelListener<StreamConnection> openListener) {
         final URI newUri;
         try {
             newUri = new URI("https", "", uri.getHost(), uri.getPort(), "/", "", "");
         } catch (URISyntaxException e) {
             return new FailedIoFuture<>(new IOException(e));
         }
+
+        final FutureResult<SslConnection> returnedFuture = new FutureResult<>(getExecutor());
         final OptionMap modifiedOptions = OptionMap.builder().addAll(options).set(Options.SSL_STARTTLS, false).getMap();
-        final Map<String, String> headers = new HashMap<String, String>();
-        headers.put(UPGRADE, "jboss-remoting");
-        final String secKey = createSecKey();
-        headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
 
-        final FutureResult<SslConnection> future = new FutureResult<>(getExecutor());
+        ChannelListener<StreamConnection> upgradeListener = new ChannelListener<StreamConnection>() {
 
-        // TODO: perform upgrade using existing SSL connection
-        HttpUpgrade.performUpgrade(getXnioWorker(), null, null, newUri, headers, channel -> {
-            ChannelListeners.invokeChannelListener(channel, openListener);
-        }, null, modifiedOptions, new RemotingHandshakeChecker(secKey))
-                .addNotifier((ioFuture, attachment) -> {
-                    if (ioFuture.getStatus() == IoFuture.Status.FAILED) {
-                        future.setException(ioFuture.getException());
+            @Override
+            public void handleEvent(StreamConnection channel) {
+                final Map<String, String> headers = new HashMap<String, String>();
+                headers.put(UPGRADE, "jboss-remoting");
+                final String secKey = createSecKey();
+                headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
+
+                IoFuture<SslConnection> upgradeFuture = HttpUpgrade.performUpgrade((SslConnection)channel, newUri, headers, upgradeChannel -> {
+                    ChannelListeners.invokeChannelListener(upgradeChannel, openListener);
+                }, new RemotingHandshakeChecker(secKey));
+                upgradeFuture.addNotifier( new IoFuture.HandlingNotifier<SslConnection, FutureResult<SslConnection>>() {
+
+                    @Override
+                    public void handleCancelled(FutureResult<SslConnection> attachment) {
+                        attachment.setCancelled();
                     }
-                }, null);
 
-        return future.getIoFuture();
+                    @Override
+                    public void handleFailed(IOException exception, FutureResult<SslConnection> attachment) {
+                        attachment.setException(exception);
+                    }
+
+                    @Override
+                    public void handleDone(SslConnection data, FutureResult<SslConnection> attachment) {
+                        attachment.setResult(data);
+                    }
+
+                }, returnedFuture);
+            }
+
+        };
+        IoFuture<SslConnection> rawFuture = super.createSslConnection(uri, bindAddress, destination, modifiedOptions, configuration, sslContextFactory, upgradeListener);
+        rawFuture.addNotifier( new IoFuture.HandlingNotifier<StreamConnection, FutureResult<SslConnection>>() {
+
+            @Override
+            public void handleCancelled(FutureResult<SslConnection> attachment) {
+                attachment.setCancelled();
+            }
+
+            @Override
+            public void handleFailed(IOException exception, FutureResult<SslConnection> attachment) {
+                attachment.setException(exception);
+            }
+
+        } , returnedFuture);
+
+        return returnedFuture.getIoFuture();
     }
 
     private class RemotingHandshakeChecker implements HandshakeChecker {
