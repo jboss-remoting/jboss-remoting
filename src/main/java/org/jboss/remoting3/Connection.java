@@ -154,7 +154,7 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      *
      * @throws SecurityException if a security manager is installed and the caller is not granted the {@code getConnectionPeerIdentity} {@link RemotingPermission}
      */
-    PeerIdentity getConnectionPeerIdentity() throws SecurityException;
+    ConnectionPeerIdentity getConnectionPeerIdentity() throws SecurityException;
 
     /**
      * Get the anonymous peer identity for the connection.  When this identity is in force, the peer will use its local
@@ -162,7 +162,7 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      *
      * @return the anonymous peer identity for the connection
      */
-    PeerIdentity getConnectionAnonymousIdentity();
+    ConnectionPeerIdentity getConnectionAnonymousIdentity();
 
     /**
      * Get the peer identity context for the connection.  This context can be used to authenticate additional identities
@@ -171,7 +171,7 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      *
      * @return the peer identity context
      */
-    PeerIdentityContext getPeerIdentityContext();
+    ConnectionPeerIdentityContext getPeerIdentityContext();
 
     /**
      * Get the local principal that was authenticated to the peer.  May be {@linkplain AnonymousPrincipal anonymous}.

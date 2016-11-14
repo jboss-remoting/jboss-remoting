@@ -76,11 +76,19 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
     /**
      * Perform an authentication.
      *
-     * @param configuration the authentication configuration to use
+     * @param configuration the authentication configuration to use (must not be {@code null})
      * @return the peer identity (not {@code null})
      * @throws AuthenticationException if the authentication attempt failed
      */
     public ConnectionPeerIdentity authenticate(final AuthenticationConfiguration configuration) throws AuthenticationException {
+        Assert.checkNotNullParam("configuration", configuration);
+        final ConnectionImpl connection = this.connection;
+        if (configuration.equals(connection.getAuthenticationConfiguration())) {
+            return connectionIdentity;
+        }
+        if (! connection.supportsRemoteAuth()) {
+            throw log.authenticationNotSupported();
+        }
         final AuthenticationContextConfigurationClient client = CLIENT;
         Authentication authentication;
         final IntIndexHashMap<Authentication> authMap = this.authMap;

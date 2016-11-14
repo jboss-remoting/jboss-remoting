@@ -54,4 +54,13 @@ public final class ConnectionPeerIdentity extends PeerIdentity {
     public Connection getConnection() {
         return connection;
     }
+
+    /**
+     * Get the ID to use for this identity.
+     *
+     * @return the ID to use for this identity
+     */
+    public int getId() {
+        return index;
+    }
 }

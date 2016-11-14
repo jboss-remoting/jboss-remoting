@@ -39,6 +39,7 @@ import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.wildfly.common.Assert;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.sasl.WildFlySasl;
@@ -60,16 +61,17 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     private final Principal principal;
     private final IntIndexHashMap<Auth> authMap = new IntIndexHashMap<Auth>(Auth::getId);
     private final SaslAuthenticationFactory authenticationFactory;
+    private final AuthenticationConfiguration authenticationConfiguration;
 
-    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final URI peerUri, final Principal principal, final SaslClientFactory saslClientFactory, final SaslAuthenticationFactory authenticationFactory) {
+    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final URI peerUri, final Principal principal, final SaslClientFactory saslClientFactory, final SaslAuthenticationFactory authenticationFactory, final AuthenticationConfiguration authenticationConfiguration) {
         super(endpoint.getExecutor(), true);
         this.endpoint = endpoint;
         this.peerUri = peerUri;
         this.principal = principal;
-        final ConnectionHandler connectionHandler = connectionHandlerFactory.createInstance(endpoint.new LocalConnectionContext(connectionProviderContext, this));
-        this.connectionHandler = connectionHandler;
+        this.authenticationConfiguration = authenticationConfiguration;
+        this.connectionHandler = connectionHandlerFactory.createInstance(endpoint.new LocalConnectionContext(connectionProviderContext, this));
         this.authenticationFactory = authenticationFactory;
-        peerIdentityContext = connectionHandler.supportsRemoteAuth() ? new ConnectionPeerIdentityContext(this, saslClientFactory, authenticationFactory == null ? null : authenticationFactory.getMechanismNames()) : null;
+        this.peerIdentityContext = new ConnectionPeerIdentityContext(this, saslClientFactory, authenticationFactory == null ? null : authenticationFactory.getMechanismNames());
     }
 
     protected void closeAction() throws IOException {
@@ -88,6 +90,10 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
 
     public SocketAddress getPeerAddress() {
         return connectionHandler.getPeerAddress();
+    }
+
+    AuthenticationConfiguration getAuthenticationConfiguration() {
+        return authenticationConfiguration;
     }
 
     ConnectionHandler getConnectionHandler() {
