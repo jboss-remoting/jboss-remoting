@@ -95,61 +95,114 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         super(optionMap, connectionProviderContext);
     }
 
-    protected IoFuture<StreamConnection> createConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions, final ChannelListener<StreamConnection> openListener) {
+    protected IoFuture<StreamConnection> createConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions,
+            final ChannelListener<StreamConnection> openListener) {
         final URI newUri;
         try {
             newUri = new URI("http", "", uri.getHost(), uri.getPort(), "/", "", "");
         } catch (URISyntaxException e) {
             return new FailedIoFuture<>(new IOException(e));
         }
-        final Map<String, String> headers = new HashMap<String, String>();
-        headers.put(UPGRADE, "jboss-remoting");
-        final String secKey = createSecKey();
-        headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
 
-        final FutureResult<StreamConnection> future = new FutureResult<>(getExecutor());
+        final FutureResult<StreamConnection> returnedFuture = new FutureResult<>(getExecutor());
 
-        HttpUpgrade.performUpgrade(getXnioWorker(), null, newUri, headers, channel -> {
-            ChannelListeners.invokeChannelListener(channel, openListener);
-        }, null, connectOptions, new RemotingHandshakeChecker(secKey))
-                .addNotifier((ioFuture, attachment) -> {
-                    if (ioFuture.getStatus() == IoFuture.Status.FAILED) {
-                        future.setException(ioFuture.getException());
-                    }
-                }, null);
+        ChannelListener<StreamConnection> upgradeListener = new UpgradeListener<StreamConnection>(StreamConnection.class, newUri, openListener, returnedFuture);
+        IoFuture<StreamConnection> rawFuture = super.createConnection(uri, bindAddress, destination, connectOptions, upgradeListener);
+        rawFuture.addNotifier( new IoFuture.HandlingNotifier<StreamConnection, FutureResult<StreamConnection>>() {
 
-        return future.getIoFuture();
+            @Override
+            public void handleCancelled(FutureResult<StreamConnection> attachment) {
+                attachment.setCancelled();
+            }
+
+            @Override
+            public void handleFailed(IOException exception, FutureResult<StreamConnection> attachment) {
+                attachment.setException(exception);
+            }
+
+        } , returnedFuture);
+
+        return returnedFuture.getIoFuture();
     }
 
-    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options, final AuthenticationConfiguration configuration, final SecurityFactory<SSLContext> sslContextFactory, final ChannelListener<StreamConnection> openListener) {
+    protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options,
+            final AuthenticationConfiguration configuration, final SecurityFactory<SSLContext> sslContextFactory, final ChannelListener<StreamConnection> openListener) {
         final URI newUri;
         try {
             newUri = new URI("https", "", uri.getHost(), uri.getPort(), "/", "", "");
         } catch (URISyntaxException e) {
             return new FailedIoFuture<>(new IOException(e));
         }
+
+        final FutureResult<SslConnection> returnedFuture = new FutureResult<>(getExecutor());
         final OptionMap modifiedOptions = OptionMap.builder().addAll(options).set(Options.SSL_STARTTLS, false).getMap();
-        final Map<String, String> headers = new HashMap<String, String>();
-        headers.put(UPGRADE, "jboss-remoting");
-        final String secKey = createSecKey();
-        headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
 
-        final FutureResult<SslConnection> future = new FutureResult<>(getExecutor());
+        ChannelListener<StreamConnection> upgradeListener = new UpgradeListener<SslConnection>(SslConnection.class, newUri, openListener, returnedFuture);
+        IoFuture<SslConnection> rawFuture = super.createSslConnection(uri, bindAddress, destination, modifiedOptions, configuration, sslContextFactory, upgradeListener);
+        rawFuture.addNotifier( new IoFuture.HandlingNotifier<StreamConnection, FutureResult<SslConnection>>() {
 
-        // TODO: perform upgrade using existing SSL connection
-        HttpUpgrade.performUpgrade(getXnioWorker(), null, null, newUri, headers, channel -> {
-            ChannelListeners.invokeChannelListener(channel, openListener);
-        }, null, modifiedOptions, new RemotingHandshakeChecker(secKey))
-                .addNotifier((ioFuture, attachment) -> {
-                    if (ioFuture.getStatus() == IoFuture.Status.FAILED) {
-                        future.setException(ioFuture.getException());
-                    }
-                }, null);
+            @Override
+            public void handleCancelled(FutureResult<SslConnection> attachment) {
+                attachment.setCancelled();
+            }
 
-        return future.getIoFuture();
+            @Override
+            public void handleFailed(IOException exception, FutureResult<SslConnection> attachment) {
+                attachment.setException(exception);
+            }
+
+        } , returnedFuture);
+
+        return returnedFuture.getIoFuture();
     }
 
-    private class RemotingHandshakeChecker implements HandshakeChecker {
+    private static class UpgradeListener<T extends StreamConnection> implements ChannelListener<StreamConnection> {
+
+        private final Class<T> type;
+        private final URI uri;
+        private final ChannelListener<StreamConnection> openListener;
+        private final FutureResult<T> futureResult;
+
+        UpgradeListener(Class<T> type, URI uri, ChannelListener<StreamConnection> openListener, FutureResult<T> futureResult) {
+            this.type = type;
+            this.uri = uri;
+            this.openListener = openListener;
+            this.futureResult = futureResult;
+        }
+
+        @Override
+        public void handleEvent(StreamConnection channel) {
+            final Map<String, String> headers = new HashMap<String, String>();
+            headers.put(UPGRADE, "jboss-remoting");
+            final String secKey = createSecKey();
+            headers.put(SEC_JBOSS_REMOTING_KEY, secKey);
+
+            IoFuture<T> upgradeFuture = HttpUpgrade.performUpgrade(type.cast(channel), uri, headers, upgradeChannel -> {
+                ChannelListeners.invokeChannelListener(upgradeChannel, openListener);
+            }, new RemotingHandshakeChecker(secKey));
+            upgradeFuture.addNotifier( new IoFuture.HandlingNotifier<T, FutureResult<T>>() {
+
+                @Override
+                public void handleCancelled(FutureResult<T> attachment) {
+                    attachment.setCancelled();
+                }
+
+                @Override
+                public void handleFailed(IOException exception, FutureResult<T> attachment) {
+                    attachment.setException(exception);
+                }
+
+                @Override
+                public void handleDone(T data, FutureResult<T> attachment) {
+                    attachment.setResult(data);
+                }
+
+            }, futureResult);
+        }
+
+    }
+
+    private static class RemotingHandshakeChecker implements HandshakeChecker {
 
         private final String key;
 
@@ -213,7 +266,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         }
     }
 
-    protected String createSecKey() {
+    protected static String createSecKey() {
         SecureRandom random = new SecureRandom();
         byte[] data = new byte[16];
         for (int i = 0; i < 4; ++i) {
@@ -226,7 +279,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         return FlexBase64.encodeString(data, false);
     }
 
-    protected String createExpectedResponse(String secKey) throws IOException {
+    protected static String createExpectedResponse(String secKey) throws IOException {
         try {
             final String concat = secKey + MAGIC_NUMBER;
             final MessageDigest digest = MessageDigest.getInstance("SHA1");

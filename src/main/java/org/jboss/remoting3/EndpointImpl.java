@@ -216,10 +216,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             // http - SSL is handled by the HTTP layer
             final HttpUpgradeConnectionProviderFactory httpUpgradeConnectionProviderFactory = new HttpUpgradeConnectionProviderFactory();
             endpoint.addConnectionProvider("remote+http", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
-            endpoint.addConnectionProvider("remote+https", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
+            endpoint.addConnectionProvider("remote+https", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SECURE, Boolean.TRUE));
             // old
             endpoint.addConnectionProvider("http-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
-            endpoint.addConnectionProvider("https-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
+            endpoint.addConnectionProvider("https-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SECURE, Boolean.TRUE));
             final AuthenticationContext captured = AuthenticationContext.captureCurrent();
             final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
             if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
@@ -238,10 +238,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 // known schemes
                 switch (uri.getScheme()) {
                     case "remote+http":
-                    case "remote+https":
                     case "http-remoting":
-                    case "https-remoting":
                     case "remote": configureSsl = false; break;
+                    case "remote+https":
+                    case "https-remoting":
                     case "remote+tls": configureSsl = true; break;
                     case "remoting": {
                         // in this case SSL may or may not be used; this is why the new protocol names are recommended
