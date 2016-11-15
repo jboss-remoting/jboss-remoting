@@ -125,15 +125,15 @@ final class ManagedConnection implements Connection {
         return delegate.getAttachments();
     }
 
-    public PeerIdentity getConnectionPeerIdentity() throws SecurityException {
+    public ConnectionPeerIdentity getConnectionPeerIdentity() throws SecurityException {
         return delegate.getConnectionPeerIdentity();
     }
 
-    public PeerIdentity getConnectionAnonymousIdentity() {
+    public ConnectionPeerIdentity getConnectionAnonymousIdentity() {
         return delegate.getConnectionAnonymousIdentity();
     }
 
-    public PeerIdentityContext getPeerIdentityContext() {
+    public ConnectionPeerIdentityContext getPeerIdentityContext() {
         return delegate.getPeerIdentityContext();
     }
 
