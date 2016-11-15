@@ -46,7 +46,7 @@
         <apacheds.jdbm1.version>2.0.0-M2</apacheds.jdbm1.version>
         <apacheds.shared.version>1.0.0-M13</apacheds.shared.version>
         <apacheds.api.version>1.0.0-M16</apacheds.api.version>        
-        <elytron.version>1.1.0.Beta13</elytron.version>
+        <elytron.version>1.1.0.Beta14</elytron.version>
         <config.version>1.0.0.Alpha3</config.version>
         <xnio.version>3.4.0.Beta3</xnio.version>
         <logging.version>3.2.1.Final</logging.version>
