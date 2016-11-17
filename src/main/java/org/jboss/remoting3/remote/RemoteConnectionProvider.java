@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.function.UnaryOperator;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -145,7 +146,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return b.toString();
     }
 
-    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationConfiguration authenticationConfiguration, final SecurityFactory<SSLContext> sslContextFactory, final SaslClientFactory saslClientFactory, final Collection<String> serverMechs) {
+    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationConfiguration authenticationConfiguration, final SecurityFactory<SSLContext> sslContextFactory, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final Collection<String> serverMechs) {
         if (! isOpen()) {
             throw new IllegalStateException("Connection provider is closed");
         }
@@ -153,7 +154,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         Assert.checkNotNullParam("connectOptions", connectOptions);
         Assert.checkNotNullParam("result", result);
         Assert.checkNotNullParam("authenticationConfiguration", authenticationConfiguration);
-        Assert.checkNotNullParam("saslClientFactory", saslClientFactory);
+        Assert.checkNotNullParam("saslClientFactoryOperator", saslClientFactoryOperator);
         log.tracef("Attempting to connect to \"%s\" with options %s", destination, connectOptions);
         // cancellable that will be returned by this method
         final FutureResult<ConnectionHandlerFactory> cancellableResult = new FutureResult<ConnectionHandlerFactory>();
@@ -187,7 +188,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 if (connection.isOpen()) {
                     remoteConnection.setResult(cancellableResult);
                     connection.getSinkChannel().setWriteListener(remoteConnection.getWriteListener());
-                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(destination, remoteConnection, connectionProviderContext, authenticationConfiguration, saslClientFactory, serverMechs, connectOptions);
+                    final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(destination, remoteConnection, connectionProviderContext, authenticationConfiguration, saslClientFactoryOperator, serverMechs, connectOptions);
                     openListener.handleEvent(connection.getSourceChannel());
                 }
             }

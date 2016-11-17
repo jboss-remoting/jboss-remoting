@@ -57,7 +57,6 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
 
     private static final byte[] NO_BYTES = new byte[0];
     private final ConnectionImpl connection;
-    private final SaslClientFactory factory;
     private final Collection<String> offeredMechanisms;
     private final ConnectionPeerIdentity anonymousIdentity;
     private final ConnectionPeerIdentity connectionIdentity;
@@ -65,9 +64,8 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
 
     private static final AuthenticationContextConfigurationClient CLIENT = doPrivileged((PrivilegedAction<AuthenticationContextConfigurationClient>) AuthenticationContextConfigurationClient::new);
 
-    ConnectionPeerIdentityContext(final ConnectionImpl connection, final SaslClientFactory factory, final Collection<String> offeredMechanisms) {
+    ConnectionPeerIdentityContext(final ConnectionImpl connection, final Collection<String> offeredMechanisms) {
         this.connection = connection;
-        this.factory = factory;
         this.offeredMechanisms = offeredMechanisms;
         anonymousIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, AnonymousPrincipal.getInstance(), 0, connection));
         connectionIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, connection.getPrincipal(), 1, connection));
@@ -110,7 +108,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
             Set<String> mechanisms = new LinkedHashSet<>(offeredMechanisms);
             while (! mechanisms.isEmpty()) {
                 try {
-                    saslClient = client.createSaslClient(connection.getPeerURI(), configuration, factory, mechanisms);
+                    saslClient = client.createSaslClient(connection.getPeerURI(), configuration, mechanisms);
                 } catch (SaslException e) {
                     throw log.authenticationNoSaslClient(e);
                 }

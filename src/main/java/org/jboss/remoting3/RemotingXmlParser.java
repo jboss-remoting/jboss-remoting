@@ -298,7 +298,6 @@ final class RemotingXmlParser {
         }
         final ConnectionBuilder connectionBuilder = builder.addConnection(uri);
         connectionBuilder.setImmediate(immediate);
-        connectionBuilder.setSaslClientFactory(SaslFactories.getElytronSaslClientFactory());
         connectionBuilder.setAuthenticationContext(getGlobalDefaultAuthCtxt());
         while (reader.hasNext()) {
             switch (reader.nextTag()) {

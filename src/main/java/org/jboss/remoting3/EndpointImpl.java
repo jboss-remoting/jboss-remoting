@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
@@ -222,10 +223,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             final AuthenticationContext captured = AuthenticationContext.captureCurrent();
             final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
             if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
-                SaslClientFactory saslClientFactory = connectionBuilder.getSaslClientFactory();
-                if (saslClientFactory == null) {
-                    saslClientFactory = SaslFactories.getElytronSaslClientFactory();
-                }
+                UnaryOperator<SaslClientFactory> saslClientFactoryOperator = connectionBuilder.getSaslClientFactoryOperator();
                 AuthenticationContext context = connectionBuilder.getAuthenticationContext();
                 if (context == null) {
                     context = captured;
@@ -256,7 +254,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 final String abstractTypeAuthority = connectionBuilder.getAbstractTypeAuthority();
                 final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(uri, context, - 1, abstractType, abstractTypeAuthority, "connect");
                 final SecurityFactory<SSLContext> sslContextFactory = configureSsl ? client.getSSLContextFactory(uri, context, abstractType, abstractTypeAuthority, null) : null;
-                final FutureConnection futureConnection = new FutureConnection(endpoint, connectionBuilder.getBindAddress(), uri, immediate, optionMap, configuration, saslClientFactory, sslContextFactory);
+                final FutureConnection futureConnection = new FutureConnection(endpoint, connectionBuilder.getBindAddress(), uri, immediate, optionMap, configuration, saslClientFactoryOperator, sslContextFactory);
                 if (endpoint.configuredConnections.putIfAbsent(new ConnectionKey(uri.getScheme(), abstractType, abstractTypeAuthority, configuration, sslContextFactory), futureConnection) == null) {
                     // don't actually do this if there is a duplicate item configured
                     if (immediate) {
@@ -417,7 +415,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
         // it's not presently managed; we'll use defaults to set it up
         FutureConnection appearing;
-        futureConnection = new FutureConnection(this, null, destination, false, OptionMap.EMPTY, configuration, SaslFactories.getElytronSaslClientFactory(), sslContextFactory);
+        futureConnection = new FutureConnection(this, null, destination, false, OptionMap.EMPTY, configuration, UnaryOperator.identity(), sslContextFactory);
         if ((appearing = configuredConnections.putIfAbsent(connectionKey, futureConnection)) != null) {
             return appearing.get();
         }
@@ -425,38 +423,31 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
-        return connect(destination, connectOptions, AuthenticationContext.captureCurrent(), SaslFactories.getElytronSaslClientFactory());
-    }
-
-    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, SaslClientFactory saslClientFactory) throws IOException {
-        return connect(destination, connectOptions, AuthenticationContext.captureCurrent(), saslClientFactory);
+        return connect(destination, connectOptions, AuthenticationContext.captureCurrent());
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext) throws IOException {
-        return connect(destination, connectOptions, authenticationContext, SaslFactories.getElytronSaslClientFactory());
+        return connect(destination, null, connectOptions, authenticationContext);
     }
 
-    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException {
-        return connect(destination, null, connectOptions, authenticationContext, saslClientFactory);
-    }
-
-    public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException {
+    public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationContext authenticationContext) throws IOException {
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
         final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, authenticationContext, - 1, null, null, "connect");
         final SecurityFactory<SSLContext> sslContextFactory = client.getSSLContextFactory(destination, authenticationContext, null, null, null);
-        return connect(destination, bindAddress, connectOptions, configuration, saslClientFactory, sslContextFactory);
+        return connect(destination, bindAddress, connectOptions, configuration, UnaryOperator.identity(), sslContextFactory);
     }
 
-    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, SaslClientFactory saslClientFactory, final SecurityFactory<SSLContext> sslContextFactory) throws UnknownURISchemeException, NotOpenException {
+    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final SecurityFactory<SSLContext> sslContextFactory) throws UnknownURISchemeException, NotOpenException {
         Assert.checkNotNullParam("destination", destination);
         Assert.checkNotNullParam("connectOptions", connectOptions);
-        Assert.checkNotNullParam("saslClientFactory", saslClientFactory);
-        saslClientFactory = new PrivilegedSaslClientFactory(saslClientFactory);
         final String protocol = connectOptions.contains(RemotingOptions.SASL_PROTOCOL) ? connectOptions.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
-        saslClientFactory = new ProtocolSaslClientFactory(saslClientFactory, protocol);
+        UnaryOperator<SaslClientFactory> factoryOperator = factory -> new PrivilegedSaslClientFactory(factory);
+        factoryOperator = and(factoryOperator, factory -> new ProtocolSaslClientFactory(factory, protocol));
         if (connectOptions.contains(RemotingOptions.SERVER_NAME)) {
-            saslClientFactory = new ServerNameSaslClientFactory(saslClientFactory, connectOptions.get(RemotingOptions.SERVER_NAME));
+            final String serverName = connectOptions.get(RemotingOptions.SERVER_NAME);
+            factoryOperator = and(factoryOperator, factory -> new ServerNameSaslClientFactory(factory, serverName));
         }
+        factoryOperator = and(factoryOperator, saslClientFactoryOperator);
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(RemotingPermission.CONNECT);
@@ -474,7 +465,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 // Mark the stack because otherwise debugging connect problems can be incredibly tough
                 final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
                 final Principal principal = AUTH_CONFIGURATION_CLIENT.getPrincipal(configuration);
-                final SaslClientFactory finalSaslClientFactory = saslClientFactory;
+                final UnaryOperator<SaslClientFactory> finalFactoryOperator = factoryOperator;
                 final Result<ConnectionHandlerFactory> result = new Result<ConnectionHandlerFactory>() {
                     private final AtomicBoolean flag = new AtomicBoolean();
                     public boolean setCancelled() {
@@ -504,7 +495,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         }
                         synchronized (connectionLock) {
                             log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext, destination, principal, finalSaslClientFactory, null, configuration);
+                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext, destination, principal, finalFactoryOperator, null, configuration);
                             connections.add(connection);
                             connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                             connection.addCloseHandler(resourceCloseHandler);
@@ -520,7 +511,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         return true;
                     }
                 };
-                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContextFactory, saslClientFactory, Collections.emptyList());
+                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContextFactory, finalFactoryOperator, Collections.emptyList());
                 ok = true;
                 futureResult.addCancelHandler(connect);
                 return futureResult.getIoFuture();
@@ -530,6 +521,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 }
             }
         }
+    }
+
+    private static <T> UnaryOperator<T> and(final UnaryOperator<T> first, final UnaryOperator<T> second) {
+        return t -> second.apply(first.apply(t));
     }
 
     public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory, final OptionMap optionMap) throws IOException {
@@ -731,7 +726,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 boolean ok = false;
                 try {
                     // XXX: we need to know if we in fact authenticated to the client via SSL, in which case we actually have an X500Principal
-                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, AnonymousPrincipal.getInstance(), SaslFactories.getElytronSaslClientFactory(), authenticationFactory, AuthenticationConfiguration.EMPTY);
+                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, AnonymousPrincipal.getInstance(), UnaryOperator.identity(), authenticationFactory, AuthenticationConfiguration.EMPTY);
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                     connection.addCloseHandler(connectionCloseHandler);

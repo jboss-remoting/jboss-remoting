@@ -25,6 +25,7 @@ package org.jboss.remoting3;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import javax.security.sasl.SaslClientFactory;
 
@@ -43,7 +44,7 @@ public final class ConnectionBuilder {
 
     private final URI uri;
     private boolean immediate;
-    private SaslClientFactory saslClientFactory;
+    private UnaryOperator<SaslClientFactory> saslClientFactoryOperator = UnaryOperator.identity();
     private AuthenticationContext authenticationContext;
     private SocketAddress bindAddress;
     private String abstractType;
@@ -59,9 +60,9 @@ public final class ConnectionBuilder {
         return this;
     }
 
-    public ConnectionBuilder setSaslClientFactory(final SaslClientFactory saslClientFactory) {
-        Assert.checkNotNullParam("saslClientFactory", saslClientFactory);
-        this.saslClientFactory = saslClientFactory;
+    public ConnectionBuilder setSaslClientFactoryOperator(final UnaryOperator<SaslClientFactory> saslClientFactoryOperator) {
+        Assert.checkNotNullParam("saslClientFactoryOperator", saslClientFactoryOperator);
+        this.saslClientFactoryOperator = saslClientFactoryOperator;
         return this;
     }
 
@@ -148,8 +149,8 @@ public final class ConnectionBuilder {
         return immediate;
     }
 
-    SaslClientFactory getSaslClientFactory() {
-        return saslClientFactory;
+    UnaryOperator<SaslClientFactory> getSaslClientFactoryOperator() {
+        return saslClientFactoryOperator;
     }
 
     AuthenticationContext getAuthenticationContext() {
