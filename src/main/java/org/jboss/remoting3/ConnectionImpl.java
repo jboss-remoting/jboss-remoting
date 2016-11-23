@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.security.Principal;
+import java.util.function.UnaryOperator;
 
 import javax.net.ssl.SSLSession;
 import javax.security.sasl.SaslClientFactory;
@@ -63,7 +64,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     private final SaslAuthenticationFactory authenticationFactory;
     private final AuthenticationConfiguration authenticationConfiguration;
 
-    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final URI peerUri, final Principal principal, final SaslClientFactory saslClientFactory, final SaslAuthenticationFactory authenticationFactory, final AuthenticationConfiguration authenticationConfiguration) {
+    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final URI peerUri, final Principal principal, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final SaslAuthenticationFactory authenticationFactory, final AuthenticationConfiguration authenticationConfiguration) {
         super(endpoint.getExecutor(), true);
         this.endpoint = endpoint;
         this.peerUri = peerUri;
@@ -71,7 +72,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
         this.authenticationConfiguration = authenticationConfiguration;
         this.connectionHandler = connectionHandlerFactory.createInstance(endpoint.new LocalConnectionContext(connectionProviderContext, this));
         this.authenticationFactory = authenticationFactory;
-        this.peerIdentityContext = new ConnectionPeerIdentityContext(this, saslClientFactory, authenticationFactory == null ? null : authenticationFactory.getMechanismNames());
+        this.peerIdentityContext = new ConnectionPeerIdentityContext(this, authenticationFactory == null ? null : authenticationFactory.getMechanismNames());
     }
 
     protected void closeAction() throws IOException {

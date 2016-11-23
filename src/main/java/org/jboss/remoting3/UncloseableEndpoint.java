@@ -26,8 +26,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 
-import javax.security.sasl.SaslClientFactory;
-
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.wildfly.common.Assert;
 import org.wildfly.common.context.ContextManager;
@@ -63,20 +61,13 @@ final class UncloseableEndpoint implements Endpoint {
         return endpoint.connect(destination, connectOptions);
     }
 
-    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final SaslClientFactory saslClientFactory) throws IOException {
-        return endpoint.connect(destination, connectOptions, saslClientFactory);
-    }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext) throws IOException {
         return endpoint.connect(destination, connectOptions, authenticationContext);
     }
 
-    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext, final SaslClientFactory saslClientFactory) throws IOException {
-        return endpoint.connect(destination, connectOptions, authenticationContext, saslClientFactory);
-    }
-
-    public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationContext authenticationContext, final SaslClientFactory saslClientFactory) throws IOException {
-        return endpoint.connect(destination, bindAddress, connectOptions, authenticationContext, saslClientFactory);
+    public IoFuture<Connection> connect(URI destination, InetSocketAddress bindAddress, OptionMap connectOptions, AuthenticationContext authenticationContext) throws IOException {
+        return endpoint.connect(destination, bindAddress, connectOptions, authenticationContext);
     }
 
     public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory, final OptionMap optionMap) throws DuplicateRegistrationException, IOException {

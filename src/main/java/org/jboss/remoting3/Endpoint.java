@@ -155,22 +155,6 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      *
      * @param destination the destination
      * @param connectOptions options to configure this connection
-     * @param saslClientFactory the SASL client factory to use for client authentication
-     *
-     * @return the future connection
-     *
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, SaslClientFactory saslClientFactory) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param destination the destination
-     * @param connectOptions options to configure this connection
      * @param authenticationContext the client authentication context to use
      *
      * @return the future connection
@@ -178,23 +162,6 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @throws IOException if an error occurs while starting the connect attempt
      */
     IoFuture<Connection> connect(URI destination, OptionMap connectOptions, AuthenticationContext authenticationContext) throws IOException;
-
-    /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
-     * This method does not block; use the return value to wait for a result if you wish to block.
-     * <p/>
-     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
-     *
-     * @param destination the destination
-     * @param connectOptions options to configure this connection
-     * @param authenticationContext the client authentication context to use
-     * @param saslClientFactory the SASL client factory to use for client authentication
-     *
-     * @return the future connection
-     *
-     * @throws IOException if an error occurs while starting the connect attempt
-     */
-    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException;
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
@@ -212,7 +179,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      *
      * @throws IOException if an error occurs while starting the connect attempt
      */
-    IoFuture<Connection> connect(URI destination, InetSocketAddress bindAddress, OptionMap connectOptions, AuthenticationContext authenticationContext, SaslClientFactory saslClientFactory) throws IOException;
+    IoFuture<Connection> connect(URI destination, InetSocketAddress bindAddress, OptionMap connectOptions, AuthenticationContext authenticationContext) throws IOException;
 
     /**
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can

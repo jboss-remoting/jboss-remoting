@@ -36,12 +36,15 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.UnaryOperator;
+
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.wildfly.security.sasl.util.ServerNameSaslClientFactory;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.OptionMap;
@@ -69,7 +72,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
     private final RemoteConnection connection;
     private final ConnectionProviderContext connectionProviderContext;
     private final AuthenticationConfiguration configuration;
-    private final SaslClientFactory saslClientFactory;
+    private final UnaryOperator<SaslClientFactory> saslClientFactoryOperator;
     private final Collection<String> serverMechs;
     private final OptionMap optionMap;
     private final Map<String, String> failedMechs = new LinkedHashMap<String, String>();
@@ -77,12 +80,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
     private final Set<String> disallowedMechs;
     static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
 
-    ClientConnectionOpenListener(final URI uri, final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final AuthenticationConfiguration configuration, final SaslClientFactory saslClientFactory, final Collection<String> serverMechs, final OptionMap optionMap) {
+    ClientConnectionOpenListener(final URI uri, final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final AuthenticationConfiguration configuration, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final Collection<String> serverMechs, final OptionMap optionMap) {
         this.uri = uri;
         this.connection = connection;
         this.connectionProviderContext = connectionProviderContext;
         this.configuration = configuration;
-        this.saslClientFactory = saslClientFactory;
+        this.saslClientFactoryOperator = saslClientFactoryOperator;
         this.serverMechs = serverMechs;
         this.optionMap = optionMap;
         final Sequence<String> allowedMechs = optionMap.get(Options.SASL_MECHANISMS);
@@ -393,10 +396,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
 
                         // OK now send our authentication request
                         final AuthenticationContextConfigurationClient configurationClient = AUTH_CONFIGURATION_CLIENT;
-                        final AuthenticationConfiguration configuration = ClientConnectionOpenListener.this.configuration.useHost(remoteServerName);
+                        UnaryOperator<SaslClientFactory> factoryOperator = factory -> new ServerNameSaslClientFactory(factory, remoteServerName);
+                        factoryOperator = and(ClientConnectionOpenListener.this.saslClientFactoryOperator, factoryOperator);
                         final SaslClient saslClient;
                         try {
-                            saslClient = configurationClient.createSaslClient(uri, configuration, saslClientFactory, serverSaslMechs);
+                            saslClient = configurationClient.createSaslClient(uri, ClientConnectionOpenListener.this.configuration, serverSaslMechs, factoryOperator);
                         } catch (SaslException e) {
                             // apparently no more mechanisms can succeed
                             connection.handleException(e);
@@ -713,5 +717,9 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                 if (free) message.free();
             }
         }
+    }
+
+    private static <T> UnaryOperator<T> and(final UnaryOperator<T> first, final UnaryOperator<T> second) {
+        return t -> second.apply(first.apply(t));
     }
 }
