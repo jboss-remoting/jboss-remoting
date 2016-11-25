@@ -55,6 +55,7 @@ import org.xnio.channels.SslChannel;
 import org.xnio.channels.WrappedChannel;
 import org.xnio.conduits.ConduitStreamSourceChannel;
 import org.xnio.sasl.SaslWrapper;
+import org.xnio.ssl.SslConnection;
 
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
@@ -517,19 +518,14 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                     }
                     case Protocol.STARTTLS: {
                         client.trace("Client received STARTTLS response");
-                        Channel c = channel;
-                        for (;;) {
-                            if (c instanceof SslChannel) {
-                                connection.send(RemoteConnection.STARTTLS_SENTINEL);
-                                sendCapRequest(remoteServerName);
-                                return;
-                            } else if (c instanceof WrappedChannel) {
-                                c = ((WrappedChannel<?>)c).getChannel();
-                            } else {
-                                // this should never happen
-                                connection.handleException(new IOException("Client starting STARTTLS but channel doesn't support SSL"));
-                                return;
-                            }
+                        if (connection.getConnection() instanceof SslConnection) {
+                            connection.send(RemoteConnection.STARTTLS_SENTINEL);
+                            sendCapRequest(remoteServerName);
+                            return;
+                        } else {
+                            // this should never happen
+                            connection.handleException(new IOException("Client starting STARTTLS but channel doesn't support SSL"));
+                            return;
                         }
                     }
                     default: {
