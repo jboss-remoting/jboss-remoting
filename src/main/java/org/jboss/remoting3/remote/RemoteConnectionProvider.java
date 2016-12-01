@@ -264,6 +264,8 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                     return;
                 }
                 final JsseSslConnection sslConnection = new JsseSslConnection(streamConnection, engine);
+                // Required in order for the SSLConnection to be properly closed.
+                streamConnection.getCloseSetter().set(channel -> IoUtils.safeClose(sslConnection));
                 if (sslRequired || ! connectOptions.get(Options.SSL_STARTTLS, false)) try {
                     sslConnection.startHandshake();
                 } catch (IOException e) {
