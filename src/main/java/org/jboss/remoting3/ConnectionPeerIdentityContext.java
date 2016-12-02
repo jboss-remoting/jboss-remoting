@@ -36,7 +36,6 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 import javax.security.sasl.SaslClient;
-import javax.security.sasl.SaslClientFactory;
 import javax.security.sasl.SaslException;
 
 import org.jboss.remoting3._private.IntIndexHashMap;
