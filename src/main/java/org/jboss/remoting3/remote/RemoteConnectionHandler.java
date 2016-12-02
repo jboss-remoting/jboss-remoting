@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
@@ -81,6 +82,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     private final int behavior;
     private final boolean supportsRemoteAuth;
+    private final Set<String> offeredMechanisms;
 
     private volatile int channelState = 0;
 
@@ -95,7 +97,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final int maxInboundChannels, final int maxOutboundChannels, final String remoteEndpointName, final int behavior, final boolean supportsRemoteAuth) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final int maxInboundChannels, final int maxOutboundChannels, final String remoteEndpointName, final int behavior, final boolean supportsRemoteAuth, final Set<String> offeredMechanisms) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
@@ -104,6 +106,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         this.remoteEndpointName = remoteEndpointName;
         this.behavior = behavior;
         this.supportsRemoteAuth = supportsRemoteAuth;
+        this.offeredMechanisms = offeredMechanisms;
     }
 
     /**
@@ -566,6 +569,10 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     public boolean supportsRemoteAuth() {
         return supportsRemoteAuth;
+    }
+
+    public Set<String> getOfferedMechanisms() {
+        return offeredMechanisms;
     }
 
     protected void closeAction() throws IOException {

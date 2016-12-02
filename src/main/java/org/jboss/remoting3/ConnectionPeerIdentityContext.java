@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.security.Principal;
 import java.security.PrivilegedAction;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -65,7 +66,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
 
     ConnectionPeerIdentityContext(final ConnectionImpl connection, final Collection<String> offeredMechanisms) {
         this.connection = connection;
-        this.offeredMechanisms = offeredMechanisms;
+        this.offeredMechanisms = offeredMechanisms == null ? Collections.emptySet() : offeredMechanisms;
         anonymousIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, AnonymousPrincipal.getInstance(), 0, connection));
         connectionIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, connection.getPrincipal(), 1, connection));
     }

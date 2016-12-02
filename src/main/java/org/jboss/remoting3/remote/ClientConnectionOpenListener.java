@@ -421,7 +421,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         connection.getMessageReader().suspendReads();
                         final int negotiatedVersion = version;
                         final SaslClient usedSaslClient = saslClient;
-                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, remoteEndpointName, behavior, channelsIn, channelsOut, authCap);
+                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, remoteEndpointName, behavior, channelsIn, channelsOut, authCap, serverSaslMechs);
                         connection.getExecutor().execute(() -> {
                             final byte[] response;
                             try {
@@ -552,8 +552,9 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
         private final int maxInboundChannels;
         private final int maxOutboundChannels;
         private final boolean authCap;
+        private final Set<String> offeredMechanisms;
 
-        Authentication(final SaslClient saslClient, final String serverName, final String endpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels, final boolean authCap) {
+        Authentication(final SaslClient saslClient, final String serverName, final String endpointName, final int behavior, final int maxInboundChannels, final int maxOutboundChannels, final boolean authCap, final Set<String> offeredMechanisms) {
             this.saslClient = saslClient;
             this.serverName = serverName;
             this.behavior = behavior;
@@ -561,6 +562,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
             this.maxInboundChannels = maxInboundChannels;
             this.maxOutboundChannels = maxOutboundChannels;
             this.authCap = authCap;
+            this.offeredMechanisms = offeredMechanisms;
         }
 
         public void handleEvent(final ConduitStreamSourceChannel channel) {
@@ -679,7 +681,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 final ConnectionHandlerFactory connectionHandlerFactory = connectionContext -> {
 
                                     // this happens immediately.
-                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior, authCap);
+                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior, authCap, offeredMechanisms);
                                     connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                     connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                     return connectionHandler;
