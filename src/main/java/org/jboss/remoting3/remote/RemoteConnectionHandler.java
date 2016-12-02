@@ -471,7 +471,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     public void sendAuthSuccess(final int id, final byte[] challenge) throws IOException {
         log.tracef("Sending authentication success for ID %08x", id);
-        int requiredSize = 5 + challenge.length;
+        int requiredSize = 5 + ((challenge != null) ? challenge.length : 0);
         final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
         boolean ok = false;
         try {
@@ -481,7 +481,9 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             }
             buffer.put(Protocol.APP_AUTH_SUCCESS);
             buffer.putInt(id);
-            buffer.put(challenge);
+            if (challenge != null) {
+                buffer.put(challenge);
+            }
             buffer.flip();
             remoteConnection.send(pooled);
             ok = true;
