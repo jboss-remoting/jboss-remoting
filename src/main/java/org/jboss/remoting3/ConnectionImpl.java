@@ -72,7 +72,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
         this.authenticationConfiguration = authenticationConfiguration;
         this.connectionHandler = connectionHandlerFactory.createInstance(endpoint.new LocalConnectionContext(connectionProviderContext, this));
         this.authenticationFactory = authenticationFactory;
-        this.peerIdentityContext = new ConnectionPeerIdentityContext(this, authenticationFactory == null ? null : authenticationFactory.getMechanismNames());
+        this.peerIdentityContext = new ConnectionPeerIdentityContext(this, connectionHandler.getOfferedMechanisms());
     }
 
     protected void closeAction() throws IOException {

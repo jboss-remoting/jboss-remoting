@@ -24,6 +24,7 @@ package org.jboss.remoting3.spi;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.util.Set;
 
 import javax.net.ssl.SSLSession;
 
@@ -93,6 +94,13 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
      * @return {@code true} if remote authentication is supported, {@code false} otherwise
      */
     boolean supportsRemoteAuth();
+
+    /**
+     * Get the available SASL mechanisms.
+     *
+     * @return the available SASL mechanisms
+     */
+    Set<String> getOfferedMechanisms();
 
     /**
      * Send an authentication request.
