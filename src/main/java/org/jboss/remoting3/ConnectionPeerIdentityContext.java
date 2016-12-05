@@ -67,8 +67,8 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
     ConnectionPeerIdentityContext(final ConnectionImpl connection, final Collection<String> offeredMechanisms) {
         this.connection = connection;
         this.offeredMechanisms = offeredMechanisms == null ? Collections.emptySet() : offeredMechanisms;
-        anonymousIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, AnonymousPrincipal.getInstance(), 0, connection));
-        connectionIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, connection.getPrincipal(), 1, connection));
+        connectionIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, connection.getPrincipal(), 0, connection));
+        anonymousIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, AnonymousPrincipal.getInstance(), 1, connection));
     }
 
     /**
