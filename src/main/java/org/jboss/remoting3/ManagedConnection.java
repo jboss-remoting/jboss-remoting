@@ -140,4 +140,8 @@ final class ManagedConnection implements Connection {
     public Principal getPrincipal() {
         return delegate.getPrincipal();
     }
+
+    public boolean supportsRemoteAuth() {
+        return delegate.supportsRemoteAuth();
+    }
 }

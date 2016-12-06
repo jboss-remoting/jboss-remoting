@@ -171,8 +171,9 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
         return peerIdentityContext;
     }
 
-    boolean supportsRemoteAuth() {
-        return getPeerIdentityContext() != null;
+    @Override
+    public boolean supportsRemoteAuth() {
+        return connectionHandler.supportsRemoteAuth();
     }
 
     public Principal getPrincipal() {

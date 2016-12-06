@@ -179,4 +179,11 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
      * @return the peer principal (must not be {@code null})
      */
     Principal getPrincipal();
+
+    /**
+     * Determine if the remote authentication protocol is supported by this connection.
+     *
+     * @return {@code true} if remote authentication is supported, {@code false} otherwise
+     */
+    boolean supportsRemoteAuth();
 }
