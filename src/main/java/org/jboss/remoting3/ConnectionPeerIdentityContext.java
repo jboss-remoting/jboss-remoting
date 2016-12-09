@@ -45,6 +45,7 @@ import org.wildfly.common.Assert;
 import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.wildfly.security.auth.client.PeerIdentity;
 import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
 
@@ -314,7 +315,8 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
      * @return the current identity (not {@code null})
      */
     public ConnectionPeerIdentity getCurrentIdentity() {
-        return (ConnectionPeerIdentity) super.getCurrentIdentity();
+        final ConnectionPeerIdentity currentIdentity = (ConnectionPeerIdentity) super.getCurrentIdentity();
+        return currentIdentity == null ? anonymousIdentity : currentIdentity;
     }
 
     static final class Authentication {
