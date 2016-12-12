@@ -75,6 +75,7 @@ final class RemoteConnection {
         this.sslChannel = sslChannel;
         this.optionMap = optionMap;
         heartbeatInterval = optionMap.get(RemotingOptions.HEARTBEAT_INTERVAL, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL);
+        Messages.conn.tracef("Initialized connection from %s to %s with options %s", connection.getPeerAddress(), connection.getLocalAddress(), optionMap);
         this.executor = remoteConnectionProvider.getExecutor();
         this.remoteConnectionProvider = remoteConnectionProvider;
     }
@@ -178,6 +179,7 @@ final class RemoteConnection {
     }
 
     void sendAlive() {
+        Messages.conn.trace("Sending connection alive");
         final Pooled<ByteBuffer> pooled = allocate();
         boolean ok = false;
         try {
@@ -195,6 +197,7 @@ final class RemoteConnection {
     }
 
     void sendAliveResponse() {
+        Messages.conn.trace("Sending connection alive ack");
         final Pooled<ByteBuffer> pooled = allocate();
         boolean ok = false;
         try {
