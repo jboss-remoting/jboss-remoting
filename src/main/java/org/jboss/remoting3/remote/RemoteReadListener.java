@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.RemotingOptions;
+import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
@@ -426,7 +427,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                                     break;
                                 }
                                 String reason = new String(Buffers.take(buffer), StandardCharsets.UTF_8);
-                                pendingChannel.getResult().setException(new IOException(reason));
+                                pendingChannel.getResult().setException(new ServiceOpenException(reason));
                                 break;
                             }
                             case Protocol.APP_AUTH_REQUEST: {
