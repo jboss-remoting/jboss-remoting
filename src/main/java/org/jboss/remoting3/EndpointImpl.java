@@ -23,6 +23,7 @@
 package org.jboss.remoting3;
 
 import static java.security.AccessController.doPrivileged;
+import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -73,7 +74,6 @@ import org.wildfly.security.auth.principal.AnonymousPrincipal;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.sasl.util.PrivilegedSaslClientFactory;
 import org.wildfly.security.sasl.util.ProtocolSaslClientFactory;
-import org.wildfly.security.sasl.util.SaslFactories;
 import org.wildfly.security.sasl.util.ServerNameSaslClientFactory;
 
 import org.xnio.Bits;
@@ -106,7 +106,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private final Attachments attachments = new Attachments();
 
-    private final ConcurrentMap<String, ConnectionProvider> connectionProviders = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, ProtocolRegistration> connectionProviders = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, RegisteredServiceImpl> registeredServices = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConnectionKey, FutureConnection> configuredConnections = new ConcurrentHashMap<>();
 
@@ -128,7 +128,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
      * The name of this endpoint.
      */
     private final String name;
-    private final ConnectionProviderContext connectionProviderContext;
     private final CloseHandler<Object> resourceCloseHandler = (closed, exception) -> closeTick1(closed);
     private final CloseHandler<Connection> connectionCloseHandler = (closed, exception) -> connections.remove(closed);
     private final boolean ourWorker;
@@ -141,8 +140,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         this.xnio = xnioWorker.getXnio();
         this.name = name;
         this.defaultBindAddress = defaultBindAddress;
-        // initialize CPC
-        connectionProviderContext = new ConnectionProviderContextImpl();
         // get XNIO worker
         log.tracef("Completed open of %s", this);
     }
@@ -358,8 +355,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 for (Object connection : connections.toArray()) {
                     ((ConnectionImpl)connection).closeAsync();
                 }
-                for (ConnectionProvider connectionProvider : connectionProviders.values()) {
-                    connectionProvider.closeAsync();
+                for (ProtocolRegistration protocolRegistration : connectionProviders.values()) {
+                    protocolRegistration.getProvider().closeAsync();
                 }
             }
         }
@@ -457,10 +454,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             boolean ok = false;
             resourceUntick("Connection to " + destination);
             try {
-                final ConnectionProvider connectionProvider = connectionProviders.get(scheme);
-                if (connectionProvider == null) {
+                final ProtocolRegistration protocolRegistration = connectionProviders.get(scheme);
+                if (protocolRegistration == null) {
                     throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
                 }
+                final ConnectionProvider connectionProvider = protocolRegistration.getProvider();
                 final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
                 // Mark the stack because otherwise debugging connect problems can be incredibly tough
                 final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
@@ -495,7 +493,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         }
                         synchronized (connectionLock) {
                             log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, connectionProviderContext, destination, principal, finalFactoryOperator, null, configuration);
+                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, protocolRegistration.getContext(), destination, principal, finalFactoryOperator, null, configuration);
                             connections.add(connection);
                             connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                             connection.addCloseHandler(resourceCloseHandler);
@@ -535,15 +533,17 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         boolean ok = false;
         resourceUntick("Connection provider for " + uriScheme);
         try {
-            final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl();
+            final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl(uriScheme);
             final ConnectionProvider provider = providerFactory.createInstance(context, optionMap);
+            final ProtocolRegistration protocolRegistration = new ProtocolRegistration(provider, context);
             try {
-                if (connectionProviders.putIfAbsent(uriScheme, provider) != null) {
+                if (connectionProviders.putIfAbsent(uriScheme, protocolRegistration) != null) {
+                    safeClose(provider);
                     throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
                 }
                 // add a resource count for close
                 log.tracef("Adding connection provider registration named '%s': %s", uriScheme, provider);
-                final Registration registration = new MapRegistration<ConnectionProvider>(connectionProviders, uriScheme, provider) {
+                final Registration registration = new MapRegistration<ProtocolRegistration>(connectionProviders, uriScheme, protocolRegistration) {
                     protected void closeAction() throws IOException {
                         try {
                             provider.closeAsync();
@@ -570,6 +570,24 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
+    static final class ProtocolRegistration {
+        private final ConnectionProvider provider;
+        private final ConnectionProviderContextImpl context;
+
+        ProtocolRegistration(final ConnectionProvider provider, final ConnectionProviderContextImpl context) {
+            this.provider = provider;
+            this.context = context;
+        }
+
+        ConnectionProvider getProvider() {
+            return provider;
+        }
+
+        ConnectionProviderContextImpl getContext() {
+            return context;
+        }
+    }
+
     public <T> T getConnectionProviderInterface(final String uriScheme, final Class<T> expectedType) throws UnknownURISchemeException, ClassCastException {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
@@ -578,11 +596,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (! expectedType.isInterface()) {
             throw new IllegalArgumentException("Interface expected");
         }
-        final ConnectionProvider provider = connectionProviders.get(uriScheme);
-        if (provider == null) {
+        final ProtocolRegistration protocolRegistration = connectionProviders.get(uriScheme);
+        if (protocolRegistration == null) {
             throw new UnknownURISchemeException("No connection provider for URI scheme \"" + uriScheme + "\" is installed");
         }
-        return expectedType.cast(provider.getProviderInterface());
+        return expectedType.cast(protocolRegistration.getProvider().getProviderInterface());
     }
 
     public boolean isValidUriScheme(final String uriScheme) {
@@ -605,13 +623,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return b.toString();
     }
 
-    private class MapRegistration<T> extends AbstractHandleableCloseable<Registration> implements Registration {
+    class MapRegistration<T> extends AbstractHandleableCloseable<Registration> implements Registration {
 
         private final ConcurrentMap<String, T> map;
         private final String key;
         private final T value;
 
-        private MapRegistration(final ConcurrentMap<String, T> map, final String key, final T value) {
+        MapRegistration(final ConcurrentMap<String, T> map, final String key, final T value) {
             super(EndpointImpl.this.getExecutor(), false);
             this.map = map;
             this.key = key;
@@ -629,6 +647,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }
+        }
+
+        T getValue() {
+            return value;
         }
 
         public String toString() {
@@ -711,9 +733,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
-    private final class ConnectionProviderContextImpl implements ConnectionProviderContext {
+    final class ConnectionProviderContextImpl implements ConnectionProviderContext {
 
-        private ConnectionProviderContextImpl() {
+        private final String protocol;
+
+        ConnectionProviderContextImpl(final String protocol) {
+            this.protocol = protocol;
         }
 
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory, final SaslAuthenticationFactory authenticationFactory) {
@@ -743,7 +768,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public Xnio getXnio() {
-            return xnio;
+            return worker.getXnio();
         }
 
         public Executor getExecutor() {
@@ -753,9 +778,13 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         public XnioWorker getXnioWorker() {
             return worker;
         }
+
+        public String getProtocol() {
+            return protocol;
+        }
     }
 
-    private static class RegisteredServiceImpl implements RegisteredService {
+    static class RegisteredServiceImpl implements RegisteredService {
         private final OpenListener openListener;
         private final OptionMap optionMap;
 

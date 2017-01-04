@@ -122,6 +122,13 @@ public interface Connection extends HandleableCloseable<Connection>, Attachable 
     URI getPeerURI();
 
     /**
+     * Get the protocol of this connection.
+     *
+     * @return the protocol (not {@code null})
+     */
+    String getProtocol();
+
+    /**
      * Get the local identity of this inbound connection.
      *
      * @return the local identity, or {@code null} if the connection is outbound

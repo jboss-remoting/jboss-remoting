@@ -63,11 +63,13 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     private final IntIndexHashMap<Auth> authMap = new IntIndexHashMap<Auth>(Auth::getId);
     private final SaslAuthenticationFactory authenticationFactory;
     private final AuthenticationConfiguration authenticationConfiguration;
+    private final String protocol;
 
     ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final URI peerUri, final Principal principal, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final SaslAuthenticationFactory authenticationFactory, final AuthenticationConfiguration authenticationConfiguration) {
         super(endpoint.getExecutor(), true);
         this.endpoint = endpoint;
         this.peerUri = peerUri;
+        this.protocol = connectionProviderContext.getProtocol();
         this.principal = principal;
         this.authenticationConfiguration = authenticationConfiguration;
         this.connectionHandler = connectionHandlerFactory.createInstance(endpoint.new LocalConnectionContext(connectionProviderContext, this));
@@ -122,6 +124,10 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
 
     public URI getPeerURI() {
         return peerUri;
+    }
+
+    public String getProtocol() {
+        return protocol;
     }
 
     public SecurityIdentity getLocalIdentity() {
