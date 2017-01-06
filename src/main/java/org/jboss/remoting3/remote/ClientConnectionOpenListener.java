@@ -27,8 +27,10 @@ import java.net.URI;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channel;
 import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -51,8 +53,6 @@ import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pooled;
 import org.xnio.Sequence;
-import org.xnio.channels.SslChannel;
-import org.xnio.channels.WrappedChannel;
 import org.xnio.conduits.ConduitStreamSourceChannel;
 import org.xnio.sasl.SaslWrapper;
 import org.xnio.ssl.SslConnection;
@@ -401,7 +401,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         factoryOperator = and(ClientConnectionOpenListener.this.saslClientFactoryOperator, factoryOperator);
                         final SaslClient saslClient;
                         try {
-                            saslClient = configurationClient.createSaslClient(uri, ClientConnectionOpenListener.this.configuration, serverSaslMechs, factoryOperator);
+                            saslClient = createSaslClient(configurationClient, uri, ClientConnectionOpenListener.this.configuration, serverSaslMechs, factoryOperator);
                         } catch (SaslException e) {
                             // apparently no more mechanisms can succeed
                             connection.handleException(e);
@@ -470,6 +470,20 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                 return;
             } finally {
                 message.free();
+            }
+        }
+
+        private SaslClient createSaslClient(final AuthenticationContextConfigurationClient configurationClient,
+                                            final URI uri,
+                                            final AuthenticationConfiguration authenticationConfiguration,
+                                            final Set<String> serverSaslMechs,
+                                            final UnaryOperator<SaslClientFactory> factoryOperator)
+                throws SaslException {
+            try {
+                return AccessController.doPrivileged((PrivilegedExceptionAction<SaslClient>) () ->
+                        configurationClient.createSaslClient(uri, authenticationConfiguration, serverSaslMechs, factoryOperator));
+            } catch (PrivilegedActionException e) {
+                throw new SaslException(e.getMessage());
             }
         }
     }
