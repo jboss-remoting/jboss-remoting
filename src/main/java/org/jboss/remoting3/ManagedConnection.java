@@ -30,8 +30,6 @@ import java.security.Principal;
 import javax.net.ssl.SSLSession;
 
 import org.wildfly.security.auth.AuthenticationException;
-import org.wildfly.security.auth.client.PeerIdentity;
-import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
@@ -85,6 +83,10 @@ final class ManagedConnection implements Connection {
 
     public URI getPeerURI() {
         return delegate.getPeerURI();
+    }
+
+    public String getProtocol() {
+        return delegate.getProtocol();
     }
 
     public SecurityIdentity getLocalIdentity() {
