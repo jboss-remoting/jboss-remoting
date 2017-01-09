@@ -69,4 +69,11 @@ public interface ConnectionProviderContext {
      * @return the XNIO worker
      */
     XnioWorker getXnioWorker();
+
+    /**
+     * Get the protocol of this connection provider.
+     *
+     * @return the protocol of this connection provider (not {@code null})
+     */
+    String getProtocol();
 }
