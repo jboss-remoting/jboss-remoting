@@ -50,8 +50,6 @@ import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslClientFactory;
 
 import org.jboss.logging.Logger;
-import org.jboss.modules.Module;
-import org.jboss.modules.ModuleLoadException;
 import org.jboss.remoting3._private.IntIndexHashMap;
 import org.jboss.remoting3.remote.HttpUpgradeConnectionProviderFactory;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
@@ -178,14 +176,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 final String moduleName = factoryBuilder.getModuleName();
                 final ClassLoader classLoader;
                 if (moduleName != null) {
-                    // modules code here only
-                    try {
-                        classLoader = Module.getCallerModuleLoader().loadModule(moduleName).getClassLoader();
-                    } catch (ModuleLoadException e) {
-                        throw new IOException("Failed to create endpoint", e);
-                    } catch (LinkageError e) {
-                        throw new IOException("Failed to create endpoint: JBoss Modules is not present", e);
-                    }
+                    classLoader = ModuleLoader.getClassLoaderFromModule(moduleName);
                 } else if (className == null) {
                     throw new IllegalArgumentException("Either class or module name required for connection provider factory");
                 } else {
