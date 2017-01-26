@@ -409,7 +409,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         if (length == 0 || length > 256) {
             throw log.mechanismNameTooLong(mechName);
         }
-        int requiredSize = 6 + length + initialResponse.length;
+        int requiredSize = 6 + length + ((initialResponse != null) ? initialResponse.length : 0);
         final Pooled<ByteBuffer> pooled = remoteConnection.allocate();
         boolean ok = false;
         try {
@@ -421,7 +421,9 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             buffer.putInt(id);
             buffer.put((byte) length);
             buffer.put(mechNameBytes);
-            buffer.put(initialResponse);
+            if (initialResponse != null) {
+                buffer.put(initialResponse);
+            }
             buffer.flip();
             remoteConnection.send(pooled);
             ok = true;
