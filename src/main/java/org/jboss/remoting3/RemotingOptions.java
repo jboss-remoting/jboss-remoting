@@ -22,14 +22,128 @@
 
 package org.jboss.remoting3;
 
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+import javax.security.sasl.Sasl;
+
+import org.wildfly.common.Assert;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.xnio.Option;
+import org.xnio.OptionMap;
+import org.xnio.Options;
+import org.xnio.Property;
+import org.xnio.Sequence;
+import org.xnio.sasl.SaslQop;
+import org.xnio.sasl.SaslStrength;
 
 /**
  * Common options for Remoting configuration.
  */
 public final class RemotingOptions {
 
+    private static final String[] NO_STRINGS = new String[0];
+
     private RemotingOptions() {
+    }
+
+    /**
+     * Merge the given option map into the given authentication configuration, and return the result.
+     *
+     * @param optionMap the option map (must not be {@code null})
+     * @param authenticationConfiguration the authentication configuration (must not be {@code null})
+     * @return the merged authentication configuration (not {@code null})
+     */
+    public static AuthenticationConfiguration mergeOptionsIntoAuthenticationConfiguration(OptionMap optionMap, AuthenticationConfiguration authenticationConfiguration) {
+        Assert.checkNotNullParam("optionMap", optionMap);
+        Assert.checkNotNullParam("authenticationConfiguration", authenticationConfiguration);
+
+        final String protocol = optionMap.get(SASL_PROTOCOL);
+        if (protocol != null) {
+            authenticationConfiguration = authenticationConfiguration.useProtocol(protocol);
+        }
+        final String realm = optionMap.get(AUTH_REALM);
+        if (realm != null) {
+            authenticationConfiguration = authenticationConfiguration.useRealm(realm);
+        }
+        final String authzId = optionMap.get(AUTHORIZE_ID);
+        if (authzId != null) {
+            authenticationConfiguration = authenticationConfiguration.useAuthorizationName(authzId);
+        }
+        final Sequence<String> disallowedMechs = optionMap.get(Options.SASL_DISALLOWED_MECHANISMS);
+        if (disallowedMechs != null) {
+            authenticationConfiguration = authenticationConfiguration.forbidSaslMechanisms(disallowedMechs.toArray(NO_STRINGS));
+        }
+        final Sequence<String> mechanisms = optionMap.get(Options.SASL_MECHANISMS);
+        if (mechanisms != null) {
+            authenticationConfiguration = authenticationConfiguration.allowSaslMechanisms(mechanisms.toArray(NO_STRINGS));
+        }
+        final Map<String, String> saslPropertiesMap = new HashMap<>();
+        final Sequence<Property> properties = optionMap.get(Options.SASL_PROPERTIES);
+        if (properties != null) {
+            for (Property property : properties) {
+                // ELY-894
+                //noinspection rawtypes,unchecked
+                ((Map)saslPropertiesMap).put(property.getKey(), property.getValue());
+            }
+        }
+        final Boolean forwardSecrecy = optionMap.get(Options.SASL_POLICY_FORWARD_SECRECY);
+        if (forwardSecrecy != null) {
+            saslPropertiesMap.put(Sasl.POLICY_FORWARD_SECRECY, forwardSecrecy.toString());
+        }
+        final Boolean noActive = optionMap.get(Options.SASL_POLICY_NOACTIVE);
+        if (noActive != null) {
+            saslPropertiesMap.put(Sasl.POLICY_NOACTIVE, noActive.toString());
+        }
+        final Boolean noAnonymous = optionMap.get(Options.SASL_POLICY_NOANONYMOUS);
+        if (noAnonymous != null) {
+            saslPropertiesMap.put(Sasl.POLICY_NOANONYMOUS, noAnonymous.toString());
+        }
+        final Boolean noDictionary = optionMap.get(Options.SASL_POLICY_NODICTIONARY);
+        if (noDictionary != null) {
+            saslPropertiesMap.put(Sasl.POLICY_NODICTIONARY, noDictionary.toString());
+        }
+        final Boolean noPlainText = optionMap.get(Options.SASL_POLICY_NOPLAINTEXT);
+        if (noPlainText != null) {
+            saslPropertiesMap.put(Sasl.POLICY_NOPLAINTEXT, noPlainText.toString());
+        }
+        final Boolean passCredentials = optionMap.get(Options.SASL_POLICY_PASS_CREDENTIALS);
+        if (passCredentials != null) {
+            saslPropertiesMap.put(Sasl.POLICY_PASS_CREDENTIALS, passCredentials.toString());
+        }
+        final Sequence<SaslQop> qop = optionMap.get(Options.SASL_QOP);
+        if (qop != null) {
+            final Iterator<SaslQop> iterator = qop.iterator();
+            if (iterator.hasNext()) {
+                StringBuilder b = new StringBuilder().append(iterator.next().getString());
+                while (iterator.hasNext()) {
+                    b.append(',').append(iterator.next().getString());
+                }
+                saslPropertiesMap.put(Sasl.QOP, b.toString());
+            }
+        }
+        final Boolean reuse = optionMap.get(Options.SASL_REUSE);
+        if (reuse != null) {
+            saslPropertiesMap.put(Sasl.REUSE, reuse.toString());
+        }
+        final SaslStrength strength = optionMap.get(Options.SASL_STRENGTH);
+        if (strength != null) {
+            switch (strength) {
+                case LOW: saslPropertiesMap.put(Sasl.STRENGTH, "low"); break;
+                case MEDIUM: saslPropertiesMap.put(Sasl.STRENGTH, "medium"); break;
+                case HIGH: saslPropertiesMap.put(Sasl.STRENGTH, "high"); break;
+                default: throw Assert.impossibleSwitchCase(strength);
+            }
+        }
+        final Boolean serverAuth = optionMap.get(Options.SASL_SERVER_AUTH);
+        if (serverAuth != null) {
+            saslPropertiesMap.put(Sasl.SERVER_AUTH, serverAuth.toString());
+        }
+        if (! saslPropertiesMap.isEmpty()) {
+            authenticationConfiguration = authenticationConfiguration.useMechanismProperties(saslPropertiesMap);
+        }
+        return authenticationConfiguration;
     }
 
     /**
