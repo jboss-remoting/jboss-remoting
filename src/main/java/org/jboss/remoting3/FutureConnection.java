@@ -32,7 +32,6 @@ import java.util.function.UnaryOperator;
 import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslClientFactory;
 
-import org.wildfly.security.SecurityFactory;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.xnio.FailedIoFuture;
 import org.xnio.FutureResult;
@@ -46,25 +45,29 @@ class FutureConnection {
 
     private final EndpointImpl endpoint;
     private final URI uri;
+    private final String realHost;
+    private final int realPort;
     private final AtomicReference<FutureResult<Connection>> futureConnectionRef = new AtomicReference<FutureResult<Connection>>();
     private final boolean immediate;
     private final OptionMap options;
     private final AuthenticationConfiguration configuration;
     private final UnaryOperator<SaslClientFactory> clientFactoryOperator;
-    private final SecurityFactory<SSLContext> sslContextFactory;
+    private final SSLContext sslContext;
     private final SocketAddress bindAddress;
 
     // TODO: make a PIContext for the connection that auto-re-auths to each new real connection
 
-    FutureConnection(final EndpointImpl endpoint, final SocketAddress bindAddress, final URI uri, final boolean immediate, final OptionMap options, final AuthenticationConfiguration configuration, final UnaryOperator<SaslClientFactory> clientFactoryOperator, final SecurityFactory<SSLContext> sslContextFactory) {
+    FutureConnection(final EndpointImpl endpoint, final SocketAddress bindAddress, final URI uri, final String realHost, final int realPort, final boolean immediate, final OptionMap options, final AuthenticationConfiguration configuration, final UnaryOperator<SaslClientFactory> clientFactoryOperator, final SSLContext sslContext) {
         this.endpoint = endpoint;
         this.bindAddress = bindAddress;
         this.uri = uri;
+        this.realHost = realHost;
+        this.realPort = realPort;
         this.immediate = immediate;
         this.options = options;
         this.configuration = configuration;
         this.clientFactoryOperator = clientFactoryOperator;
-        this.sslContextFactory = sslContextFactory;
+        this.sslContext = sslContext;
     }
 
     void reconnectAfterDelay() {
@@ -110,7 +113,7 @@ class FutureConnection {
         }
         IoFuture<Connection> realFuture;
         try {
-            realFuture = endpoint.connect(uri, bindAddress, options, configuration, clientFactoryOperator, sslContextFactory);
+            realFuture = endpoint.connect(uri, bindAddress, options, configuration, clientFactoryOperator, sslContext);
         } catch (IOException e) {
             realFuture = new FailedIoFuture<>(e);
         }

@@ -28,15 +28,11 @@ import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.URI;
-import java.security.PrivilegedAction;
 import java.util.Collections;
 
 import org.wildfly.client.config.ClientConfiguration;
 import org.wildfly.client.config.ConfigXMLParseException;
 import org.wildfly.client.config.ConfigurationXMLStreamReader;
-import org.wildfly.security.auth.client.AuthenticationContext;
-import org.wildfly.security.sasl.util.SaslFactories;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -100,11 +96,6 @@ final class RemotingXmlParser {
                     switch (reader.getLocalName()) {
                         case "providers": {
                             parseProvidersElement(reader, builder);
-                            break;
-                        }
-
-                        case "connections": {
-                            parseConnectionsElement(reader, builder);
                             break;
                         }
 
@@ -241,121 +232,5 @@ final class RemotingXmlParser {
                 throw reader.unexpectedElement();
             }
         }
-    }
-
-    private static void parseConnectionsElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
-        final int attributeCount = reader.getAttributeCount();
-        if (attributeCount > 0) {
-            throw reader.unexpectedAttribute(0);
-        }
-        while (reader.hasNext()) {
-            switch (reader.nextTag()) {
-                case START_ELEMENT: {
-                    switch (reader.getNamespaceURI()) {
-                        case NS_REMOTING_5_0: break;
-                        default: throw reader.unexpectedElement();
-                    }
-                    switch (reader.getLocalName()) {
-                        case "connection": {
-                            parseConnectionElement(reader, builder);
-                            break;
-                        }
-                        default: throw reader.unexpectedElement();
-                    }
-                }
-                case END_ELEMENT: {
-                    return;
-                }
-            }
-        }
-    }
-
-    private static void parseConnectionElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
-        final int attributeCount = reader.getAttributeCount();
-        URI uri = null;
-        boolean immediate = false;
-        for (int i = 0; i < attributeCount; i ++) {
-            final String attributeNamespace = reader.getAttributeNamespace(i);
-            if (attributeNamespace != null && ! attributeNamespace.isEmpty()) {
-                throw reader.unexpectedAttribute(i);
-            }
-            switch (reader.getAttributeLocalName(i)) {
-                case "uri": {
-                    uri = reader.getURIAttributeValue(i);
-                    break;
-                }
-                case "immediate": {
-                    immediate = reader.getBooleanAttributeValue(i);
-                    break;
-                }
-                default: {
-                    throw reader.unexpectedAttribute(i);
-                }
-            }
-        }
-        if (uri == null) {
-            throw reader.missingRequiredAttribute("", "uri");
-        }
-        final ConnectionBuilder connectionBuilder = builder.addConnection(uri);
-        connectionBuilder.setImmediate(immediate);
-        connectionBuilder.setAuthenticationContext(getGlobalDefaultAuthCtxt());
-        while (reader.hasNext()) {
-            switch (reader.nextTag()) {
-                case START_ELEMENT: {
-                    switch (reader.getNamespaceURI()) {
-                        case NS_REMOTING_5_0: break;
-                        default: throw reader.unexpectedElement();
-                    }
-                    switch (reader.getLocalName()) {
-                        case "bind": {
-                            connectionBuilder.setBindAddress(parseBind(reader));
-                            break;
-                        }
-                        case "abstract-type": {
-                            parseAbstractType(reader, connectionBuilder);
-                            break;
-                        }
-                        default: throw reader.unexpectedElement();
-                    }
-                }
-                case END_ELEMENT: {
-                    return;
-                }
-            }
-        }
-    }
-
-    private static void parseAbstractType(final ConfigurationXMLStreamReader reader, final ConnectionBuilder connectionBuilder) throws ConfigXMLParseException {
-        final int attributeCount = reader.getAttributeCount();
-        String name = null;
-        String authority = null;
-        for (int i = 0; i < attributeCount; i ++) {
-            final String attributeNamespace = reader.getAttributeNamespace(i);
-            if (attributeNamespace != null && ! attributeNamespace.isEmpty()) {
-                throw reader.unexpectedAttribute(i);
-            }
-            switch (reader.getAttributeLocalName(i)) {
-                case "name": {
-                    name = reader.getAttributeValue(i);
-                    break;
-                }
-                case "authority": {
-                    authority = reader.getAttributeValue(i);
-                    break;
-                }
-                default: {
-                    throw reader.unexpectedAttribute(i);
-                }
-            }
-        }
-        if (name == null) throw reader.missingRequiredAttribute(null, "name");
-        if (! reader.hasNext()) throw reader.unexpectedDocumentEnd();
-        if (reader.nextTag() != END_ELEMENT) throw reader.unexpectedElement();
-        if (authority != null) connectionBuilder.setAbstractTypeAuthority(authority);
-        connectionBuilder.setAbstractType(name);
-    }
-
-    static AuthenticationContext getGlobalDefaultAuthCtxt() {
-        return doPrivileged((PrivilegedAction<AuthenticationContext>) AuthenticationContext.getContextManager()::getGlobalDefault);
     }
 }

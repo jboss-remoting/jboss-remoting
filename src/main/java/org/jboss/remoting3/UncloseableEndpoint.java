@@ -26,9 +26,11 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 
+import javax.net.ssl.SSLContext;
+
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.wildfly.common.Assert;
-import org.wildfly.common.context.ContextManager;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -41,10 +43,6 @@ final class UncloseableEndpoint implements Endpoint {
         this.endpoint = endpoint;
     }
 
-    public ContextManager<Endpoint> getInstanceContextManager() {
-        return endpoint.getInstanceContextManager();
-    }
-
     public String getName() {
         return endpoint.getName();
     }
@@ -53,14 +51,13 @@ final class UncloseableEndpoint implements Endpoint {
         return endpoint.registerService(serviceType, openListener, optionMap);
     }
 
-    public IoFuture<Connection> getConnection(final URI destination, final String abstractType, final String abstractTypeAuthority) {
-        return endpoint.getConnection(destination, abstractType, abstractTypeAuthority);
+    public IoFuture<Connection> getConnection(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration) {
+        return endpoint.getConnection(destination, sslContext, connectionConfiguration, operateConfiguration);
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
         return endpoint.connect(destination, connectOptions);
     }
-
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext) throws IOException {
         return endpoint.connect(destination, connectOptions, authenticationContext);

@@ -34,7 +34,6 @@
     <xs:complexType name="endpoint-type">
         <xs:all minOccurs="0" maxOccurs="1">
             <xs:element name="providers" type="providers-type" minOccurs="0" maxOccurs="1"/>
-            <xs:element name="connections" type="connections-type" minOccurs="0" maxOccurs="1"/>
             <xs:element name="default-bind" type="bind-address-type" minOccurs="0" maxOccurs="1"/>
         </xs:all>
         <xs:attribute name="name" use="optional" type="xs:string"/>
@@ -46,26 +45,11 @@
         </xs:choice>
     </xs:complexType>
 
-    <xs:complexType name="connections-type">
-        <xs:choice minOccurs="0" maxOccurs="unbounded">
-            <xs:element name="connection" type="connection-type"/>
-        </xs:choice>
-    </xs:complexType>
-
     <xs:complexType name="provider-type">
         <xs:attribute name="scheme" use="required" type="xs:string"/>
         <xs:attribute name="aliases" use="optional" type="string-list-type"/>
         <xs:attribute name="module" use="optional" type="xs:string"/>
         <xs:attribute name="class" use="optional" type="xs:string"/>
-    </xs:complexType>
-
-    <xs:complexType name="connection-type">
-        <xs:all>
-            <xs:element name="bind" type="bind-address-type" minOccurs="0"/>
-            <xs:element name="abstract-type" type="abstract-type-type" minOccurs="0"/>
-        </xs:all>
-        <xs:attribute name="uri" use="required" type="xs:anyURI"/>
-        <xs:attribute name="immediate" use="optional" type="xs:boolean" default="false"/>
     </xs:complexType>
 
     <xs:complexType name="bind-address-type">
@@ -83,9 +67,4 @@
             <xs:maxInclusive value="65535"/>
         </xs:restriction>
     </xs:simpleType>
-
-    <xs:complexType name="abstract-type-type">
-        <xs:attribute name="name" type="xs:string"/>
-        <xs:attribute name="authority" type="xs:string" use="optional"/>
-    </xs:complexType>
 </xs:schema>

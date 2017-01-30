@@ -23,21 +23,30 @@
 package org.jboss.remoting3;
 
 import static java.security.AccessController.doPrivileged;
+import static org.jboss.remoting3.EndpointImpl.AUTH_CONFIGURATION_CLIENT;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.security.GeneralSecurityException;
 import java.security.PrivilegedAction;
 
+import org.jboss.remoting3._private.Messages;
 import org.jboss.remoting3.security.RemotingPermission;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
+import org.wildfly.common.Assert;
 import org.wildfly.common.context.ContextManager;
 import org.wildfly.common.context.Contextual;
+import org.wildfly.security.SecurityFactory;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.xnio.FailedIoFuture;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 import org.xnio.XnioWorker;
 
+import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslClientFactory;
 
 /**
@@ -102,19 +111,61 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @return the future (or existing) connection
      */
     default IoFuture<Connection> getConnection(URI destination) {
-        return getConnection(destination, null, null);
+        return getConnection(destination, (String) null, null);
     }
 
     /**
      * Get a possibly pre-existing connection to the destination.  The given abstract type and authority are used
      * to locate the authentication configuration.
      *
-     * @param destination the destination URI
+     * @param destination the destination URI (must not be {@code null})
      * @param abstractType the abstract type of the connection (may be {@code null})
      * @param abstractTypeAuthority the authority name of the abstract type of the connection (may be {@code null})
      * @return the future (or existing) connection
      */
-    IoFuture<Connection> getConnection(URI destination, String abstractType, String abstractTypeAuthority);
+    default IoFuture<Connection> getConnection(URI destination, String abstractType, String abstractTypeAuthority) {
+        final AuthenticationContext context = AuthenticationContext.captureCurrent();
+        final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
+        final SSLContext sslContext;
+        try {
+            sslContext = client.getSSLContext(destination, context);
+        } catch (GeneralSecurityException e) {
+            return new FailedIoFuture<>(Messages.conn.failedToConfigureSslContext(e));
+        }
+        final AuthenticationConfiguration connectConfig = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority, "connect");
+        final AuthenticationConfiguration operateConfig = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority, "operate");
+        return getConnection(destination, sslContext, connectConfig, operateConfig);
+    }
+
+    /**
+     * Get a possibly pre-existing connection to the destination.  The given authentication configuration is used to
+     * authenticate the connection.
+     * <p>
+     * The given SSL context factory is used only for TLS-based protocols.  It may be {@code null}, but in such cases,
+     * no TLS-based protocols will be available.
+     *
+     * @param destination the destination URI (must not be {@code null})
+     * @param sslContext the SSL context to use for secure connections (may be {@code null})
+     * @param authenticationConfiguration the connection authentication configuration to use (must not be {@code null})
+     * @return the future (or existing) connection
+     */
+    default IoFuture<Connection> getConnection(URI destination, SSLContext sslContext, AuthenticationConfiguration authenticationConfiguration) {
+        Assert.checkNotNullParam("authenticationConfiguration", authenticationConfiguration);
+        return getConnection(destination, sslContext, authenticationConfiguration, authenticationConfiguration);
+    }
+
+    /**
+     * Get a possibly pre-existing connection to the destination.  The connection authentication configuration is used to authenticate
+     * the peer if the connection supports multiple identity switching.  The run authentication configuration is used to authenticate
+     * the peer if the connection does not support multiple identity switching.
+     *
+     * @param destination the destination URI (must not be {@code null})
+     * @param sslContext the SSL context to use for secure connections (may be {@code null})
+     * @param connectionConfiguration the connection authentication configuration (must not be {@code null})
+     * @param operateConfiguration the run authentication configuration (must not be {@code null})
+     * @return the future (or existing) connection
+     */
+    IoFuture<Connection> getConnection(URI destination, SSLContext sslContext, AuthenticationConfiguration connectionConfiguration, AuthenticationConfiguration operateConfiguration);
 
     /**
      * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
@@ -173,7 +224,6 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @param bindAddress the local bind address
      * @param connectOptions options to configure this connection
      * @param authenticationContext the client authentication context to use
-     * @param saslClientFactory the SASL client factory to use for client authentication
      *
      * @return the future connection
      *

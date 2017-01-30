@@ -44,7 +44,6 @@ import javax.net.ssl.SSLContext;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ExternalConnectionProvider;
 import org.wildfly.common.Assert;
-import org.wildfly.security.SecurityFactory;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.ChannelListener;
@@ -126,7 +125,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
     }
 
     protected IoFuture<SslConnection> createSslConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap options,
-            final AuthenticationConfiguration configuration, final SecurityFactory<SSLContext> sslContextFactory, final ChannelListener<StreamConnection> openListener) {
+            final AuthenticationConfiguration configuration, final SSLContext sslContext, final ChannelListener<StreamConnection> openListener) {
         final URI newUri;
         try {
             newUri = new URI("https", "", uri.getHost(), uri.getPort(), "/", "", "");
@@ -138,7 +137,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
         final OptionMap modifiedOptions = OptionMap.builder().addAll(options).set(Options.SSL_STARTTLS, false).getMap();
 
         ChannelListener<StreamConnection> upgradeListener = new UpgradeListener<SslConnection>(SslConnection.class, newUri, openListener, returnedFuture);
-        IoFuture<SslConnection> rawFuture = super.createSslConnection(uri, bindAddress, destination, modifiedOptions, configuration, sslContextFactory, upgradeListener);
+        IoFuture<SslConnection> rawFuture = super.createSslConnection(uri, bindAddress, destination, modifiedOptions, configuration, sslContext, upgradeListener);
         rawFuture.addNotifier( new IoFuture.HandlingNotifier<StreamConnection, FutureResult<SslConnection>>() {
 
             @Override

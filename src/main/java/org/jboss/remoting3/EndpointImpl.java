@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
+import java.security.GeneralSecurityException;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -51,6 +52,7 @@ import javax.security.sasl.SaslClientFactory;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3._private.IntIndexHashMap;
+import org.jboss.remoting3._private.Messages;
 import org.jboss.remoting3.remote.HttpUpgradeConnectionProviderFactory;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
 import org.jboss.remoting3.security.RemotingPermission;
@@ -64,7 +66,6 @@ import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 
 import org.wildfly.common.Assert;
-import org.wildfly.security.SecurityFactory;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
@@ -76,6 +77,7 @@ import org.wildfly.security.sasl.util.ServerNameSaslClientFactory;
 
 import org.xnio.Bits;
 import org.xnio.Cancellable;
+import org.xnio.FailedIoFuture;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -144,7 +146,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     static EndpointImpl construct(final EndpointBuilder endpointBuilder) throws IOException {
         final String endpointName = endpointBuilder.getEndpointName();
-        final List<ConnectionBuilder> connectionBuilders = endpointBuilder.getConnectionBuilders();
         final List<ConnectionProviderFactoryBuilder> factoryBuilders = endpointBuilder.getConnectionProviderFactoryBuilders();
         final EndpointImpl endpoint;
         XnioWorker xnioWorker = endpointBuilder.getXnioWorker();
@@ -208,49 +209,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             // old
             endpoint.addConnectionProvider("http-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
             endpoint.addConnectionProvider("https-remoting", httpUpgradeConnectionProviderFactory, OptionMap.create(Options.SECURE, Boolean.TRUE));
-            final AuthenticationContext captured = AuthenticationContext.captureCurrent();
-            final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
-            if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
-                UnaryOperator<SaslClientFactory> saslClientFactoryOperator = connectionBuilder.getSaslClientFactoryOperator();
-                AuthenticationContext context = connectionBuilder.getAuthenticationContext();
-                if (context == null) {
-                    context = captured;
-                }
-                final URI uri = connectionBuilder.getUri();
-                final boolean immediate = connectionBuilder.isImmediate();
-                final OptionMap optionMap = connectionBuilder.getOptions();
-                final boolean configureSsl;
-                // known schemes
-                switch (uri.getScheme()) {
-                    case "remote+http":
-                    case "http-remoting":
-                    case "remote": configureSsl = false; break;
-                    case "remote+https":
-                    case "https-remoting":
-                    case "remote+tls": configureSsl = true; break;
-                    case "remoting": {
-                        // in this case SSL may or may not be used; this is why the new protocol names are recommended
-                        configureSsl = optionMap.get(Options.SSL_ENABLED, true);
-                        break;
-                    }
-                    default: {
-                        configureSsl = true; // can't know
-                        break;
-                    }
-                }
-                final String abstractType = connectionBuilder.getAbstractType();
-                final String abstractTypeAuthority = connectionBuilder.getAbstractTypeAuthority();
-                final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(uri, context, - 1, abstractType, abstractTypeAuthority, "connect");
-                final SecurityFactory<SSLContext> sslContextFactory = configureSsl ? client.getSSLContextFactory(uri, context, abstractType, abstractTypeAuthority, null) : null;
-                final FutureConnection futureConnection = new FutureConnection(endpoint, connectionBuilder.getBindAddress(), uri, immediate, optionMap, configuration, saslClientFactoryOperator, sslContextFactory);
-                if (endpoint.configuredConnections.putIfAbsent(new ConnectionKey(uri.getScheme(), abstractType, abstractTypeAuthority, configuration, sslContextFactory), futureConnection) == null) {
-                    // don't actually do this if there is a duplicate item configured
-                    if (immediate) {
-                        // initiate the connect attempt
-                        endpoint.getConnection(uri);
-                    }
-                }
-            }
             ok = true;
             return endpoint;
         } finally {
@@ -380,30 +338,46 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return registration;
     }
 
-    public IoFuture<Connection> getConnection(final URI destination, final String abstractType, final String abstractTypeAuthority) {
+    public IoFuture<Connection> getConnection(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration) {
         Assert.checkNotNullParam("destination", destination);
-        final AuthenticationContext context = AuthenticationContext.captureCurrent();
+        Assert.checkNotNullParam("connectionConfiguration", connectionConfiguration);
+        Assert.checkNotNullParam("operateConfiguration", operateConfiguration);
+
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
-        final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority, "connect");
-        final SecurityFactory<SSLContext> sslContextFactory = client.getSSLContextFactory(destination, context, abstractType, abstractTypeAuthority, null);
+
         final String scheme = destination.getScheme();
         if (scheme == null) {
             throw new IllegalArgumentException("No scheme given in URI '" + destination + "'");
         }
-        final String host = client.getRealHost(configuration);
-        if (host == null) {
+
+        /*
+         * Note: not obvious!  we *always* use the host/port from the connect configuration even if connection sharing isn't supported.
+         * This is the only way we can be certain that the behavior experience is similar for the end user.
+         */
+        final String realHost = client.getRealHost(connectionConfiguration);
+        if (realHost == null) {
             throw new IllegalArgumentException("No host given in URI '" + destination + "'");
         }
-        final Principal principal = client.getPrincipal(configuration);
-        final int port = client.getRealPort(configuration);
-        final ConnectionKey connectionKey = new ConnectionKey(scheme, abstractType, abstractTypeAuthority, configuration, sslContextFactory);
+        final int realPort = client.getRealPort(connectionConfiguration);
+        if (realPort == -1) {
+            throw new IllegalArgumentException("No port number given in URI '" + destination + "'");
+        }
+
+        // NOTE: in this version, connection sharing is not enabled.  Everything that follows gets rewritten once we do.
+
+        // The "real" configuration is the operation authentication setup, plus the connect info from the connect config
+        AuthenticationConfiguration realConfig = operateConfiguration.usePort(realPort).useHost(realHost);
+
+        final ConnectionKey connectionKey = new ConnectionKey(destination, realConfig, sslContext);
         FutureConnection futureConnection = configuredConnections.get(connectionKey);
         if (futureConnection != null) {
+            // found an existing unshared connection
             return futureConnection.get();
         }
+
         // it's not presently managed; we'll use defaults to set it up
         FutureConnection appearing;
-        futureConnection = new FutureConnection(this, null, destination, false, OptionMap.EMPTY, configuration, UnaryOperator.identity(), sslContextFactory);
+        futureConnection = new FutureConnection(this, defaultBindAddress, destination, realHost, realPort, false, OptionMap.EMPTY, operateConfiguration, UnaryOperator.identity(), sslContext);
         if ((appearing = configuredConnections.putIfAbsent(connectionKey, futureConnection)) != null) {
             return appearing.get();
         }
@@ -421,15 +395,20 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationContext authenticationContext) throws IOException {
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
         final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, authenticationContext, - 1, null, null, "connect");
-        final SecurityFactory<SSLContext> sslContextFactory = client.getSSLContextFactory(destination, authenticationContext, null, null, null);
-        return connect(destination, bindAddress, connectOptions, configuration, UnaryOperator.identity(), sslContextFactory);
+        final SSLContext sslContext;
+        try {
+            sslContext = client.getSSLContext(destination, authenticationContext, null, null, null);
+        } catch (GeneralSecurityException e) {
+            return new FailedIoFuture<>(Messages.conn.failedToConfigureSslContext(e));
+        }
+        return connect(destination, bindAddress, connectOptions, configuration, UnaryOperator.identity(), sslContext);
     }
 
-    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final SecurityFactory<SSLContext> sslContextFactory) throws UnknownURISchemeException, NotOpenException {
+    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final SSLContext sslContext) throws UnknownURISchemeException, NotOpenException {
         Assert.checkNotNullParam("destination", destination);
         Assert.checkNotNullParam("connectOptions", connectOptions);
         final String protocol = connectOptions.contains(RemotingOptions.SASL_PROTOCOL) ? connectOptions.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
-        UnaryOperator<SaslClientFactory> factoryOperator = factory -> new PrivilegedSaslClientFactory(factory);
+        UnaryOperator<SaslClientFactory> factoryOperator = PrivilegedSaslClientFactory::new;
         factoryOperator = and(factoryOperator, factory -> new ProtocolSaslClientFactory(factory, protocol));
         if (connectOptions.contains(RemotingOptions.SERVER_NAME)) {
             final String serverName = connectOptions.get(RemotingOptions.SERVER_NAME);
@@ -500,7 +479,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         return true;
                     }
                 };
-                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContextFactory, finalFactoryOperator, Collections.emptyList());
+                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContext, finalFactoryOperator, Collections.emptyList());
                 ok = true;
                 futureResult.addCancelHandler(connect);
                 return futureResult.getIoFuture();

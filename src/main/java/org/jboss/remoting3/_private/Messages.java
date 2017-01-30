@@ -25,6 +25,8 @@ package org.jboss.remoting3._private;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.SocketAddress;
+import java.security.GeneralSecurityException;
+
 import org.jboss.logging.annotations.Cause;
 import org.jboss.logging.annotations.LogMessage;
 import org.jboss.logging.annotations.Message;
@@ -97,6 +99,9 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 211, value = "Invalid XNIO worker; the worker must match the Remoting Endpoint worker")
     IllegalArgumentException invalidWorker();
+
+    @Message(id = 212, value = "Failed to configure SSL context")
+    IOException failedToConfigureSslContext(@Cause Throwable cause);
 
     // non i18n
 
