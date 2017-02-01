@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.security.Principal;
 import java.util.Collections;
@@ -368,7 +369,23 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         // The "real" configuration is the operation authentication setup, plus the connect info from the connect config
         AuthenticationConfiguration realConfig = operateConfiguration.usePort(realPort).useHost(realHost);
 
-        final ConnectionKey connectionKey = new ConnectionKey(destination, realConfig, sslContext);
+        // "sanitize" the destination URI
+        final URI realDestination;
+        try {
+            realDestination = new URI(
+                scheme,
+                null,
+                realHost,
+                realPort,
+                null,
+                null,
+                null
+            );
+        } catch (URISyntaxException e) {
+            return new FailedIoFuture<>(new IOException(e));
+        }
+
+        final ConnectionKey connectionKey = new ConnectionKey(realDestination, realConfig, sslContext);
         FutureConnection futureConnection = configuredConnections.get(connectionKey);
         if (futureConnection != null) {
             // found an existing unshared connection
