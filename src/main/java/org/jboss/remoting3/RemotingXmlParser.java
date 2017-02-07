@@ -22,7 +22,6 @@
 
 package org.jboss.remoting3;
 
-import static java.security.AccessController.doPrivileged;
 import static javax.xml.stream.XMLStreamConstants.END_ELEMENT;
 import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
 
@@ -33,6 +32,7 @@ import java.util.Collections;
 import org.wildfly.client.config.ClientConfiguration;
 import org.wildfly.client.config.ConfigXMLParseException;
 import org.wildfly.client.config.ConfigurationXMLStreamReader;
+import org.xnio.XnioWorker;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -43,6 +43,7 @@ final class RemotingXmlParser {
     static Endpoint parseEndpoint() throws ConfigXMLParseException, IOException {
         final ClientConfiguration clientConfiguration = ClientConfiguration.getInstance();
         final EndpointBuilder builder = new EndpointBuilder();
+        builder.setXnioWorker(XnioWorker.getContextManager().get());
         if (clientConfiguration != null) try (final ConfigurationXMLStreamReader streamReader = clientConfiguration.readConfiguration(Collections.singleton(NS_REMOTING_5_0))) {
             parseDocument(streamReader, builder);
             return builder.build();
