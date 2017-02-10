@@ -55,15 +55,19 @@ final class UncloseableEndpoint implements Endpoint {
         return endpoint.getConnection(destination, sslContext, connectionConfiguration, operateConfiguration);
     }
 
-    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
+    public IoFuture<Connection> getConnectionIfExists(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration) {
+        return endpoint.getConnectionIfExists(destination, sslContext, connectionConfiguration, operateConfiguration);
+    }
+
+    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) {
         return endpoint.connect(destination, connectOptions);
     }
 
-    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext) throws IOException {
+    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext) {
         return endpoint.connect(destination, connectOptions, authenticationContext);
     }
 
-    public IoFuture<Connection> connect(URI destination, InetSocketAddress bindAddress, OptionMap connectOptions, AuthenticationContext authenticationContext) throws IOException {
+    public IoFuture<Connection> connect(URI destination, InetSocketAddress bindAddress, OptionMap connectOptions, AuthenticationContext authenticationContext) {
         return endpoint.connect(destination, bindAddress, connectOptions, authenticationContext);
     }
 
@@ -87,6 +91,10 @@ final class UncloseableEndpoint implements Endpoint {
         return endpoint.addCloseHandler((endpoint, ex) -> handler.handleClose(this, ex));
     }
 
+    public boolean isOpen() {
+        return endpoint.isOpen();
+    }
+
     public Attachments getAttachments() {
         return endpoint.getAttachments();
     }
@@ -105,5 +113,9 @@ final class UncloseableEndpoint implements Endpoint {
 
     public void closeAsync() {
         throw Assert.unsupported();
+    }
+
+    public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration) {
+        return endpoint.connect(destination, bindAddress, connectOptions, sslContext, connectionConfiguration);
     }
 }

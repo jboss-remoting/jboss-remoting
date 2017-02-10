@@ -33,7 +33,6 @@ import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslClientFactory;
 
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
-import org.xnio.FailedIoFuture;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -71,11 +70,11 @@ class FutureConnection {
     }
 
     void reconnectAfterDelay() {
-        endpoint.getXnioWorker().getIoThread().executeAfter(FutureConnection.this::init, 30L, TimeUnit.SECONDS);
+        endpoint.getXnioWorker().getIoThread().executeAfter(() -> FutureConnection.this.init(true), 30L, TimeUnit.SECONDS);
     }
 
-    IoFuture<Connection> init() {
-        return connect(null);
+    IoFuture<Connection> init(boolean connect) {
+        return getConnection(null, connect);
     }
 
     void splice(FutureResult<Connection> futureResult, IoFuture<Connection> realFuture) {
@@ -96,12 +95,15 @@ class FutureConnection {
         }, futureResult);
     }
 
-    IoFuture<Connection> connect(FutureResult<Connection> orig) {
+    IoFuture<Connection> getConnection(FutureResult<Connection> orig, boolean connect) {
         AtomicReference<FutureResult<Connection>> futureConnectionRef = this.futureConnectionRef;
         FutureResult<Connection> oldVal;
         oldVal = futureConnectionRef.get();
         if (oldVal != orig) {
             return oldVal.getIoFuture();
+        }
+        if (! connect) {
+            return null;
         }
         final FutureResult<Connection> futureResult = new FutureResult<>();
         while (! futureConnectionRef.compareAndSet(oldVal, futureResult)) {
@@ -112,11 +114,7 @@ class FutureConnection {
             }
         }
         IoFuture<Connection> realFuture;
-        try {
-            realFuture = endpoint.connect(uri, bindAddress, options, configuration, clientFactoryOperator, sslContext);
-        } catch (IOException e) {
-            realFuture = new FailedIoFuture<>(e);
-        }
+        realFuture = endpoint.connect(uri, bindAddress, options, configuration, clientFactoryOperator, sslContext);
         splice(futureResult, realFuture);
         final IoFuture<Connection> ioFuture = futureResult.getIoFuture();
         ioFuture.addNotifier(new IoFuture.HandlingNotifier<Connection, FutureConnection>() {
@@ -138,7 +136,7 @@ class FutureConnection {
                 connection.addCloseHandler((closed, exception) -> {
                     FutureConnection.this.clearRef(futureResult);
                     if (attachment.immediate) {
-                        attachment.connect(attachment.futureConnectionRef.get());
+                        attachment.getConnection(attachment.futureConnectionRef.get(), true);
                     }
                 });
             }
@@ -150,8 +148,8 @@ class FutureConnection {
         futureConnectionRef.compareAndSet(futureResult, null);
     }
 
-    public IoFuture<Connection> get() {
-        return init();
+    public IoFuture<Connection> get(final boolean connect) {
+        return init(connect);
     }
 
     boolean isConnected() {

@@ -69,6 +69,14 @@ public interface HandleableCloseable<T> extends Closeable {
     Key addCloseHandler(CloseHandler<? super T> handler);
 
     /**
+     * Read the status of this resource.  This is just a snapshot in time; there is no guarantee that the resource
+     * will remain open for any amount of time, even if this method returns {@code true}.
+     *
+     * @return {@code true} if the resource is still open
+     */
+    boolean isOpen();
+
+    /**
      * A key which may be used to remove this handler.
      *
      * @apiviz.exclude

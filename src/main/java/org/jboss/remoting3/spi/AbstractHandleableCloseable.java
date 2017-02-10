@@ -108,7 +108,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
      *
      * @return {@code true} if the resource is still open
      */
-    protected boolean isOpen() {
+    public boolean isOpen() {
         synchronized (closeLock) {
             return state == State.OPEN;
         }

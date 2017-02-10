@@ -132,7 +132,7 @@ public class ConnectionCloseTestCase {
             public IoFuture<Connection> run() {
                 try {
                     return endpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY);
-                } catch (IOException | URISyntaxException e) {
+                } catch (URISyntaxException e) {
                     throw new RuntimeException(e);
                 }
             }

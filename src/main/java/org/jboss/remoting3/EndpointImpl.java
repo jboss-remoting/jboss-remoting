@@ -52,7 +52,6 @@ import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslClientFactory;
 
 import org.jboss.logging.Logger;
-import org.jboss.remoting3._private.IntIndexHashMap;
 import org.jboss.remoting3._private.Messages;
 import org.jboss.remoting3.remote.HttpUpgradeConnectionProviderFactory;
 import org.jboss.remoting3.remote.RemoteConnectionProviderFactory;
@@ -111,7 +110,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final ConcurrentMap<String, RegisteredServiceImpl> registeredServices = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConnectionKey, FutureConnection> configuredConnections = new ConcurrentHashMap<>();
 
-    private final Xnio xnio;
     private final XnioWorker worker;
 
     private final Object connectionLock = new Object();
@@ -138,7 +136,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         super(xnioWorker, true);
         worker = xnioWorker;
         this.ourWorker = ourWorker;
-        this.xnio = xnioWorker.getXnio();
         this.name = name;
         this.defaultBindAddress = defaultBindAddress;
         // get XNIO worker
@@ -340,6 +337,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public IoFuture<Connection> getConnection(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration) {
+        return doGetConnection(destination, sslContext, connectionConfiguration, operateConfiguration, true);
+    }
+
+    public IoFuture<Connection> getConnectionIfExists(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration) {
+        return doGetConnection(destination, sslContext, connectionConfiguration, operateConfiguration, false);
+    }
+
+    IoFuture<Connection> doGetConnection(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration, final boolean connect) {
         Assert.checkNotNullParam("destination", destination);
         Assert.checkNotNullParam("connectionConfiguration", connectionConfiguration);
         Assert.checkNotNullParam("operateConfiguration", operateConfiguration);
@@ -389,27 +394,27 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         FutureConnection futureConnection = configuredConnections.get(connectionKey);
         if (futureConnection != null) {
             // found an existing unshared connection
-            return futureConnection.get();
+            return futureConnection.get(connect);
         }
 
         // it's not presently managed; we'll use defaults to set it up
         FutureConnection appearing;
         futureConnection = new FutureConnection(this, defaultBindAddress, destination, realHost, realPort, false, OptionMap.EMPTY, operateConfiguration, UnaryOperator.identity(), sslContext);
         if ((appearing = configuredConnections.putIfAbsent(connectionKey, futureConnection)) != null) {
-            return appearing.get();
+            return appearing.get(connect);
         }
-        return futureConnection.get();
+        return futureConnection.get(connect);
     }
 
-    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) throws IOException {
+    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) {
         return connect(destination, connectOptions, AuthenticationContext.captureCurrent());
     }
 
-    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext) throws IOException {
+    public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final AuthenticationContext authenticationContext) {
         return connect(destination, null, connectOptions, authenticationContext);
     }
 
-    public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationContext authenticationContext) throws IOException {
+    public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationContext authenticationContext) {
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
         final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, authenticationContext, - 1, null, null, "connect");
         final SSLContext sslContext;
@@ -421,7 +426,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return connect(destination, bindAddress, connectOptions, configuration, UnaryOperator.identity(), sslContext);
     }
 
-    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final SSLContext sslContext) throws UnknownURISchemeException, NotOpenException {
+    public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration) {
+        return connect(destination, bindAddress, connectOptions, connectionConfiguration, UnaryOperator.identity(), sslContext);
+    }
+
+    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final SSLContext sslContext) {
         Assert.checkNotNullParam("destination", destination);
         Assert.checkNotNullParam("connectOptions", connectOptions);
         final String protocol = connectOptions.contains(RemotingOptions.SASL_PROTOCOL) ? connectOptions.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
@@ -439,11 +448,15 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final String scheme = destination.getScheme();
         synchronized (connectionLock) {
             boolean ok = false;
-            resourceUntick("Connection to " + destination);
+            try {
+                resourceUntick("Connection to " + destination);
+            } catch (NotOpenException e) {
+                return new FailedIoFuture<>(e);
+            }
             try {
                 final ProtocolRegistration protocolRegistration = connectionProviders.get(scheme);
                 if (protocolRegistration == null) {
-                    throw new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed");
+                    return new FailedIoFuture<>(new UnknownURISchemeException("No connection provider for URI scheme \"" + scheme + "\" is installed"));
                 }
                 final ConnectionProvider connectionProvider = protocolRegistration.getProvider();
                 final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
@@ -648,7 +661,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     final class LocalConnectionContext implements ConnectionHandlerContext {
         private final ConnectionProviderContext connectionProviderContext;
         private final ConnectionImpl connection;
-        private final IntIndexHashMap<ConnectionImpl.Auth> authMap = new IntIndexHashMap<ConnectionImpl.Auth>(ConnectionImpl.Auth::getId);
 
         LocalConnectionContext(final ConnectionProviderContext connectionProviderContext, final ConnectionImpl connection) {
             this.connectionProviderContext = connectionProviderContext;

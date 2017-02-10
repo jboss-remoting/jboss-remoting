@@ -123,6 +123,10 @@ final class ManagedConnection implements Connection {
         return delegate.addCloseHandler(handler);
     }
 
+    public boolean isOpen() {
+        return delegate.isOpen();
+    }
+
     public Attachments getAttachments() {
         return delegate.getAttachments();
     }
