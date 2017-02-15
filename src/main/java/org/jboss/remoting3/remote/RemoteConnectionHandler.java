@@ -110,7 +110,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
      * The socket channel was closed with or without our consent.
      */
     void handleConnectionClose() {
-        remoteConnection.shutdownWrites();
         closePendingChannels();
         closeAllChannels();
     }
@@ -211,12 +210,12 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             }
             newState = oldState | RECEIVED_CLOSE_REQ | SENT_CLOSE_REQ;
         } while (!casState(oldState, newState));
-        closePendingChannels();
         log.tracef("Received remote close request on %s", this);
         if ((oldState & SENT_CLOSE_REQ) == 0) {
             sendCloseRequestBody();
-            closeAllChannels();
         }
+        closePendingChannels();
+        closeAllChannels();
         if ((oldState & (INBOUND_CHANNELS_MASK | OUTBOUND_CHANNELS_MASK)) == 0) {
             remoteConnection.shutdownWrites();
         }
@@ -234,7 +233,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         } while (!casState(oldState, newState));
         log.tracef("Sending close request on %s", this);
         sendCloseRequestBody();
-        closeAllChannels();
         if ((oldState & (INBOUND_CHANNELS_MASK | OUTBOUND_CHANNELS_MASK)) == 0) {
             remoteConnection.shutdownWrites();
         }
@@ -418,7 +416,6 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     protected void closeAction() throws IOException {
         sendCloseRequest();
-        remoteConnection.shutdownWrites();
         // now these guys can't send useless messages
         closePendingChannels();
         closeAllChannels();
