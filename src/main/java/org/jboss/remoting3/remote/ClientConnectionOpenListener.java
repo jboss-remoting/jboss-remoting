@@ -365,8 +365,8 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                             channelsOut = 40;
                         }
                         if (starttls) {
-                            // only initiate starttls if not forbidden by config
-                            if (optionMap.get(Options.SSL_STARTTLS, true)) {
+                            // only initiate starttls if not forbidden by config and possible on the connection
+                            if (optionMap.get(Options.SSL_STARTTLS, true) && connection.getConnection() instanceof SslConnection) {
                                 // Prepare the request message body
                                 final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
                                 boolean ok = false;
