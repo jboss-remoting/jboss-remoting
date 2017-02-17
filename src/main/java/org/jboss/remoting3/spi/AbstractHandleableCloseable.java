@@ -35,7 +35,6 @@ import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.HandleableCloseable;
 import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.RemotingException;
-import org.xnio.IoUtils;
 import org.jboss.logging.Logger;
 
 /**

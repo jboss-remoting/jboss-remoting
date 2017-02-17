@@ -45,7 +45,6 @@ import org.wildfly.common.Assert;
 import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
-import org.wildfly.security.auth.client.PeerIdentity;
 import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
 

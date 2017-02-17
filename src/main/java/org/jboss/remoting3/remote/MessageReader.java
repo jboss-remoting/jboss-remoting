@@ -30,7 +30,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Iterator;
 
-import org.jboss.remoting3._private.Messages;
 import org.xnio.Buffers;
 import org.xnio.ByteBufferPool;
 import org.xnio.ChannelListener;

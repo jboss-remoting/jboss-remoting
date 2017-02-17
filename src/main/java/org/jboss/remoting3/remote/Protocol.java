@@ -22,9 +22,6 @@
 
 package org.jboss.remoting3.remote;
 
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-
 /**
  * The "remote" protocol.  Use this class to create an instance of the connection provider for the "remote" protocol.
  */

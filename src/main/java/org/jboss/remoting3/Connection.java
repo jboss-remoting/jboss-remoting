@@ -30,8 +30,6 @@ import javax.net.ssl.SSLSession;
 
 import org.jboss.remoting3.security.RemotingPermission;
 import org.wildfly.security.auth.AuthenticationException;
-import org.wildfly.security.auth.client.PeerIdentity;
-import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.IoFuture;

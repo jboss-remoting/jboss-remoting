@@ -25,7 +25,6 @@ package org.jboss.remoting3._private;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.SocketAddress;
-import java.security.GeneralSecurityException;
 
 import org.jboss.logging.annotations.Cause;
 import org.jboss.logging.annotations.LogMessage;
