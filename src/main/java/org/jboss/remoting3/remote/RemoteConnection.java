@@ -315,7 +315,9 @@ final class RemoteConnection {
                             // either way we're done here
                             return;
                         } else {
-                            this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
+                            if (heartbeatInterval != Integer.MAX_VALUE) {
+                                this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
+                            }
                         }
                         channel.suspendWrites();
                     }
