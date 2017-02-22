@@ -330,29 +330,31 @@ final class RemoteConnection {
         }
 
         public void shutdownWrites() {
-            synchronized (queue) {
-                closed = true;
-                terminateHeartbeat();
-                final ConduitStreamSinkChannel sinkChannel = connection.getSinkChannel();
-                try {
-                    if (! queue.isEmpty()) {
-                        sinkChannel.resumeWrites();
-                        return;
-                    }
-                    sinkChannel.shutdownWrites();
-                    if (! sinkChannel.flush()) {
-                        sinkChannel.resumeWrites();
-                        return;
-                    }
-                    Messages.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
-                } catch (IOException e) {
-                    handleException(e, false);
-                    Pooled<ByteBuffer> unqueued;
-                    while ((unqueued = queue.poll()) != null) {
-                        unqueued.free();
+            connection.getIoThread().execute(() -> {
+                synchronized (queue) {
+                    closed = true;
+                    terminateHeartbeat();
+                    final ConduitStreamSinkChannel sinkChannel = connection.getSinkChannel();
+                    try {
+                        if (! queue.isEmpty()) {
+                            sinkChannel.resumeWrites();
+                            return;
+                        }
+                        sinkChannel.shutdownWrites();
+                        if (! sinkChannel.flush()) {
+                            sinkChannel.resumeWrites();
+                            return;
+                        }
+                        Messages.conn.logf(FQCN, Logger.Level.TRACE, null, "Shut down writes on channel");
+                    } catch (IOException e) {
+                        handleException(e, false);
+                        Pooled<ByteBuffer> unqueued;
+                        while ((unqueued = queue.poll()) != null) {
+                            unqueued.free();
+                        }
                     }
                 }
-            }
+            });
         }
 
         public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
