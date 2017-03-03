@@ -24,6 +24,9 @@ package org.jboss.remoting3;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -99,6 +102,10 @@ public final class EndpointBuilder {
         if (sm != null) {
             sm.checkPermission(RemotingPermission.CREATE_ENDPOINT);
         }
-        return EndpointImpl.construct(this);
+        try {
+            return AccessController.doPrivileged((PrivilegedExceptionAction<Endpoint>) () -> EndpointImpl.construct(this));
+        } catch (PrivilegedActionException e) {
+            throw (IOException) e.getException();
+        }
     }
 }

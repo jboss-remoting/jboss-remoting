@@ -32,6 +32,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.security.Principal;
+import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -509,7 +510,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         return true;
                     }
                 };
-                final Cancellable connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContext, finalFactoryOperator, Collections.emptyList());
+                final Cancellable connect = doPrivileged((PrivilegedAction<Cancellable>) () ->
+                        connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContext, finalFactoryOperator, Collections.emptyList())
+                );
                 ok = true;
                 futureResult.addCancelHandler(connect);
                 return futureResult.getIoFuture();
