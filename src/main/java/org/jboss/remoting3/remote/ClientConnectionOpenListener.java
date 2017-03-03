@@ -73,7 +73,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
     private final UnaryOperator<SaslClientFactory> saslClientFactoryOperator;
     private final Collection<String> serverMechs;
     private final OptionMap optionMap;
-    private final Map<String, String> failedMechs = new LinkedHashMap<String, String>();
+    private final Map<String, Throwable> failedMechs = new LinkedHashMap<>();
     private final Set<String> allowedMechs;
     private final Set<String> disallowedMechs;
     static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
@@ -99,12 +99,16 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
     SaslException allMechanismsFailed() {
         final StringBuilder b = new StringBuilder();
         b.append("Authentication failed: all available authentication mechanisms failed:");
-        for (Map.Entry<String, String> entry : failedMechs.entrySet()) {
+        for (Map.Entry<String, Throwable> entry : failedMechs.entrySet()) {
             final String key = entry.getKey();
-            final String value = entry.getValue();
+            final String value = entry.getValue().toString();
             b.append("\n   ").append(key).append(": ").append(value);
         }
-        return new SaslException(b.toString());
+        final SaslException saslException = new SaslException(b.toString());
+        for (Throwable cause : failedMechs.values()) {
+            saslException.addSuppressed(cause);
+        }
+        return saslException;
     }
 
     void sendCapRequest(final String remoteServerName) {
@@ -426,7 +430,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                             } catch (SaslException e) {
                                 client.tracef("Client authentication failed: %s", e);
                                 saslDispose(usedSaslClient);
-                                failedMechs.put(mechanismName, e.toString());
+                                failedMechs.put(mechanismName, e);
                                 sendCapRequest(remoteServerName);
                                 return;
                             }
@@ -616,7 +620,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 } catch (Throwable e) {
                                     final String mechanismName = saslClient.getMechanismName();
                                     client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
-                                    failedMechs.put(mechanismName, e.toString());
+                                    failedMechs.put(mechanismName, e);
                                     saslDispose(saslClient);
                                     sendCapRequest(serverName);
                                     return;
@@ -665,7 +669,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 } catch (Throwable e) {
                                     final String mechanismName = saslClient.getMechanismName();
                                     client.debugf("Client authentication failed for mechanism %s: %s", mechanismName, e);
-                                    failedMechs.put(mechanismName, e.toString());
+                                    failedMechs.put(mechanismName, e);
                                     saslDispose(saslClient);
                                     sendCapRequest(serverName);
                                     return;
@@ -696,7 +700,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                     case Protocol.AUTH_REJECTED: {
                         final String mechanismName = saslClient.getMechanismName();
                         client.debugf("Client received authentication rejected for mechanism %s", mechanismName);
-                        failedMechs.put(mechanismName, "Server rejected authentication");
+                        failedMechs.put(mechanismName, new SaslException("Server rejected authentication"));
                         saslDispose(saslClient);
                         sendCapRequest(serverName);
                         return;
