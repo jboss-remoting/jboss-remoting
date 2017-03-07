@@ -71,7 +71,7 @@ public final class InvocationTracker {
         Assert.checkNotNullParam("messageTracker", messageTracker);
         Assert.checkNotNullParam("intMasker", intMasker);
         this.messageTracker = messageTracker;
-        channel.addCloseHandler((closed, exception) -> connectionClosed());
+        channel.addCloseHandler((closed, exception) -> connectionClosed(exception));
         this.intMasker = intMasker;
     }
 
@@ -215,12 +215,16 @@ public final class InvocationTracker {
         };
     }
 
-    private void connectionClosed() {
+    private void connectionClosed(final IOException exception) {
         final Iterator<Invocation> iterator = invocations.iterator();
         while (iterator.hasNext()) {
             final Invocation invocation = iterator.next();
             try {
-                invocation.handleClosed();
+                if (exception != null) {
+                    invocation.handleException(exception);
+                } else {
+                    invocation.handleClosed();
+                }
             } catch (Throwable ignored) {
             }
             iterator.remove();

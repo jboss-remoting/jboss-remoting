@@ -76,7 +76,7 @@ public class BlockingInvocation extends Invocation {
                 safeClose(inputStream);
                 return;
             }
-            responses.add(new Response(inputStream, parameter));
+            responses.add(new Response(inputStream, parameter, null));
             responses.notify();
         }
     }
@@ -84,7 +84,15 @@ public class BlockingInvocation extends Invocation {
     public void handleClosed() {
         final ArrayDeque<Response> responses = this.responses;
         synchronized (responses) {
-            responses.add(new Response(null, 0));
+            responses.add(new Response(null, 0, null));
+            responses.notify();
+        }
+    }
+
+    public void handleException(final IOException exception) {
+        final ArrayDeque<Response> responses = this.responses;
+        synchronized (responses) {
+            responses.add(new Response(null, 0, exception));
             responses.notify();
         }
     }
@@ -111,10 +119,12 @@ public class BlockingInvocation extends Invocation {
 
         private final MessageInputStream inputStream;
         private final int parameter;
+        private final IOException thrown;
 
-        Response(final MessageInputStream inputStream, final int parameter) {
+        Response(final MessageInputStream inputStream, final int parameter, final IOException thrown) {
             this.inputStream = inputStream;
             this.parameter = parameter;
+            this.thrown = thrown;
         }
 
         /**
@@ -124,6 +134,7 @@ public class BlockingInvocation extends Invocation {
          * @throws IOException if the channel was closed, or if another I/O error occurs
          */
         public MessageInputStream getInputStream() throws IOException {
+            if (thrown != null) throw thrown;
             final MessageInputStream inputStream = this.inputStream;
             if (inputStream == null) {
                 throw new ChannelClosedException("Channel was closed");

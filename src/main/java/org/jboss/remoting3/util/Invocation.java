@@ -22,6 +22,8 @@
 
 package org.jboss.remoting3.util;
 
+import java.io.IOException;
+
 import org.jboss.remoting3.MessageInputStream;
 
 /**
@@ -64,4 +66,11 @@ public abstract class Invocation {
      * Handle closure of the channel.
      */
     public abstract void handleClosed();
+
+    /**
+     * Handle a failure that occurred on the channel while the invocation was outstanding.
+     *
+     * @param exception the exception that was thrown
+     */
+    public abstract void handleException(final IOException exception);
 }
