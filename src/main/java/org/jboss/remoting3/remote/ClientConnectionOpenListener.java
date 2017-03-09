@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -410,7 +411,19 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         }
                         if (saslClient == null) {
                             if (failedMechs.isEmpty()) {
-                                connection.handleException(new SaslException("Authentication failed: none of the mechanisms presented by the server are supported"));
+                                StringBuilder b = new StringBuilder();
+                                b.append("Authentication failed: none of the mechanisms presented by the server (");
+                                final Iterator<String> iterator = serverSaslMechs.iterator();
+                                if (iterator.hasNext()) {
+                                    String mech = iterator.next();
+                                    b.append(mech);
+                                    while (iterator.hasNext()) {
+                                        mech = iterator.next();
+                                        b.append(',').append(' ').append(mech);
+                                    }
+                                }
+                                b.append(") are supported");
+                                connection.handleException(new SaslException(b.toString()));
                             } else {
                                 connection.handleException(allMechanismsFailed());
                             }
