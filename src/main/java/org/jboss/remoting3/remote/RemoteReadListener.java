@@ -284,9 +284,11 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                                     log.tracef("Ignoring message data for expired channel");
                                     break;
                                 }
-                                connectionChannel.handleMessageData(message);
+                                // protect against double-free if the method fails
+                                Pooled<ByteBuffer> messageCopy = message;
                                 message = null;
                                 buffer = null;
+                                connectionChannel.handleMessageData(messageCopy);
                                 break;
                             }
                             case Protocol.MESSAGE_WINDOW_OPEN: {
