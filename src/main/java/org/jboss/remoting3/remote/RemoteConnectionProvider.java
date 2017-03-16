@@ -333,8 +333,11 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                     engine = sslContext.createSSLEngine(realHost, realPort);
                     engine.setUseClientMode(false);
                     final JsseSslConnection sslConnection = new JsseSslConnection(streamConnection, engine);
-                    if (sslRequired || ! optionMap.get(Options.SSL_STARTTLS, startTls)) try {
-                        sslConnection.startHandshake();
+                    try {
+                        if (optionMap.contains(Options.SSL_CLIENT_AUTH_MODE)) sslConnection.setOption(Options.SSL_CLIENT_AUTH_MODE, optionMap.get(Options.SSL_CLIENT_AUTH_MODE));
+                        if (sslRequired || !optionMap.get(Options.SSL_STARTTLS, startTls)) {
+                            sslConnection.startHandshake();
+                        }
                     } catch (IOException e) {
                         safeClose(sslConnection);
                         log.failedToAccept(e);
