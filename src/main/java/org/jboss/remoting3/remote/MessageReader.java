@@ -71,6 +71,7 @@ final class MessageReader {
                             while (cnt < size) {
                                 cnt += Buffers.copy(size - cnt, message, first);
                                 if (! first.hasRemaining()) {
+                                    ByteBufferPool.free(first);
                                     queue.pollFirst();
                                     first = queue.peekFirst();
                                 }
