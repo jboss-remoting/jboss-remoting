@@ -309,6 +309,7 @@ final class RemoteConnection {
                             channel.shutdownWrites();
                             if (channel.flush()) {
                                 Messages.conn.trace("Shut down writes on channel");
+                                connection.close();
                                 return;
                             }
                             // either this is successful and no more notifications will come, or not and it will be retried
