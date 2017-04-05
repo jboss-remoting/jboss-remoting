@@ -75,7 +75,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
     private final ConnectionProviderContext connectionProviderContext;
     private final SaslAuthenticationFactory saslAuthenticationFactory;
     private final OptionMap optionMap;
-    private final AtomicInteger retryCount = new AtomicInteger(8);
+    private final AtomicInteger retryCount = new AtomicInteger();
     private final String serverName;
 
     ServerConnectionOpenListener(final RemoteConnection connection, final ConnectionProviderContext connectionProviderContext, final SaslAuthenticationFactory saslAuthenticationFactory, final OptionMap optionMap) {
@@ -161,6 +161,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
             } catch (SSLPeerUnverifiedException e) {
                 server.trace("No EXTERNAL mechanism due to unverified SSL peer");
             }
+            int cnt = 0;
             for (String mechName : saslAuthenticationFactory.getMechanismNames()) {
                 if (foundMechanisms.contains(mechName)) {
                     server.tracef("Excluding repeated occurrence of mechanism %s", mechName);
@@ -169,8 +170,10 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                 } else {
                     server.tracef("Added mechanism %s", mechName);
                     foundMechanisms.add(mechName);
+                    cnt ++;
                 }
             }
+            retryCount.set(cnt);
             // No need to re-order as an initial order was not passed in.
             this.allowedMechanisms = foundMechanisms;
         }

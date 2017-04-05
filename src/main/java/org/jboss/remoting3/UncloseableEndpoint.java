@@ -51,12 +51,12 @@ final class UncloseableEndpoint implements Endpoint {
         return endpoint.registerService(serviceType, openListener, optionMap);
     }
 
-    public IoFuture<Connection> getConnection(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration) {
-        return endpoint.getConnection(destination, sslContext, connectionConfiguration, operateConfiguration);
+    public IoFuture<ConnectionPeerIdentity> getConnectedIdentity(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration authenticationConfiguration) {
+        return endpoint.getConnectedIdentity(destination, sslContext, authenticationConfiguration);
     }
 
-    public IoFuture<Connection> getConnectionIfExists(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration) {
-        return endpoint.getConnectionIfExists(destination, sslContext, connectionConfiguration, operateConfiguration);
+    public IoFuture<ConnectionPeerIdentity> getConnectedIdentityIfExists(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration authenticationConfiguration) {
+        return endpoint.getConnectedIdentityIfExists(destination, sslContext, authenticationConfiguration);
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) {

@@ -103,11 +103,101 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
     Registration registerService(String serviceType, OpenListener openListener, OptionMap optionMap) throws ServiceRegistrationException;
 
     /**
+     * Get a possibly shared, possibly existing connection to the destination.  The authentication and SSL configuration is selected from
+     * the given context with the given abstract type (if specified).
+     *
+     * @param destination the destination URI (must not be {@code null})
+     * @param abstractType the abstract type of the connection (may be {@code null})
+     * @param abstractTypeAuthority the authority name of the abstract type of the connection (may be {@code null})
+     * @param context the authentication context to use (must not be {@code null})
+     * @return the future connection identity (not {@code null})
+     */
+    default IoFuture<ConnectionPeerIdentity> getConnectedIdentity(URI destination, String abstractType, String abstractTypeAuthority, AuthenticationContext context) {
+        Assert.checkNotNullParam("destination", destination);
+        Assert.checkNotNullParam("context", context);
+        final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
+        final SSLContext sslContext;
+        try {
+            sslContext = client.getSSLContext(destination, context);
+        } catch (GeneralSecurityException e) {
+            return new FailedIoFuture<>(Messages.conn.failedToConfigureSslContext(e));
+        }
+        final AuthenticationConfiguration authenticationConfiguration = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority);
+        return getConnectedIdentity(destination, sslContext, authenticationConfiguration);
+    }
+
+    /**
+     * Get a possibly shared, possibly existing connection to the destination.  The authentication and SSL configuration is selected from
+     * the currently active authentication context with the given abstract type (if specified).
+     *
+     * @param destination the destination URI (must not be {@code null})
+     * @param abstractType the abstract type of the connection (may be {@code null})
+     * @param abstractTypeAuthority the authority name of the abstract type of the connection (may be {@code null})
+     * @return the future connection identity (not {@code null})
+     */
+    default IoFuture<ConnectionPeerIdentity> getConnectedIdentity(URI destination, String abstractType, String abstractTypeAuthority) {
+        return getConnectedIdentity(destination, abstractType, abstractTypeAuthority, AuthenticationContext.captureCurrent());
+    }
+
+    /**
+     * Get a possibly shared, possibly existing connection to the destination.  The authentication and SSL configuration is specified
+     * directly.
+     *
+     * @param destination the destination URI (must not be {@code null})
+     * @param sslContext the SSL context to use for secure connections (may be {@code null})
+     * @param authenticationConfiguration the authentication configuration to use (must not be {@code null})
+     * @return the future connection identity (not {@code null})
+     */
+    IoFuture<ConnectionPeerIdentity> getConnectedIdentity(URI destination, SSLContext sslContext, AuthenticationConfiguration authenticationConfiguration);
+
+    /**
+     * Get a possibly shared, possibly existing connection to the destination, if the connection was already established.
+     * The authentication and SSL configuration is specified directly.
+     * <p>
+     * If no existing connection was found, {@code null} is returned.  If a non-{@code null} {@code IoFuture} is
+     * returned, it may represent a complete connection, a failed attempt, or an in-progress attempt.
+     *
+     * @param destination the destination URI (must not be {@code null})
+     * @param abstractType the abstract type of the connection (may be {@code null})
+     * @param abstractTypeAuthority the authority name of the abstract type of the connection (may be {@code null})
+     * @param context the authentication context to use (must not be {@code null})
+     * @return the existing connection, or {@code null} if no connection currently exists
+     */
+    default IoFuture<ConnectionPeerIdentity> getConnectedIdentityIfExists(URI destination, String abstractType, String abstractTypeAuthority, AuthenticationContext context) {
+        Assert.checkNotNullParam("destination", destination);
+        Assert.checkNotNullParam("context", context);
+        final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
+        final SSLContext sslContext;
+        try {
+            sslContext = client.getSSLContext(destination, context);
+        } catch (GeneralSecurityException e) {
+            return new FailedIoFuture<>(Messages.conn.failedToConfigureSslContext(e));
+        }
+        final AuthenticationConfiguration authenticationConfiguration = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority);
+        return getConnectedIdentityIfExists(destination, sslContext, authenticationConfiguration);
+    }
+
+    /**
+     * Get a possibly shared, possibly existing connection to the destination, if the connection was already established.
+     * The authentication and SSL configuration is specified directly.
+     * <p>
+     * If no existing connection was found, {@code null} is returned.  If a non-{@code null} {@code IoFuture} is
+     * returned, it may represent a complete connection, a failed attempt, or an in-progress attempt.
+     *
+     * @param destination the destination URI (must not be {@code null})
+     * @param sslContext the SSL context to use for secure connections (may be {@code null})
+     * @param authenticationConfiguration the authentication configuration to use (must not be {@code null})
+     * @return the existing connection, or {@code null} if no connection currently exists
+     */
+    IoFuture<ConnectionPeerIdentity> getConnectedIdentityIfExists(URI destination, SSLContext sslContext, AuthenticationConfiguration authenticationConfiguration);
+
+    /**
      * Get a possibly pre-existing connection to the destination.
      *
      * @param destination the destination URI
      * @return the future (or existing) connection
      */
+    @Deprecated
     default IoFuture<Connection> getConnection(URI destination) {
         return getConnection(destination, (String) null, null);
     }
@@ -121,18 +211,9 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @param abstractTypeAuthority the authority name of the abstract type of the connection (may be {@code null})
      * @return the future (or existing) connection
      */
+    @Deprecated
     default IoFuture<Connection> getConnection(URI destination, String abstractType, String abstractTypeAuthority) {
-        final AuthenticationContext context = AuthenticationContext.captureCurrent();
-        final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
-        final SSLContext sslContext;
-        try {
-            sslContext = client.getSSLContext(destination, context);
-        } catch (GeneralSecurityException e) {
-            return new FailedIoFuture<>(Messages.conn.failedToConfigureSslContext(e));
-        }
-        final AuthenticationConfiguration connectConfig = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority, "connect");
-        final AuthenticationConfiguration operateConfig = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority, "operate");
-        return getConnection(destination, sslContext, connectConfig, operateConfig);
+        return new ToConnectionFuture(getConnectedIdentity(destination, abstractType, abstractTypeAuthority));
     }
 
     /**
@@ -144,17 +225,19 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      *
      * @param destination the destination URI (must not be {@code null})
      * @param sslContext the SSL context to use for secure connections (may be {@code null})
-     * @param authenticationConfiguration the connection authentication configuration to use (must not be {@code null})
+     * @param authenticationConfiguration the authentication configuration to use (must not be {@code null})
      * @return the future (or existing) connection
      */
+    @Deprecated
     default IoFuture<Connection> getConnection(URI destination, SSLContext sslContext, AuthenticationConfiguration authenticationConfiguration) {
-        Assert.checkNotNullParam("authenticationConfiguration", authenticationConfiguration);
-        return getConnection(destination, sslContext, authenticationConfiguration, authenticationConfiguration);
+        return new ToConnectionFuture(getConnectedIdentity(destination, sslContext, authenticationConfiguration));
     }
 
     /**
-     * Get a possibly pre-existing connection to the destination.  The connection authentication configuration is used to authenticate
-     * the peer if the connection supports multiple identity switching.  The run authentication configuration is used to authenticate
+     * Get a possibly pre-existing connection to the destination.  The connection authentication configuration is used
+     * to authenticate
+     * the peer if the connection supports multiple identity switching.  The run authentication configuration is used to
+     * authenticate
      * the peer if the connection does not support multiple identity switching.
      *
      * @param destination the destination URI (must not be {@code null})
@@ -163,11 +246,16 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @param operateConfiguration the run authentication configuration (must not be {@code null})
      * @return the future (or existing) connection
      */
-    IoFuture<Connection> getConnection(URI destination, SSLContext sslContext, AuthenticationConfiguration connectionConfiguration, AuthenticationConfiguration operateConfiguration);
+    @Deprecated
+    default IoFuture<Connection> getConnection(URI destination, SSLContext sslContext, AuthenticationConfiguration connectionConfiguration, AuthenticationConfiguration operateConfiguration) {
+        return getConnection(destination, sslContext, operateConfiguration);
+    }
 
     /**
-     * Get a pre-existing connection to the destination.  The connection authentication configuration is used to authenticate
-     * the peer if the connection supports multiple identity switching.  The run authentication configuration is used to authenticate
+     * Get a pre-existing connection to the destination.  The connection authentication configuration is used to
+     * authenticate
+     * the peer if the connection supports multiple identity switching.  The run authentication configuration is used to
+     * authenticate
      * the peer if the connection does not support multiple identity switching.
      * <p>
      * If no existing connection was found, {@code null} is returned.  If a non-{@code null} {@code IoFuture} is
@@ -179,7 +267,10 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @param operateConfiguration the run authentication configuration (must not be {@code null})
      * @return the existing connection, or {@code null} if no connection currently exists
      */
-    IoFuture<Connection> getConnectionIfExists(URI destination, SSLContext sslContext, AuthenticationConfiguration connectionConfiguration, AuthenticationConfiguration operateConfiguration);
+    @Deprecated
+    default IoFuture<Connection> getConnectionIfExists(URI destination, SSLContext sslContext, AuthenticationConfiguration connectionConfiguration, AuthenticationConfiguration operateConfiguration) {
+        return new ToConnectionFuture(getConnectedIdentityIfExists(destination, sslContext, operateConfiguration));
+    }
 
     /**
      * Get a pre-existing connection to the destination.
@@ -192,6 +283,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @param abstractTypeAuthority the authority name of the abstract type of the connection (may be {@code null})
      * @return the existing connection, or {@code null} if no connection currently exists
      */
+    @Deprecated
     default IoFuture<Connection> getConnectionIfExists(URI destination, String abstractType, String abstractTypeAuthority) {
         final AuthenticationContext context = AuthenticationContext.captureCurrent();
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
@@ -201,13 +293,12 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
         } catch (GeneralSecurityException e) {
             return new FailedIoFuture<>(Messages.conn.failedToConfigureSslContext(e));
         }
-        final AuthenticationConfiguration connectConfig = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority, "connect");
-        final AuthenticationConfiguration operateConfig = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority, "operate");
-        return getConnection(destination, sslContext, connectConfig, operateConfig);
+        final AuthenticationConfiguration authenticationConfiguration = client.getAuthenticationConfiguration(destination, context, -1, abstractType, abstractTypeAuthority);
+        return getConnectionIfExists(destination, sslContext, authenticationConfiguration, authenticationConfiguration);
     }
 
     /**
-     * Get a pre-existing connection to the destination.
+     * Get a pre-existing shared connection to the destination.
      * <p>
      * If no existing connection was found, {@code null} is returned.  If a non-{@code null} {@code IoFuture} is
      * returned, it may represent a complete connection, a failed attempt, or an in-progress attempt.
@@ -215,13 +306,14 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @param destination the destination URI (must not be {@code null})
      * @return the existing connection, or {@code null} if no connection currently exists
      */
+    @Deprecated
     default IoFuture<Connection> getConnectionIfExists(URI destination) {
         return getConnectionIfExists(destination, null, null);
     }
 
 
     /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * Open an unshared connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
      * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
@@ -235,7 +327,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
     }
 
     /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * Open an unshared connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
      * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
@@ -248,7 +340,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
     IoFuture<Connection> connect(URI destination, OptionMap connectOptions);
 
     /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * Open an unshared connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
      * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
@@ -262,7 +354,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
     IoFuture<Connection> connect(URI destination, OptionMap connectOptions, AuthenticationContext authenticationContext);
 
     /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * Open an unshared connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
      * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
@@ -277,7 +369,7 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
     IoFuture<Connection> connect(URI destination, InetSocketAddress bindAddress, OptionMap connectOptions, AuthenticationContext authenticationContext);
 
     /**
-     * Open a connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * Open an unshared connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
      * This method does not block; use the return value to wait for a result if you wish to block.
      * <p/>
      * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.

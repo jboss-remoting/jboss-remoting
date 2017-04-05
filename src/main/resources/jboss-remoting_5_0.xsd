@@ -34,7 +34,6 @@
     <xs:complexType name="endpoint-type">
         <xs:all minOccurs="0" maxOccurs="1">
             <xs:element name="providers" type="providers-type" minOccurs="0" maxOccurs="1"/>
-            <xs:element name="default-bind" type="bind-address-type" minOccurs="0" maxOccurs="1"/>
         </xs:all>
         <xs:attribute name="name" use="optional" type="xs:string"/>
     </xs:complexType>
@@ -50,11 +49,6 @@
         <xs:attribute name="aliases" use="optional" type="string-list-type"/>
         <xs:attribute name="module" use="optional" type="xs:string"/>
         <xs:attribute name="class" use="optional" type="xs:string"/>
-    </xs:complexType>
-
-    <xs:complexType name="bind-address-type">
-        <xs:attribute name="address" use="required" type="xs:string"/>
-        <xs:attribute name="port" use="optional" type="port-type"/>
     </xs:complexType>
 
     <xs:simpleType name="string-list-type">

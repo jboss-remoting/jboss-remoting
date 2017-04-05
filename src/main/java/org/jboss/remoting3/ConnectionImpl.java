@@ -56,7 +56,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     private final Attachments attachments = new Attachments();
 
     private final ConnectionHandler connectionHandler;
-    private final Endpoint endpoint;
+    private final EndpointImpl endpoint;
     private final URI peerUri;
     private final ConnectionPeerIdentityContext peerIdentityContext;
     private final Principal principal;
@@ -118,7 +118,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
         return connectionHandler.getRemoteEndpointName();
     }
 
-    public Endpoint getEndpoint() {
+    public EndpointImpl getEndpoint() {
         return endpoint;
     }
 

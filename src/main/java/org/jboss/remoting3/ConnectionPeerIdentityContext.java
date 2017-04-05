@@ -35,6 +35,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslException;
@@ -47,6 +48,11 @@ import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
 import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
+import org.xnio.Cancellable;
+import org.xnio.FailedIoFuture;
+import org.xnio.FinishedIoFuture;
+import org.xnio.FutureResult;
+import org.xnio.IoFuture;
 
 /**
  * A peer identity context for a connection which supports remote authentication-based identity multiplexing.
@@ -60,6 +66,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
     private final Collection<String> offeredMechanisms;
     private final ConnectionPeerIdentity anonymousIdentity;
     private final ConnectionPeerIdentity connectionIdentity;
+    private final FinishedIoFuture<ConnectionPeerIdentity> connectionIdentityFuture;
     private final IntIndexHashMap<Authentication> authMap = new IntIndexHashMap<Authentication>(Authentication::getId);
 
     private static final AuthenticationContextConfigurationClient CLIENT = doPrivileged((PrivilegedAction<AuthenticationContextConfigurationClient>) AuthenticationContextConfigurationClient::new);
@@ -68,7 +75,49 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
         this.connection = connection;
         this.offeredMechanisms = offeredMechanisms == null ? Collections.emptySet() : offeredMechanisms;
         connectionIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, connection.getPrincipal(), 0, connection));
+        connectionIdentityFuture = new FinishedIoFuture<>(connectionIdentity);
         anonymousIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, AnonymousPrincipal.getInstance(), 1, connection));
+    }
+
+    private static final Object PENDING = new Object();
+    private static final Object CANCELLED = new Object();
+
+    public IoFuture<ConnectionPeerIdentity> authenticateAsync(final AuthenticationConfiguration configuration) {
+        Assert.checkNotNullParam("configuration", configuration);
+        final FutureResult<ConnectionPeerIdentity> futureResult = new FutureResult<>(connection.getEndpoint().getExecutor());
+        final AtomicReference<Object> statRef = new AtomicReference<>(PENDING);
+        connection.getEndpoint().getExecutor().execute(() -> {
+            Object oldVal;
+            do {
+                oldVal = statRef.get();
+                if (oldVal == CANCELLED) {
+                    return;
+                }
+            } while (! statRef.compareAndSet(PENDING, Thread.currentThread()));
+            try {
+                futureResult.setResult(authenticate(configuration));
+            } catch (AuthenticationException e) {
+                futureResult.setException(e);
+            }
+            statRef.set(null);
+        });
+        futureResult.addCancelHandler(new Cancellable() {
+            public Cancellable cancel() {
+                Object oldVal;
+                do {
+                    oldVal = statRef.get();
+                    if (oldVal == CANCELLED) {
+                        return this;
+                    }
+                    if (oldVal instanceof Thread) {
+                        ((Thread) oldVal).interrupt();
+                        return this;
+                    }
+                } while (! statRef.compareAndSet(PENDING, CANCELLED));
+                return this;
+            }
+        });
+        return futureResult.getIoFuture();
     }
 
     /**

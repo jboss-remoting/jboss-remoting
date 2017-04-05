@@ -1,23 +1,19 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2016, Red Hat, Inc., and individual contributors
- * as indicated by the @author tags. See the copyright.txt file in the
- * distribution for a full listing of individual contributors.
+ * Copyright 2017 Red Hat, Inc., and individual contributors
+ * as indicated by the @author tags.
  *
- * This is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation; either version 2.1 of
- * the License, or (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this software; if not, write to the Free
- * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package org.jboss.remoting3;
@@ -30,6 +26,7 @@ import java.security.Principal;
 import javax.net.ssl.SSLSession;
 
 import org.wildfly.security.auth.AuthenticationException;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
@@ -40,12 +37,14 @@ import org.xnio.OptionMap;
  */
 final class ManagedConnection implements Connection {
     private final Connection delegate;
-    private final FutureConnection futureConnection;
+    private final ConnectionInfo connectionInfo;
+    private final AuthenticationConfiguration authConfig;
     private final FutureResult<Connection> futureResult;
 
-    ManagedConnection(final Connection delegate, final FutureConnection futureConnection, final FutureResult<Connection> futureResult) {
+    ManagedConnection(final Connection delegate, final ConnectionInfo connectionInfo, final AuthenticationConfiguration authConfig, final FutureResult<Connection> futureResult) {
         this.delegate = delegate;
-        this.futureConnection = futureConnection;
+        this.connectionInfo = connectionInfo;
+        this.authConfig = authConfig;
         this.futureResult = futureResult;
     }
 
@@ -102,7 +101,7 @@ final class ManagedConnection implements Connection {
     }
 
     public void close() throws IOException {
-        futureConnection.clearRef(futureResult);
+        connectionInfo.connectionClosed(authConfig, futureResult);
         delegate.close();
     }
 
@@ -115,7 +114,7 @@ final class ManagedConnection implements Connection {
     }
 
     public void closeAsync() {
-        futureConnection.clearRef(futureResult);
+        connectionInfo.connectionClosed(authConfig, futureResult);
         delegate.closeAsync();
     }
 

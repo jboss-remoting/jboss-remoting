@@ -26,7 +26,6 @@ import static javax.xml.stream.XMLStreamConstants.END_ELEMENT;
 import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.Collections;
 
 import org.wildfly.client.config.ClientConfiguration;
@@ -99,11 +98,6 @@ final class RemotingXmlParser {
                             parseProvidersElement(reader, builder);
                             break;
                         }
-
-                        case "default-bind": {
-                            builder.setDefaultBindAddress(parseBind(reader));
-                            break;
-                        }
                         default: throw reader.unexpectedElement();
                     }
                     break;
@@ -111,43 +105,6 @@ final class RemotingXmlParser {
                 case END_ELEMENT: {
                     return;
                 }
-            }
-        }
-    }
-
-    private static InetSocketAddress parseBind(final ConfigurationXMLStreamReader reader) throws ConfigXMLParseException {
-        final int attributeCount = reader.getAttributeCount();
-        String address = null;
-        int port = 0;
-        for (int i = 0; i < attributeCount; i++) {
-            switch (reader.getAttributeLocalName(i)) {
-                case "address": {
-                    address = reader.getAttributeValue(i);
-                    break;
-                }
-                case "port": {
-                    port = reader.getIntAttributeValue(i);
-                    if (port < 0 || port > 65535) {
-                        // todo: i18n range check inside of the config client
-                        throw new IllegalArgumentException("Port value out of range");
-                    }
-                    break;
-                }
-                default: {
-                    throw reader.unexpectedAttribute(i);
-                }
-            }
-        }
-        if (address == null) {
-            throw reader.missingRequiredAttribute(null, "address");
-        }
-        final InetSocketAddress bindAddress = InetSocketAddress.createUnresolved(address, port);
-        switch (reader.nextTag()) {
-            case END_ELEMENT: {
-                return bindAddress;
-            }
-            default: {
-                throw reader.unexpectedElement();
             }
         }
     }

@@ -76,6 +76,7 @@ import org.wildfly.security.sasl.util.PrivilegedSaslClientFactory;
 import org.wildfly.security.sasl.util.ProtocolSaslClientFactory;
 import org.wildfly.security.sasl.util.ServerNameSaslClientFactory;
 
+import org.xnio.AbstractConvertingIoFuture;
 import org.xnio.Bits;
 import org.xnio.Cancellable;
 import org.xnio.FailedIoFuture;
@@ -109,7 +110,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private final ConcurrentMap<String, ProtocolRegistration> connectionProviders = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, RegisteredServiceImpl> registeredServices = new ConcurrentHashMap<>();
-    private final ConcurrentMap<ConnectionKey, FutureConnection> configuredConnections = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ConnectionKey, ConnectionInfo> newConnections = new ConcurrentHashMap<>();
 
     private final XnioWorker worker;
 
@@ -131,14 +132,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final CloseHandler<Object> resourceCloseHandler = (closed, exception) -> closeTick1(closed);
     private final CloseHandler<Connection> connectionCloseHandler = (closed, exception) -> connections.remove(closed);
     private final boolean ourWorker;
-    private final SocketAddress defaultBindAddress;
 
-    private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name, final SocketAddress defaultBindAddress) throws NotOpenException {
+    private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name) throws NotOpenException {
         super(xnioWorker, true);
         worker = xnioWorker;
         this.ourWorker = ourWorker;
         this.name = name;
-        this.defaultBindAddress = defaultBindAddress;
         // get XNIO worker
         log.tracef("Completed open of %s", this);
     }
@@ -148,7 +147,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final List<ConnectionProviderFactoryBuilder> factoryBuilders = endpointBuilder.getConnectionProviderFactoryBuilders();
         final EndpointImpl endpoint;
         XnioWorker xnioWorker = endpointBuilder.getXnioWorker();
-        final SocketAddress defaultBindAddress = endpointBuilder.getDefaultBindAddress();
         if (xnioWorker == null) {
             Xnio xnio = Xnio.getInstance(EndpointImpl.class.getClassLoader());
             final OptionMap.Builder builder = OptionMap.builder();
@@ -165,9 +163,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     e.closeComplete();
                 }
             });
-            endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName, defaultBindAddress));
+            endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName));
         } else {
-            endpoint = new EndpointImpl(xnioWorker, false, endpointName, defaultBindAddress);
+            endpoint = new EndpointImpl(xnioWorker, false, endpointName);
         }
         boolean ok = false;
         try {
@@ -337,18 +335,17 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return registration;
     }
 
-    public IoFuture<Connection> getConnection(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration) {
-        return doGetConnection(destination, sslContext, connectionConfiguration, operateConfiguration, true);
+    public IoFuture<ConnectionPeerIdentity> getConnectedIdentity(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration authenticationConfiguration) {
+        return doGetConnection(destination, sslContext, authenticationConfiguration, true);
     }
 
-    public IoFuture<Connection> getConnectionIfExists(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration) {
-        return doGetConnection(destination, sslContext, connectionConfiguration, operateConfiguration, false);
+    public IoFuture<ConnectionPeerIdentity> getConnectedIdentityIfExists(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration authenticationConfiguration) {
+        return doGetConnection(destination, sslContext, authenticationConfiguration, false);
     }
 
-    IoFuture<Connection> doGetConnection(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration, final boolean connect) {
+    IoFuture<ConnectionPeerIdentity> doGetConnection(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration authenticationConfiguration, final boolean connect) {
         Assert.checkNotNullParam("destination", destination);
-        Assert.checkNotNullParam("connectionConfiguration", connectionConfiguration);
-        Assert.checkNotNullParam("operateConfiguration", operateConfiguration);
+        Assert.checkNotNullParam("authenticationConfiguration", authenticationConfiguration);
 
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
 
@@ -361,19 +358,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
          * Note: not obvious!  we *always* use the host/port from the connect configuration even if connection sharing isn't supported.
          * This is the only way we can be certain that the behavior experience is similar for the end user.
          */
-        final String realHost = client.getRealHost(connectionConfiguration);
+        final String realHost = client.getRealHost(authenticationConfiguration);
         if (realHost == null) {
             throw new IllegalArgumentException("No host given in URI '" + destination + "'");
         }
-        final int realPort = client.getRealPort(connectionConfiguration);
+        final int realPort = client.getRealPort(authenticationConfiguration);
         if (realPort == -1) {
             throw new IllegalArgumentException("No port number given in URI '" + destination + "'");
         }
-
-        // NOTE: in this version, connection sharing is not enabled.  Everything that follows gets rewritten once we do.
-
-        // The "real" configuration is the operation authentication setup, plus the connect info from the connect config
-        AuthenticationConfiguration realConfig = operateConfiguration.usePort(realPort).useHost(realHost);
 
         // "sanitize" the destination URI
         final URI realDestination;
@@ -391,20 +383,20 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             return new FailedIoFuture<>(new IOException(e));
         }
 
-        final ConnectionKey connectionKey = new ConnectionKey(realDestination, realConfig, sslContext);
-        FutureConnection futureConnection = configuredConnections.get(connectionKey);
-        if (futureConnection != null) {
-            // found an existing unshared connection
-            return futureConnection.get(connect);
+        final ConnectionKey connectionKey = new ConnectionKey(realDestination, sslContext);
+        ConnectionInfo newConnectionInfo = newConnections.get(connectionKey);
+        while (newConnectionInfo == null) {
+            final ConnectionInfo appearing = newConnections.putIfAbsent(connectionKey, newConnectionInfo = new ConnectionInfo(OptionMap.EMPTY));
+            if (appearing != null) {
+                newConnectionInfo = appearing;
+            }
         }
-
-        // it's not presently managed; we'll use defaults to set it up
-        FutureConnection appearing;
-        futureConnection = new FutureConnection(this, defaultBindAddress, destination, realHost, realPort, false, OptionMap.EMPTY, operateConfiguration, UnaryOperator.identity(), sslContext);
-        if ((appearing = configuredConnections.putIfAbsent(connectionKey, futureConnection)) != null) {
-            return appearing.get(connect);
-        }
-        return futureConnection.get(connect);
+        final IoFuture<Connection> futureConnection = newConnectionInfo.getConnection(this, connectionKey, authenticationConfiguration, connect);
+        return new AbstractConvertingIoFuture<ConnectionPeerIdentity, Connection>(futureConnection) {
+            protected ConnectionPeerIdentity convert(final Connection arg) throws IOException {
+                return arg.getPeerIdentityContext().authenticate(authenticationConfiguration);
+            }
+        };
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) {
