@@ -46,6 +46,7 @@ final class ManagedConnection implements Connection {
         this.connectionInfo = connectionInfo;
         this.authConfig = authConfig;
         this.futureResult = futureResult;
+        delegate.addCloseHandler((c, e) -> connectionInfo.connectionClosed(authConfig, futureResult));
     }
 
     public SocketAddress getLocalAddress() {

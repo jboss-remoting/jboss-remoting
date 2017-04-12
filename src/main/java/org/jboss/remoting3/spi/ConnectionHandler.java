@@ -24,6 +24,7 @@ package org.jboss.remoting3.spi;
 
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.security.Principal;
 import java.util.Set;
 
 import javax.net.ssl.SSLSession;
@@ -101,6 +102,13 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
      * @return the available SASL mechanisms
      */
     Set<String> getOfferedMechanisms();
+
+    /**
+     * Get the principal used to authenticate the local client against the peer.
+     *
+     * @return the local client principal, or {@code null} if the connection is inbound
+     */
+    Principal getPrincipal();
 
     /**
      * Send an authentication request.

@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Set;
@@ -96,13 +97,15 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int ONE_OUTBOUND_CHANNEL = 1;
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
+    private final Principal principal;
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final int maxInboundChannels, final int maxOutboundChannels, final String remoteEndpointName, final int behavior, final boolean supportsRemoteAuth, final Set<String> offeredMechanisms) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final int maxInboundChannels, final int maxOutboundChannels, final Principal principal, final String remoteEndpointName, final int behavior, final boolean supportsRemoteAuth, final Set<String> offeredMechanisms) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
         this.maxInboundChannels = maxInboundChannels;
         this.maxOutboundChannels = maxOutboundChannels;
+        this.principal = principal;
         this.remoteEndpointName = remoteEndpointName;
         this.behavior = behavior;
         this.supportsRemoteAuth = supportsRemoteAuth;
@@ -575,6 +578,10 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     public Set<String> getOfferedMechanisms() {
         return offeredMechanisms;
+    }
+
+    public Principal getPrincipal() {
+        return principal;
     }
 
     protected void closeAction() throws IOException {

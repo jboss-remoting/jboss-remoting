@@ -28,6 +28,7 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -44,6 +45,8 @@ import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.wildfly.security.auth.principal.AnonymousPrincipal;
+import org.wildfly.security.sasl.WildFlySasl;
 import org.wildfly.security.sasl.util.ServerNameSaslClientFactory;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
@@ -691,11 +694,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 if ("auth-int".equals(qop) || "auth-conf".equals(qop)) {
                                     connection.setSaslWrapper(SaslWrapper.create(saslClient));
                                 }
+                                final Object principalObj = saslClient.getNegotiatedProperty(WildFlySasl.PRINCIPAL);
                                 // auth complete.
                                 final ConnectionHandlerFactory connectionHandlerFactory = connectionContext -> {
 
                                     // this happens immediately.
-                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior, authCap, offeredMechanisms);
+                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, principalObj instanceof Principal ? (Principal) principalObj : AnonymousPrincipal.getInstance(), remoteEndpointName, behavior, authCap, offeredMechanisms);
                                     connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                     connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                     return connectionHandler;

@@ -34,6 +34,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -48,8 +49,8 @@ import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
 import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
+import org.wildfly.security.sasl.WildFlySasl;
 import org.xnio.Cancellable;
-import org.xnio.FailedIoFuture;
 import org.xnio.FinishedIoFuture;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
@@ -67,7 +68,9 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
     private final ConnectionPeerIdentity anonymousIdentity;
     private final ConnectionPeerIdentity connectionIdentity;
     private final FinishedIoFuture<ConnectionPeerIdentity> connectionIdentityFuture;
+    private final FinishedIoFuture<ConnectionPeerIdentity> anonymousIdentityFuture;
     private final IntIndexHashMap<Authentication> authMap = new IntIndexHashMap<Authentication>(Authentication::getId);
+    private final ConcurrentHashMap<AuthenticationConfiguration, IoFuture<ConnectionPeerIdentity>> futureAuths = new ConcurrentHashMap<>();
 
     private static final AuthenticationContextConfigurationClient CLIENT = doPrivileged((PrivilegedAction<AuthenticationContextConfigurationClient>) AuthenticationContextConfigurationClient::new);
 
@@ -77,6 +80,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
         connectionIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, connection.getPrincipal(), 0, connection));
         connectionIdentityFuture = new FinishedIoFuture<>(connectionIdentity);
         anonymousIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, AnonymousPrincipal.getInstance(), 1, connection));
+        anonymousIdentityFuture = new FinishedIoFuture<>(anonymousIdentity);
     }
 
     private static final Object PENDING = new Object();
@@ -84,7 +88,20 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
 
     public IoFuture<ConnectionPeerIdentity> authenticateAsync(final AuthenticationConfiguration configuration) {
         Assert.checkNotNullParam("configuration", configuration);
+        if (configuration.equals(connection.getAuthenticationConfiguration())) {
+            return connectionIdentityFuture;
+        } else if (CLIENT.getAuthorizationPrincipal(configuration) instanceof AnonymousPrincipal) {
+            return anonymousIdentityFuture;
+        }
+        IoFuture<ConnectionPeerIdentity> ioFuture = futureAuths.get(configuration);
+        if (ioFuture != null) {
+            return ioFuture;
+        }
         final FutureResult<ConnectionPeerIdentity> futureResult = new FutureResult<>(connection.getEndpoint().getExecutor());
+        ioFuture = futureAuths.putIfAbsent(configuration, futureResult.getIoFuture());
+        if (ioFuture != null) {
+            return ioFuture;
+        }
         final AtomicReference<Object> statRef = new AtomicReference<>(PENDING);
         connection.getEndpoint().getExecutor().execute(() -> {
             Object oldVal;
@@ -128,13 +145,53 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
      * @throws AuthenticationException if the authentication attempt failed
      */
     public ConnectionPeerIdentity authenticate(final AuthenticationConfiguration configuration) throws AuthenticationException {
-        Assert.checkNotNullParam("configuration", configuration);
-        final ConnectionImpl connection = this.connection;
         if (configuration.equals(connection.getAuthenticationConfiguration())) {
             return connectionIdentity;
+        } else if (CLIENT.getAuthorizationPrincipal(configuration) instanceof AnonymousPrincipal) {
+            return anonymousIdentity;
         }
+        IoFuture<ConnectionPeerIdentity> ioFuture = futureAuths.get(configuration);
+        if (ioFuture == null) {
+            FutureResult<ConnectionPeerIdentity> futureResult = new FutureResult<>(connection.getEndpoint().getExecutor());
+            final IoFuture<ConnectionPeerIdentity> appearing = futureAuths.putIfAbsent(configuration, futureResult.getIoFuture());
+            if (appearing != null) {
+                ioFuture = appearing;
+            } else {
+                AtomicReference<Thread> threadRef = new AtomicReference<>(Thread.currentThread());
+                futureResult.addCancelHandler(new Cancellable() {
+                    public Cancellable cancel() {
+                        final Thread thread = threadRef.get();
+                        if (thread != null) {
+                            thread.interrupt();
+                        }
+                        return this;
+                    }
+                });
+                try {
+                    doAuthenticate(configuration, futureResult);
+                } finally {
+                    threadRef.set(null);
+                }
+                ioFuture = futureResult.getIoFuture();
+            }
+        }
+        try {
+            return ioFuture.get();
+        } catch (AuthenticationException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new AuthenticationException(e);
+        }
+    }
+
+    void doAuthenticate(final AuthenticationConfiguration configuration, FutureResult<ConnectionPeerIdentity> futureResult) {
+        Assert.checkNotNullParam("configuration", configuration);
+        final ConnectionImpl connection = this.connection;
+        assert ! configuration.equals(connection.getAuthenticationConfiguration());
         if (! connection.supportsRemoteAuth()) {
-            throw log.authenticationNotSupported();
+            futureResult.setException(log.authenticationNotSupported());
+            futureAuths.remove(configuration, futureResult.getIoFuture());
+            return;
         }
         final AuthenticationContextConfigurationClient client = CLIENT;
         Authentication authentication;
@@ -148,7 +205,9 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
         SaslClient saslClient;
         boolean intr = Thread.currentThread().isInterrupted();
         if (intr) {
-            throw log.authenticationInterrupted();
+            futureResult.setException(log.authenticationInterrupted());
+            futureAuths.remove(configuration, futureResult.getIoFuture());
+            return;
         }
         try {
             final Principal principal = client.getPrincipal(configuration);
@@ -159,7 +218,9 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                 try {
                     saslClient = client.createSaslClient(connection.getPeerURI(), configuration, mechanisms);
                 } catch (SaslException e) {
-                    throw log.authenticationNoSaslClient(e);
+                    futureResult.setException(log.authenticationNoSaslClient(e));
+                    futureAuths.remove(configuration, futureResult.getIoFuture());
+                    return;
                 }
                 if (saslClient == null) {
                     // break out to "no mechs left" error
@@ -173,11 +234,19 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                         response = null;
                     }
                     connectionHandler.sendAuthRequest(id, saslClient.getMechanismName(), response);
+                    if (! connectionHandler.isOpen()) {
+                        safeDispose(saslClient);
+                        futureResult.setException(log.authenticationExceptionClosed());
+                        futureAuths.remove(configuration, futureResult.getIoFuture());
+                        return;
+                    }
                 } catch (IOException e) {
                     // including SaslException
                     authMap.remove(authentication);
                     safeDispose(saslClient);
-                    throw log.authenticationExceptionIo(e);
+                    futureResult.setException(log.authenticationExceptionIo(e));
+                    futureAuths.remove(configuration, futureResult.getIoFuture());
+                    return;
                 }
                 // the main loop
                 byte[] challenge;
@@ -208,9 +277,19 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                         }
                         try {
                             connectionHandler.sendAuthResponse(id, response);
+                            if (! connectionHandler.isOpen()) {
+                                safeDispose(saslClient);
+                                futureResult.setException(log.authenticationExceptionClosed());
+                                futureAuths.remove(configuration, futureResult.getIoFuture());
+                                return;
+                            }
                         } catch (IOException e) {
-                            throw log.authenticationExceptionIo(e);
+                            safeDispose(saslClient);
+                            futureResult.setException(log.authenticationExceptionIo(e));
+                            futureAuths.remove(configuration, futureResult.getIoFuture());
+                            return;
                         }
+                        // retry loop
                     } else if (status == SUCCESS) {
                         if (challenge != null) {
                             try {
@@ -228,12 +307,19 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                                     log.trace("Send failed", ignored);
                                 }
                                 safeDispose(saslClient);
-                                throw log.authenticationExtraResponse();
+                                futureResult.setException(log.authenticationExtraResponse());
+                                futureAuths.remove(configuration, futureResult.getIoFuture());
+                                return;
                             }
                         }
                         safeDispose(saslClient);
                         // todo: we could use a phantom ref to clean up the ID, but the benefits are dubious
-                        return constructIdentity(conf -> new ConnectionPeerIdentity(conf, principal, finalId, connection));
+                        final SaslClient finalSaslClient = saslClient;
+                        futureResult.setResult(constructIdentity(conf -> {
+                            final Object principalObj = finalSaslClient.getNegotiatedProperty(WildFlySasl.PRINCIPAL);
+                            return new ConnectionPeerIdentity(conf, principalObj instanceof Principal ? (Principal) principalObj : principal, finalId, connection);
+                        }));
+                        return;
                     } else if (status == REJECT) {
                         // auth rejected (server)
                         try {
@@ -242,13 +328,19 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                             log.trace("Send failed", ignored);
                         }
                         safeDispose(saslClient);
-                        throw log.serverRejectedAuthentication();
+                        futureResult.setException(log.serverRejectedAuthentication());
+                        futureAuths.remove(configuration, futureResult.getIoFuture());
+                        return;
                     } else if (status == CLOSED) {
                         safeDispose(saslClient);
-                        throw log.authenticationExceptionClosed();
+                        futureResult.setException(log.authenticationExceptionClosed());
+                        futureAuths.remove(configuration, futureResult.getIoFuture());
+                        return;
                     } else if (status == DELETE) {
                         safeDispose(saslClient);
-                        throw log.serverRejectedAuthentication();
+                        futureResult.setException(log.serverRejectedAuthentication());
+                        futureAuths.remove(configuration, futureResult.getIoFuture());
+                        return;
                     } else {
                         throw Assert.unreachableCode();
                     }
@@ -270,7 +362,9 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
             } else {
                 triedStr = "(none)";
             }
-            throw log.noAuthMechanismsLeft(triedStr);
+            futureResult.setException(log.noAuthMechanismsLeft(triedStr));
+            futureAuths.remove(configuration, futureResult.getIoFuture());
+            return;
         } finally {
             if (intr) Thread.currentThread().interrupt();
         }
@@ -296,7 +390,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
             synchronized (authentication) {
                 authentication.setSaslBytes(challenge);
                 authentication.setStatus(CHALLENGE);
-                authentication.notify();
+                authentication.notifyAll();
             }
         }
     }
@@ -307,7 +401,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
             synchronized (authentication) {
                 authentication.setSaslBytes(challenge);
                 authentication.setStatus(SUCCESS);
-                authentication.notify();
+                authentication.notifyAll();
             }
         }
     }
@@ -317,7 +411,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
         if (authentication != null) {
             synchronized (authentication) {
                 authentication.setStatus(REJECT);
-                authentication.notify();
+                authentication.notifyAll();
             }
         }
     }
@@ -327,7 +421,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
         if (authentication != null) {
             synchronized (authentication) {
                 authentication.setStatus(DELETE);
-                authentication.notify();
+                authentication.notifyAll();
             }
         }
     }
@@ -339,7 +433,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
             iterator.remove();
             synchronized (authentication) {
                 authentication.setStatus(CLOSED);
-                authentication.notify();
+                authentication.notifyAll();
             }
         }
     }

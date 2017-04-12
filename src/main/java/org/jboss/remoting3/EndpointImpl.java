@@ -31,7 +31,6 @@ import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
-import java.security.Principal;
 import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -67,16 +66,15 @@ import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 
 import org.wildfly.common.Assert;
+import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
-import org.wildfly.security.auth.principal.AnonymousPrincipal;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.sasl.util.PrivilegedSaslClientFactory;
 import org.wildfly.security.sasl.util.ProtocolSaslClientFactory;
 import org.wildfly.security.sasl.util.ServerNameSaslClientFactory;
 
-import org.xnio.AbstractConvertingIoFuture;
 import org.xnio.Bits;
 import org.xnio.Cancellable;
 import org.xnio.FailedIoFuture;
@@ -110,7 +108,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     private final ConcurrentMap<String, ProtocolRegistration> connectionProviders = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, RegisteredServiceImpl> registeredServices = new ConcurrentHashMap<>();
-    private final ConcurrentMap<ConnectionKey, ConnectionInfo> newConnections = new ConcurrentHashMap<>();
+    private final ConcurrentMap<ConnectionKey, ConnectionInfo> managedConnections = new ConcurrentHashMap<>();
 
     private final XnioWorker worker;
 
@@ -384,19 +382,35 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         final ConnectionKey connectionKey = new ConnectionKey(realDestination, sslContext);
-        ConnectionInfo newConnectionInfo = newConnections.get(connectionKey);
+        ConnectionInfo newConnectionInfo = managedConnections.get(connectionKey);
         while (newConnectionInfo == null) {
-            final ConnectionInfo appearing = newConnections.putIfAbsent(connectionKey, newConnectionInfo = new ConnectionInfo(OptionMap.EMPTY));
+            final ConnectionInfo appearing = managedConnections.putIfAbsent(connectionKey, newConnectionInfo = new ConnectionInfo(OptionMap.EMPTY));
             if (appearing != null) {
                 newConnectionInfo = appearing;
             }
         }
         final IoFuture<Connection> futureConnection = newConnectionInfo.getConnection(this, connectionKey, authenticationConfiguration, connect);
-        return new AbstractConvertingIoFuture<ConnectionPeerIdentity, Connection>(futureConnection) {
-            protected ConnectionPeerIdentity convert(final Connection arg) throws IOException {
-                return arg.getPeerIdentityContext().authenticate(authenticationConfiguration);
+        final FutureResult<ConnectionPeerIdentity> futureResult = new FutureResult<>(getExecutor());
+        futureResult.addCancelHandler(futureConnection);
+        futureConnection.addNotifier(new IoFuture.HandlingNotifier<Connection, FutureResult<ConnectionPeerIdentity>>() {
+            public void handleCancelled(final FutureResult<ConnectionPeerIdentity> attachment) {
+                futureResult.setCancelled();
             }
-        };
+
+            public void handleFailed(final IOException exception, final FutureResult<ConnectionPeerIdentity> attachment) {
+                futureResult.setException(exception);
+            }
+
+            public void handleDone(final Connection connection, final FutureResult<ConnectionPeerIdentity> attachment) {
+                try {
+                    final ConnectionPeerIdentity identity = connection.getPeerIdentityContext().authenticate(authenticationConfiguration);
+                    futureResult.setResult(identity);
+                } catch (AuthenticationException e) {
+                    futureResult.setException(e);
+                }
+            }
+        }, futureResult);
+        return futureResult.getIoFuture();
     }
 
     public IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions) {
@@ -455,7 +469,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 final FutureResult<Connection> futureResult = new FutureResult<Connection>(getExecutor());
                 // Mark the stack because otherwise debugging connect problems can be incredibly tough
                 final StackTraceElement[] mark = Thread.currentThread().getStackTrace();
-                final Principal principal = AUTH_CONFIGURATION_CLIENT.getPrincipal(configuration);
                 final UnaryOperator<SaslClientFactory> finalFactoryOperator = factoryOperator;
                 final Result<ConnectionHandlerFactory> result = new Result<ConnectionHandlerFactory>() {
                     private final AtomicBoolean flag = new AtomicBoolean();
@@ -486,7 +499,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         }
                         synchronized (connectionLock) {
                             log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, protocolRegistration.getContext(), destination, principal, finalFactoryOperator, null, configuration);
+                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, protocolRegistration.getContext(), destination, null, configuration);
                             connections.add(connection);
                             connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                             connection.addCloseHandler(resourceCloseHandler);
@@ -745,7 +758,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 boolean ok = false;
                 try {
                     // XXX: we need to know if we in fact authenticated to the client via SSL, in which case we actually have an X500Principal
-                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, AnonymousPrincipal.getInstance(), UnaryOperator.identity(), authenticationFactory, AuthenticationConfiguration.EMPTY);
+                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, authenticationFactory, AuthenticationConfiguration.EMPTY);
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                     connection.addCloseHandler(connectionCloseHandler);

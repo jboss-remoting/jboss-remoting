@@ -26,10 +26,8 @@ import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.security.Principal;
-import java.util.function.UnaryOperator;
 
 import javax.net.ssl.SSLSession;
-import javax.security.sasl.SaslClientFactory;
 import javax.security.sasl.SaslException;
 import javax.security.sasl.SaslServer;
 
@@ -59,18 +57,16 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     private final EndpointImpl endpoint;
     private final URI peerUri;
     private final ConnectionPeerIdentityContext peerIdentityContext;
-    private final Principal principal;
     private final IntIndexHashMap<Auth> authMap = new IntIndexHashMap<Auth>(Auth::getId);
     private final SaslAuthenticationFactory authenticationFactory;
     private final AuthenticationConfiguration authenticationConfiguration;
     private final String protocol;
 
-    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final URI peerUri, final Principal principal, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final SaslAuthenticationFactory authenticationFactory, final AuthenticationConfiguration authenticationConfiguration) {
+    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final URI peerUri, final SaslAuthenticationFactory authenticationFactory, final AuthenticationConfiguration authenticationConfiguration) {
         super(endpoint.getExecutor(), true);
         this.endpoint = endpoint;
         this.peerUri = peerUri;
         this.protocol = connectionProviderContext.getProtocol();
-        this.principal = principal;
         this.authenticationConfiguration = authenticationConfiguration;
         this.connectionHandler = connectionHandlerFactory.createInstance(endpoint.new LocalConnectionContext(connectionProviderContext, this));
         this.authenticationFactory = authenticationFactory;
@@ -135,10 +131,10 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     }
 
     public SecurityIdentity getLocalIdentity(final int id) {
-        if (id == 0) {
+        if (id == 1) {
             final SaslAuthenticationFactory authenticationFactory = this.authenticationFactory;
             return authenticationFactory == null ? null : authenticationFactory.getSecurityDomain().getAnonymousSecurityIdentity();
-        } else if (id == 1) {
+        } else if (id == 0) {
             return getLocalIdentity();
         }
         final Auth auth = authMap.get(id);
@@ -183,7 +179,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     }
 
     public Principal getPrincipal() {
-        return principal;
+        return connectionHandler.getPrincipal();
     }
 
     public void receiveAuthRequest(final int id, final String mechName, final byte[] initialResponse) {

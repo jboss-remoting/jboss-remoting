@@ -46,6 +46,7 @@ import javax.security.sasl.SaslServer;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
+import org.wildfly.security.auth.principal.AnonymousPrincipal;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.sasl.WildFlySasl;
@@ -471,7 +472,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                                     connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                 }
                                 final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                    connectionContext, connection, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior, authCap, offeredMechanisms);
+                                    connectionContext, connection, maxInboundChannels, maxOutboundChannels, AnonymousPrincipal.getInstance(), remoteEndpointName, behavior, authCap, offeredMechanisms);
                                 connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                 final SecurityIdentity identity = (SecurityIdentity) saslServer.getNegotiatedProperty(WildFlySasl.SECURITY_IDENTITY);
                                 connection.setIdentity(identity == null ? saslAuthenticationFactory.getSecurityDomain().getAnonymousSecurityIdentity() : identity);
