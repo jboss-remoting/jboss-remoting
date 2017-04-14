@@ -29,4 +29,6 @@ public interface RemoteConnectionProviderMXBean {
     void dumpConnectionState();
 
     String dumpConnectionStateToString();
+
+    boolean isOpen();
 }

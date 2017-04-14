@@ -120,6 +120,10 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 public String dumpConnectionStateToString() {
                     return doGetConnectionState();
                 }
+
+                public boolean isOpen() {
+                    return RemoteConnectionProvider.super.isOpen();
+                }
             }, objectName);
         } catch (Exception e) {
             // ignore

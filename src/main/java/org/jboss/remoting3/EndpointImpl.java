@@ -26,6 +26,7 @@ import static java.security.AccessController.doPrivileged;
 import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
@@ -48,6 +49,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 import javax.net.ssl.SSLContext;
 import javax.security.sasl.SaslClientFactory;
 
@@ -91,6 +94,8 @@ import org.xnio.XnioWorker;
  */
 final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implements Endpoint {
 
+    private static final String[] NO_STRINGS = new String[0];
+
     static {
         // Print Remoting "greeting" message
         Logger.getLogger("org.jboss.remoting").infof("JBoss Remoting version %s", Version.getVersionString());
@@ -131,12 +136,64 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final CloseHandler<Connection> connectionCloseHandler = (closed, exception) -> connections.remove(closed);
     private final boolean ourWorker;
 
+    private final MBeanServer server;
+    private final ObjectName objectName;
+
     private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name) throws NotOpenException {
         super(xnioWorker, true);
         worker = xnioWorker;
         this.ourWorker = ourWorker;
         this.name = name;
-        // get XNIO worker
+        MBeanServer server = null;
+        ObjectName objectName = null;
+        try {
+            server = ManagementFactory.getPlatformMBeanServer();
+            String objName;
+            if (name == null) {
+                objName = "Remoting (anonymous)";
+            } else {
+                objName = "Remoting \"" + name + "\"";
+            }
+            objectName = new ObjectName("jboss.remoting.endpoint", "name", objName + "-" + hashCode());
+            server.registerMBean(new EndpointMXBean() {
+                public String getName() {
+                    return name;
+                }
+
+                public String[] getSupportedProtocolNames() {
+                    return connectionProviders.keySet().toArray(NO_STRINGS);
+                }
+
+                public String[] getRegisteredServices() {
+                    return registeredServices.keySet().toArray(NO_STRINGS);
+                }
+
+                public boolean isCloseRequested() {
+                    return (resourceCount & CLOSED_FLAG) != 0;
+                }
+
+                public int getResourceCount() {
+                    return resourceCount & COUNT_MASK;
+                }
+
+                public String[] getManagedConnectionURIs() {
+                    final ConnectionKey[] connectionKeys = managedConnections.keySet().toArray(new ConnectionKey[0]);
+                    final String[] result = new String[connectionKeys.length];
+                    for (int i = 0, connectionKeysLength = connectionKeys.length; i < connectionKeysLength; i++) {
+                        result[i] = connectionKeys[i].getRealUri().toString();
+                    }
+                    return result;
+                }
+
+                public int getConnectionCount() {
+                    return connections.size();
+                }
+            }, objectName);
+        } catch (Exception e) {
+            // ignore
+        }
+        this.server = server;
+        this.objectName = objectName;
         log.tracef("Completed open of %s", this);
     }
 
@@ -224,7 +281,16 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     protected void closeComplete() {
-        super.closeComplete();
+        try {
+            super.closeComplete();
+        } finally {
+            if (server != null && objectName != null) {
+                try {
+                    server.unregisterMBean(objectName);
+                } catch (Throwable ignored) {
+                }
+            }
+        }
     }
 
     private void closeTick1(Object c) {
