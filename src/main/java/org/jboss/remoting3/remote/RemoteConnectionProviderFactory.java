@@ -43,7 +43,7 @@ public final class RemoteConnectionProviderFactory implements ConnectionProvider
     }
 
     /** {@inheritDoc} */
-    public ConnectionProvider createInstance(final ConnectionProviderContext context, final OptionMap optionMap) throws IOException {
-        return new RemoteConnectionProvider(optionMap, context);
+    public ConnectionProvider createInstance(final ConnectionProviderContext context, final OptionMap optionMap, final String protocolName) throws IOException {
+        return new RemoteConnectionProvider(optionMap, context, protocolName);
     }
 }

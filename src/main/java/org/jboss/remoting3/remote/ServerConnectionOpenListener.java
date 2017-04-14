@@ -244,7 +244,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                     }
                     case Protocol.AUTH_REQUEST: {
                         server.tracef("Server received authentication request");
-                        if (retryCount.decrementAndGet() < 1) {
+                        if (retryCount.getAndDecrement() <= 0) {
                             // no more tries left
                             connection.handleException(new SaslException("Too many authentication failures; connection terminated"), false);
                             return;

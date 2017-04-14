@@ -90,8 +90,8 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
 
     private final ProviderInterface providerInterface = new ProviderInterface();
 
-    HttpUpgradeConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
-        super(optionMap, connectionProviderContext);
+    HttpUpgradeConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final String protocolName) throws IOException {
+        super(optionMap, connectionProviderContext, protocolName);
     }
 
     protected IoFuture<StreamConnection> createConnection(final URI uri, final InetSocketAddress bindAddress, final InetSocketAddress destination, final OptionMap connectOptions,

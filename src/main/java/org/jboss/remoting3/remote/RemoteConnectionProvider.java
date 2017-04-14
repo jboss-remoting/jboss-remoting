@@ -90,23 +90,28 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     private final XnioWorker xnioWorker;
     private final ConnectionProviderContext connectionProviderContext;
     private final boolean sslRequired;
-    private final boolean sslEnabled;
     private final Collection<Cancellable> pendingInboundConnections = Collections.synchronizedSet(new HashSet<Cancellable>());
     private final Set<RemoteConnectionHandler> handlers = Collections.synchronizedSet(new HashSet<RemoteConnectionHandler>());
     private final MBeanServer server;
     private final ObjectName objectName;
 
-    RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
+    RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final String protocolName) throws IOException {
         super(connectionProviderContext.getExecutor());
         sslRequired = optionMap.get(Options.SECURE, false);
-        sslEnabled = optionMap.get(Options.SSL_ENABLED, true);
         xnioWorker = connectionProviderContext.getXnioWorker();
         this.connectionProviderContext = connectionProviderContext;
         MBeanServer server = null;
         ObjectName objectName = null;
         try {
             server = ManagementFactory.getPlatformMBeanServer();
-            objectName = new ObjectName("jboss.remoting.handler", "name", connectionProviderContext.getEndpoint().getName() + "-" + hashCode());
+            final String endpointName = connectionProviderContext.getEndpoint().getName();
+            String name;
+            if (endpointName == null) {
+                name = "Remoting (anonymous) " + protocolName;
+            } else {
+                name = "Remoting \"" + endpointName + "\" " + protocolName;
+            }
+            objectName = new ObjectName("jboss.remoting.handler", "name", name + "-" + hashCode());
             server.registerMBean(new RemoteConnectionProviderMXBean() {
                 public void dumpConnectionState() {
                     doDumpConnectionState();
@@ -165,7 +170,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         });
         final IoFuture<ConnectionHandlerFactory> returnedFuture = cancellableResult.getIoFuture();
         returnedFuture.addNotifier(IoUtils.<ConnectionHandlerFactory>resultNotifier(), result);
-        final boolean useSsl = sslRequired || sslEnabled && connectOptions.get(Options.SSL_ENABLED, true);
+        final boolean useSsl = sslRequired || connectOptions.get(Options.SSL_ENABLED, true);
         final ChannelListener<StreamConnection> openListener = new ChannelListener<StreamConnection>() {
             public void handleEvent(final StreamConnection connection) {
                 try {
@@ -258,7 +263,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 final JsseSslConnection sslConnection = new JsseSslConnection(streamConnection, engine);
                 // Required in order for the SSLConnection to be properly closed.
                 streamConnection.getCloseSetter().set(channel -> safeClose(sslConnection));
-                if (sslRequired || ! connectOptions.get(Options.SSL_STARTTLS, false)) try {
+                if (sslRequired) try {
                     sslConnection.startHandshake();
                 } catch (IOException e) {
                     result.setException(new IOException(e));
@@ -312,8 +317,10 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
             Assert.checkNotNullParam("optionMap", optionMap);
             Assert.checkNotNullParam("saslAuthenticationFactory", saslAuthenticationFactory);
             final AcceptingChannel<StreamConnection> result;
-            // SSL_ENABLED only defaults to true when sslEnabled is set
-            if (sslContext != null && (sslRequired || sslEnabled && optionMap.get(Options.SSL_ENABLED, true))) {
+            // - SSL_ENABLED can be used to forbid SSL if SSL is not required, but not to require it if it is not present
+            // - Both SSL_ENABLED and STARTTLS have to be enabled to provide SSL if SSL is not required
+            // - If SSL is required then STARTTLS has no effect and is never enabled
+            if (sslContext != null && (sslRequired || optionMap.get(Options.SSL_ENABLED, true) && optionMap.get(Options.SSL_STARTTLS, true))) {
                 result = xnioWorker.createStreamConnectionServer(bindAddress, channel -> {
                     final StreamConnection streamConnection = acceptAndConfigure(channel);
                     if (streamConnection == null) return;
@@ -331,8 +338,12 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                     engine = sslContext.createSSLEngine(realHost, realPort);
                     engine.setUseClientMode(false);
                     final JsseSslConnection sslConnection = new JsseSslConnection(streamConnection, engine);
-                    if (sslRequired || ! optionMap.get(Options.SSL_STARTTLS, false)) try {
-                        sslConnection.startHandshake();
+                    try {
+                        // make sure we use the requested authentication mode
+                        if (optionMap.contains(Options.SSL_CLIENT_AUTH_MODE)) sslConnection.setOption(Options.SSL_CLIENT_AUTH_MODE, optionMap.get(Options.SSL_CLIENT_AUTH_MODE));
+                        if (sslRequired) {
+                            sslConnection.startHandshake();
+                        }
                     } catch (IOException e) {
                         safeClose(sslConnection);
                         log.failedToAccept(e);

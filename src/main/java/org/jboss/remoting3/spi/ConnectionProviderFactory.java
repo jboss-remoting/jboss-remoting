@@ -37,8 +37,9 @@ public interface ConnectionProviderFactory {
      *
      * @param context the provider context
      * @param optionMap the options to pass to the provider factory
+     * @param protocolName the name of the protocol scheme
      * @return the provider
      * @throws IOException if the provider cannot be created
      */
-    ConnectionProvider createInstance(ConnectionProviderContext context, final OptionMap optionMap) throws IOException;
+    ConnectionProvider createInstance(ConnectionProviderContext context, final OptionMap optionMap, final String protocolName) throws IOException;
 }

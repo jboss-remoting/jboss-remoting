@@ -77,7 +77,7 @@ public class BlockingInvocation extends Invocation {
                 return;
             }
             responses.add(new Response(inputStream, parameter, null));
-            responses.notify();
+            responses.notifyAll();
         }
     }
 
@@ -85,7 +85,7 @@ public class BlockingInvocation extends Invocation {
         final ArrayDeque<Response> responses = this.responses;
         synchronized (responses) {
             responses.add(new Response(null, 0, null));
-            responses.notify();
+            responses.notifyAll();
         }
     }
 
@@ -93,7 +93,7 @@ public class BlockingInvocation extends Invocation {
         final ArrayDeque<Response> responses = this.responses;
         synchronized (responses) {
             responses.add(new Response(null, 0, exception));
-            responses.notify();
+            responses.notifyAll();
         }
     }
 

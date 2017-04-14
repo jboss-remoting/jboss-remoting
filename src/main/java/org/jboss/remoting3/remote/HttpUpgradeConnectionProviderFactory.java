@@ -45,7 +45,7 @@ public final class HttpUpgradeConnectionProviderFactory implements ConnectionPro
     }
 
     /** {@inheritDoc} */
-    public ConnectionProvider createInstance(final ConnectionProviderContext context, final OptionMap optionMap) throws IOException {
-        return new HttpUpgradeConnectionProvider(optionMap, context);
+    public ConnectionProvider createInstance(final ConnectionProviderContext context, final OptionMap optionMap, final String protocolName) throws IOException {
+        return new HttpUpgradeConnectionProvider(optionMap, context, protocolName);
     }
 }
