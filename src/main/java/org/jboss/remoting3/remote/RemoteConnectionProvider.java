@@ -109,7 +109,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
             if (endpointName == null) {
                 name = "Remoting (anonymous) " + protocolName;
             } else {
-                name = "Remoting \"" + endpointName + "\" " + protocolName;
+                name = "Remoting-" + endpointName + "-" + protocolName;
             }
             objectName = new ObjectName("jboss.remoting.handler", "name", name + "-" + hashCode());
             server.registerMBean(new RemoteConnectionProviderMXBean() {

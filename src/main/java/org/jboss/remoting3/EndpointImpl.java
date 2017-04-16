@@ -152,11 +152,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             if (name == null) {
                 objName = "Remoting (anonymous)";
             } else {
-                objName = "Remoting \"" + name + "\"";
+                objName = "Remoting-" + name;
             }
             objectName = new ObjectName("jboss.remoting.endpoint", "name", objName + "-" + hashCode());
             server.registerMBean(new EndpointMXBean() {
-                public String getName() {
+                public String getEndpointName() {
                     return name;
                 }
 
@@ -168,7 +168,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     return registeredServices.keySet().toArray(NO_STRINGS);
                 }
 
-                public boolean isCloseRequested() {
+                public boolean getCloseRequested() {
                     return (resourceCount & CLOSED_FLAG) != 0;
                 }
 

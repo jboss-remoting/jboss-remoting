@@ -24,13 +24,13 @@ package org.jboss.remoting3;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public interface EndpointMXBean {
-    String getName();
+    String getEndpointName();
 
     String[] getSupportedProtocolNames();
 
     String[] getRegisteredServices();
 
-    boolean isCloseRequested();
+    boolean getCloseRequested();
 
     int getResourceCount();
 

@@ -36,6 +36,7 @@ import org.jboss.remoting3.HandleableCloseable;
 import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.RemotingException;
 import org.jboss.logging.Logger;
+import org.wildfly.common.Assert;
 
 /**
  * A basic implementation of a closeable resource.  Use as a convenient base class for your closeable resources.
@@ -392,9 +393,7 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
      * {@inheritDoc}
      */
     public Key addCloseHandler(final CloseHandler<? super T> handler) {
-        if (handler == null) {
-            throw new NullPointerException("handler is null");
-        }
+        Assert.checkNotNullParam("handler", handler);
         synchronized (closeLock) {
             if (state == State.OPEN || state == State.CLOSING) {
                 final Key key = new KeyImpl<T>(this);
