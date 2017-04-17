@@ -42,38 +42,49 @@ import org.wildfly.client.config.ConfigXMLParseException;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class ConfigurationEndpointSupplier implements Supplier<Endpoint> {
-    private static final Endpoint CONFIGURED_ENDPOINT;
+    static class Holder {
+        static final Endpoint CONFIGURED_ENDPOINT;
 
-    static {
-        CONFIGURED_ENDPOINT = AccessController.doPrivileged((PrivilegedAction<Endpoint>) () -> {
-            Endpoint endpoint = null;
-            try {
-                endpoint = RemotingXmlParser.parseEndpoint();
-            } catch (ConfigXMLParseException | IOException e) {
-                log.trace("Failed to parse endpoint XML definition", e);
-            }
-            if (endpoint == null) {
-                final Iterator<EndpointConfigurator> iterator = ServiceLoader.load(EndpointConfigurator.class, ConfigurationEndpointSupplier.class.getClassLoader()).iterator();
-                while (endpoint == null) try {
-                    if (! iterator.hasNext()) break;
-                    final EndpointConfigurator configurator = iterator.next();
-                    if (configurator != null) {
-                        endpoint = configurator.getConfiguredEndpoint();
-                    }
-                } catch (ServiceConfigurationError e) {
-                    log.trace("Failed to configure a service", e);
+        static {
+            CONFIGURED_ENDPOINT = AccessController.doPrivileged((PrivilegedAction<Endpoint>) () -> {
+                Endpoint endpoint = null;
+                try {
+                    endpoint = RemotingXmlParser.parseEndpoint();
+                } catch (ConfigXMLParseException | IOException e) {
+                    log.trace("Failed to parse endpoint XML definition", e);
                 }
-            }
-            if (endpoint == null) try {
-                endpoint = new EndpointBuilder().build();
-            } catch (IOException e) {
-                throw new IOError(e);
-            }
-            return new UncloseableEndpoint(endpoint);
-        });
+                if (endpoint == null) {
+                    final Iterator<EndpointConfigurator> iterator = ServiceLoader.load(EndpointConfigurator.class, ConfigurationEndpointSupplier.class.getClassLoader()).iterator();
+                    while (endpoint == null) try {
+                        if (! iterator.hasNext()) break;
+                        final EndpointConfigurator configurator = iterator.next();
+                        if (configurator != null) {
+                            endpoint = configurator.getConfiguredEndpoint();
+                        }
+                    } catch (ServiceConfigurationError e) {
+                        log.trace("Failed to configure a service", e);
+                    }
+                }
+                if (endpoint == null) try {
+                    endpoint = new EndpointBuilder().build();
+                } catch (IOException e) {
+                    throw new IOError(e);
+                }
+                return new UncloseableEndpoint(endpoint);
+            });
+        }
+
+        private Holder() {
+        }
+    }
+
+    /**
+     * Construct a new instance.
+     */
+    public ConfigurationEndpointSupplier() {
     }
 
     public Endpoint get() {
-        return CONFIGURED_ENDPOINT;
+        return Holder.CONFIGURED_ENDPOINT;
     }
 }
