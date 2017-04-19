@@ -446,8 +446,9 @@ public final class IntIndexHashMap<V> extends AbstractCollection<V> implements I
         for (int i = 0; i < origCapacity; i ++) {
             // for each row, try to resize into two new rows
             V[] origRow, newRow0, newRow1;
-            int count0 = 0, count1 = 0;
+            int count0, count1;
             do {
+                count0 = count1 = 0;
                 origRow = origArray.get(i);
                 if (origRow != null) {
                     for (V item : origRow) {
