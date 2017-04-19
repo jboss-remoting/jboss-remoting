@@ -91,6 +91,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     private final ConnectionProviderContext connectionProviderContext;
     private final boolean sslRequired;
     private final boolean sslEnabled;
+    private final boolean startTls;
     private final Collection<Cancellable> pendingInboundConnections = Collections.synchronizedSet(new HashSet<Cancellable>());
     private final Set<RemoteConnectionHandler> handlers = Collections.synchronizedSet(new HashSet<RemoteConnectionHandler>());
     private final MBeanServer server;
@@ -100,6 +101,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         super(connectionProviderContext.getExecutor());
         sslRequired = optionMap.get(Options.SECURE, false);
         sslEnabled = optionMap.get(Options.SSL_ENABLED, true);
+        startTls = optionMap.get(Options.SSL_STARTTLS, false);
         xnioWorker = connectionProviderContext.getXnioWorker();
         this.connectionProviderContext = connectionProviderContext;
         MBeanServer server = null;
@@ -258,7 +260,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 final JsseSslConnection sslConnection = new JsseSslConnection(streamConnection, engine);
                 // Required in order for the SSLConnection to be properly closed.
                 streamConnection.getCloseSetter().set(channel -> safeClose(sslConnection));
-                if (sslRequired || ! connectOptions.get(Options.SSL_STARTTLS, false)) try {
+                if (sslRequired || ! connectOptions.get(Options.SSL_STARTTLS, startTls)) try {
                     sslConnection.startHandshake();
                 } catch (IOException e) {
                     result.setException(new IOException(e));
@@ -331,8 +333,11 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                     engine = sslContext.createSSLEngine(realHost, realPort);
                     engine.setUseClientMode(false);
                     final JsseSslConnection sslConnection = new JsseSslConnection(streamConnection, engine);
-                    if (sslRequired || ! optionMap.get(Options.SSL_STARTTLS, false)) try {
-                        sslConnection.startHandshake();
+                    try {
+                        if (optionMap.contains(Options.SSL_CLIENT_AUTH_MODE)) sslConnection.setOption(Options.SSL_CLIENT_AUTH_MODE, optionMap.get(Options.SSL_CLIENT_AUTH_MODE));
+                        if (sslRequired || !optionMap.get(Options.SSL_STARTTLS, startTls)) {
+                            sslConnection.startHandshake();
+                        }
                     } catch (IOException e) {
                         safeClose(sslConnection);
                         log.failedToAccept(e);
