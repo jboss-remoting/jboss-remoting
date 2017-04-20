@@ -54,10 +54,12 @@ import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pooled;
 import org.xnio.Sequence;
+import org.xnio.channels.SslChannel;
 import org.xnio.conduits.ConduitStreamSourceChannel;
 import org.xnio.sasl.SaslWrapper;
 import org.xnio.ssl.SslConnection;
 
+import javax.net.ssl.SSLSession;
 import javax.security.sasl.Sasl;
 import javax.security.sasl.SaslClient;
 import javax.security.sasl.SaslClientFactory;
@@ -405,8 +407,15 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         UnaryOperator<SaslClientFactory> factoryOperator = factory -> new ServerNameSaslClientFactory(factory, remoteServerName);
                         factoryOperator = and(ClientConnectionOpenListener.this.saslClientFactoryOperator, factoryOperator);
                         final SaslClient saslClient;
+                        final SslChannel sslChannel = connection.getSslChannel();
+                        final SSLSession sslSession;
+                        if (sslChannel != null) {
+                            sslSession = sslChannel.getSslSession();
+                        } else {
+                            sslSession = null;
+                        }
                         try {
-                            saslClient = configurationClient.createSaslClient(uri, ClientConnectionOpenListener.this.configuration, serverSaslMechs, factoryOperator);
+                            saslClient = configurationClient.createSaslClient(uri, ClientConnectionOpenListener.this.configuration, serverSaslMechs, factoryOperator, sslSession);
                         } catch (SaslException e) {
                             // apparently no more mechanisms can succeed
                             connection.handleException(e);

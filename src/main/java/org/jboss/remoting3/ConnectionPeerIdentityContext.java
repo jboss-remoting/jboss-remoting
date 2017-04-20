@@ -37,8 +37,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 
+import javax.net.ssl.SSLSession;
 import javax.security.sasl.SaslClient;
+import javax.security.sasl.SaslClientFactory;
 import javax.security.sasl.SaslException;
 
 import org.jboss.remoting3._private.IntIndexHashMap;
@@ -50,6 +53,8 @@ import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient
 import org.wildfly.security.auth.client.PeerIdentityContext;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
 import org.wildfly.security.sasl.WildFlySasl;
+import org.wildfly.security.sasl.util.ProtocolSaslClientFactory;
+import org.wildfly.security.sasl.util.ServerNameSaslClientFactory;
 import org.xnio.Cancellable;
 import org.xnio.FinishedIoFuture;
 import org.xnio.FutureResult;
@@ -71,6 +76,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
     private final FinishedIoFuture<ConnectionPeerIdentity> anonymousIdentityFuture;
     private final IntIndexHashMap<Authentication> authMap = new IntIndexHashMap<Authentication>(Authentication::getId);
     private final ConcurrentHashMap<AuthenticationConfiguration, IoFuture<ConnectionPeerIdentity>> futureAuths = new ConcurrentHashMap<>();
+    private final UnaryOperator<SaslClientFactory> factoryOperator;
 
     private static final AuthenticationContextConfigurationClient CLIENT = doPrivileged((PrivilegedAction<AuthenticationContextConfigurationClient>) AuthenticationContextConfigurationClient::new);
 
@@ -81,6 +87,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
         connectionIdentityFuture = new FinishedIoFuture<>(connectionIdentity);
         anonymousIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, AnonymousPrincipal.getInstance(), 1, connection));
         anonymousIdentityFuture = new FinishedIoFuture<>(anonymousIdentity);
+        factoryOperator = factory -> new ProtocolSaslClientFactory(new ServerNameSaslClientFactory(factory, connection.getRemoteEndpointName()), connection.getProtocol());
     }
 
     private static final Object PENDING = new Object();
@@ -215,8 +222,10 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
             // try each mech in turn, unless the peer explicitly rejects
             Set<String> mechanisms = new LinkedHashSet<>(offeredMechanisms);
             while (! mechanisms.isEmpty()) {
+                final SSLSession sslSession = connectionHandler.getSslSession();
+                UnaryOperator<SaslClientFactory> factoryOperator = this.factoryOperator;
                 try {
-                    saslClient = client.createSaslClient(connection.getPeerURI(), configuration, mechanisms);
+                    saslClient = client.createSaslClient(connection.getPeerURI(), configuration, mechanisms, factoryOperator, sslSession);
                 } catch (SaslException e) {
                     futureResult.setException(log.authenticationNoSaslClient(e));
                     futureAuths.remove(configuration, futureResult.getIoFuture());

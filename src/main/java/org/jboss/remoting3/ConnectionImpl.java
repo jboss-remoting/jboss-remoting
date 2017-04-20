@@ -42,6 +42,7 @@ import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.sasl.WildFlySasl;
+import org.wildfly.security.sasl.util.ProtocolSaslServerFactory;
 import org.wildfly.security.sasl.util.ServerNameSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
@@ -193,7 +194,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
             final IntIndexHashMap<Auth> authMap = this.authMap;
             try {
                 saslServer = authenticationFactory.createMechanism(mechName, f ->
-                    new ServerNameSaslServerFactory(f, endpoint.getName())
+                    new ServerNameSaslServerFactory(new ProtocolSaslServerFactory(f, getProtocol()), endpoint.getName())
                 );
             } catch (SaslException e) {
                 log.trace("Authentication failed at mechanism creation", e);
