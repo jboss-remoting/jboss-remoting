@@ -271,7 +271,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 if (JsseXnioSsl.NEW_IMPL) {
                     sslConnection = new JsseSslConnection(streamConnection, engine);
                 } else {
-                    sslConnection = new JsseSslStreamConnection(streamConnection, engine, connectOptions.get(Options.SSL_STARTTLS, false));
+                    sslConnection = new JsseSslStreamConnection(streamConnection, engine, ! sslRequired);
                 }
                 // Required in order for the SSLConnection to be properly closed.
                 streamConnection.getCloseSetter().set(channel -> safeClose(sslConnection));
@@ -353,7 +353,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                     if (JsseXnioSsl.NEW_IMPL) {
                         sslConnection = new JsseSslConnection(streamConnection, engine);
                     } else {
-                        sslConnection = new JsseSslStreamConnection(streamConnection, engine, optionMap.get(Options.SSL_STARTTLS, false));
+                        sslConnection = new JsseSslStreamConnection(streamConnection, engine, ! sslRequired);
                     }
                     if (sslRequired || ! optionMap.get(Options.SSL_STARTTLS, false)) try {
                         if (optionMap.contains(Options.SSL_CLIENT_AUTH_MODE)) sslConnection.setOption(Options.SSL_CLIENT_AUTH_MODE, optionMap.get(Options.SSL_CLIENT_AUTH_MODE));

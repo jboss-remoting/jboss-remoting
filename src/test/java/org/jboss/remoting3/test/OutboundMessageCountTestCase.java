@@ -76,6 +76,7 @@ import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
+import org.xnio.Options;
 
 /**
  * Tests that a {@link org.jboss.remoting3.MessageOutputStream#close() closing the message on the channel}
@@ -124,7 +125,7 @@ public class OutboundMessageCountTestCase {
         builder.setFactory(saslServerFactory);
         builder.setMechanismConfigurationSelector(mechanismInformation -> SaslMechanismInformation.Names.SCRAM_SHA_256.equals(mechanismInformation.getMechanismName()) ? MechanismConfiguration.EMPTY : null);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
-        streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.EMPTY, saslAuthenticationFactory, SSLContext.getDefault());
+        streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE), saslAuthenticationFactory, SSLContext.getDefault());
     }
 
     @Before
