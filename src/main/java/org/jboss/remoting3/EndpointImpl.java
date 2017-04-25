@@ -240,11 +240,17 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     final ServiceLoader<ConnectionProviderFactory> loader = ServiceLoader.load(ConnectionProviderFactory.class, classLoader);
                     for (ConnectionProviderFactory factory : loader) {
                         endpoint.addConnectionProvider(factoryBuilder.getScheme(), factory, OptionMap.EMPTY);
+                        for (String alias : factoryBuilder.getAliases()) {
+                            endpoint.addConnectionProvider(alias, factory, OptionMap.EMPTY);
+                        }
                     }
                 } else try {
                     final Class<? extends ConnectionProviderFactory> factoryClass = classLoader.loadClass(className).asSubclass(ConnectionProviderFactory.class);
                     final ConnectionProviderFactory factory = factoryClass.newInstance();
                     endpoint.addConnectionProvider(factoryBuilder.getScheme(), factory, OptionMap.EMPTY);
+                    for (String alias : factoryBuilder.getAliases()) {
+                        endpoint.addConnectionProvider(alias, factory, OptionMap.EMPTY);
+                    }
                 } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
                     throw new IllegalArgumentException("Unable to load connection provider factory class '" + className + "'", e);
                 }

@@ -32,7 +32,7 @@ public final class ConnectionProviderFactoryBuilder {
 
     private String moduleName;
     private String className;
-    private List<String> aliases;
+    private final List<String> aliases = new ArrayList<>();
     private String scheme;
 
     ConnectionProviderFactoryBuilder(final String scheme) {
@@ -40,9 +40,6 @@ public final class ConnectionProviderFactoryBuilder {
     }
 
     public ConnectionProviderFactoryBuilder addAlias(final String alias) {
-        if (aliases == null) {
-            aliases = new ArrayList<>();
-        }
         aliases.add(alias);
         return this;
     }

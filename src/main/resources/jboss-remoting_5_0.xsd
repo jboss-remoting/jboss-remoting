@@ -54,11 +54,4 @@
     <xs:simpleType name="string-list-type">
         <xs:list itemType="xs:string"/>
     </xs:simpleType>
-
-    <xs:simpleType name="port-type">
-        <xs:restriction base="xs:integer">
-            <xs:minInclusive value="0"/>
-            <xs:maxInclusive value="65535"/>
-        </xs:restriction>
-    </xs:simpleType>
 </xs:schema>
