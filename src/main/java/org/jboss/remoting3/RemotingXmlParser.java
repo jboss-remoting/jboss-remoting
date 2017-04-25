@@ -39,6 +39,9 @@ import org.xnio.XnioWorker;
 final class RemotingXmlParser {
     private static final String NS_REMOTING_5_0 = "urn:jboss-remoting:5.0";
 
+    private RemotingXmlParser() {
+    }
+
     static Endpoint parseEndpoint() throws ConfigXMLParseException, IOException {
         final ClientConfiguration clientConfiguration = ClientConfiguration.getInstance();
         final EndpointBuilder builder = new EndpointBuilder();

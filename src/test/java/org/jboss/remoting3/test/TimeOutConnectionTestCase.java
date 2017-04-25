@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
+import org.jboss.remoting3.EndpointBuilder;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -55,6 +56,8 @@ import org.xnio.IoFuture;
 import org.xnio.IoFuture.Status;
 import org.xnio.OptionMap;
 import org.xnio.Options;
+import org.xnio.Xnio;
+import org.xnio.XnioWorker;
 
 /**
  * Attempt to connect to a non-responding socket. Since the socket does not respond, the 
@@ -108,7 +111,11 @@ public class TimeOutConnectionTestCase {
             Thread acceptThread = new Thread(new Accept(channel));
             acceptThread.start();
             // create endpoint, auth provider, etc, create server
-            try (Endpoint ep = Endpoint.builder().setXnioWorkerOptions(OptionMap.create(Options.WORKER_IO_THREADS, 4, Options.WORKER_TASK_CORE_THREADS, 16)).setEndpointName("test").build()) {
+            final EndpointBuilder endpointBuilder = Endpoint.builder();
+            final XnioWorker.Builder workerBuilder = endpointBuilder.buildXnioWorker(Xnio.getInstance());
+            workerBuilder.setCoreWorkerPoolSize(4).setMaxWorkerPoolSize(4).setWorkerIoThreads(4);
+            endpointBuilder.setEndpointName("test");
+            try (Endpoint ep = endpointBuilder.build()) {
                 endpoint = ep;
                 final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
                 final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();

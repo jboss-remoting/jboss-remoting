@@ -203,22 +203,23 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final EndpointImpl endpoint;
         XnioWorker xnioWorker = endpointBuilder.getXnioWorker();
         if (xnioWorker == null) {
-            Xnio xnio = Xnio.getInstance(EndpointImpl.class.getClassLoader());
-            final OptionMap.Builder builder = OptionMap.builder();
-            final OptionMap workerOptions = endpointBuilder.getXnioWorkerOptions();
-            if (workerOptions != null) {
-                builder.addAll(workerOptions);
+            final XnioWorker.Builder workerBuilder = endpointBuilder.getWorkerBuilder();
+            if (workerBuilder == null) {
+                xnioWorker = XnioWorker.getContextManager().get();
+                endpoint = new EndpointImpl(xnioWorker, false, endpointName);
+            } else {
+                final AtomicReference<EndpointImpl> endpointRef = new AtomicReference<EndpointImpl>();
+                workerBuilder.setDaemon(true);
+                workerBuilder.setWorkerName(endpointName == null ? "Remoting (anonymous)" : "Remoting \"" + endpointName + "\"");
+                workerBuilder.setTerminationTask(() -> {
+                    final EndpointImpl e = endpointRef.getAndSet(null);
+                    if (e != null) {
+                        e.closeComplete();
+                    }
+                });
+                xnioWorker = workerBuilder.build();
+                endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName));
             }
-            builder.addAll(OptionMap.create(Options.THREAD_DAEMON, Boolean.TRUE));
-            final OptionMap modifiedOptionMap = builder.set(Options.WORKER_NAME, endpointName == null ? "Remoting (anonymous)" : "Remoting \"" + endpointName + "\"").getMap();
-            final AtomicReference<EndpointImpl> endpointRef = new AtomicReference<EndpointImpl>();
-            xnioWorker = xnio.createWorker(null, modifiedOptionMap, () -> {
-                final EndpointImpl e = endpointRef.getAndSet(null);
-                if (e != null) {
-                    e.closeComplete();
-                }
-            });
-            endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName));
         } else {
             endpoint = new EndpointImpl(xnioWorker, false, endpointName);
         }

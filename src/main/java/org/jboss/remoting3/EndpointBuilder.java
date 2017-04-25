@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jboss.remoting3.security.RemotingPermission;
-import org.xnio.OptionMap;
+import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 
 /**
@@ -41,8 +41,8 @@ import org.xnio.XnioWorker;
 public final class EndpointBuilder {
     private String endpointName;
     private XnioWorker xnioWorker;
-    private OptionMap xnioWorkerOptions;
     private List<ConnectionProviderFactoryBuilder> connectionProviderFactoryBuilders;
+    private XnioWorker.Builder workerBuilder;
 
     EndpointBuilder() {
     }
@@ -53,13 +53,14 @@ public final class EndpointBuilder {
     }
 
     public EndpointBuilder setXnioWorker(final XnioWorker xnioWorker) {
+        this.workerBuilder = null;
         this.xnioWorker = xnioWorker;
         return this;
     }
 
-    public EndpointBuilder setXnioWorkerOptions(final OptionMap xnioWorkerOptions) {
-        this.xnioWorkerOptions = xnioWorkerOptions;
-        return this;
+    public XnioWorker.Builder buildXnioWorker(final Xnio xnio) {
+        this.xnioWorker = null;
+        return this.workerBuilder = xnio.createWorkerBuilder();
     }
 
     public ConnectionProviderFactoryBuilder addProvider(final String scheme) {
@@ -79,8 +80,8 @@ public final class EndpointBuilder {
         return xnioWorker;
     }
 
-    OptionMap getXnioWorkerOptions() {
-        return xnioWorkerOptions;
+    XnioWorker.Builder getWorkerBuilder() {
+        return workerBuilder;
     }
 
     List<ConnectionProviderFactoryBuilder> getConnectionProviderFactoryBuilders() {

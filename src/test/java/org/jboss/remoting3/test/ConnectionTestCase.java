@@ -46,6 +46,7 @@ import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
+import org.jboss.remoting3.EndpointBuilder;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.OpenListener;
@@ -77,6 +78,7 @@ import org.xnio.IoFuture;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Options;
+import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 
 /**
@@ -104,13 +106,13 @@ public class ConnectionTestCase {
     }
 
     public ConnectionTestCase() throws IOException {
-        OptionMap optionMap = OptionMap.builder()
-            .set(Options.WORKER_TASK_CORE_THREADS, THREAD_POOL_SIZE)
-            .set(Options.WORKER_TASK_MAX_THREADS, THREAD_POOL_SIZE)
-            .set(Options.WORKER_IO_THREADS, IO_THREAD_COUNT)
-            .getMap();
-        clientEndpoint = Endpoint.builder().setXnioWorkerOptions(optionMap).setEndpointName("connection-test-client").build();
-        serverEndpoint = Endpoint.builder().setXnioWorkerOptions(optionMap).setEndpointName("connection-test-server").build();
+        final EndpointBuilder endpointBuilder = Endpoint.builder();
+        final XnioWorker.Builder workerBuilder = endpointBuilder.buildXnioWorker(Xnio.getInstance());
+        workerBuilder.setCoreWorkerPoolSize(THREAD_POOL_SIZE).setMaxWorkerPoolSize(THREAD_POOL_SIZE).setWorkerIoThreads(IO_THREAD_COUNT);
+        endpointBuilder.setEndpointName("connection-test-client");
+        clientEndpoint = endpointBuilder.build();
+        endpointBuilder.setEndpointName("connection-test-server");
+        serverEndpoint = endpointBuilder.build();
     }
 
     @Rule
