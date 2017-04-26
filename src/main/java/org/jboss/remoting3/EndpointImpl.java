@@ -420,22 +420,21 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
 
-        final String scheme = destination.getScheme();
-        if (scheme == null) {
-            throw new IllegalArgumentException("No scheme given in URI '" + destination + "'");
-        }
-
         /*
          * Note: not obvious!  we *always* use the host/port from the connect configuration even if connection sharing isn't supported.
          * This is the only way we can be certain that the behavior experience is similar for the end user.
          */
-        final String realHost = client.getRealHost(authenticationConfiguration);
+        final String realHost = client.getRealHost(destination, authenticationConfiguration);
         if (realHost == null) {
             throw new IllegalArgumentException("No host given in URI '" + destination + "'");
         }
-        final int realPort = client.getRealPort(authenticationConfiguration);
+        final int realPort = client.getRealPort(destination, authenticationConfiguration);
         if (realPort == -1) {
             throw new IllegalArgumentException("No port number given in URI '" + destination + "'");
+        }
+        final String scheme = client.getRealProtocol(destination, authenticationConfiguration);
+        if (scheme == null) {
+            throw new IllegalArgumentException("No scheme given in URI '" + destination + "'");
         }
 
         // "sanitize" the destination URI
