@@ -47,7 +47,7 @@
         <apacheds.shared.version>1.0.0-M13</apacheds.shared.version>
         <apacheds.api.version>1.0.0-M16</apacheds.api.version>        
         <elytron.version>1.1.0.Beta38</elytron.version>
-        <config.version>1.0.0.Beta2</config.version>
+        <config.version>1.0.0.Beta4</config.version>
         <xnio.version>3.5.0.Beta5</xnio.version>
         <logging.version>3.2.1.Final</logging.version>
         <logging-tools.version>2.0.1.Final</logging-tools.version>

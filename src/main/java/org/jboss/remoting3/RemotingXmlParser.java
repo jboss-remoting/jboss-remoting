@@ -81,7 +81,7 @@ final class RemotingXmlParser {
         for (int i = 0; i < attributeCount; i++) {
             switch (reader.getAttributeLocalName(i)) {
                 case "name": {
-                    builder.setEndpointName(reader.getAttributeValue(i));
+                    builder.setEndpointName(reader.getAttributeValueResolved(i));
                     break;
                 }
                 default: {
@@ -152,19 +152,19 @@ final class RemotingXmlParser {
             }
             switch (reader.getAttributeLocalName(i)) {
                 case "scheme": {
-                    scheme = reader.getAttributeValue(i);
+                    scheme = reader.getAttributeValueResolved(i);
                     break;
                 }
                 case "aliases": {
-                    aliases = reader.getListAttributeValueAsArray(i);
+                    aliases = reader.getListAttributeValueAsArrayResolved(i);
                     break;
                 }
                 case "module": {
-                    module = reader.getAttributeValue(i);
+                    module = reader.getAttributeValueResolved(i);
                     break;
                 }
                 case "class": {
-                    clazz = reader.getAttributeValue(i);
+                    clazz = reader.getAttributeValueResolved(i);
                     break;
                 }
                 default: {
