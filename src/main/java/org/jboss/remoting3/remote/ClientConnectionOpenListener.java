@@ -635,7 +635,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                             try {
                                 final boolean clientComplete = saslClient.isComplete();
                                 if (clientComplete) {
-                                    connection.handleException(new SaslException("Received extra auth message after completion"));
+                                    connection.handleException(new SaslException(saslClient.getMechanismName() + ": Received extra auth message after completion"));
                                     return;
                                 }
                                 final byte[] response;
@@ -682,12 +682,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 if (!clientComplete) try {
                                     final byte[] response = saslClient.evaluateChallenge(challenge);
                                     if (response != null && response.length > 0) {
-                                        connection.handleException(new SaslException("Received extra auth message after completion"));
+                                        connection.handleException(new SaslException(saslClient.getMechanismName() + ": Received extra auth message after completion"));
                                         saslDispose(saslClient);
                                         return;
                                     }
                                     if (!saslClient.isComplete()) {
-                                        connection.handleException(new SaslException("Client not complete after processing auth complete message"));
+                                        connection.handleException(new SaslException(saslClient.getMechanismName() + ": Client not complete after processing auth complete message"));
                                         saslDispose(saslClient);
                                         return;
                                     }
@@ -726,7 +726,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                     case Protocol.AUTH_REJECTED: {
                         final String mechanismName = saslClient.getMechanismName();
                         client.debugf("Client received authentication rejected for mechanism %s", mechanismName);
-                        failedMechs.put(mechanismName, new SaslException("Server rejected authentication"));
+                        failedMechs.put(mechanismName, new SaslException(mechanismName + ": Server rejected authentication"));
                         saslDispose(saslClient);
                         sendCapRequest(serverName);
                         return;
