@@ -355,12 +355,19 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                     } else {
                         sslConnection = new JsseSslStreamConnection(streamConnection, engine, ! sslRequired);
                     }
+                    if (optionMap.contains(Options.SSL_CLIENT_AUTH_MODE)) try {
+                        sslConnection.setOption(Options.SSL_CLIENT_AUTH_MODE, optionMap.get(Options.SSL_CLIENT_AUTH_MODE));
+                    } catch (IOException e) {
+                        safeClose(sslConnection);
+                        log.failedToAccept(e);
+                        return;
+                    }
                     if (sslRequired || ! optionMap.get(Options.SSL_STARTTLS, false)) try {
-                        if (optionMap.contains(Options.SSL_CLIENT_AUTH_MODE)) sslConnection.setOption(Options.SSL_CLIENT_AUTH_MODE, optionMap.get(Options.SSL_CLIENT_AUTH_MODE));
                         sslConnection.startHandshake();
                     } catch (IOException e) {
                         safeClose(sslConnection);
                         log.failedToAccept(e);
+                        return;
                     }
                     handleAccepted(sslConnection, sslConnection, optionMap, saslAuthenticationFactory);
                 }, optionMap);
