@@ -164,6 +164,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         Assert.checkNotNullParam("result", result);
         Assert.checkNotNullParam("authenticationConfiguration", authenticationConfiguration);
         Assert.checkNotNullParam("saslClientFactoryOperator", saslClientFactoryOperator);
+        if (sslRequired) Assert.checkNotNullParam("sslContext", sslContext);
         log.tracef("Attempting to connect to \"%s\" with options %s", destination, connectOptions);
         // cancellable that will be returned by this method
         final FutureResult<ConnectionHandlerFactory> cancellableResult = new FutureResult<ConnectionHandlerFactory>();
