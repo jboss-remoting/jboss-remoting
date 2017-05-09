@@ -119,6 +119,22 @@ final class RemoteConnection {
         }
     }
 
+    /**
+     * Adjusts inner buffers to required message length. For security reason, the buffer size cannot exceed value
+     * specified in {@link RemotingOptions#MAX_RECEIVE_BUFFER_SIZE}
+     *
+     * @param   length
+     *          message length the buffers
+     *
+     * @throws  IllegalArgumentException
+     *          if requested length exceeds maximal allowed buffer size
+     */
+    void adjustToMessageLength(int length) {
+        if (channel instanceof RemotingMessageChannel) {
+            ((RemotingMessageChannel) channel).adjustToMessageLength(length);
+        }
+    }
+
     void send(final Pooled<ByteBuffer> pooled) {
         writeListener.send(pooled, false);
     }
