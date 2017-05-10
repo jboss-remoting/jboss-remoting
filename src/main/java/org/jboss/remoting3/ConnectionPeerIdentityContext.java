@@ -80,14 +80,15 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
 
     private static final AuthenticationContextConfigurationClient CLIENT = doPrivileged((PrivilegedAction<AuthenticationContextConfigurationClient>) AuthenticationContextConfigurationClient::new);
 
-    ConnectionPeerIdentityContext(final ConnectionImpl connection, final Collection<String> offeredMechanisms) {
+    ConnectionPeerIdentityContext(final ConnectionImpl connection, final Collection<String> offeredMechanisms, String saslProtocol) {
         this.connection = connection;
         this.offeredMechanisms = offeredMechanisms == null ? Collections.emptySet() : offeredMechanisms;
         connectionIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, connection.getPrincipal(), 0, connection));
         connectionIdentityFuture = new FinishedIoFuture<>(connectionIdentity);
         anonymousIdentity = constructIdentity(conf -> new ConnectionPeerIdentity(conf, AnonymousPrincipal.getInstance(), 1, connection));
         anonymousIdentityFuture = new FinishedIoFuture<>(anonymousIdentity);
-        factoryOperator = factory -> new ProtocolSaslClientFactory(new ServerNameSaslClientFactory(factory, connection.getRemoteEndpointName()), connection.getProtocol());
+
+        factoryOperator = factory -> new ProtocolSaslClientFactory(new ServerNameSaslClientFactory(factory, connection.getRemoteEndpointName()), saslProtocol);
     }
 
     private static final Object PENDING = new Object();

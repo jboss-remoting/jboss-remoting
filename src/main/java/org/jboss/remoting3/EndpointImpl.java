@@ -571,7 +571,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         }
                         synchronized (connectionLock) {
                             log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, protocolRegistration.getContext(), destination, null, configuration);
+                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, protocolRegistration.getContext(), destination, null, configuration, protocol);
                             connections.add(connection);
                             connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                             connection.addCloseHandler(resourceCloseHandler);
@@ -613,7 +613,8 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         boolean ok = false;
         resourceUntick("Connection provider for " + uriScheme);
         try {
-            final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl(uriScheme);
+            final String saslProtocol = optionMap.contains(RemotingOptions.SASL_PROTOCOL) ? optionMap.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
+            final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl(uriScheme, saslProtocol);
             final ConnectionProvider provider = providerFactory.createInstance(context, optionMap, uriScheme);
             final ProtocolRegistration protocolRegistration = new ProtocolRegistration(provider, context);
             try {
@@ -815,9 +816,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     final class ConnectionProviderContextImpl implements ConnectionProviderContext {
 
         private final String protocol;
+        private final String saslProtocol;
 
-        ConnectionProviderContextImpl(final String protocol) {
+        ConnectionProviderContextImpl(final String protocol, String saslProtocol) {
             this.protocol = protocol;
+            this.saslProtocol = saslProtocol;
         }
 
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory, final SaslAuthenticationFactory authenticationFactory) {
@@ -830,7 +833,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 boolean ok = false;
                 try {
                     // XXX: we need to know if we in fact authenticated to the client via SSL, in which case we actually have an X500Principal
-                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, authenticationFactory, AuthenticationConfiguration.EMPTY);
+                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, authenticationFactory, AuthenticationConfiguration.EMPTY, saslProtocol);
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                     connection.addCloseHandler(connectionCloseHandler);
