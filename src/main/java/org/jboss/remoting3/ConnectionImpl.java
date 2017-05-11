@@ -62,16 +62,18 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
     private final SaslAuthenticationFactory authenticationFactory;
     private final AuthenticationConfiguration authenticationConfiguration;
     private final String protocol;
+    private final String saslProtcol;
 
-    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final URI peerUri, final SaslAuthenticationFactory authenticationFactory, final AuthenticationConfiguration authenticationConfiguration) {
+    ConnectionImpl(final EndpointImpl endpoint, final ConnectionHandlerFactory connectionHandlerFactory, final ConnectionProviderContext connectionProviderContext, final URI peerUri, final SaslAuthenticationFactory authenticationFactory, final AuthenticationConfiguration authenticationConfiguration, String saslProtcol) {
         super(endpoint.getExecutor(), true);
         this.endpoint = endpoint;
         this.peerUri = peerUri;
         this.protocol = connectionProviderContext.getProtocol();
         this.authenticationConfiguration = authenticationConfiguration;
+        this.saslProtcol = saslProtcol;
         this.connectionHandler = connectionHandlerFactory.createInstance(endpoint.new LocalConnectionContext(connectionProviderContext, this));
         this.authenticationFactory = authenticationFactory;
-        this.peerIdentityContext = new ConnectionPeerIdentityContext(this, connectionHandler.getOfferedMechanisms());
+        this.peerIdentityContext = new ConnectionPeerIdentityContext(this, connectionHandler.getOfferedMechanisms(), saslProtcol);
     }
 
     protected void closeAction() throws IOException {
@@ -194,7 +196,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
             final IntIndexHashMap<Auth> authMap = this.authMap;
             try {
                 saslServer = authenticationFactory.createMechanism(mechName, f ->
-                    new ServerNameSaslServerFactory(new ProtocolSaslServerFactory(f, getProtocol()), endpoint.getName())
+                    new ServerNameSaslServerFactory(new ProtocolSaslServerFactory(f, saslProtcol), endpoint.getName())
                 );
             } catch (SaslException e) {
                 log.trace("Authentication failed at mechanism creation", e);
