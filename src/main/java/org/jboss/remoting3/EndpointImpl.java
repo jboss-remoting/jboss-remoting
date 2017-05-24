@@ -462,6 +462,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
         }
         final IoFuture<Connection> futureConnection = newConnectionInfo.getConnection(this, connectionKey, authenticationConfiguration, connect);
+        if (futureConnection == null) {
+            // no connection currently exists
+            return null;
+        }
         final FutureResult<ConnectionPeerIdentity> futureResult = new FutureResult<>(getExecutor());
         futureResult.addCancelHandler(futureConnection);
         futureConnection.addNotifier(new IoFuture.HandlingNotifier<Connection, FutureResult<ConnectionPeerIdentity>>() {
