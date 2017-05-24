@@ -506,24 +506,22 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         } catch (GeneralSecurityException e) {
             return new FailedIoFuture<>(Messages.conn.failedToConfigureSslContext(e));
         }
-        return connect(destination, bindAddress, connectOptions, configuration, UnaryOperator.identity(), sslContext);
+        return connect(destination, bindAddress, connectOptions, configuration, sslContext);
     }
 
     public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration) {
-        return connect(destination, bindAddress, connectOptions, connectionConfiguration, UnaryOperator.identity(), sslContext);
+        return connect(destination, bindAddress, connectOptions, connectionConfiguration, sslContext);
     }
 
-    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final SSLContext sslContext) {
+    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final SSLContext sslContext) {
         Assert.checkNotNullParam("destination", destination);
         Assert.checkNotNullParam("connectOptions", connectOptions);
         final String protocol = connectOptions.contains(RemotingOptions.SASL_PROTOCOL) ? connectOptions.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
-        UnaryOperator<SaslClientFactory> factoryOperator = PrivilegedSaslClientFactory::new;
-        factoryOperator = and(factoryOperator, factory -> new ProtocolSaslClientFactory(factory, protocol));
+        UnaryOperator<SaslClientFactory> factoryOperator = factory -> new ProtocolSaslClientFactory(factory, protocol);
         if (connectOptions.contains(RemotingOptions.SERVER_NAME)) {
             final String serverName = connectOptions.get(RemotingOptions.SERVER_NAME);
             factoryOperator = and(factoryOperator, factory -> new ServerNameSaslClientFactory(factory, serverName));
         }
-        factoryOperator = and(factoryOperator, saslClientFactoryOperator);
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(RemotingPermission.CONNECT);
