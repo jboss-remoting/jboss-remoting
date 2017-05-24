@@ -32,12 +32,15 @@ import java.nio.ByteBuffer;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.GeneralSecurityException;
+import java.security.KeyStore;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.TrustManagerFactory;
 import javax.security.auth.callback.CallbackHandler;
 
 import java.util.Set;
@@ -57,6 +60,7 @@ import org.xnio.ChannelListener;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.IoUtils;
+import org.xnio.Option;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Pool;
@@ -198,7 +202,33 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         if (useSsl && destination instanceof InetSocketAddress) {
             if (xnioSsl == null) {
                 try {
-                    xnioSsl = xnio.getSslProvider(connectOptions);
+                    Boolean usePKCS = connectOptions.get(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_USEPKCS, false);
+                    String keyStorePassword = connectOptions.get(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_KEYSTOREPASSWORD, "");
+                    String sslProtocol = connectOptions.get(RemoteConnectionProviderFactory.JBOSS_AS_REMOTE_SSLPROTOCOL, "");
+                    if(usePKCS) {
+                        KeyStore ks = KeyStore.getInstance("PKCS11");
+                        ks.load(null, keyStorePassword.toCharArray());
+                        TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                        tmf.init(ks);
+                        KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                        kmf.init(ks, (char[]) null);
+
+                        OptionMap.Builder builder = OptionMap.builder();
+                        for (Option o : connectOptions) {
+                            builder.set(o, connectOptions.get(o));
+                        }
+                        builder.set(Options.SSL_PROTOCOL, sslProtocol);
+
+                        xnioSsl = xnio.getSslProvider(kmf.getKeyManagers(), tmf.getTrustManagers(), builder.getMap());
+
+                    } else {
+
+                        xnioSsl = xnio.getSslProvider(connectOptions);
+                    }
+
+                } catch (IOException e) {
+                    result.setException(sslConfigFailure(e));
+                    return IoUtils.nullCancellable();
                 } catch (GeneralSecurityException e) {
                     result.setException(sslConfigFailure(e));
                     return IoUtils.nullCancellable();
@@ -312,6 +342,10 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     }
 
     private static IOException sslConfigFailure(final GeneralSecurityException e) {
+        return new IOException("Failed to configure SSL", e);
+    }
+
+    private static IOException sslConfigFailure(final IOException e) {
         return new IOException("Failed to configure SSL", e);
     }
 

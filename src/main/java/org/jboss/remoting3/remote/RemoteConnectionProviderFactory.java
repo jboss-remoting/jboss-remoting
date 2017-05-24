@@ -26,7 +26,9 @@ import java.io.IOException;
 import org.jboss.remoting3.spi.ConnectionProvider;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
+import org.xnio.Option;
 import org.xnio.OptionMap;
+import org.xnio.Options;
 
 /**
  * A {@link ConnectionProviderFactory} for the {@code remote} protocol.
@@ -34,6 +36,21 @@ import org.xnio.OptionMap;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class RemoteConnectionProviderFactory implements ConnectionProviderFactory {
+
+    /**
+     * Flag, wheter use PKCS11 keystore in jboss-remoting.
+     */
+    public static final Option<Boolean> JBOSS_AS_REMOTE_USEPKCS = Option.simple(Options.class, "JBOSS_AS_REMOTE_USEPKCS", Boolean.class);
+
+    /**
+     * Keystore password for the PKCS11 keystore for jboss-remoting.
+     */
+    public static final Option<String> JBOSS_AS_REMOTE_KEYSTOREPASSWORD = Option.simple(Options.class, "JBOSS_AS_REMOTE_KEYSTOREPASSWORD", String.class);
+
+    /**
+     * SSL protocol for the PKCS11 keystore for jboss-remoting.
+     */
+    public static final Option<String> JBOSS_AS_REMOTE_SSLPROTOCOL= Option.simple(Options.class, "JBOSS_AS_REMOTE_SSLPROTOCOL", String.class);
 
     /**
      * Construct a new instance.
