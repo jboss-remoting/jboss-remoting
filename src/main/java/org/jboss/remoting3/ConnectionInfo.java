@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -98,12 +97,21 @@ final class ConnectionInfo {
                             final ConnectionInfo outer = ConnectionInfo.this;
                             synchronized (outer) {
                                 assert state == maybeShared;
+                                // transition to the next state and resolve all pending attempts
                                 if (connection.supportsRemoteAuth()) {
                                     // shared!
                                     state = new Shared(futureResult, Collections.emptyMap());
                                 } else {
                                     // unsharable :(
                                     state = new NotShared(Collections.singletonMap(authenticationConfiguration, futureResult));
+                                }
+                                synchronized (maybeShared.pendingAttempts) {
+                                    for (Map.Entry<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempt : maybeShared.pendingAttempts.entrySet()) {
+                                        final AuthenticationConfiguration pendingAuthenticationConfiguration = pendingAttempt.getKey();
+                                        final FutureResult<Connection> pendingFutureResult = pendingAttempt.getValue();
+                                        final IoFuture<Connection> realAttempt = outer.getConnection(endpoint, key, pendingAuthenticationConfiguration, true);
+                                        splice(pendingFutureResult, realAttempt, pendingAuthenticationConfiguration);
+                                    }
                                 }
                             }
                         }
@@ -133,7 +141,7 @@ final class ConnectionInfo {
     final class MaybeShared extends State {
         private final AuthenticationConfiguration authenticationConfiguration;
         private final IoFuture<Connection> attempt;
-        private final Map<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempts = new ConcurrentHashMap<>();
+        private final Map<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempts = new HashMap<>();
 
         MaybeShared(final AuthenticationConfiguration authenticationConfiguration, final IoFuture<Connection> attempt) {
             this.authenticationConfiguration = authenticationConfiguration;
@@ -141,43 +149,33 @@ final class ConnectionInfo {
         }
 
         IoFuture<Connection> getConnection(final EndpointImpl endpoint, final ConnectionKey key, final AuthenticationConfiguration authenticationConfiguration, boolean doConnect) {
-            if (authenticationConfiguration.equals(this.authenticationConfiguration)) {
-                return attempt;
-            } else {
-                FutureResult<Connection> futureResult = pendingAttempts.get(authenticationConfiguration);
-                if (futureResult != null) {
-                    return futureResult.getIoFuture();
+            synchronized (pendingAttempts) {
+                if (authenticationConfiguration.equals(this.authenticationConfiguration)) {
+                    return attempt;
                 } else {
-                    if (! doConnect) {
-                        return null;
-                    }
-                    futureResult = new FutureResult<>(endpoint.getExecutor());
-                    final FutureResult<Connection> appearing = pendingAttempts.putIfAbsent(authenticationConfiguration, futureResult);
-                    if (appearing != null) {
-                        return appearing.getIoFuture();
-                    }
-                }
-                assert doConnect;
-                final IoFuture<Connection> ioFuture = futureResult.getIoFuture();
-                final AtomicBoolean cancelFlag = new AtomicBoolean();
-                final FutureResult<Connection> finalFutureResult = futureResult;
-                futureResult.addCancelHandler(new Cancellable() {
-                    public Cancellable cancel() {
-                        cancelFlag.set(true);
-                        finalFutureResult.setCancelled();
-                        return this;
-                    }
-                });
-                attempt.addNotifier((f2, futureResult1) -> {
-                    if (cancelFlag.get()) {
-                        futureResult1.setCancelled();
+                    FutureResult<Connection> futureResult = pendingAttempts.get(authenticationConfiguration);
+                    if (futureResult != null) {
+                        return futureResult.getIoFuture();
                     } else {
-                        final IoFuture<Connection> realAttempt = ConnectionInfo.this.getConnection(endpoint, key, authenticationConfiguration, true);
-                        futureResult1.addCancelHandler(realAttempt);
-                        splice(futureResult1, realAttempt, authenticationConfiguration);
+                        if (! doConnect) {
+                            return null;
+                        }
+                        futureResult = new FutureResult<>(endpoint.getExecutor());
+                        pendingAttempts.put(authenticationConfiguration, futureResult);
                     }
-                }, futureResult);
-                return ioFuture;
+                    assert doConnect;
+                    final IoFuture<Connection> ioFuture = futureResult.getIoFuture();
+                    final AtomicBoolean cancelFlag = new AtomicBoolean();
+                    final FutureResult<Connection> finalFutureResult = futureResult;
+                    futureResult.addCancelHandler(new Cancellable() {
+                        public Cancellable cancel() {
+                            cancelFlag.set(true);
+                            finalFutureResult.setCancelled();
+                            return this;
+                        }
+                    });
+                    return ioFuture;
+                }
             }
         }
 
