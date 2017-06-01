@@ -526,7 +526,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(RemotingPermission.CONNECT);
         }
-        final String scheme = destination.getScheme();
+        final String scheme = AUTH_CONFIGURATION_CLIENT.getRealProtocol(destination, configuration);
         synchronized (connectionLock) {
             boolean ok = false;
             try {
