@@ -587,6 +587,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     protected void closeAction() throws IOException {
         sendCloseRequest();
         remoteConnection.shutdownWrites();
+        remoteConnection.getMessageReader().shutdownReads();
         // now these guys can't send useless messages
         closePendingChannels();
         closeAllChannels();
