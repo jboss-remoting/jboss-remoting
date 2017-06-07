@@ -499,10 +499,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
     public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationContext authenticationContext) {
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
-        final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, authenticationContext, - 1, null, null, "connect");
+        final AuthenticationConfiguration configuration = client.getAuthenticationConfiguration(destination, authenticationContext, - 1, null, null);
         final SSLContext sslContext;
         try {
-            sslContext = client.getSSLContext(destination, authenticationContext, null, null, null);
+            sslContext = client.getSSLContext(destination, authenticationContext, null, null);
         } catch (GeneralSecurityException e) {
             return new FailedIoFuture<>(Messages.conn.failedToConfigureSslContext(e));
         }
