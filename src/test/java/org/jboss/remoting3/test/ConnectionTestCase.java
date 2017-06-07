@@ -72,6 +72,7 @@ import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
 import org.wildfly.security.permission.PermissionVerifier;
+import org.wildfly.security.sasl.SaslMechanismSelector;
 import org.wildfly.security.sasl.util.SaslMechanismInformation;
 import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
 import org.xnio.IoFuture;
@@ -198,7 +199,7 @@ public class ConnectionTestCase {
         }, OptionMap.EMPTY);
         final AtomicReferenceArray<Connection> connections = new AtomicReferenceArray<Connection>(CONNECTION_COUNT);
         for (int h = 0; h < CONNECTION_COUNT; h ++) {
-            IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").allowSaslMechanisms("SCRAM-SHA-256")).run(new PrivilegedAction<IoFuture<Connection>>() {
+            IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").setSaslMechanismSelector(SaslMechanismSelector.NONE.addMechanism("SCRAM-SHA-256"))).run(new PrivilegedAction<IoFuture<Connection>>() {
                 public IoFuture<Connection> run() {
                     try {
                         return clientEndpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY);
@@ -255,7 +256,7 @@ public class ConnectionTestCase {
 
     @Test
     public void rejectUnknownService() throws Exception {
-        final Connection connection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").allowSaslMechanisms("SCRAM-SHA-256")).run(new PrivilegedAction<Connection>() {
+        final Connection connection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").setSaslMechanismSelector(SaslMechanismSelector.NONE.addMechanism("SCRAM-SHA-256"))).run(new PrivilegedAction<Connection>() {
             public Connection run() {
                 try {
                     return clientEndpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY).get();
@@ -294,7 +295,7 @@ public class ConnectionTestCase {
             }
         }, OptionMap.create(RemotingOptions.RECEIVE_WINDOW_SIZE, MAX_SERVER_RECEIVE, RemotingOptions.TRANSMIT_WINDOW_SIZE, MAX_SERVER_TRANSMIT));
 
-        final Connection connection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").allowSaslMechanisms("SCRAM-SHA-256")).run(new PrivilegedAction<Connection>() {
+        final Connection connection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").setSaslMechanismSelector(SaslMechanismSelector.NONE.addMechanism("SCRAM-SHA-256"))).run(new PrivilegedAction<Connection>() {
             public Connection run() {
                 try {
                     return clientEndpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY).get();
