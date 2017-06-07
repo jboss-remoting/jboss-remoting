@@ -30,6 +30,7 @@ import javax.security.sasl.Sasl;
 
 import org.wildfly.common.Assert;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
+import org.wildfly.security.sasl.SaslMechanismSelector;
 import org.xnio.Option;
 import org.xnio.OptionMap;
 import org.xnio.Options;
@@ -71,14 +72,19 @@ public final class RemotingOptions {
         if (authzId != null) {
             authenticationConfiguration = authenticationConfiguration.useAuthorizationName(authzId);
         }
-        final Sequence<String> disallowedMechs = optionMap.get(Options.SASL_DISALLOWED_MECHANISMS);
-        if (disallowedMechs != null) {
-            authenticationConfiguration = authenticationConfiguration.forbidSaslMechanisms(disallowedMechs.toArray(NO_STRINGS));
-        }
+
         final Sequence<String> mechanisms = optionMap.get(Options.SASL_MECHANISMS);
-        if (mechanisms != null) {
-            authenticationConfiguration = authenticationConfiguration.allowSaslMechanisms(mechanisms.toArray(NO_STRINGS));
+        final Sequence<String> disallowedMechs = optionMap.get(Options.SASL_DISALLOWED_MECHANISMS);
+        if (mechanisms != null || disallowedMechs != null) {
+            SaslMechanismSelector selector = mechanisms != null ? SaslMechanismSelector.NONE.addMechanisms(mechanisms.toArray(NO_STRINGS)) : SaslMechanismSelector.DEFAULT;
+
+            if (disallowedMechs != null) {
+                selector = selector.forbidMechanisms(disallowedMechs.toArray(NO_STRINGS));
+            }
+
+            authenticationConfiguration = authenticationConfiguration.setSaslMechanismSelector(selector);
         }
+
         final Map<String, String> saslPropertiesMap = new HashMap<>();
         final Sequence<Property> properties = optionMap.get(Options.SASL_PROPERTIES);
         if (properties != null) {
