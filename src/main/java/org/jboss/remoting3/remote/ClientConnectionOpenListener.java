@@ -258,6 +258,10 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                 return;
             }
             if (message == MessageReader.EOF_MARKER) {
+                if(!failedMechs.isEmpty()){
+                    connection.handleException(allMechanismsFailed());
+                    return;
+                }
                 connection.handleException(client.abruptClose(connection));
                 return;
             }
