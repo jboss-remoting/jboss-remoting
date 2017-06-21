@@ -489,11 +489,10 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                         server.tracef(e, "Server sending authentication rejected");
                         sendBuffer.put(p, Protocol.AUTH_REJECTED);
                         saslDispose(saslServer);
-                        if (isInitial) {
-                            if (retryCount.decrementAndGet() <= 0) {
-                                close = true;
-                            }
-                        } else {
+                        if (retryCount.get() <= 0) {
+                            server.tracef("No more authentication attempts allowed, closing the connection");
+                            close = true;
+                        } else if (!isInitial) {
                             connection.setReadListener(new Initial(), false);
                         }
                     }
