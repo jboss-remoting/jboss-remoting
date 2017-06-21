@@ -56,10 +56,9 @@ public final class RemotingOptions {
         Assert.checkNotNullParam("optionMap", optionMap);
         Assert.checkNotNullParam("authenticationConfiguration", authenticationConfiguration);
 
-        final String protocol = optionMap.get(SASL_PROTOCOL);
-        if (protocol != null) {
-            authenticationConfiguration = authenticationConfiguration.useProtocol(protocol);
-        }
+        final String saslProtocol = optionMap.get(SASL_PROTOCOL);
+        authenticationConfiguration = authenticationConfiguration.useSaslProtocol(saslProtocol != null ? saslProtocol : RemotingOptions.DEFAULT_SASL_PROTOCOL);
+
         final String realm = optionMap.get(AUTH_REALM);
         if (realm != null) {
             authenticationConfiguration = authenticationConfiguration.useRealm(realm);

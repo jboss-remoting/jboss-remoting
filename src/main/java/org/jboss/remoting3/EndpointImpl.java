@@ -70,7 +70,6 @@ import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
-import org.wildfly.security.sasl.util.PrivilegedSaslClientFactory;
 import org.wildfly.security.sasl.util.ProtocolSaslClientFactory;
 import org.wildfly.security.sasl.util.ServerNameSaslClientFactory;
 
@@ -512,7 +511,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final SSLContext sslContext) {
         Assert.checkNotNullParam("destination", destination);
         Assert.checkNotNullParam("connectOptions", connectOptions);
-        final String protocol = connectOptions.contains(RemotingOptions.SASL_PROTOCOL) ? connectOptions.get(RemotingOptions.SASL_PROTOCOL) : RemotingOptions.DEFAULT_SASL_PROTOCOL;
+        final String protocol =  AUTH_CONFIGURATION_CLIENT.getSaslProtocol(configuration) != null ? AUTH_CONFIGURATION_CLIENT.getSaslProtocol(configuration)
+                : connectOptions.contains(RemotingOptions.SASL_PROTOCOL) ? connectOptions.get(RemotingOptions.SASL_PROTOCOL)
+                : RemotingOptions.DEFAULT_SASL_PROTOCOL;
         UnaryOperator<SaslClientFactory> factoryOperator = factory -> new ProtocolSaslClientFactory(factory, protocol);
         if (connectOptions.contains(RemotingOptions.SERVER_NAME)) {
             final String serverName = connectOptions.get(RemotingOptions.SERVER_NAME);
