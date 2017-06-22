@@ -26,8 +26,8 @@ import java.security.Principal;
 import java.security.PrivilegedAction;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -218,6 +218,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
             final ConnectionHandler connectionHandler = connection.getConnectionHandler();
             // try each mech in turn, unless the peer explicitly rejects
             Set<String> mechanisms = new LinkedHashSet<>(offeredMechanisms);
+            final LinkedHashMap<String, Throwable> triedMechs = new LinkedHashMap<>();
             while (! mechanisms.isEmpty()) {
                 final SSLSession sslSession = connectionHandler.getSslSession();
                 UnaryOperator<SaslClientFactory> factoryOperator = this.factoryOperator;
@@ -233,9 +234,17 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                     break;
                 }
                 byte[] response;
-                try  {
+                try {
                     if (saslClient.hasInitialResponse()) {
-                        response = saslClient.evaluateChallenge(NO_BYTES);
+                        try {
+                            response = saslClient.evaluateChallenge(NO_BYTES);
+                        } catch (SaslException e) {
+                            log.tracef(e, "Mechanism failed (client): \"%s\"", saslClient.getMechanismName());
+                            mechanisms.remove(saslClient.getMechanismName());
+                            triedMechs.put(saslClient.getMechanismName(), log.authenticationExceptionIo(e));
+                            safeDispose(saslClient);
+                            continue;
+                        }
                     } else {
                         response = null;
                     }
@@ -247,7 +256,6 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                         return;
                     }
                 } catch (IOException e) {
-                    // including SaslException
                     authMap.remove(authentication);
                     safeDispose(saslClient);
                     futureResult.setException(log.authenticationExceptionIo(e));
@@ -278,6 +286,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                         } catch (SaslException e) {
                             log.tracef(e, "Mechanism failed (client): \"%s\"", saslClient.getMechanismName());
                             mechanisms.remove(saslClient.getMechanismName());
+                            triedMechs.put(saslClient.getMechanismName(), log.authenticationExceptionIo(e));
                             safeDispose(saslClient);
                             break;
                         }
@@ -303,6 +312,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                             } catch (SaslException e) {
                                 log.tracef(e, "Mechanism failed (client, possibly failed to verify server): \"%s\"", saslClient.getMechanismName());
                                 mechanisms.remove(saslClient.getMechanismName());
+                                triedMechs.put(saslClient.getMechanismName(), log.authenticationExceptionIo(e));
                                 safeDispose(saslClient);
                                 break;
                             }
@@ -328,15 +338,11 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                         return;
                     } else if (status == REJECT) {
                         // auth rejected (server)
-                        try {
-                            connectionHandler.sendAuthDelete(id);
-                        } catch (IOException ignored) {
-                            log.trace("Send failed", ignored);
-                        }
+                        log.tracef("Mechanism failed (client received authentication rejected): \"%s\"", saslClient.getMechanismName());
+                        mechanisms.remove(saslClient.getMechanismName());
+                        triedMechs.put(saslClient.getMechanismName(), log.serverRejectedAuthentication());
                         safeDispose(saslClient);
-                        futureResult.setException(log.serverRejectedAuthentication());
-                        futureAuths.remove(configuration, futureResult.getIoFuture());
-                        return;
+                        break;
                     } else if (status == CLOSED) {
                         safeDispose(saslClient);
                         futureResult.setException(log.authenticationExceptionClosed());
@@ -352,18 +358,11 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                     }
                 }
             }
-            // calculate what mechanisms we've tried
-            Set<String> triedMechs = new HashSet<>(offeredMechanisms);
-            triedMechs.removeAll(mechanisms);
-            // whatever is left is what we've tried
-            Iterator<String> iterator = triedMechs.iterator();
+            // no mechs left to try
             String triedStr;
-            if (iterator.hasNext()) {
-                StringBuilder b = new StringBuilder();
-                b.append(iterator.next());
-                while (iterator.hasNext()) {
-                    b.append(',').append(iterator.next());
-                }
+            if (! triedMechs.isEmpty()) {
+                final StringBuilder b = new StringBuilder();
+                triedMechs.forEach((mechanismName, throwable) -> b.append("\n   ").append(mechanismName).append(": ").append(throwable.toString()));
                 triedStr = b.toString();
             } else {
                 triedStr = "(none)";
