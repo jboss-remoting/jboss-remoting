@@ -52,6 +52,8 @@ public final class RemotingOptions {
      */
     public static final int DEFAULT_RECEIVE_BUFFER_SIZE = 8192;
 
+    public static final int MAX_RECEIVE_BUFFER_SIZE = 15000;
+
     /**
      * The size of allocated buffer regions.
      */
