@@ -27,7 +27,7 @@
 
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting</artifactId>
-    <version>5.0.0.CR2-SNAPSHOT</version>
+    <version>5.0.0.CR2</version>
 
     <packaging>jar</packaging>
 
