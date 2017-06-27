@@ -139,7 +139,7 @@ public class OutboundMessageCountTestCase {
             public void registrationTerminated() {
             }
         }, OptionMap.EMPTY);
-        IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass").setSaslMechanismSelector(SaslMechanismSelector.NONE.addMechanism("SCRAM-SHA-256"))).run(new PrivilegedAction<IoFuture<Connection>>() {
+        IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.empty().useName("bob").usePassword("pass").setSaslMechanismSelector(SaslMechanismSelector.NONE.addMechanism("SCRAM-SHA-256"))).run(new PrivilegedAction<IoFuture<Connection>>() {
             public IoFuture<Connection> run() {
                 try {
                     return endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.EMPTY);

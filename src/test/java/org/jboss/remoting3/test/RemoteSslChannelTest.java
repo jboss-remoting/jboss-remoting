@@ -109,7 +109,7 @@ public final class RemoteSslChannelTest extends ChannelTestBase {
             public void registrationTerminated() {
             }
         }, OptionMap.EMPTY);
-        IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass")).run(new PrivilegedAction<IoFuture<Connection>>() {
+        IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.empty().useName("bob").usePassword("pass")).run(new PrivilegedAction<IoFuture<Connection>>() {
             public IoFuture<Connection> run() {
                 try {
                     return endpoint.connect(new URI("remote://localhost:30123"), OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE));

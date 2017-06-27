@@ -120,7 +120,7 @@ public class TimeOutConnectionTestCase {
                 final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
                 mainRealm.setPasswordMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
                 // create connect and close endpoint threads
-                IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.EMPTY.useName("bob").usePassword("pass")).run(new PrivilegedAction<IoFuture<Connection>>() {
+                IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.empty().useName("bob").usePassword("pass")).run(new PrivilegedAction<IoFuture<Connection>>() {
                     public IoFuture<Connection> run() {
                         try {
                             return ep.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY);
