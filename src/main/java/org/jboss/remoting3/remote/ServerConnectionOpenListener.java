@@ -255,11 +255,13 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                         }
                         final String protocol = optionMap.get(RemotingOptions.SASL_PROTOCOL, RemotingOptions.DEFAULT_SASL_PROTOCOL);
                         final Map<String, String> saslProperties = getSaslProperties(optionMap);
+                        final SslChannel sslChannel = connection.getSslChannel();
+                        final SSLSession sslSession = sslChannel == null ? null : sslChannel.getSslSession();
 
                         SaslServer saslServer;
                         try {
                             saslServer = saslAuthenticationFactory.createMechanism(mechName, saslServerFactory -> {
-                                saslServerFactory = "EXTERNAL".equals(mechName) ? new SSLSaslServerFactory(saslServerFactory, () -> connection.getSslChannel().getSslSession()) : saslServerFactory;
+                                saslServerFactory = sslSession != null ? new SSLSaslServerFactory(saslServerFactory, () -> sslSession) : saslServerFactory;
                                 saslServerFactory = new ServerNameSaslServerFactory(saslServerFactory, serverName);
                                 saslServerFactory = new ProtocolSaslServerFactory(saslServerFactory, protocol);
                                 saslServerFactory = saslProperties != null ? new PropertiesSaslServerFactory(saslServerFactory, saslProperties) : saslServerFactory;

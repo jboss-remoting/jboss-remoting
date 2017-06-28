@@ -831,7 +831,6 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 }
                 boolean ok = false;
                 try {
-                    // XXX: we need to know if we in fact authenticated to the client via SSL, in which case we actually have an X500Principal
                     final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, authenticationFactory, AuthenticationConfiguration.empty(), saslProtocol);
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
