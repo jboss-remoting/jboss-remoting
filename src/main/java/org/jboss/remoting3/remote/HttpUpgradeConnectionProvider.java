@@ -90,6 +90,8 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
     public static final String SEC_JBOSS_REMOTING_ACCEPT= "sec-jbossremoting-accept";
     public static final String UPGRADE = "Upgrade";
 
+    private static final int BUFFER_SIZE = 8192;
+
     private final ProviderInterface providerInterface = new ProviderInterface();
 
     HttpUpgradeConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext) throws IOException {
@@ -225,10 +227,10 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
                 // ignore
             }
 
-            Pool<ByteBuffer> messageBufferPool = RemoteConnectionProvider.USE_POOLING ? GLOBAL_POOL : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, 8192);
+            Pool<ByteBuffer> messageBufferPool = RemoteConnectionProvider.USE_POOLING ? GLOBAL_POOL : Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, BUFFER_SIZE);
             if (RemoteConnectionProvider.LEAK_DEBUGGING) messageBufferPool = new DebuggingBufferPool(messageBufferPool);
 
-            final FramedMessageChannel messageChannel = new FramedMessageChannel(channel, ByteBuffer.allocate(8192 + 4), ByteBuffer.allocate(8192 + 4));
+            final RemotingMessageChannel messageChannel = new RemotingMessageChannel(channel, ByteBuffer.allocate(BUFFER_SIZE + 4), ByteBuffer.allocate(BUFFER_SIZE + 4));
             final RemoteConnection connection = new RemoteConnection(messageBufferPool, channel, messageChannel, optionMap, HttpUpgradeConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), authenticationProvider, optionMap, accessControlContext);
             messageChannel.getWriteSetter().set(connection.getWriteListener());

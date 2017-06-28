@@ -53,6 +53,7 @@ import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
+import org.xnio.BufferAllocator;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.OptionMap;
@@ -247,8 +248,21 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
         }
 
         public void handleEvent(final ConnectedMessageChannel channel) {
-            final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
+            Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
+                if (channel instanceof RemotingMessageChannel) {
+                    try {
+                        int messageLength = ((RemotingMessageChannel) channel).readMessageLength();
+                        if (messageLength > pooledReceiveBuffer.getResource().capacity() && messageLength < RemotingOptions.MAX_RECEIVE_BUFFER_SIZE) {
+                            pooledReceiveBuffer = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageLength).allocate();
+                            ((RemotingMessageChannel) channel).adjustToMessageLength(messageLength);
+                        }
+                    } catch (IOException e) {
+                        connection.handleException(e);
+                        return;
+                    }
+                }
+
                 final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
                 int res;
                 try {
@@ -480,7 +494,13 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     return;
                                 }
                                 // Prepare the request message body
-                                final Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
+                                Pooled<ByteBuffer> pooledSendBuffer = connection.allocate();
+
+                                if (response != null && response.length > pooledSendBuffer.getResource().capacity()) {
+                                    pooledSendBuffer = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, response.length + 100).allocate();
+                                    connection.adjustToMessageLength(response.length + 100);
+                                }
+
                                 boolean ok = false;
                                 try {
                                     final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
