@@ -285,6 +285,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
             try {
                 challenge = saslServer.evaluateResponse(response);
             } catch (SaslException e) {
+                log.trace("Authentication failed at response evaluation", e);
                 try {
                     connectionHandler.sendAuthReject(id);
                 } catch (IOException e1) {
