@@ -570,7 +570,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         }
                         synchronized (connectionLock) {
                             log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, protocolRegistration.getContext(), destination, null, configuration, protocol, getName());
+                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, protocolRegistration.getContext(), destination, null, configuration, protocol);
                             connections.add(connection);
                             connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                             connection.addCloseHandler(resourceCloseHandler);
@@ -613,8 +613,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         resourceUntick("Connection provider for " + uriScheme);
         try {
             final String saslProtocol = optionMap.get(RemotingOptions.SASL_PROTOCOL, RemotingOptions.DEFAULT_SASL_PROTOCOL);
-            final String serverName = optionMap.get(RemotingOptions.SERVER_NAME); // may be null!
-            final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl(uriScheme, saslProtocol, serverName);
+            final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl(uriScheme, saslProtocol);
             final ConnectionProvider provider = providerFactory.createInstance(context, optionMap, uriScheme);
             final ProtocolRegistration protocolRegistration = new ProtocolRegistration(provider, context);
             try {
@@ -817,12 +816,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         private final String protocol;
         private final String saslProtocol;
-        private final String saslServerName;
 
-        ConnectionProviderContextImpl(final String protocol, final String saslProtocol, final String saslServerName) {
+        ConnectionProviderContextImpl(final String protocol, final String saslProtocol) {
             this.protocol = protocol;
             this.saslProtocol = saslProtocol;
-            this.saslServerName = saslServerName;
         }
 
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory, final SaslAuthenticationFactory authenticationFactory) {
@@ -834,7 +831,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 }
                 boolean ok = false;
                 try {
-                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, authenticationFactory, AuthenticationConfiguration.empty(), saslProtocol, saslServerName);
+                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, authenticationFactory, AuthenticationConfiguration.empty(), saslProtocol);
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                     connection.addCloseHandler(connectionCloseHandler);

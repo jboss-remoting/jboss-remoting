@@ -472,8 +472,9 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                                 if (!isInitial && ("auth-int".equals(qop) || "auth-conf".equals(qop))) {
                                     connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                 }
+                                final String peerName = connection.getPeerAddress().getHostName();
                                 final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                    connectionContext, connection, maxInboundChannels, maxOutboundChannels, AnonymousPrincipal.getInstance(), remoteEndpointName, behavior, authCap, offeredMechanisms);
+                                    connectionContext, connection, maxInboundChannels, maxOutboundChannels, AnonymousPrincipal.getInstance(), remoteEndpointName, behavior, authCap, offeredMechanisms, peerName, serverName);
                                 connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                 final SecurityIdentity identity = (SecurityIdentity) saslServer.getNegotiatedProperty(WildFlySasl.SECURITY_IDENTITY);
                                 connection.setIdentity(identity == null ? saslAuthenticationFactory.getSecurityDomain().getAnonymousSecurityIdentity() : identity);

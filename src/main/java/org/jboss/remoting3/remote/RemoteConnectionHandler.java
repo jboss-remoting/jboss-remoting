@@ -94,8 +94,10 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
     private final Principal principal;
+    private final String peerSaslServerName;
+    private final String localSaslServerName;
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final int maxInboundChannels, final int maxOutboundChannels, final Principal principal, final String remoteEndpointName, final int behavior, final boolean supportsRemoteAuth, final Set<String> offeredMechanisms) {
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final int maxInboundChannels, final int maxOutboundChannels, final Principal principal, final String remoteEndpointName, final int behavior, final boolean supportsRemoteAuth, final Set<String> offeredMechanisms, final String peerSaslServerName, final String localSaslServerName) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
@@ -106,6 +108,8 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
         this.behavior = behavior;
         this.supportsRemoteAuth = supportsRemoteAuth;
         this.offeredMechanisms = offeredMechanisms;
+        this.peerSaslServerName = peerSaslServerName;
+        this.localSaslServerName = localSaslServerName;
     }
 
     /**
@@ -562,6 +566,14 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     public SocketAddress getPeerAddress() {
         return remoteConnection.getPeerAddress();
+    }
+
+    public String getPeerSaslServerName() {
+        return peerSaslServerName;
+    }
+
+    public String getLocalSaslServerName() {
+        return localSaslServerName;
     }
 
     public SecurityIdentity getLocalIdentity() {

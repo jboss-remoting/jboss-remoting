@@ -77,6 +77,20 @@ public interface ConnectionHandler extends HandleableCloseable<ConnectionHandler
     SocketAddress getPeerAddress();
 
     /**
+     * Get the SASL server name that the peer gives for itself.
+     *
+     * @return the SASL server name that the peer gives for itself (must not be {@code null})
+     */
+    String getPeerSaslServerName();
+
+    /**
+     * Get the local SASL server name that we have given to the peer.
+     *
+     * @return the local SASL server name that we have given to the peer (must not be {@code null})
+     */
+    String getLocalSaslServerName();
+
+    /**
      * Get the local identity corresponding to the peer authentication which was performed on this connection, if it
      * is an incoming connection.  Outbound connections may return {@code null} for this property.
      *

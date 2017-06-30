@@ -708,7 +708,8 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 final ConnectionHandlerFactory connectionHandlerFactory = connectionContext -> {
 
                                     // this happens immediately.
-                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, principalObj instanceof Principal ? (Principal) principalObj : AnonymousPrincipal.getInstance(), remoteEndpointName, behavior, authCap, offeredMechanisms);
+                                    final String hostName = connection.getLocalAddress().getHostName();
+                                    final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, maxInboundChannels, maxOutboundChannels, principalObj instanceof Principal ? (Principal) principalObj : AnonymousPrincipal.getInstance(), remoteEndpointName, behavior, authCap, offeredMechanisms, serverName, hostName);
                                     connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                     connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                     return connectionHandler;
