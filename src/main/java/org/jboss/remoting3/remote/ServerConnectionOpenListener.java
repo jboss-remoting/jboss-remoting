@@ -137,6 +137,24 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
         }
     }
 
+    private void resumeReads() {
+        connection.getChannel().getIoThread().execute(new Runnable() {
+            @Override
+            public void run() {
+                connection.getChannel().resumeReads();
+            }
+        });
+    }
+
+    private void suspendReads() {
+        connection.getChannel().getIoThread().execute(new Runnable() {
+            @Override
+            public void run() {
+                connection.getChannel().suspendReads();
+            }
+        });
+    }
+
     final class Initial implements ChannelListener<ConnectedMessageChannel> {
         private boolean starttls;
         private Map<String, ?> propertyMap;
@@ -330,7 +348,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             rejectAuthentication(mechName);
                             return;
                         }
-                        connection.getChannel().suspendReads();
+                        suspendReads();
                         connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, callbackHandler, pooledBuffer, remoteEndpointName, behavior, channelsIn, channelsOut));
                         free = false;
                         return;
@@ -540,7 +558,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     sendBuffer.flip();
                     connection.send(pooled, close);
                     ok = true;
-                    connection.getChannel().resumeReads();
+                    resumeReads();
                     return;
                 } finally {
                     if (!ok) {
@@ -551,7 +569,6 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                 buffer.free();
             }
         }
-
 
         private Collection<Principal> createPrincipals() {
             final Set<Principal> principals = new LinkedHashSet<Principal>();
@@ -634,7 +651,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                     }
                     case Protocol.AUTH_RESPONSE: {
                         server.tracef("Server received authentication response");
-                        connection.getChannel().suspendReads();
+                        suspendReads();
                         connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, authorizingCallbackHandler, pooledBuffer, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels));
                         free = false;
                         return;
