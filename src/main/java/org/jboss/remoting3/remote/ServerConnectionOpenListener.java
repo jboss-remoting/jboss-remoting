@@ -120,6 +120,24 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
         }
     }
 
+    private void resumeReads() {
+        connection.getMessageReader().getSourceChannel().getIoThread().execute(new Runnable() {
+            @Override
+            public void run() {
+                connection.getMessageReader().resumeReads();
+            }
+        });
+    }
+
+    private void suspendReads() {
+        connection.getMessageReader().getSourceChannel().getIoThread().execute(new Runnable() {
+            @Override
+            public void run() {
+                connection.getMessageReader().suspendReads();
+            }
+        });
+    }
+
     final class Initial implements ChannelListener<ConduitStreamSourceChannel> {
         private boolean starttls;
         private Set<String> allowedMechanisms;
@@ -275,7 +293,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                             rejectAuthentication(mechName);
                             return;
                         }
-                        connection.getMessageReader().suspendReads();
+                        suspendReads();
                         connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, message, remoteEndpointName, behavior, channelsIn, channelsOut, authCap, null));
                         free = false;
                         return;
@@ -502,7 +520,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                     sendBuffer.flip();
                     connection.send(pooled, close);
                     ok = true;
-                    connection.getMessageReader().resumeReads();
+                    resumeReads();
                     return;
                 } finally {
                     if (!ok) {
@@ -567,7 +585,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                     }
                     case Protocol.AUTH_RESPONSE: {
                         server.tracef("Server received authentication response");
-                        connection.getMessageReader().suspendReads();
+                        suspendReads();
                         connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, message, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels, authCap, offeredMechanisms));
                         free = false;
                         return;
