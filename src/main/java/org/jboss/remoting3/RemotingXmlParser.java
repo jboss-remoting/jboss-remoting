@@ -22,6 +22,7 @@ import static javax.xml.stream.XMLStreamConstants.END_ELEMENT;
 import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.Collections;
 
 import org.wildfly.client.config.ClientConfiguration;
@@ -53,10 +54,7 @@ final class RemotingXmlParser {
     private static void parseDocument(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
         if (reader.hasNext()) switch (reader.nextTag()) {
             case START_ELEMENT: {
-                switch (reader.getNamespaceURI()) {
-                    case NS_REMOTING_5_0: break;
-                    default: throw reader.unexpectedElement();
-                }
+                checkElementNamespace(reader);
                 switch (reader.getLocalName()) {
                     case "endpoint": {
                         parseEndpointElement(reader, builder);
@@ -75,6 +73,7 @@ final class RemotingXmlParser {
     private static void parseEndpointElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
         final int attributeCount = reader.getAttributeCount();
         for (int i = 0; i < attributeCount; i++) {
+            checkAttributeNamespace(reader, i);
             switch (reader.getAttributeLocalName(i)) {
                 case "name": {
                     builder.setEndpointName(reader.getAttributeValueResolved(i));
@@ -88,13 +87,14 @@ final class RemotingXmlParser {
         while (reader.hasNext()) {
             switch (reader.nextTag()) {
                 case START_ELEMENT: {
-                    switch (reader.getNamespaceURI()) {
-                        case NS_REMOTING_5_0: break;
-                        default: throw reader.unexpectedElement();
-                    }
+                    checkElementNamespace(reader);
                     switch (reader.getLocalName()) {
                         case "providers": {
                             parseProvidersElement(reader, builder);
+                            break;
+                        }
+                        case "connections": {
+                            parseConnectionsElement(reader, builder);
                             break;
                         }
                         default: throw reader.unexpectedElement();
@@ -106,20 +106,15 @@ final class RemotingXmlParser {
                 }
             }
         }
+        throw reader.unexpectedDocumentEnd();
     }
 
     private static void parseProvidersElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
-        final int attributeCount = reader.getAttributeCount();
-        if (attributeCount > 0) {
-            throw reader.unexpectedAttribute(0);
-        }
+        expectNoAttributes(reader);
         while (reader.hasNext()) {
             switch (reader.nextTag()) {
                 case START_ELEMENT: {
-                    switch (reader.getNamespaceURI()) {
-                        case NS_REMOTING_5_0: break;
-                        default: throw reader.unexpectedElement();
-                    }
+                    checkElementNamespace(reader);
                     switch (reader.getLocalName()) {
                         case "provider": {
                             parseProviderElement(reader, builder);
@@ -132,6 +127,14 @@ final class RemotingXmlParser {
                     return;
                 }
             }
+        }
+        throw reader.unexpectedDocumentEnd();
+    }
+
+    private static void expectNoAttributes(final ConfigurationXMLStreamReader reader) throws ConfigXMLParseException {
+        final int attributeCount = reader.getAttributeCount();
+        if (attributeCount > 0) {
+            throw reader.unexpectedAttribute(0);
         }
     }
 
@@ -188,6 +191,108 @@ final class RemotingXmlParser {
             default: {
                 throw reader.unexpectedElement();
             }
+        }
+    }
+
+    private static void parseConnectionsElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
+        expectNoAttributes(reader);
+        while (reader.hasNext()) {
+            switch (reader.nextTag()) {
+                case START_ELEMENT: {
+                    checkElementNamespace(reader);
+                    switch (reader.getLocalName()) {
+                        case "connection": {
+                            parseConnectionElement(reader, builder);
+                            break;
+                        }
+                        default: throw reader.unexpectedElement();
+                    }
+                }
+                case END_ELEMENT: {
+                    return;
+                }
+            }
+        }
+        throw reader.unexpectedDocumentEnd();
+    }
+
+    private static void parseConnectionElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
+        final int attributeCount = reader.getAttributeCount();
+        String destination = null;
+        int readTimeout = -1;
+        int writeTimeout = -1;
+        int ipTrafficClass = -1;
+        boolean setTcpKeepAlive = false;
+        boolean tcpKeepAlive = false;
+        int heartbeatInterval = -1;
+        for (int i = 0; i < attributeCount; i++) {
+            checkAttributeNamespace(reader, i);
+            switch (reader.getAttributeLocalName(i)) {
+                case "destination": {
+                    destination = reader.getAttributeValueResolved(i);
+                    break;
+                }
+                case "read-timeout": {
+                    readTimeout = reader.getIntAttributeValueResolved(i, 1, Integer.MAX_VALUE);
+                    break;
+                }
+                case "write-timeout": {
+                    writeTimeout = reader.getIntAttributeValueResolved(i, 1, Integer.MAX_VALUE);
+                    break;
+                }
+                case "ip-traffic-class": {
+                    ipTrafficClass = reader.getIntAttributeValueResolved(i, 0, 255);
+                    break;
+                }
+                case "tcp-keepalive": {
+                    setTcpKeepAlive = true;
+                    tcpKeepAlive = reader.getBooleanAttributeValueResolved(i);
+                    break;
+                }
+                case "heartbeat-interval": {
+                    heartbeatInterval = reader.getIntAttributeValueResolved(i, 1, Integer.MAX_VALUE);
+                    break;
+                }
+                default: {
+                    throw reader.unexpectedAttribute(i);
+                }
+            }
+        }
+        if (destination == null) {
+            throw reader.missingRequiredAttribute("", "destination");
+        }
+        final ConnectionBuilder connectionBuilder = builder.addConnection(URI.create(destination));
+        if (readTimeout != -1L) {
+            connectionBuilder.setReadTimeout(readTimeout);
+        }
+        if (writeTimeout != -1L) {
+            connectionBuilder.setWriteTimeout(writeTimeout);
+        }
+        if (ipTrafficClass != -1) {
+            connectionBuilder.setIpTrafficClass(ipTrafficClass);
+        }
+        if (setTcpKeepAlive) {
+            connectionBuilder.setTcpKeepAlive(tcpKeepAlive);
+        }
+        if (heartbeatInterval != -1) {
+            connectionBuilder.setHeartbeatInterval(heartbeatInterval);
+        }
+        if (reader.nextTag() != END_ELEMENT) {
+            throw reader.unexpectedContent();
+        }
+    }
+
+    private static void checkAttributeNamespace(final ConfigurationXMLStreamReader reader, final int idx) throws ConfigXMLParseException {
+        final String attributeNamespace = reader.getAttributeNamespace(idx);
+        if (attributeNamespace != null && ! attributeNamespace.isEmpty()) {
+            throw reader.unexpectedAttribute(idx);
+        }
+    }
+
+    private static void checkElementNamespace(final ConfigurationXMLStreamReader reader) throws ConfigXMLParseException {
+        switch (reader.getNamespaceURI()) {
+            case NS_REMOTING_5_0: break;
+            default: throw reader.unexpectedElement();
         }
     }
 }

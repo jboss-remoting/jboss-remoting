@@ -30,6 +30,7 @@
     <xs:complexType name="endpoint-type">
         <xs:all minOccurs="0" maxOccurs="1">
             <xs:element name="providers" type="providers-type" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="connections" type="connections-type" minOccurs="0" maxOccurs="1"/>
         </xs:all>
         <xs:attribute name="name" use="optional" type="xs:string"/>
     </xs:complexType>
@@ -45,6 +46,21 @@
         <xs:attribute name="aliases" use="optional" type="string-list-type"/>
         <xs:attribute name="module" use="optional" type="xs:string"/>
         <xs:attribute name="class" use="optional" type="xs:string"/>
+    </xs:complexType>
+
+    <xs:complexType name="connections-type">
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="connection" type="connection-type"/>
+        </xs:choice>
+    </xs:complexType>
+
+    <xs:complexType name="connection-type">
+        <xs:attribute name="destination" use="required" type="xs:anyURI"/>
+        <xs:attribute name="read-timeout" use="optional" type="xs:positiveInteger"/>
+        <xs:attribute name="write-timeout" use="optional" type="xs:positiveInteger"/>
+        <xs:attribute name="ip-traffic-class" use="optional" type="xs:positiveInteger"/>
+        <xs:attribute name="tcp-keepalive" use="optional" type="xs:boolean"/>
+        <xs:attribute name="heartbeat-interval" use="optional" type="xs:positiveInteger"/>
     </xs:complexType>
 
     <xs:simpleType name="string-list-type">

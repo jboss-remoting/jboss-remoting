@@ -19,6 +19,8 @@
 package org.jboss.remoting3;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
@@ -26,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jboss.remoting3.security.RemotingPermission;
+import org.wildfly.common.Assert;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 
@@ -38,6 +41,7 @@ public final class EndpointBuilder {
     private String endpointName;
     private XnioWorker xnioWorker;
     private List<ConnectionProviderFactoryBuilder> connectionProviderFactoryBuilders;
+    private List<ConnectionBuilder> connectionBuilders;
     private XnioWorker.Builder workerBuilder;
 
     EndpointBuilder() {
@@ -60,11 +64,38 @@ public final class EndpointBuilder {
     }
 
     public ConnectionProviderFactoryBuilder addProvider(final String scheme) {
+        Assert.checkNotNullParam("scheme", scheme);
         final ConnectionProviderFactoryBuilder builder = new ConnectionProviderFactoryBuilder(scheme);
         if (connectionProviderFactoryBuilders == null) {
             connectionProviderFactoryBuilders = new ArrayList<>();
-            connectionProviderFactoryBuilders.add(builder);
         }
+        connectionProviderFactoryBuilders.add(builder);
+        return builder;
+    }
+
+    public ConnectionBuilder addConnection(final URI destination) {
+        Assert.checkNotNullParam("destination", destination);
+        // "sanitize" the destination URI
+        final URI realDestination;
+        try {
+            realDestination = new URI(
+                destination.getScheme(),
+                null,
+                destination.getHost(),
+                destination.getPort(),
+                null,
+                null,
+                null
+            );
+        } catch (URISyntaxException e) {
+            // should be impossible
+            throw new IllegalArgumentException(e);
+        }
+        final ConnectionBuilder builder = new ConnectionBuilder(realDestination);
+        if (connectionBuilders == null) {
+            connectionBuilders = new ArrayList<>();
+        }
+        connectionBuilders.add(builder);
         return builder;
     }
 
@@ -82,6 +113,10 @@ public final class EndpointBuilder {
 
     List<ConnectionProviderFactoryBuilder> getConnectionProviderFactoryBuilders() {
         return connectionProviderFactoryBuilders;
+    }
+
+    List<ConnectionBuilder> getConnectionBuilders() {
+        return connectionBuilders;
     }
 
     public Endpoint build() throws IOException {

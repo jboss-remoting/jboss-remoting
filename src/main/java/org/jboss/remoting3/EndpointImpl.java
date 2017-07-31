@@ -30,8 +30,10 @@ import java.net.URISyntaxException;
 import java.security.GeneralSecurityException;
 import java.security.PrivilegedAction;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -109,6 +111,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final ConcurrentMap<String, ProtocolRegistration> connectionProviders = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, RegisteredServiceImpl> registeredServices = new ConcurrentHashMap<>();
     private final ConcurrentMap<ConnectionKey, ConnectionInfo> managedConnections = new ConcurrentHashMap<>();
+    private final Map<URI, OptionMap> connectionOptions;
 
     private final XnioWorker worker;
 
@@ -134,11 +137,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     private final MBeanServer server;
     private final ObjectName objectName;
 
-    private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name) throws NotOpenException {
+    private EndpointImpl(final XnioWorker xnioWorker, final boolean ourWorker, final String name, final Map<URI, OptionMap> connectionOptions) throws NotOpenException {
         super(xnioWorker, true);
         worker = xnioWorker;
         this.ourWorker = ourWorker;
         this.name = name;
+        this.connectionOptions = connectionOptions;
         MBeanServer server = null;
         ObjectName objectName = null;
         try {
@@ -196,12 +200,36 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final String endpointName = endpointBuilder.getEndpointName();
         final List<ConnectionProviderFactoryBuilder> factoryBuilders = endpointBuilder.getConnectionProviderFactoryBuilders();
         final EndpointImpl endpoint;
+
+        final List<ConnectionBuilder> connectionBuilders = endpointBuilder.getConnectionBuilders();
+        final Map<URI, OptionMap> connectionOptions = new HashMap<>();
+        if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
+            final URI destination = connectionBuilder.getDestination();
+            final OptionMap.Builder optionBuilder = OptionMap.builder();
+            if (connectionBuilder.getHeartbeatInterval() != -1) {
+                optionBuilder.set(RemotingOptions.HEARTBEAT_INTERVAL, connectionBuilder.getHeartbeatInterval());
+            }
+            if (connectionBuilder.getReadTimeout() != -1) {
+                optionBuilder.set(Options.READ_TIMEOUT, connectionBuilder.getReadTimeout());
+            }
+            if (connectionBuilder.getWriteTimeout() != -1) {
+                optionBuilder.set(Options.WRITE_TIMEOUT, connectionBuilder.getWriteTimeout());
+            }
+            if (connectionBuilder.getIPTrafficClass() != -1) {
+                optionBuilder.set(Options.IP_TRAFFIC_CLASS, connectionBuilder.getIPTrafficClass());
+            }
+            if (connectionBuilder.isSetTcpKeepAlive()) {
+                optionBuilder.set(Options.KEEP_ALIVE, connectionBuilder.isTcpKeepAlive());
+            }
+            connectionOptions.put(destination, optionBuilder.getMap());
+        }
+
         XnioWorker xnioWorker = endpointBuilder.getXnioWorker();
         if (xnioWorker == null) {
             final XnioWorker.Builder workerBuilder = endpointBuilder.getWorkerBuilder();
             if (workerBuilder == null) {
                 xnioWorker = XnioWorker.getContextManager().get();
-                endpoint = new EndpointImpl(xnioWorker, false, endpointName);
+                endpoint = new EndpointImpl(xnioWorker, false, endpointName, connectionOptions);
             } else {
                 final AtomicReference<EndpointImpl> endpointRef = new AtomicReference<EndpointImpl>();
                 workerBuilder.setDaemon(true);
@@ -213,10 +241,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     }
                 });
                 xnioWorker = workerBuilder.build();
-                endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName));
+                endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName, connectionOptions.isEmpty() ? Collections.emptyMap() : connectionOptions));
             }
         } else {
-            endpoint = new EndpointImpl(xnioWorker, false, endpointName);
+            endpoint = new EndpointImpl(xnioWorker, false, endpointName, connectionOptions.isEmpty() ? Collections.emptyMap() : connectionOptions);
         }
         boolean ok = false;
         try {
@@ -451,7 +479,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         final ConnectionKey connectionKey = new ConnectionKey(realDestination, sslContext);
         ConnectionInfo newConnectionInfo = managedConnections.get(connectionKey);
         while (newConnectionInfo == null) {
-            final ConnectionInfo appearing = managedConnections.putIfAbsent(connectionKey, newConnectionInfo = new ConnectionInfo(OptionMap.EMPTY));
+            final ConnectionInfo appearing = managedConnections.putIfAbsent(connectionKey, newConnectionInfo = new ConnectionInfo(connectionOptions.getOrDefault(realDestination, OptionMap.EMPTY)));
             if (appearing != null) {
                 newConnectionInfo = appearing;
             }
