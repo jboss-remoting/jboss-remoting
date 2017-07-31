@@ -272,6 +272,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                 final ByteBuffer receiveBuffer = message.getResource();
                 boolean starttls = false;
                 final Set<String> serverSaslMechs = new LinkedHashSet<String>();
+                final Set<String> offeredMechs = new LinkedHashSet<>();
                 final byte msgType = receiveBuffer.get();
                 switch (msgType) {
                     case Protocol.CONNECTION_ALIVE: {
@@ -310,6 +311,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 case Protocol.CAP_SASL_MECH: {
                                     final String mechName = Buffers.getModifiedUtf8(data);
                                     client.tracef("Client received capability: SASL mechanism %s", mechName);
+                                    offeredMechs.add(mechName);
                                     if (! failedMechs.containsKey(mechName) && ! disallowedMechs.contains(mechName) && (allowedMechs == null || allowedMechs.contains(mechName))) {
                                         client.tracef("SASL mechanism %s added to allowed set", mechName);
                                         serverSaslMechs.add(mechName);
@@ -447,7 +449,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         connection.getMessageReader().suspendReads();
                         final int negotiatedVersion = version;
                         final SaslClient usedSaslClient = saslClient;
-                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, remoteEndpointName, behavior, channelsIn, channelsOut, authCap, serverSaslMechs);
+                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, remoteEndpointName, behavior, channelsIn, channelsOut, authCap, offeredMechs);
                         connection.getExecutor().execute(() -> {
                             final byte[] response;
                             try {
