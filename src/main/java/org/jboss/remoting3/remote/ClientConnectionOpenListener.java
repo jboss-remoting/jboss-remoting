@@ -418,9 +418,13 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         }
                         try {
                             saslClient = configurationClient.createSaslClient(uri, ClientConnectionOpenListener.this.configuration, serverSaslMechs, factoryOperator, sslSession);
-                        } catch (SaslException e) {
+                        } catch (Throwable e) {
                             // apparently no more mechanisms can succeed
-                            connection.handleException(e);
+                            if (e instanceof SaslException) {
+                                connection.handleException((SaslException) e);
+                            } else {
+                                connection.handleException(new SaslException(e.getMessage(), e));
+                            }
                             return;
                         }
                         if (saslClient == null) {
@@ -454,7 +458,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                             final byte[] response;
                             try {
                                 response = usedSaslClient.hasInitialResponse() ? usedSaslClient.evaluateChallenge(EMPTY_BYTES) : null;
-                            } catch (SaslException e) {
+                            } catch (Throwable e) {
                                 client.tracef("Client authentication failed: %s", e);
                                 saslDispose(usedSaslClient);
                                 failedMechs.put(mechanismName, e);

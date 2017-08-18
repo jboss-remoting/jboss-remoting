@@ -285,7 +285,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                                 saslServerFactory = saslProperties != null ? new PropertiesSaslServerFactory(saslServerFactory, saslProperties) : saslServerFactory;
                                 return saslServerFactory;
                             });
-                        } catch (SaslException e) {
+                        } catch (Throwable e) {
                             server.trace("Unable to create SaslServer", e);
                             saslServer = null;
                         }
