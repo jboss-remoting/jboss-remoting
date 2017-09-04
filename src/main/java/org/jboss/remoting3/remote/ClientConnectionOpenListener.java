@@ -477,9 +477,9 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 }
 
                                 sendBuffer.flip();
+                                connection.setReadListener(authentication, true);
                                 connection.send(pooledSendBuffer);
                                 ok = true;
-                                connection.setReadListener(authentication, true);
                                 return;
                             } finally {
                                 if (! ok) pooledSendBuffer.free();
@@ -660,9 +660,9 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                     sendBuffer.put(Protocol.AUTH_RESPONSE);
                                     sendBuffer.put(response);
                                     sendBuffer.flip();
+                                    messageReader.resumeReads();
                                     connection.send(pooled);
                                     ok = true;
-                                    messageReader.resumeReads();
                                 } finally {
                                     if (! ok) pooled.free();
                                 }
