@@ -248,10 +248,10 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                             sendBuffer.flip();
                             connection.send(pooled);
                             ok = true;
+                            connection.setReadListener(new Initial(), true);
                             if (starttls) {
                                 connection.send(RemoteConnection.STARTTLS_SENTINEL);
                             }
-                            connection.setReadListener(new Initial(), true);
                             return;
                         } finally {
                             if (! ok) pooled.free();
