@@ -35,7 +35,6 @@ import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.HandleableCloseable;
 import org.jboss.remoting3.NotOpenException;
 import org.jboss.remoting3.RemotingException;
-import org.xnio.IoUtils;
 import org.jboss.logging.Logger;
 
 /**
@@ -386,6 +385,18 @@ public abstract class AbstractHandleableCloseable<T extends HandleableCloseable<
             }
         } catch (Throwable t) {
             log.errorf(t, "Close action for %s failed to execute (resource may be left in an indeterminate state)", this);
+            final Map<Key, CloseHandler<? super T>> closeHandlers;
+            synchronized (closeLock) {
+                state = State.CLOSED;
+                closeHandlers = this.closeHandlers;
+                this.closeHandlers = null;
+                closeLock.notifyAll();
+            }
+            if (closeHandlers != null) {
+                for (final CloseHandler<? super T> handler : closeHandlers.values()) {
+                    runCloseTask(new CloseHandlerTask(handler, new IOException(t)));
+                }
+            }
         }
     }
 
