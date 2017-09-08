@@ -20,11 +20,11 @@ package org.jboss.remoting3.util;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.jboss.remoting3.AbstractDelegatingMessageOutputStream;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageOutputStream;
+import org.wildfly.common.Assert;
 
 /**
  * An outbound message tracker, which can be used to easily avoid message overruns.
@@ -33,13 +33,14 @@ import org.jboss.remoting3.MessageOutputStream;
  */
 public final class MessageTracker {
     private final Channel channel;
-    private final int limit;
-    private final AtomicInteger counter;
+    private final Object lock = new Object();
+    private int counter;
 
     public MessageTracker(final Channel channel, final int limit) {
+        Assert.checkNotNullParam("channel", channel);
+        Assert.checkMinimumParameter("limit", 1, limit);
         this.channel = channel;
-        this.limit = limit;
-        counter = new AtomicInteger(limit);
+        counter = limit;
     }
 
     /**
@@ -50,19 +51,16 @@ public final class MessageTracker {
      * @throws InterruptedException if blocking was interrupted
      */
     public MessageOutputStream openMessage() throws IOException, InterruptedException {
-        int oldVal;
-        do {
-            oldVal = counter.get();
-            if (oldVal == 0) {
-                // try with lock
-                synchronized (counter) {
-                    oldVal = counter.get();
-                    while (oldVal == 0) {
-                        counter.wait();
-                    }
-                }
+        final Object lock = this.lock;
+        int counter;
+        synchronized (lock) {
+            counter = this.counter;
+            while (counter == 0) {
+                lock.wait();
+                counter = this.counter;
             }
-        } while (! counter.compareAndSet(oldVal, oldVal - 1));
+            this.counter = counter - 1;
+        }
         return getMessageInstance(channel.writeMessage());
     }
 
@@ -73,23 +71,22 @@ public final class MessageTracker {
      * @throws IOException if the channel failed to open the message
      */
     public MessageOutputStream openMessageUninterruptibly() throws IOException {
+        final Object lock = this.lock;
         boolean intr = false;
         try {
-            int oldVal;
-            do {
-                oldVal = counter.get();
-                if (oldVal == 0) {
-                    // try with lock
-                    synchronized (counter) {
-                        oldVal = counter.get();
-                        while (oldVal == 0) try {
-                            counter.wait();
-                        } catch (InterruptedException e) {
-                            intr = true;
-                        }
+            int counter;
+            synchronized (lock) {
+                counter = this.counter;
+                while (counter == 0) {
+                    try {
+                        lock.wait();
+                    } catch (InterruptedException ex) {
+                        intr = true;
                     }
+                    counter = this.counter;
                 }
-            } while (! counter.compareAndSet(oldVal, oldVal - 1));
+                this.counter = counter - 1;
+            }
             return getMessageInstance(channel.writeMessage());
         } finally {
             if (intr) Thread.currentThread().interrupt();
@@ -104,15 +101,10 @@ public final class MessageTracker {
                 if (done.compareAndSet(false, true)) try {
                     super.close();
                 } finally {
-                    int oldVal;
-                    do {
-                        oldVal = counter.get();
-                    } while (! counter.compareAndSet(oldVal, oldVal + 1));
-                    if (oldVal == limit - 1) {
-                        synchronized (counter) {
-                            // release one
-                            counter.notify();
-                        }
+                    final Object lock = MessageTracker.this.lock;
+                    synchronized (lock) {
+                        MessageTracker.this.counter ++;
+                        lock.notify();
                     }
                 }
             }
