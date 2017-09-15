@@ -45,6 +45,7 @@ import static org.jboss.remoting3._private.Messages.log;
  */
 final class RemoteReadListener implements ChannelListener<ConduitStreamSourceChannel> {
 
+    private static final byte[] NO_BYTES = new byte[0];
     private final RemoteConnectionHandler handler;
     private final RemoteConnection connection;
 
@@ -441,7 +442,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                                     saslBytes = new byte[buffer.remaining()];
                                     buffer.get(saslBytes);
                                 } else {
-                                    saslBytes = null;
+                                    saslBytes = NO_BYTES;
                                 }
                                 c.receiveAuthRequest(id, mechName, saslBytes);
                                 break;
@@ -461,8 +462,12 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                                 log.tracef("Received authentication response, id %08x", id);
                                 ConnectionHandlerContext c = handler.getConnectionContext();
                                 final byte[] saslBytes;
-                                saslBytes = new byte[buffer.remaining()];
-                                buffer.get(saslBytes);
+                                if (buffer.hasRemaining()) {
+                                    saslBytes = new byte[buffer.remaining()];
+                                    buffer.get(saslBytes);
+                                } else {
+                                    saslBytes = NO_BYTES;
+                                }
                                 c.receiveAuthResponse(id, saslBytes);
                                 break;
                             }
@@ -475,6 +480,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                                     saslBytes = new byte[buffer.remaining()];
                                     buffer.get(saslBytes);
                                 } else {
+                                    // in this case null is OK meaning the process is finished
                                     saslBytes = null;
                                 }
                                 c.receiveAuthSuccess(id, saslBytes);
