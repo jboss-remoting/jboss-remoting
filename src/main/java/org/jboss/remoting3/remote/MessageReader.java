@@ -102,8 +102,13 @@ final class MessageReader {
                                         first.putInt(next.getInt());
                                     } else {
                                         Buffers.copy(first, next);
+                                        iterator.remove(); //we have emptied the buffer so we remove it
                                     }
                                 } while (first.position() < 4 && iterator.hasNext());
+                                if(first.position() >= 4) {
+                                    //we have enough to read the size, retry rather than attempting to read from the channel
+                                    continue;
+                                }
                             } finally {
                                 first.flip();
                             }

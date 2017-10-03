@@ -95,11 +95,11 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                         case Protocol.CONNECTION_ALIVE: {
                             log.trace("Received connection alive");
                             connection.sendAliveResponse();
-                            return;
+                            break;
                         }
                         case Protocol.CONNECTION_ALIVE_ACK: {
                             log.trace("Received connection alive ack");
-                            return;
+                            break;
                         }
                         case Protocol.CONNECTION_CLOSE: {
                             log.trace("Received connection close request");
