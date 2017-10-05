@@ -251,35 +251,46 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
         public void handleEvent(final ConnectedMessageChannel channel) {
             Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
+            ByteBuffer receiveBuffer;
             try {
                 if (channel instanceof RemotingMessageChannel) {
-                    try {
-                        int messageLength = ((RemotingMessageChannel) channel).readMessageLength();
-                        if (messageLength > pooledReceiveBuffer.getResource().capacity() && messageLength < RemotingOptions.MAX_RECEIVE_BUFFER_SIZE) {
-                            pooledReceiveBuffer = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageLength).allocate();
-                            ((RemotingMessageChannel) channel).adjustToMessageLength(messageLength);
+                    synchronized (connection.getLock()) {
+                        int res;
+                        RemotingMessageChannel.AdjustedBuffer ab = new RemotingMessageChannel.AdjustedBuffer(pooledReceiveBuffer);
+                        try {
+                            RemotingMessageChannel rc = (RemotingMessageChannel) channel;
+                            res = rc.receive(ab);
+                        } catch (IOException e) {
+                            connection.handleException(e);
+                            return;
                         }
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
+                        if (res == -1) {
+                            connection.handleException(client.abruptClose(connection));
+                            return;
+                        }
+                        if (res == 0) {
+                            return;
+                        }
+                        pooledReceiveBuffer = ab.getAdjustedBuffer();
+                        receiveBuffer = pooledReceiveBuffer.getResource();
                     }
-                }
-
-                final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                synchronized (connection.getLock()) {
-                    int res;
-                    try {
-                        res = channel.receive(receiveBuffer);
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
-                    }
-                    if (res == -1) {
-                        connection.handleException(client.abruptClose(connection));
-                        return;
-                    }
-                    if (res == 0) {
-                        return;
+                } else {
+                    receiveBuffer = pooledReceiveBuffer.getResource();
+                    synchronized (connection.getLock()) {
+                        int res;
+                        try {
+                            res = channel.receive(receiveBuffer);
+                        } catch (IOException e) {
+                            connection.handleException(e);
+                            return;
+                        }
+                        if (res == -1) {
+                            connection.handleException(client.abruptClose(connection));
+                            return;
+                        }
+                        if (res == 0) {
+                            return;
+                        }
                     }
                 }
                 receiveBuffer.flip();
