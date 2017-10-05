@@ -64,7 +64,6 @@ import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.xnio.BufferAllocator;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.OptionMap;
@@ -220,22 +219,9 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
 
 
         public void handleEvent(final ConnectedMessageChannel channel) {
-            Pooled<ByteBuffer> pooledBuffer = connection.allocate();
+            final Pooled<ByteBuffer> pooledBuffer = connection.allocate();
             boolean free = true;
             try {
-                if (channel instanceof RemotingMessageChannel) {
-                    try {
-                        int messageLength = ((RemotingMessageChannel) channel).readMessageLength();
-                        if (messageLength > pooledBuffer.getResource().capacity() && messageLength < RemotingOptions.MAX_RECEIVE_BUFFER_SIZE) {
-                            pooledBuffer = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageLength).allocate();
-                            ((RemotingMessageChannel) channel).adjustToMessageLength(messageLength);
-                        }
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
-                    }
-                }
-
                 final ByteBuffer receiveBuffer = pooledBuffer.getResource();
                 synchronized (connection.getLock()) {
                     final int res;
