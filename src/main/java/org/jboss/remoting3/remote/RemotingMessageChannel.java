@@ -13,6 +13,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import org.xnio.BufferAllocator;
 
 /**
  * This class is alternative to {@link org.xnio.channels.FramedMessageChannel} to fix
@@ -24,9 +25,21 @@ import java.nio.ByteBuffer;
  */
 public class RemotingMessageChannel extends TranslatingSuspendableChannel<ConnectedMessageChannel, ConnectedStreamChannel> implements ConnectedMessageChannel {
 
-    private static final Logger log = Logger.getLogger("org.xnio.channels.framed");
+    static class AdjustedBuffer {
+        private final Pooled<ByteBuffer> original;
+        private Pooled<ByteBuffer> adjusted;
+        AdjustedBuffer(Pooled<ByteBuffer> original) {
+            this.original = original;
+        }
+        Pooled<ByteBuffer> getAdjustedBuffer() {
+            return adjusted == null ? original : adjusted;
+        }
+    }
+
+    private static final Logger log = Logger.getLogger("org.jboss.remoting");
 
     private Pooled<ByteBuffer> receiveBuffer;
+    private ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
     private Pooled<ByteBuffer> transmitBuffer;
 
     private final Object readLock = new Object();
@@ -73,22 +86,30 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
      * @throws  IOException
      *          if the message length couldn't be read
      */
-    int readMessageLength() throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(4);
-        channel.read(buffer);
-        if (buffer.position() < 4) {
-            log.tracef("Did not read a length");
-            clearReadReady();
-            messageLength = 0;
-            return 0;
+    private int readMessageLength() throws IOException {
+        synchronized (readLock) {
+            if (messageLengthPeeked()) {
+                log.tracef("Already read a length");
+                return 0;
+            }
+            int res = channel.read(lengthBuffer);
+            if (lengthBuffer.position() < 4) {
+                if (res == -1) {
+                    lengthBuffer.clear();
+                }
+                log.tracef("Did not read a length");
+                clearReadReady();
+                return res;
+            }
+            lengthBuffer.flip();
+            int length = lengthBuffer.getInt();
+            if (length < 0) {
+                throw new IOException("Unable to read message length. Invalid value of " + length);
+            }
+            messageLength = length;
+            lengthBuffer.clear();
+            return length;
         }
-        buffer.flip();
-        int length = buffer.getInt();
-        if (length < 0) {
-            throw new IOException("Unable to read message length. Invalid value of " + length);
-        }
-        messageLength = length;
-        return length;
     }
 
     /**
@@ -113,6 +134,24 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
         }
     }
 
+    int receive(final AdjustedBuffer buffer) throws IOException {
+        synchronized (readLock) {
+            if (isReadShutDown()) {
+                return -1;
+            }
+            int messageLength = readMessageLength();
+            if (messageLength <= 0) {
+                return messageLength;
+            }
+            if (messageLength > buffer.original.getResource().capacity() && messageLength < RemotingOptions.MAX_RECEIVE_BUFFER_SIZE) {
+                buffer.adjusted = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageLength).allocate();
+                adjustToMessageLength(messageLength);        
+            }
+            final ByteBuffer receiveBuffer = buffer.getAdjustedBuffer().getResource();
+            return receive(receiveBuffer);
+        }
+    }
+    
     /** {@inheritDoc} */
     public int receive(final ByteBuffer buffer) throws IOException {
         synchronized (readLock) {
@@ -257,6 +296,7 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
             log.tracef("Shutting down reads on %s", this);
             try {
                 receiveBuffer.getResource().clear();
+                lengthBuffer.clear();
             } catch (Throwable t) {
             }
             try {
