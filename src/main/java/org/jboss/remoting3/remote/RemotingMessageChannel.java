@@ -1,20 +1,21 @@
 package org.jboss.remoting3.remote;
 
-import org.jboss.logging.Logger;
-import org.jboss.remoting3.RemotingOptions;
-import org.xnio.Buffers;
-import org.xnio.IoUtils;
-import org.xnio.Pooled;
-import org.xnio.channels.ConnectedMessageChannel;
-import org.xnio.channels.ConnectedStreamChannel;
-import org.xnio.channels.TranslatingSuspendableChannel;
+import static org.xnio._private.Messages.msg;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
-import static org.xnio._private.Messages.msg;
+import org.jboss.logging.Logger;
+import org.jboss.remoting3.RemotingOptions;
+import org.xnio.BufferAllocator;
+import org.xnio.Buffers;
+import org.xnio.IoUtils;
+import org.xnio.Pooled;
+import org.xnio.channels.ConnectedMessageChannel;
+import org.xnio.channels.ConnectedStreamChannel;
+import org.xnio.channels.TranslatingSuspendableChannel;
 
 /**
  * This class is alternative to {@link org.xnio.channels.FramedMessageChannel} to fix
@@ -26,9 +27,23 @@ import static org.xnio._private.Messages.msg;
  */
 public class RemotingMessageChannel extends TranslatingSuspendableChannel<ConnectedMessageChannel, ConnectedStreamChannel> implements ConnectedMessageChannel {
 
+    static class AdjustedBuffer {
+        private final Pooled<ByteBuffer> original;
+        private Pooled<ByteBuffer> adjusted;
+
+        AdjustedBuffer(Pooled<ByteBuffer> original) {
+            this.original = original;
+        }
+
+        Pooled<ByteBuffer> getAdjustedBuffer() {
+            return adjusted == null ? original : adjusted;
+        }
+    }
+
     private static final Logger log = Logger.getLogger("org.xnio.channels.framed");
 
     private Pooled<ByteBuffer> receiveBuffer;
+    private ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
     private Pooled<ByteBuffer> transmitBuffer;
 
     private final Object readLock = new Object();
@@ -75,22 +90,30 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
      * @throws  IOException
      *          if the message length couldn't be read
      */
-    int readMessageLength() throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(4);
-        channel.read(buffer);
-        if (buffer.position() < 4) {
-            log.tracef("Did not read a length");
-            clearReadReady();
-            messageLength = 0;
-            return 0;
+    private int readMessageLength() throws IOException {
+        synchronized (readLock) {
+            if (messageLengthPeeked()) {
+                log.tracef("Already read a length");
+                return 0;
+            }
+            int res = channel.read(lengthBuffer);
+            if (lengthBuffer.position() < 4) {
+                if (res == -1) {
+                    lengthBuffer.clear();
+                }
+                log.tracef("Did not read a length");
+                clearReadReady();
+                return res;
+            }
+            lengthBuffer.flip();
+            int length = lengthBuffer.getInt();
+            if (length < 0) {
+                throw new IOException("Unable to read message length. Invalid value of " + length);
+            }
+            messageLength = length;
+            lengthBuffer.clear();
+            return length;
         }
-        buffer.flip();
-        int length = buffer.getInt();
-        if (length < 0) {
-            throw msg.recvInvalidMsgLength(length);
-        }
-        messageLength = length;
-        return length;
     }
 
     /**
@@ -115,7 +138,27 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
         }
     }
 
+    int receive(final AdjustedBuffer buffer) throws IOException {
+        synchronized (readLock) {
+            if (isReadShutDown()) {
+                return -1;
+            }
+            int messageLength = readMessageLength();
+            if (messageLength <= 0) {
+                return messageLength;
+            }
+            if (messageLength > buffer.original.getResource().capacity()
+                    && messageLength < RemotingOptions.MAX_RECEIVE_BUFFER_SIZE) {
+                buffer.adjusted = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageLength).allocate();
+                adjustToMessageLength(messageLength);
+            }
+            final ByteBuffer receiveBuffer = buffer.getAdjustedBuffer().getResource();
+            return receive(receiveBuffer);
+        }
+    }
+
     /** {@inheritDoc} */
+    @Override
     public int receive(final ByteBuffer buffer) throws IOException {
         synchronized (readLock) {
             if (isReadShutDown()) {
@@ -123,7 +166,7 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
             }
             final ByteBuffer receiveBuffer = this.receiveBuffer.getResource();
             int res = 0;
-            final ConnectedStreamChannel channel = (ConnectedStreamChannel) this.channel;
+            final ConnectedStreamChannel channel = this.channel;
             do {
                 res = channel.read(receiveBuffer);
             } while (res > 0);
@@ -190,11 +233,13 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
     }
 
     /** {@inheritDoc} */
+    @Override
     public long receive(final ByteBuffer[] buffers) throws IOException {
         return receive(buffers, 0, buffers.length);
     }
 
     /** {@inheritDoc} */
+    @Override
     public long receive(final ByteBuffer[] buffers, final int offs, final int len) throws IOException {
         synchronized (readLock) {
             if (isReadShutDown()) {
@@ -202,7 +247,7 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
             }
             final ByteBuffer receiveBuffer = this.receiveBuffer.getResource();
             int res = 0;
-            final ConnectedStreamChannel channel = (ConnectedStreamChannel) this.channel;
+            final ConnectedStreamChannel channel = this.channel;
             do {
                 res = channel.read(receiveBuffer);
             } while (res > 0);
@@ -254,11 +299,13 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
         }
     }
 
+    @Override
     protected void shutdownReadsAction(final boolean writeComplete) throws IOException {
         synchronized (readLock) {
             log.tracef("Shutting down reads on %s", this);
             try {
                 receiveBuffer.getResource().clear();
+                lengthBuffer.clear();
             } catch (Throwable t) {
             }
             try {
@@ -270,6 +317,7 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean send(final ByteBuffer buffer) throws IOException {
         synchronized (writeLock) {
             if (isWriteShutDown()) {
@@ -297,11 +345,13 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean send(final ByteBuffer[] buffers) throws IOException {
         return send(buffers, 0, buffers.length);
     }
 
     /** {@inheritDoc} */
+    @Override
     public boolean send(final ByteBuffer[] buffers, final int offs, final int len) throws IOException {
         synchronized (writeLock) {
             if (isWriteShutDown()) {
@@ -355,12 +405,14 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
         return false;
     }
 
+    @Override
     protected boolean flushAction(final boolean shutDown) throws IOException {
         synchronized (writeLock) {
             return (doFlushBuffer()) && channel.flush();
         }
     }
 
+    @Override
     protected void shutdownWritesComplete(final boolean readShutDown) throws IOException {
         synchronized (writeLock) {
             log.tracef("Finished shutting down writes on %s", this);
@@ -394,6 +446,7 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
         return doFlushBuffer() && channel.flush();
     }
 
+    @Override
     protected void closeAction(final boolean readShutDown, final boolean writeShutDown) throws IOException {
         boolean error = false;
         if (! writeShutDown) {
@@ -426,21 +479,25 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
     }
 
     /** {@inheritDoc} */
+    @Override
     public SocketAddress getPeerAddress() {
         return channel.getPeerAddress();
     }
 
     /** {@inheritDoc} */
+    @Override
     public <A extends SocketAddress> A getPeerAddress(final Class<A> type) {
         return channel.getPeerAddress(type);
     }
 
     /** {@inheritDoc} */
+    @Override
     public SocketAddress getLocalAddress() {
         return channel.getLocalAddress();
     }
 
     /** {@inheritDoc} */
+    @Override
     public <A extends SocketAddress> A getLocalAddress(final Class<A> type) {
         return channel.getLocalAddress(type);
     }
@@ -450,6 +507,7 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
      *
      * @return the underlying channel
      */
+    @Override
     public ConnectedStreamChannel getChannel() {
         return channel;
     }

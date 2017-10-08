@@ -64,7 +64,6 @@ import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.xnio.BufferAllocator;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.OptionMap;
@@ -104,6 +103,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
 
 
 
+    @Override
     public void handleEvent(final ConnectedMessageChannel channel) {
         final Pooled<ByteBuffer> pooled = connection.allocate();
         boolean ok = false;
@@ -237,38 +237,53 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
 
 
 
+        @Override
         public void handleEvent(final ConnectedMessageChannel channel) {
             Pooled<ByteBuffer> pooledBuffer = connection.allocate();
             boolean free = true;
+            ByteBuffer receiveBuffer;
             try {
                 if (channel instanceof RemotingMessageChannel) {
-                    try {
-                        int messageLength = ((RemotingMessageChannel) channel).readMessageLength();
-                        if (messageLength > pooledBuffer.getResource().capacity() && messageLength < RemotingOptions.MAX_RECEIVE_BUFFER_SIZE) {
-                            pooledBuffer = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageLength).allocate();
-                            ((RemotingMessageChannel) channel).adjustToMessageLength(messageLength);
+                    synchronized (connection.getLock()) {
+                        int res;
+                        RemotingMessageChannel.AdjustedBuffer ab = new RemotingMessageChannel.AdjustedBuffer(pooledBuffer);
+                        try {
+                            RemotingMessageChannel rc = (RemotingMessageChannel) channel;
+                            res = rc.receive(ab);
+                        } catch (IOException e) {
+                            connection.handleException(e);
+                            return;
                         }
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
+                        if (res == -1) {
+                            log.trace("Received connection end-of-stream");
+                            connection.handlePreAuthCloseRequest();
+                            return;
+                        }
+                        if (res == 0) {
+                            return;
+                        }
+                        pooledBuffer = ab.getAdjustedBuffer();
+                        receiveBuffer = pooledBuffer.getResource();
                     }
-                }
-
-                final ByteBuffer receiveBuffer = pooledBuffer.getResource();
-                final int res;
-                try {
-                    res = channel.receive(receiveBuffer);
-                } catch (IOException e) {
-                    connection.handleException(e);
-                    return;
-                }
-                if (res == 0) {
-                    return;
-                }
-                if (res == -1) {
-                    log.trace("Received connection end-of-stream");
-                    connection.handlePreAuthCloseRequest();
-                    return;
+                } else {
+                    receiveBuffer = pooledBuffer.getResource();
+                    synchronized (connection.getLock()) {
+                        final int res;
+                        try {
+                            res = channel.receive(receiveBuffer);
+                        } catch (IOException e) {
+                            connection.handleException(e);
+                            return;
+                        }
+                        if (res == 0) {
+                            return;
+                        }
+                        if (res == -1) {
+                            log.trace("Received connection end-of-stream");
+                            connection.handlePreAuthCloseRequest();
+                            return;
+                        }
+                    }
                 }
                 receiveBuffer.flip();
                 final byte msgType = receiveBuffer.get();
@@ -524,6 +539,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                             final Collection<Principal> principals = createPrincipals();
                             final UserInfo userInfo = authorizingCallbackHandler.createUserInfo(principals);
                             connectionProviderContext.accept(new ConnectionHandlerFactory() {
+                                @Override
                                 public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                     final Object qop = saslServer.getNegotiatedProperty(Sasl.QOP);
                                     if (!isInitial && ("auth-int".equals(qop) || "auth-conf".equals(qop))) {
@@ -617,6 +633,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
             this.maxOutboundChannels = maxOutboundChannels;
         }
 
+        @Override
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledBuffer = connection.allocate();
             boolean free = true;
