@@ -327,11 +327,10 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                                 return;
                             }
                         }
+                        final Object principalObj = saslClient.getNegotiatedProperty(WildFlySasl.PRINCIPAL);
                         safeDispose(saslClient);
                         // todo: we could use a phantom ref to clean up the ID, but the benefits are dubious
-                        final SaslClient finalSaslClient = saslClient;
                         futureResult.setResult(constructIdentity(conf -> {
-                            final Object principalObj = finalSaslClient.getNegotiatedProperty(WildFlySasl.PRINCIPAL);
                             return new ConnectionPeerIdentity(conf, principalObj instanceof Principal ? (Principal) principalObj : principal, finalId, connection);
                         }));
                         return;
