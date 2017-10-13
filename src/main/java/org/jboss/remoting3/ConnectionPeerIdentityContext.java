@@ -305,7 +305,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                         }
                         // retry loop
                     } else if (status == SUCCESS) {
-                        if (challenge != null) {
+                        if (! saslClient.isComplete()) {
                             try {
                                 response = saslClient.evaluateChallenge(challenge);
                             } catch (SaslException e) {
@@ -315,7 +315,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                                 safeDispose(saslClient);
                                 break;
                             }
-                            if (response != null) {
+                            if (response != null && response.length > 0) {
                                 try {
                                     connectionHandler.sendAuthDelete(id);
                                 } catch (IOException ignored) {

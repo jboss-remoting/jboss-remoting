@@ -479,8 +479,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                                 saslBytes = new byte[buffer.remaining()];
                                 buffer.get(saslBytes);
                             } else {
-                                // in this case null is OK meaning the process is finished
-                                saslBytes = null;
+                                saslBytes = NO_BYTES;
                             }
                             c.receiveAuthSuccess(id, saslBytes);
                             break;
