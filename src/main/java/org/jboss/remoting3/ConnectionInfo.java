@@ -86,10 +86,20 @@ final class ConnectionInfo {
                     splice(futureResult, attempt, authenticationConfiguration);
                     attempt.addNotifier(new IoFuture.HandlingNotifier<Connection, Void>() {
                         public void handleCancelled(final Void attachment) {
+                            synchronized (maybeShared.pendingAttempts) {
+                                for (Map.Entry<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempt : maybeShared.pendingAttempts.entrySet()) {
+                                    pendingAttempt.getValue().setCancelled();
+                                }
+                            }
                             clear();
                         }
 
                         public void handleFailed(final IOException exception, final Void attachment) {
+                            synchronized (maybeShared.pendingAttempts) {
+                                for (Map.Entry<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempt : maybeShared.pendingAttempts.entrySet()) {
+                                    pendingAttempt.getValue().setException(exception);
+                                }
+                            }
                             clear();
                         }
 
@@ -165,11 +175,9 @@ final class ConnectionInfo {
                     }
                     assert doConnect;
                     final IoFuture<Connection> ioFuture = futureResult.getIoFuture();
-                    final AtomicBoolean cancelFlag = new AtomicBoolean();
                     final FutureResult<Connection> finalFutureResult = futureResult;
                     futureResult.addCancelHandler(new Cancellable() {
                         public Cancellable cancel() {
-                            cancelFlag.set(true);
                             finalFutureResult.setCancelled();
                             return this;
                         }
