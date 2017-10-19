@@ -39,7 +39,6 @@ import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
-import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
@@ -99,7 +98,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
         connection.setReadListener(new Greeting(), true);
     }
 
-    AuthenticationException allMechanismsFailed() {
+    SaslException allMechanismsFailed() {
         final StringBuilder b = new StringBuilder();
         b.append("Authentication failed: all available authentication mechanisms failed:");
         for (Map.Entry<String, Throwable> entry : failedMechs.entrySet()) {
@@ -107,11 +106,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
             final String value = entry.getValue().toString();
             b.append("\n   ").append(key).append(": ").append(value);
         }
-        final AuthenticationException exception = new AuthenticationException(b.toString());
+        final SaslException saslException = new SaslException(b.toString());
         for (Throwable cause : failedMechs.values()) {
-            exception.addSuppressed(cause);
+            saslException.addSuppressed(cause);
         }
-        return exception;
+        return saslException;
     }
 
     void sendCapRequest(final String remoteServerName) {
@@ -397,7 +396,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
 
                         if (serverSaslMechs.isEmpty()) {
                             if (failedMechs.isEmpty()) {
-                                connection.handleException(new AuthenticationException("Authentication failed: the server presented no authentication mechanisms"));
+                                connection.handleException(new SaslException("Authentication failed: the server presented no authentication mechanisms"));
                             } else {
                                 // At this point we have been attempting to use mechanisms as they have been presented to us but we have now exhausted the list.
                                 connection.handleException(allMechanismsFailed());
@@ -421,7 +420,11 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                             saslClient = configurationClient.createSaslClient(uri, ClientConnectionOpenListener.this.configuration, serverSaslMechs, factoryOperator, sslSession);
                         } catch (Throwable e) {
                             // apparently no more mechanisms can succeed
-                            connection.handleException(new AuthenticationException(e.getMessage(), e));
+                            if (e instanceof SaslException) {
+                                connection.handleException((SaslException) e);
+                            } else {
+                                connection.handleException(new SaslException(e.getMessage(), e));
+                            }
                             return;
                         }
                         if (saslClient == null) {
@@ -438,7 +441,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                     }
                                 }
                                 b.append(") are supported");
-                                connection.handleException(new AuthenticationException(b.toString()));
+                                connection.handleException(new SaslException(b.toString()));
                             } else {
                                 connection.handleException(allMechanismsFailed());
                             }
@@ -638,7 +641,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                             try {
                                 final boolean clientComplete = saslClient.isComplete();
                                 if (clientComplete) {
-                                    connection.handleException(new AuthenticationException(saslClient.getMechanismName() + ": Received extra auth message after completion"));
+                                    connection.handleException(new SaslException(saslClient.getMechanismName() + ": Received extra auth message after completion"));
                                     return;
                                 }
                                 final byte[] response;
@@ -685,12 +688,12 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 if (!clientComplete) try {
                                     final byte[] response = saslClient.evaluateChallenge(challenge);
                                     if (response != null && response.length > 0) {
-                                        connection.handleException(new AuthenticationException(saslClient.getMechanismName() + ": Received extra auth message after completion"));
+                                        connection.handleException(new SaslException(saslClient.getMechanismName() + ": Received extra auth message after completion"));
                                         saslDispose(saslClient);
                                         return;
                                     }
                                     if (!saslClient.isComplete()) {
-                                        connection.handleException(new AuthenticationException(saslClient.getMechanismName() + ": Client not complete after processing auth complete message"));
+                                        connection.handleException(new SaslException(saslClient.getMechanismName() + ": Client not complete after processing auth complete message"));
                                         saslDispose(saslClient);
                                         return;
                                     }
