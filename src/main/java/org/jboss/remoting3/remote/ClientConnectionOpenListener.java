@@ -22,6 +22,9 @@
 
 package org.jboss.remoting3.remote;
 
+import static org.jboss.remoting3.remote.RemoteLogger.client;
+import static org.xnio.sasl.SaslUtils.EMPTY_BYTES;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.BufferOverflowException;
@@ -44,6 +47,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import javax.net.ssl.SSLPeerUnverifiedException;
+import javax.net.ssl.SSLSession;
+import javax.security.auth.callback.CallbackHandler;
+import javax.security.sasl.Sasl;
+import javax.security.sasl.SaslClient;
+import javax.security.sasl.SaslClientFactory;
+import javax.security.sasl.SaslException;
+
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
 import org.jboss.remoting3.security.InetAddressPrincipal;
@@ -67,17 +79,6 @@ import org.xnio.channels.WrappedChannel;
 import org.xnio.sasl.SaslUtils;
 import org.xnio.sasl.SaslWrapper;
 
-import javax.net.ssl.SSLPeerUnverifiedException;
-import javax.net.ssl.SSLSession;
-import javax.security.auth.callback.CallbackHandler;
-import javax.security.sasl.Sasl;
-import javax.security.sasl.SaslClient;
-import javax.security.sasl.SaslClientFactory;
-import javax.security.sasl.SaslException;
-
-import static org.jboss.remoting3.remote.RemoteLogger.client;
-import static org.xnio.sasl.SaslUtils.EMPTY_BYTES;
-
 final class ClientConnectionOpenListener implements ChannelListener<ConnectedMessageChannel> {
     private final RemoteConnection connection;
     private final ConnectionProviderContext connectionProviderContext;
@@ -100,6 +101,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
         this.disallowedMechs = disallowedMechs == null ? Collections.<String>emptySet() : new HashSet<String>(disallowedMechs);
     }
 
+    @Override
     public void handleEvent(final ConnectedMessageChannel channel) {
         connection.setReadListener(new Greeting(), true);
     }
@@ -157,6 +159,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
 
     final class Greeting implements ChannelListener<ConnectedMessageChannel> {
 
+        @Override
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
@@ -247,36 +250,51 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             this.remoteServerName = remoteServerName;
         }
 
+        @Override
         public void handleEvent(final ConnectedMessageChannel channel) {
             Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
+            ByteBuffer receiveBuffer;
             try {
                 if (channel instanceof RemotingMessageChannel) {
-                    try {
-                        int messageLength = ((RemotingMessageChannel) channel).readMessageLength();
-                        if (messageLength > pooledReceiveBuffer.getResource().capacity() && messageLength < RemotingOptions.MAX_RECEIVE_BUFFER_SIZE) {
-                            pooledReceiveBuffer = Buffers.allocatedBufferPool(BufferAllocator.BYTE_BUFFER_ALLOCATOR, messageLength).allocate();
-                            ((RemotingMessageChannel) channel).adjustToMessageLength(messageLength);
+                    synchronized (connection.getLock()) {
+                        int res;
+                        RemotingMessageChannel.AdjustedBuffer ab = new RemotingMessageChannel.AdjustedBuffer(
+                                pooledReceiveBuffer);
+                        try {
+                            RemotingMessageChannel rc = (RemotingMessageChannel) channel;
+                            res = rc.receive(ab);
+                        } catch (IOException e) {
+                            connection.handleException(e);
+                            return;
                         }
-                    } catch (IOException e) {
-                        connection.handleException(e);
-                        return;
+                        if (res == -1) {
+                            connection.handleException(client.abruptClose(connection));
+                            return;
+                        }
+                        if (res == 0) {
+                            return;
+                        }
+                        pooledReceiveBuffer = ab.getAdjustedBuffer();
+                        receiveBuffer = pooledReceiveBuffer.getResource();
                     }
-                }
-
-                final ByteBuffer receiveBuffer = pooledReceiveBuffer.getResource();
-                int res;
-                try {
-                    res = channel.receive(receiveBuffer);
-                } catch (IOException e) {
-                    connection.handleException(e);
-                    return;
-                }
-                if (res == -1) {
-                    connection.handleException(client.abruptClose(connection));
-                    return;
-                }
-                if (res == 0) {
-                    return;
+                } else {
+                    receiveBuffer = pooledReceiveBuffer.getResource();
+                    synchronized (connection.getLock()) {
+                        int res;
+                        try {
+                            res = channel.receive(receiveBuffer);
+                        } catch (IOException e) {
+                            connection.handleException(e);
+                            return;
+                        }
+                        if (res == -1) {
+                            connection.handleException(client.abruptClose(connection));
+                            return;
+                        }
+                        if (res == 0) {
+                            return;
+                        }
+                    }
                 }
                 receiveBuffer.flip();
                 boolean starttls = false;
@@ -419,6 +437,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         final Map<String, ?> propertyMap = SaslUtils.createPropertyMap(optionMap, Channels.getOption(channel, Options.SECURE, false));
                         SaslClient saslClient = null;
                         final Iterator<SaslClientFactory> iterator = AccessController.doPrivileged(new PrivilegedAction<Iterator<SaslClientFactory>>() {
+                            @Override
                             public Iterator<SaslClientFactory> run() {
                                 return SaslUtils.getSaslClientFactories(getClass().getClassLoader(), true);
                             }
@@ -444,6 +463,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                             for (final SaslClientFactory factory : factorySet) {
                                 try {
                                     saslClient = AccessController.doPrivileged(new PrivilegedExceptionAction<SaslClient>() {
+                                        @Override
                                         public SaslClient run() throws SaslException {
                                             return factory.createSaslClient(strings, userName, protocol, remoteServerName, propertyMap, callbackHandler);
                                         }
@@ -472,6 +492,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         final SaslClient usedSaslClient = saslClient;
                         final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, userName, theRemoteEndpointName, behavior, channelsIn, channelsOut);
                         connection.getExecutor().execute(new Runnable() {
+                            @Override
                             public void run() {
                                 final byte[] response;
                                 try {
@@ -552,6 +573,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             this.remoteServerName = remoteServerName;
         }
 
+        @Override
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledReceiveBuffer = connection.allocate();
             try {
@@ -643,6 +665,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
             this.maxOutboundChannels = maxOutboundChannels;
         }
 
+        @Override
         public void handleEvent(final ConnectedMessageChannel channel) {
             final Pooled<ByteBuffer> pooledBuffer = connection.allocate();
             boolean free = true;
@@ -686,6 +709,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         client.trace("Client received authentication challenge");
                         channel.suspendReads();
                         connection.getExecutor().execute(new Runnable() {
+                            @Override
                             public void run() {
                                 try {
                                     final boolean clientComplete = saslClient.isComplete();
@@ -732,6 +756,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                         client.trace("Client received authentication complete");
                         channel.suspendReads();
                         connection.getExecutor().execute(new Runnable() {
+                            @Override
                             public void run() {
                                 try {
                                     final boolean clientComplete = saslClient.isComplete();
@@ -762,6 +787,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                     }
                                     // auth complete.
                                     final ConnectionHandlerFactory connectionHandlerFactory = new ConnectionHandlerFactory() {
+                                        @Override
                                         public ConnectionHandler createInstance(final ConnectionHandlerContext connectionContext) {
                                             Collection<Principal> principals = definePrincipals();
 
