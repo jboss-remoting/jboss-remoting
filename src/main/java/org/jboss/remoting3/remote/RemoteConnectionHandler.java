@@ -93,7 +93,9 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
     private static final int INBOUND_CHANNELS_MASK = ((1 << 30) - 1) & ~OUTBOUND_CHANNELS_MASK;
     private static final int ONE_INBOUND_CHANNEL = (1 << 15);
 
-    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final Collection<Principal> principals, final UserInfo userInfo, final int maxInboundChannels, final int maxOutboundChannels, final String remoteEndpointName, final int behavior) {
+    private final boolean client;
+
+    RemoteConnectionHandler(final ConnectionHandlerContext connectionContext, final RemoteConnection remoteConnection, final Collection<Principal> principals, final UserInfo userInfo, final int maxInboundChannels, final int maxOutboundChannels, final String remoteEndpointName, final int behavior, final boolean client) {
         super(remoteConnection.getExecutor());
         this.connectionContext = connectionContext;
         this.remoteConnection = remoteConnection;
@@ -104,6 +106,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
         this.principals = Collections.unmodifiableCollection(principals);
         this.userInfo = userInfo;
+        this.client = client;
     }
 
     /**
@@ -418,8 +421,13 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
 
     protected void closeAction() throws IOException {
         sendCloseRequest();
-        IoUtils.safeShutdownReads(remoteConnection.getChannel());
-        remoteConnection.shutdownWrites();
+        if (client) {
+            IoUtils.safeShutdownReads(remoteConnection.getChannel());
+            remoteConnection.shutdownWrites();
+        } else {
+            remoteConnection.shutdownWrites();
+            IoUtils.safeShutdownReads(remoteConnection.getChannel());
+        }
         remoteConnection.getChannel().shutdownReads();
         // now these guys can't send useless messages
         closePendingChannels();

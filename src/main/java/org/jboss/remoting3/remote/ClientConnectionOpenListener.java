@@ -766,7 +766,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConnectedMes
                                             Collection<Principal> principals = definePrincipals();
 
                                             // this happens immediately.
-                                            final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, principals, new SimpleUserInfo(principals), maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
+                                            final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(connectionContext, connection, principals, new SimpleUserInfo(principals), maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior, true);
                                             connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                             connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                             return connectionHandler;
