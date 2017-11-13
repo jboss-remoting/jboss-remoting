@@ -546,7 +546,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConnectedMe
                                         connection.setSaslWrapper(SaslWrapper.create(saslServer));
                                     }
                                     final RemoteConnectionHandler connectionHandler = new RemoteConnectionHandler(
-                                            connectionContext, connection, principals, userInfo, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior, false);
+                                        connectionContext, connection, principals, userInfo, maxInboundChannels, maxOutboundChannels, remoteEndpointName, behavior);
                                     connection.getRemoteConnectionProvider().addConnectionHandler(connectionHandler);
                                     connection.setReadListener(new RemoteReadListener(connectionHandler, connection), false);
                                     return connectionHandler;
