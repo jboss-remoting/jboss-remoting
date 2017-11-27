@@ -94,7 +94,9 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
         synchronized (readLock) {
             if (messageLengthPeeked()) {
                 log.tracef("Already read a length");
-                return 0;
+                // The length has been read fully in the previous calls to
+                // this method but no content was available. Returns the length.
+                return messageLength;
             }
             int res = channel.read(lengthBuffer);
             if (lengthBuffer.position() < 4) {
@@ -103,7 +105,10 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
                 }
                 log.tracef("Did not read a length");
                 clearReadReady();
-                return res;
+                // If channel is closed, return -1, otherwise returns 0 to not
+                // progress reading the content although we don't have read
+                // a complete length.
+                return res == -1 ? -1 : 0;
             }
             lengthBuffer.flip();
             int length = lengthBuffer.getInt();
@@ -145,6 +150,7 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
             }
             int messageLength = readMessageLength();
             if (messageLength <= 0) {
+                // A closed connection or the message length has not yet been read fully.
                 return messageLength;
             }
             if (messageLength > buffer.original.getResource().capacity()
@@ -218,10 +224,10 @@ public class RemotingMessageChannel extends TranslatingSuspendableChannel<Connec
                 }
                 // move on to next message
                 receiveBuffer.compact();
+                // Ready to read the next message length.
+                messageLength = null;
                 return length;
             } finally {
-                messageLength = null;
-
                 if (res != -1) {
                     if (receiveBuffer.position() >= 4 && receiveBuffer.position() >= 4 + receiveBuffer.getInt(0)) {
                         // there's another packet ready to go
