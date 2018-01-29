@@ -231,6 +231,10 @@
                             <name>jboss.remoting.debug-buffer-leaks</name>
                             <value>${leak.debug}</value>
                         </property>
+                        <systemPropertyVariables>
+                            <user.language>en</user.language>
+                            <user.region>US</user.region>
+                        </systemPropertyVariables>
                     </systemProperties>
                     <enableAssertions>true</enableAssertions>
                     <redirectTestOutputToFile>true</redirectTestOutputToFile>
