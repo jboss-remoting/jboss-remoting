@@ -85,19 +85,33 @@ final class ConnectionInfo {
                     splice(futureResult, attempt, authenticationConfiguration);
                     attempt.addNotifier(new IoFuture.HandlingNotifier<Connection, Void>() {
                         public void handleCancelled(final Void attachment) {
-                            clear();
-                            synchronized (maybeShared.pendingAttempts) {
-                                for (Map.Entry<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempt : maybeShared.pendingAttempts.entrySet()) {
-                                    pendingAttempt.getValue().setCancelled();
+                            final ConnectionInfo outer = ConnectionInfo.this;
+                            synchronized (outer) {
+                                assert state == maybeShared;
+                                state = None.this;
+                                synchronized (maybeShared.pendingAttempts) {
+                                    for (Map.Entry<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempt : maybeShared.pendingAttempts.entrySet()) {
+                                        final AuthenticationConfiguration pendingAuthenticationConfiguration = pendingAttempt.getKey();
+                                        final FutureResult<Connection> pendingFutureResult = pendingAttempt.getValue();
+                                        final IoFuture<Connection> realAttempt = outer.getConnection(endpoint, key, pendingAuthenticationConfiguration, true);
+                                        splice(pendingFutureResult, realAttempt, pendingAuthenticationConfiguration);
+                                    }
                                 }
                             }
                         }
 
                         public void handleFailed(final IOException exception, final Void attachment) {
-                            clear();
-                            synchronized (maybeShared.pendingAttempts) {
-                                for (Map.Entry<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempt : maybeShared.pendingAttempts.entrySet()) {
-                                    pendingAttempt.getValue().setException(exception);
+                            final ConnectionInfo outer = ConnectionInfo.this;
+                            synchronized (outer) {
+                                assert state == maybeShared;
+                                state = None.this;
+                                synchronized (maybeShared.pendingAttempts) {
+                                    for (Map.Entry<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempt : maybeShared.pendingAttempts.entrySet()) {
+                                        final AuthenticationConfiguration pendingAuthenticationConfiguration = pendingAttempt.getKey();
+                                        final FutureResult<Connection> pendingFutureResult = pendingAttempt.getValue();
+                                        final IoFuture<Connection> realAttempt = outer.getConnection(endpoint, key, pendingAuthenticationConfiguration, true);
+                                        splice(pendingFutureResult, realAttempt, pendingAuthenticationConfiguration);
+                                    }
                                 }
                             }
                         }
@@ -125,13 +139,6 @@ final class ConnectionInfo {
                             }
                         }
 
-                        private void clear() {
-                            final ConnectionInfo outer = ConnectionInfo.this;
-                            synchronized (outer) {
-                                assert state == maybeShared;
-                                state = None.this;
-                            }
-                        }
                     }, null);
                     state = maybeShared;
                     return futureResult.getIoFuture();
