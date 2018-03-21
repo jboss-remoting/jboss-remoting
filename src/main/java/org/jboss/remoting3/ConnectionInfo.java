@@ -85,21 +85,21 @@ final class ConnectionInfo {
                     splice(futureResult, attempt, authenticationConfiguration);
                     attempt.addNotifier(new IoFuture.HandlingNotifier<Connection, Void>() {
                         public void handleCancelled(final Void attachment) {
+                            clear();
                             synchronized (maybeShared.pendingAttempts) {
                                 for (Map.Entry<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempt : maybeShared.pendingAttempts.entrySet()) {
                                     pendingAttempt.getValue().setCancelled();
                                 }
                             }
-                            clear();
                         }
 
                         public void handleFailed(final IOException exception, final Void attachment) {
+                            clear();
                             synchronized (maybeShared.pendingAttempts) {
                                 for (Map.Entry<AuthenticationConfiguration, FutureResult<Connection>> pendingAttempt : maybeShared.pendingAttempts.entrySet()) {
                                     pendingAttempt.getValue().setException(exception);
                                 }
                             }
-                            clear();
                         }
 
                         public void handleDone(final Connection connection, final Void attachment) {
