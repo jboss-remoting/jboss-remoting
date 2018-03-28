@@ -218,7 +218,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         }
                         if (remoteServerName == null) {
                             // they didn't give their name; guess it from the IP
-                            remoteServerName = connection.getPeerAddress().getHostName();
+                            remoteServerName = InetUtils.determineServerName(connection.getPeerAddress().getHostName());
                         }
                         sendCapRequest(remoteServerName);
                         return;

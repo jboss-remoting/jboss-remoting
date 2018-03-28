@@ -84,7 +84,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
         if (optionMap.contains(RemotingOptions.SERVER_NAME)) {
             serverName = optionMap.get(RemotingOptions.SERVER_NAME);
         } else {
-            serverName = connection.getLocalAddress().getHostName();
+            serverName = InetUtils.determineServerName(connection.getLocalAddress().getHostName());
         }
     }
 
