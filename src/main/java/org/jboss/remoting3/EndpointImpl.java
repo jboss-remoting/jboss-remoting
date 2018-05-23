@@ -50,6 +50,7 @@ import java.util.regex.Pattern;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import javax.net.ssl.SSLContext;
+import javax.security.auth.callback.CallbackHandler;
 import javax.security.sasl.SaslClientFactory;
 
 import org.jboss.logging.Logger;
@@ -628,6 +629,27 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
     }
 
+	/**
+	 * See JBEAP-14783
+	 */
+	@Deprecated
+	public IoFuture<Connection> connect(URI destination, OptionMap connectOptions,
+			CallbackHandler callbackHandler) throws IOException {
+		final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
+		AuthenticationContext authenticationContext = AuthenticationContext.captureCurrent();
+		AuthenticationConfiguration connectionConfiguration = client
+				.getAuthenticationConfiguration(destination, authenticationContext).useCallbackHandler(callbackHandler);
+    connectionConfiguration = RemotingOptions.mergeOptionsIntoAuthenticationConfiguration(connectOptions, connectionConfiguration);
+
+		final SSLContext sslContext;
+		try {
+			sslContext = client.getSSLContext(destination, authenticationContext);
+		} catch (GeneralSecurityException e) {
+			return new FailedIoFuture<>(Messages.conn.failedToConfigureSslContext(e));
+		}
+		return connect(destination, null, connectOptions, sslContext, connectionConfiguration);
+	}
+
     private static <T> UnaryOperator<T> and(final UnaryOperator<T> first, final UnaryOperator<T> second) {
         return t -> second.apply(first.apply(t));
     }
@@ -649,6 +671,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     safeClose(provider);
                     throw new DuplicateRegistrationException("URI scheme '" + uriScheme + "' is already registered to a provider");
                 }
+
                 // add a resource count for close
                 log.tracef("Adding connection provider registration named '%s': %s", uriScheme, provider);
                 final Registration registration = new MapRegistration<ProtocolRegistration>(connectionProviders, uriScheme, protocolRegistration) {

@@ -42,6 +42,7 @@ import org.xnio.OptionMap;
 import org.xnio.XnioWorker;
 
 import javax.net.ssl.SSLContext;
+import javax.security.auth.callback.CallbackHandler;
 
 /**
  * A potential participant in a JBoss Remoting communications relationship.
@@ -378,6 +379,8 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @return the future connection (not {@code null})
      */
     IoFuture<Connection> connect(URI destination, InetSocketAddress bindAddress, OptionMap connectOptions, SSLContext sslContext, AuthenticationConfiguration connectionConfiguration);
+
+    IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException;
 
     /**
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can
