@@ -380,7 +380,19 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      */
     IoFuture<Connection> connect(URI destination, InetSocketAddress bindAddress, OptionMap connectOptions, SSLContext sslContext, AuthenticationConfiguration connectionConfiguration);
 
-    IoFuture<Connection> connect(final URI destination, final OptionMap connectOptions, final CallbackHandler callbackHandler) throws IOException;
+    /**
+     * Open an unshared connection with a peer.  Returns a future connection which may be used to cancel the connection attempt.
+     * This method does not block; use the return value to wait for a result if you wish to block.
+     * <p/>
+     * You must have the {@link RemotingPermission connect EndpointPermission} to invoke this method.
+     *
+     * @param destination the destination
+     * @param connectOptions options to configure this connection
+     * @param callbackHandler the local callback handler to use for authentication
+     * @return the future connection (not {@code null})
+     */
+    @Deprecated
+    IoFuture<Connection> connect(URI destination, OptionMap connectOptions, CallbackHandler callbackHandler) throws IOException;
 
     /**
      * Register a connection provider for a URI scheme.  The provider factory is called with the context which can
