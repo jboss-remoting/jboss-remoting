@@ -23,6 +23,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 
 import javax.net.ssl.SSLContext;
+import javax.security.auth.callback.CallbackHandler;
 
 import org.jboss.remoting3.spi.ConnectionProviderFactory;
 import org.wildfly.common.Assert;
@@ -114,4 +115,9 @@ final class UncloseableEndpoint implements Endpoint {
     public IoFuture<Connection> connect(final URI destination, final InetSocketAddress bindAddress, final OptionMap connectOptions, final SSLContext sslContext, final AuthenticationConfiguration connectionConfiguration) {
         return endpoint.connect(destination, bindAddress, connectOptions, sslContext, connectionConfiguration);
     }
+
+	public IoFuture<Connection> connect(URI destination, OptionMap connectOptions, CallbackHandler callbackHandler)
+			throws IOException {
+		return endpoint.connect(destination, connectOptions, callbackHandler);
+	}
 }
