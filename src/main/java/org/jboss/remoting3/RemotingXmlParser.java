@@ -32,6 +32,7 @@ import org.xnio.XnioWorker;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
+ * @author <a href="mailto:jbaesner@redhat.com">Joerg Baesner</a>
  */
 final class RemotingXmlParser {
     private static final String NS_REMOTING_5_0 = "urn:jboss-remoting:5.0";
@@ -207,6 +208,7 @@ final class RemotingXmlParser {
                         }
                         default: throw reader.unexpectedElement();
                     }
+                    continue;
                 }
                 case END_ELEMENT: {
                     return;
