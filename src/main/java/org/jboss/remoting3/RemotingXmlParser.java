@@ -207,6 +207,7 @@ final class RemotingXmlParser {
                         }
                         default: throw reader.unexpectedElement();
                     }
+                    break;
                 }
                 case END_ELEMENT: {
                     return;
