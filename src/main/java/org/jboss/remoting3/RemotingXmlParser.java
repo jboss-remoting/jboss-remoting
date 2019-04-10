@@ -233,11 +233,11 @@ final class RemotingXmlParser {
                     break;
                 }
                 case "read-timeout": {
-                    readTimeout = reader.getIntAttributeValueResolved(i, 1, Integer.MAX_VALUE);
+                    readTimeout = reader.getIntAttributeValueResolved(i, 0, Integer.MAX_VALUE);
                     break;
                 }
                 case "write-timeout": {
-                    writeTimeout = reader.getIntAttributeValueResolved(i, 1, Integer.MAX_VALUE);
+                    writeTimeout = reader.getIntAttributeValueResolved(i, 0, Integer.MAX_VALUE);
                     break;
                 }
                 case "ip-traffic-class": {
@@ -250,7 +250,7 @@ final class RemotingXmlParser {
                     break;
                 }
                 case "heartbeat-interval": {
-                    heartbeatInterval = reader.getIntAttributeValueResolved(i, 1, Integer.MAX_VALUE);
+                    heartbeatInterval = reader.getIntAttributeValueResolved(i, 0, Integer.MAX_VALUE);
                     break;
                 }
                 default: {
