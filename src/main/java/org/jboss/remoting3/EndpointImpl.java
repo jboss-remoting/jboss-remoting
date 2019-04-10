@@ -207,21 +207,14 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (connectionBuilders != null) for (ConnectionBuilder connectionBuilder : connectionBuilders) {
             final URI destination = connectionBuilder.getDestination();
             final OptionMap.Builder optionBuilder = OptionMap.builder();
-            if (connectionBuilder.getHeartbeatInterval() != -1) {
-                optionBuilder.set(RemotingOptions.HEARTBEAT_INTERVAL, connectionBuilder.getHeartbeatInterval());
-            }
-            if (connectionBuilder.getReadTimeout() != -1) {
-                optionBuilder.set(Options.READ_TIMEOUT, connectionBuilder.getReadTimeout());
-            }
-            if (connectionBuilder.getWriteTimeout() != -1) {
-                optionBuilder.set(Options.WRITE_TIMEOUT, connectionBuilder.getWriteTimeout());
-            }
+
+            optionBuilder.set(RemotingOptions.HEARTBEAT_INTERVAL, connectionBuilder.getHeartbeatInterval());
+            optionBuilder.set(Options.READ_TIMEOUT, connectionBuilder.getReadTimeout());
+            optionBuilder.set(Options.WRITE_TIMEOUT, connectionBuilder.getWriteTimeout());
             if (connectionBuilder.getIPTrafficClass() != -1) {
                 optionBuilder.set(Options.IP_TRAFFIC_CLASS, connectionBuilder.getIPTrafficClass());
             }
-            if (connectionBuilder.isSetTcpKeepAlive()) {
-                optionBuilder.set(Options.KEEP_ALIVE, connectionBuilder.isTcpKeepAlive());
-            }
+            optionBuilder.set(Options.KEEP_ALIVE, connectionBuilder.isTcpKeepAlive());
             connectionOptions.put(destination, optionBuilder.getMap());
         }
 
