@@ -47,7 +47,7 @@ public final class ConfigurationEndpointSupplier implements Supplier<Endpoint> {
                 try {
                     endpoint = RemotingXmlParser.parseEndpoint();
                 } catch (ConfigXMLParseException | IOException e) {
-                    log.trace("Failed to parse endpoint XML definition", e);
+                    log.warn("Failed to parse endpoint XML definition", e);
                 }
                 if (endpoint == null) {
                     final Iterator<EndpointConfigurator> iterator = ServiceLoader.load(EndpointConfigurator.class, ConfigurationEndpointSupplier.class.getClassLoader()).iterator();
