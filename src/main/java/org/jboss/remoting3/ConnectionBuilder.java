@@ -31,13 +31,13 @@ import org.wildfly.common.Assert;
 public final class ConnectionBuilder {
     private final URI destination;
 
-    private int readTimeout = RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2; // millis
-    private int writeTimeout = RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2; // millis
-
-    private boolean tcpKeepAlive = true;
+    private int readTimeout = -1; // millis
+    private int writeTimeout = -1; // millis
+    private boolean setTcpKeepAlive;
+    private boolean tcpKeepAlive;
     private int ipTrafficClass = -1;
 
-    private int heartbeatInterval = RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL;
+    private int heartbeatInterval = -1;
 
     ConnectionBuilder(final URI destination) {
         this.destination = destination;
@@ -57,6 +57,7 @@ public final class ConnectionBuilder {
 
     public ConnectionBuilder setTcpKeepAlive(final boolean tcpKeepAlive) {
         this.tcpKeepAlive = tcpKeepAlive;
+        setTcpKeepAlive = true;
         return this;
     }
 
@@ -93,5 +94,9 @@ public final class ConnectionBuilder {
 
     int getHeartbeatInterval() {
         return heartbeatInterval;
+    }
+
+    boolean isSetTcpKeepAlive() {
+        return setTcpKeepAlive;
     }
 }
