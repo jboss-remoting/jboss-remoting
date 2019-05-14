@@ -419,6 +419,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                         case Protocol.SERVICE_ERROR: {
                             log.trace("Received service error");
                             int channelId = buffer.getInt() ^ 0x80000000;
+                            handler.handleOutboundChannelClosed();
                             PendingChannel pendingChannel = handler.removePendingChannel(channelId);
                             if (pendingChannel == null) {
                                 // invalid
