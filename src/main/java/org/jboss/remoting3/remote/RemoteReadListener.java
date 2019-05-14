@@ -173,7 +173,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
 
                             final RegisteredService registeredService = handler.getConnectionContext().getRegisteredService(serviceType);
                             if (registeredService == null) {
-                                refuseService(channelId, "Unknown service name");
+                                refuseService(channelId, "Unknown service name " + serviceType);
                                 break;
                             }
                             final OptionMap serviceOptionMap = registeredService.getOptionMap();
@@ -419,6 +419,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                         case Protocol.SERVICE_ERROR: {
                             log.trace("Received service error");
                             int channelId = buffer.getInt() ^ 0x80000000;
+                            handler.handleOutboundChannelClosed(); // TODO how do I know it is outbound and not inbound?
                             PendingChannel pendingChannel = handler.removePendingChannel(channelId);
                             if (pendingChannel == null) {
                                 // invalid
