@@ -173,7 +173,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
 
                             final RegisteredService registeredService = handler.getConnectionContext().getRegisteredService(serviceType);
                             if (registeredService == null) {
-                                refuseService(channelId, "Unknown service name");
+                                refuseService(channelId, "Unknown service name " + serviceType);
                                 break;
                             }
                             final OptionMap serviceOptionMap = registeredService.getOptionMap();
