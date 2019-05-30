@@ -512,12 +512,17 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
 
             public void handleDone(final Connection connection, final FutureResult<ConnectionPeerIdentity> attachment) {
-                try {
-                    final ConnectionPeerIdentity identity = connection.getPeerIdentityContext().authenticate(authenticationConfiguration);
-                    futureResult.setResult(identity);
-                } catch (AuthenticationException e) {
-                    futureResult.setException(e);
-                }
+                worker.execute(() -> {
+                    try {
+                        // getPeerIdentityContext() might block and that's why we are running this asynchronously
+                        final ConnectionPeerIdentity identity = connection
+                                .getPeerIdentityContext()
+                                .authenticate(authenticationConfiguration);
+                        futureResult.setResult(identity);
+                    } catch (AuthenticationException e) {
+                        futureResult.setException(e);
+                    }
+                });
             }
         }, futureResult);
         return futureResult.getIoFuture();
