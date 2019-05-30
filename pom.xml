@@ -44,7 +44,7 @@
         <apacheds.api.version>1.0.0-M16</apacheds.api.version>        
         <elytron.version>1.1.0.Final</elytron.version>
         <config.version>1.0.0.CR2</config.version>
-        <xnio.version>3.5.3.Final</xnio.version>
+        <xnio.version>3.7.2.Final</xnio.version>
         <logging.version>3.4.0.Final</logging.version>
         <logging-tools.version>2.2.0.Final</logging-tools.version>
         <logmanager.version>2.1.10.Final</logmanager.version>
@@ -52,7 +52,7 @@
         <modules.version>1.6.0.Final</modules.version>
         <junit.version>4.8.2</junit.version>
         <byteman-version>2.2.0.1</byteman-version>
-        <threads.version>2.2.1.Final</threads.version>
+        <threads.version>2.3.0.Final</threads.version>
         <test.level>INFO</test.level>
         <leak.debug>false</leak.debug>
 
