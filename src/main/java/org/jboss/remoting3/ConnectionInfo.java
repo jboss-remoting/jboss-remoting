@@ -83,6 +83,7 @@ final class ConnectionInfo {
                     final MaybeShared maybeShared = new MaybeShared(authenticationConfiguration, attempt);
                     final FutureResult<Connection> futureResult = new FutureResult<>();
                     splice(futureResult, attempt, authenticationConfiguration);
+                    state = maybeShared;
                     attempt.addNotifier(new IoFuture.HandlingNotifier<Connection, Void>() {
                         public void handleCancelled(final Void attachment) {
                             final ConnectionInfo outer = ConnectionInfo.this;
@@ -140,7 +141,6 @@ final class ConnectionInfo {
                         }
 
                     }, null);
-                    state = maybeShared;
                     return futureResult.getIoFuture();
                 }
             }
