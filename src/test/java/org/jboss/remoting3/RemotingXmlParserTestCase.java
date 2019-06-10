@@ -77,6 +77,18 @@ public class RemotingXmlParserTestCase {
     }
 
     /**
+     * Test parse configuration with more connections
+     * @throws Exception
+     */
+    @Test
+    public void parseMoreConnections() throws Exception {
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File(classLoader.getResource("wildfly-config-more-connection.xml").getFile());
+        System.setProperty("wildfly.config.url", file.getAbsolutePath());
+        RemotingXmlParser.parseEndpoint();
+    }
+
+    /**
      * Tests that setting some values works.
      * @throws Exception
      */
