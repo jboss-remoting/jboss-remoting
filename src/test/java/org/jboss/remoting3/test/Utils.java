@@ -18,7 +18,6 @@
 
 package org.jboss.remoting3.test;
 
-import java.lang.reflect.Field;
 import java.security.AllPermission;
 import java.security.PermissionCollection;
 import java.security.Permissions;
@@ -37,17 +36,5 @@ public final class Utils {
         permissions.add(new AllPermission());
         permissions.setReadOnly();
         ALL_PERMISSIONS = permissions;
-    }
-
-    public static Object getInstanceValue(final Object classInstance, final String fieldName) throws SecurityException,
-            NoSuchFieldException, ClassNotFoundException, IllegalArgumentException, IllegalAccessException {
-
-        // Get the private field
-        final Field field = classInstance.getClass().getDeclaredField(fieldName);
-        // Allow modification on the field
-        field.setAccessible(true);
-        // Return the Obect corresponding to the field
-        return field.get(classInstance);
-
     }
 }

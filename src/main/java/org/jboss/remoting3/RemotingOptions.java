@@ -281,10 +281,9 @@ public final class RemotingOptions {
     public static final Option<Integer> HEARTBEAT_INTERVAL = Option.simple(RemotingOptions.class, "HEARTBEAT_INTERVAL", Integer.class);
 
     /**
-     * The default heartbeat interval, set to 60000 that way a heartbeat is always sent by default to prevent side effects of network failures,
-     * check REM-331 for more information.
+     * The default heartbeat interval.
      */
-    public static final int DEFAULT_HEARTBEAT_INTERVAL = 60000;
+    public static final int DEFAULT_HEARTBEAT_INTERVAL = Integer.MAX_VALUE;
 
     /**
      * The maximum inbound message size to be allowed.  Messages exceeding this size will cause an exception to be thrown

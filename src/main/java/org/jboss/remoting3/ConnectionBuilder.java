@@ -23,40 +23,41 @@ import java.net.URI;
 import org.wildfly.common.Assert;
 
 /**
- * A builder for configuring a preconfigured endpoint connection. Some values are set to defaults to make sure
- * a heartbeat is always sent.
+ * A builder for configuring a preconfigured endpoint connection.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class ConnectionBuilder {
     private final URI destination;
 
-    private int readTimeout = RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2; // millis
-    private int writeTimeout = RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2; // millis
+    private int readTimeout = -1; // millis
+    private int writeTimeout = -1; // millis
 
-    private boolean tcpKeepAlive = true;
+    private boolean setTcpKeepAlive;
+    private boolean tcpKeepAlive;
     private int ipTrafficClass = -1;
 
-    private int heartbeatInterval = RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL;
+    private int heartbeatInterval = -1;
 
     ConnectionBuilder(final URI destination) {
         this.destination = destination;
     }
 
     public ConnectionBuilder setReadTimeout(final int readTimeout) {
-        Assert.checkMinimumParameter("readTimeout", 0L, readTimeout);
+        Assert.checkMinimumParameter("readTimeout", 1L, readTimeout);
         this.readTimeout = readTimeout;
         return this;
     }
 
     public ConnectionBuilder setWriteTimeout(final int writeTimeout) {
-        Assert.checkMinimumParameter("writeTimeout", 0L, writeTimeout);
+        Assert.checkMinimumParameter("writeTimeout", 1L, writeTimeout);
         this.writeTimeout = writeTimeout;
         return this;
     }
 
     public ConnectionBuilder setTcpKeepAlive(final boolean tcpKeepAlive) {
         this.tcpKeepAlive = tcpKeepAlive;
+        setTcpKeepAlive = true;
         return this;
     }
 
@@ -66,7 +67,7 @@ public final class ConnectionBuilder {
     }
 
     public ConnectionBuilder setHeartbeatInterval(final int heartbeatInterval) {
-        Assert.checkMinimumParameter("heartbeatInterval", 0, heartbeatInterval);
+        Assert.checkMinimumParameter("heartbeatInterval", 1, heartbeatInterval);
         this.heartbeatInterval = heartbeatInterval;
         return this;
     }
@@ -81,6 +82,10 @@ public final class ConnectionBuilder {
 
     int getWriteTimeout() {
         return writeTimeout;
+    }
+
+    boolean isSetTcpKeepAlive() {
+        return setTcpKeepAlive;
     }
 
     boolean isTcpKeepAlive() {
