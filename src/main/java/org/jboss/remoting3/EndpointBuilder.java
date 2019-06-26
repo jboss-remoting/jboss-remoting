@@ -29,8 +29,6 @@ import java.util.List;
 
 import org.jboss.remoting3.security.RemotingPermission;
 import org.wildfly.common.Assert;
-import org.xnio.OptionMap;
-import org.xnio.Options;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 
@@ -45,11 +43,6 @@ public final class EndpointBuilder {
     private List<ConnectionProviderFactoryBuilder> connectionProviderFactoryBuilders;
     private List<ConnectionBuilder> connectionBuilders;
     private XnioWorker.Builder workerBuilder;
-    //Default option map that sets heartbeat and read/write timeouts
-    private OptionMap defaultConnectionOptionMap = OptionMap.builder().set(RemotingOptions.HEARTBEAT_INTERVAL, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL)
-            .set(Options.READ_TIMEOUT, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2)
-            .set(Options.WRITE_TIMEOUT, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2)
-            .set(Options.KEEP_ALIVE, Boolean.TRUE).getMap();
 
     EndpointBuilder() {
     }
@@ -78,17 +71,6 @@ public final class EndpointBuilder {
         }
         connectionProviderFactoryBuilders.add(builder);
         return builder;
-    }
-
-    public EndpointBuilder setDefaultConnectionsOptionMap(OptionMap optionMap) {
-        final OptionMap.Builder optionBuilder = OptionMap.builder();
-        optionBuilder.set(RemotingOptions.HEARTBEAT_INTERVAL, optionMap.get(RemotingOptions.HEARTBEAT_INTERVAL, defaultConnectionOptionMap.get(RemotingOptions.HEARTBEAT_INTERVAL)));
-        optionBuilder.set(Options.READ_TIMEOUT, optionMap.get(Options.READ_TIMEOUT, defaultConnectionOptionMap.get(Options.READ_TIMEOUT)));
-        optionBuilder.set(Options.WRITE_TIMEOUT, optionMap.get(Options.WRITE_TIMEOUT, defaultConnectionOptionMap.get(Options.WRITE_TIMEOUT)));
-        optionBuilder.set(Options.KEEP_ALIVE, optionMap.get(Options.KEEP_ALIVE, defaultConnectionOptionMap.get(Options.KEEP_ALIVE)));
-        defaultConnectionOptionMap = optionBuilder.getMap();
-        return this;
-
     }
 
     public ConnectionBuilder addConnection(final URI destination) {
@@ -127,10 +109,6 @@ public final class EndpointBuilder {
 
     XnioWorker.Builder getWorkerBuilder() {
         return workerBuilder;
-    }
-
-    OptionMap getDefaultConnectionOptionMap() {
-        return defaultConnectionOptionMap;
     }
 
     List<ConnectionProviderFactoryBuilder> getConnectionProviderFactoryBuilders() {
