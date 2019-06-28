@@ -243,10 +243,11 @@ final class RemoteConnection {
     final class RemoteWriteListener implements ChannelListener<ConduitStreamSinkChannel> {
 
         private final Queue<Pooled<ByteBuffer>> queue = new ArrayDeque<Pooled<ByteBuffer>>();
-        private XnioExecutor.Key heartKey;
+        private volatile XnioExecutor.Key heartKey;
         private boolean closed;
         private ByteBuffer headerBuffer = ByteBuffer.allocateDirect(4);
         private final ByteBuffer[] cachedArray = new ByteBuffer[] { headerBuffer, null };
+        private volatile long expireTime = -1;
 
         RemoteWriteListener() {
         }
@@ -312,7 +313,9 @@ final class RemoteConnection {
                             return;
                         } else {
                             if (heartbeatInterval != 0) {
-                                this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
+                                this.expireTime = System.currentTimeMillis() + heartbeatInterval;
+                                 if (this.heartKey == null)
+                                    this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
                             }
                         }
                         channel.suspendWrites();
@@ -390,9 +393,16 @@ final class RemoteConnection {
                 }
             });
         }
+
+        private final Runnable heartbeatCommand = () -> {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime >= expireTime) {
+                sendAlive();
+            }
+            heartKey = null;
+        };
     }
 
-    private final Runnable heartbeatCommand = this::sendAlive;
 
     public String toString() {
         return String.format("Remoting connection %08x to %s of %s", Integer.valueOf(hashCode()), connection.getPeerAddress(), getRemoteConnectionProvider().getConnectionProviderContext().getEndpoint());
