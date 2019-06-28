@@ -243,10 +243,11 @@ final class RemoteConnection {
     final class RemoteWriteListener implements ChannelListener<ConduitStreamSinkChannel> {
 
         private final Queue<Pooled<ByteBuffer>> queue = new ArrayDeque<Pooled<ByteBuffer>>();
-        private XnioExecutor.Key heartKey;
+        private volatile XnioExecutor.Key heartKey;
         private boolean closed;
         private ByteBuffer headerBuffer = ByteBuffer.allocateDirect(4);
         private final ByteBuffer[] cachedArray = new ByteBuffer[] { headerBuffer, null };
+        private volatile long expireTime = -1;
 
         RemoteWriteListener() {
         }
@@ -312,7 +313,12 @@ final class RemoteConnection {
                             return;
                         } else {
                             if (heartbeatInterval != 0) {
-                                this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
+                                this.expireTime = System.currentTimeMillis() + heartbeatInterval;
+                                 if (this.heartKey == null) {
+                                     final XnioExecutor executor = channel.getWriteThread();
+                                     final Runnable heartBeat = new HeartBeat(executor);
+                                     this.heartKey = executor.executeAfter(heartBeat, heartbeatInterval, TimeUnit.MILLISECONDS);
+                                 }
                             }
                         }
                         channel.suspendWrites();
@@ -356,8 +362,7 @@ final class RemoteConnection {
         public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
             connection.getIoThread().execute(() -> {
                 synchronized (queue) {
-                    XnioExecutor.Key heartKey1 = RemoteWriteListener.this.heartKey;
-                    if (heartKey1 != null) heartKey1.remove();
+                    this.expireTime = System.currentTimeMillis() + heartbeatInterval;
                     if (closed) { pooled.free(); return; }
                     if (close) { closed = true; }
                     boolean free = true;
@@ -390,9 +395,30 @@ final class RemoteConnection {
                 }
             });
         }
+
+        private class HeartBeat implements Runnable {
+
+            private final XnioExecutor executor;
+
+            public HeartBeat(XnioExecutor executor) {
+                this.executor = executor;
+            }
+
+            public void run() {
+                long currentTime = System.currentTimeMillis();
+                if (currentTime >= expireTime) {
+                    sendAlive();
+                    heartKey = executor.executeAfter(this, heartbeatInterval, TimeUnit.MILLISECONDS);
+                } else {
+                    final long nextBeatInterval = expireTime - System.currentTimeMillis();
+                    // prevent negative intervals by scheduling to run immediately if nextBeatInterval happens to be negative
+                    heartKey = executor.executeAfter(this, nextBeatInterval < 0? 0: nextBeatInterval, TimeUnit.MILLISECONDS);
+                }
+
+            }
+        }
     }
 
-    private final Runnable heartbeatCommand = this::sendAlive;
 
     public String toString() {
         return String.format("Remoting connection %08x to %s of %s", Integer.valueOf(hashCode()), connection.getPeerAddress(), getRemoteConnectionProvider().getConnectionProviderContext().getEndpoint());
