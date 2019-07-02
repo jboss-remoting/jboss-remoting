@@ -69,7 +69,7 @@ public final class ClientServiceHandle<T> {
         }
 
         // create new future result, try to attach it
-        final FutureResult<T> futureResult = new FutureResult<>(connection.getEndpoint().getXnioWorker());
+        final FutureResult<T> futureResult = new FutureResult<>();
         final IoFuture<T> future = futureResult.getIoFuture();
         existing = attachments.attachIfAbsent(key, future);
         if (existing != null) {

@@ -85,6 +85,7 @@ import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Result;
 import org.xnio.Xnio;
+import org.xnio.XnioIoThread;
 import org.xnio.XnioWorker;
 
 /**
@@ -501,7 +502,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             // no connection currently exists
             return null;
         }
-        final FutureResult<ConnectionPeerIdentity> futureResult = new FutureResult<>(getExecutor());
+        final FutureResult<ConnectionPeerIdentity> futureResult = new FutureResult<>();
         futureResult.addCancelHandler(futureConnection);
         futureConnection.addNotifier(new IoFuture.HandlingNotifier<Connection, FutureResult<ConnectionPeerIdentity>>() {
             public void handleCancelled(final FutureResult<ConnectionPeerIdentity> attachment) {
@@ -513,7 +514,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
 
             public void handleDone(final Connection connection, final FutureResult<ConnectionPeerIdentity> attachment) {
-                worker.execute(() -> {
+                Runnable task = () -> {
                     try {
                         // getPeerIdentityContext() might block and that's why we are running this asynchronously
                         final ConnectionPeerIdentity identity = connection
@@ -523,7 +524,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     } catch (AuthenticationException e) {
                         futureResult.setException(e);
                     }
-                });
+                };
+                if(Thread.currentThread() instanceof XnioIoThread) {
+                    worker.execute(task);
+                } else {
+                    task.run();
+                }
             }
         }, futureResult);
         return futureResult.getIoFuture();
