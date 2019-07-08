@@ -314,8 +314,11 @@ final class RemoteConnection {
                         } else {
                             if (heartbeatInterval != 0) {
                                 this.expireTime = System.currentTimeMillis() + heartbeatInterval;
-                                 if (this.heartKey == null)
-                                    this.heartKey = channel.getWriteThread().executeAfter(heartbeatCommand, heartbeatInterval, TimeUnit.MILLISECONDS);
+                                 if (this.heartKey == null) {
+                                     final XnioExecutor executor = channel.getWriteThread();
+                                     final Runnable heartBeat = new HeartBeat(executor);
+                                     this.heartKey = executor.executeAfter(heartBeat, heartbeatInterval, TimeUnit.MILLISECONDS);
+                                 }
                             }
                         }
                         channel.suspendWrites();
@@ -359,8 +362,7 @@ final class RemoteConnection {
         public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
             connection.getIoThread().execute(() -> {
                 synchronized (queue) {
-                    XnioExecutor.Key heartKey1 = RemoteWriteListener.this.heartKey;
-                    if (heartKey1 != null) heartKey1.remove();
+                    this.expireTime = System.currentTimeMillis() + heartbeatInterval;
                     if (closed) { pooled.free(); return; }
                     if (close) { closed = true; }
                     boolean free = true;
@@ -394,13 +396,27 @@ final class RemoteConnection {
             });
         }
 
-        private final Runnable heartbeatCommand = () -> {
-            long currentTime = System.currentTimeMillis();
-            if (currentTime >= expireTime) {
-                sendAlive();
+        private class HeartBeat implements Runnable {
+
+            private final XnioExecutor executor;
+
+            public HeartBeat(XnioExecutor executor) {
+                this.executor = executor;
             }
-            heartKey = null;
-        };
+
+            public void run() {
+                long currentTime = System.currentTimeMillis();
+                if (currentTime >= expireTime) {
+                    sendAlive();
+                    heartKey = executor.executeAfter(this, heartbeatInterval, TimeUnit.MILLISECONDS);
+                } else {
+                    final long nextBeatInterval = expireTime - System.currentTimeMillis();
+                    // prevent negative intervals by scheduling to run immediately if nextBeatInterval happens to be negative
+                    heartKey = executor.executeAfter(this, nextBeatInterval < 0? 0: nextBeatInterval, TimeUnit.MILLISECONDS);
+                }
+
+            }
+        }
     }
 
 
