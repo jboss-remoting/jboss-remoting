@@ -21,6 +21,7 @@ package org.jboss.remoting3.remote;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.rmi.Remote;
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.Executor;
@@ -379,7 +380,10 @@ final class RemoteConnection {
                         queue.add(pooled);
                         free = false;
                         if (empty) {
-                            connection.getSinkChannel().resumeWrites();
+                            handleEvent(RemoteConnection.this.connection.getSinkChannel());
+                            if(!queue.isEmpty()) {
+                                connection.getSinkChannel().resumeWrites();
+                            }
                         }
                     } catch (IOException e) {
                         handleException(e, false);
