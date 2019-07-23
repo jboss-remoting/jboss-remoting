@@ -362,7 +362,9 @@ final class RemoteConnection {
         public void send(final Pooled<ByteBuffer> pooled, final boolean close) {
             connection.getIoThread().execute(() -> {
                 synchronized (queue) {
-                    this.expireTime = System.currentTimeMillis() + heartbeatInterval;
+                    XnioExecutor.Key heartKey1 = heartKey;
+                    if (heartKey1 != null)
+                        this.expireTime = System.currentTimeMillis() + heartbeatInterval;
                     if (closed) { pooled.free(); return; }
                     if (close) { closed = true; }
                     boolean free = true;
