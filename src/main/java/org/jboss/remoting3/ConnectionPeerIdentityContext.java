@@ -140,6 +140,15 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
         return futureResult.getIoFuture();
     }
 
+    public ConnectionPeerIdentity getExistingIdentity(final AuthenticationConfiguration configuration) throws AuthenticationException {
+        if (configuration.equals(connection.getAuthenticationConfiguration())) {
+            return connectionIdentity;
+        } else if (CLIENT.getAuthorizationPrincipal(configuration) instanceof AnonymousPrincipal) {
+            return anonymousIdentity;
+        }
+        return null;
+    }
+
     /**
      * Perform an authentication.
      *

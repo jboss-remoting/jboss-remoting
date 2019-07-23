@@ -512,17 +512,29 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
             }
 
             public void handleDone(final Connection connection, final FutureResult<ConnectionPeerIdentity> attachment) {
-                worker.execute(() -> {
-                    try {
-                        // getPeerIdentityContext() might block and that's why we are running this asynchronously
-                        final ConnectionPeerIdentity identity = connection
-                                .getPeerIdentityContext()
-                                .authenticate(authenticationConfiguration);
-                        futureResult.setResult(identity);
-                    } catch (AuthenticationException e) {
-                        futureResult.setException(e);
-                    }
-                });
+
+                try {
+                    final ConnectionPeerIdentity existingIdentity = connection
+                            .getPeerIdentityContext()
+                            .getExistingIdentity(authenticationConfiguration);
+                if(existingIdentity != null) {
+                    futureResult.setResult(existingIdentity);
+                } else {
+                    worker.execute(() -> {
+                        try {
+                            // getPeerIdentityContext() might block and that's why we are running this asynchronously
+                            final ConnectionPeerIdentity identity = connection
+                                    .getPeerIdentityContext()
+                                    .authenticate(authenticationConfiguration);
+                            futureResult.setResult(identity);
+                        } catch (AuthenticationException e) {
+                            futureResult.setException(e);
+                        }
+                    });
+                }
+                } catch (AuthenticationException e) {
+                    futureResult.setException(e);
+                }
             }
         }, futureResult);
         return futureResult.getIoFuture();
