@@ -643,7 +643,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         return true;
                     }
                 };
-                final Cancellable connect = doPrivileged((PrivilegedAction<Cancellable>) () ->
+                final Cancellable connect;
+                if (System.getSecurityManager() == null)
+                    connect = connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContext, finalFactoryOperator, Collections.emptyList());
+                else
+                    connect = doPrivileged((PrivilegedAction<Cancellable>) () ->
                         connectionProvider.connect(destination, bindAddress, connectOptions, result, configuration, sslContext, finalFactoryOperator, Collections.emptyList())
                 );
                 ok = true;
