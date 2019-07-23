@@ -379,7 +379,11 @@ final class RemoteConnection {
                         queue.add(pooled);
                         free = false;
                         if (empty) {
-                            connection.getSinkChannel().resumeWrites();
+                            //if there was no data previously queued we add a task to attempt to write the
+                            //data, and resume writes if it fails. This means that if we have multiple messages
+                            //that are to be send they can all be batched into a single write, while also
+                            //preventing a resumeWrites unless it is actually required
+                            connection.getIoThread().execute(flushTask);
                         }
                     } catch (IOException e) {
                         handleException(e, false);
@@ -417,8 +421,17 @@ final class RemoteConnection {
 
             }
         }
-    }
 
+        private final Runnable flushTask = new Runnable() {
+            @Override
+            public void run() {
+                handleEvent(RemoteConnection.this.connection.getSinkChannel());
+                if(!queue.isEmpty()) {
+                    connection.getSinkChannel().resumeWrites();
+                }
+            }
+        };
+    }
 
     public String toString() {
         return String.format("Remoting connection %08x to %s of %s", Integer.valueOf(hashCode()), connection.getPeerAddress(), getRemoteConnectionProvider().getConnectionProviderContext().getEndpoint());
