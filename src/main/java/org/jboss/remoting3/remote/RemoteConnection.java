@@ -385,7 +385,13 @@ final class RemoteConnection {
                             //data, and resume writes if it fails. This means that if we have multiple messages
                             //that are to be send they can all be batched into a single write, while also
                             //preventing a resumeWrites unless it is actually required
-                            connection.getIoThread().execute(flushTask);
+                            if (identity != null) {
+                                connection.getIoThread().execute(flushTask);
+                            } else
+                                // if identity is null, we are opening connection
+                                // and hence we need to resumeWrites in case we
+                                // are using SSL for proper handling of handshaking
+                                connection.getSinkChannel().resumeWrites();
                         }
                     } catch (IOException e) {
                         handleException(e, false);
