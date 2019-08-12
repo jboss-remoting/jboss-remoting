@@ -245,6 +245,7 @@ final class RemoteConnection {
         private final Queue<Pooled<ByteBuffer>> queue = new ArrayDeque<Pooled<ByteBuffer>>();
         private volatile XnioExecutor.Key heartKey;
         private boolean closed;
+        private boolean flushing;
         private ByteBuffer headerBuffer = ByteBuffer.allocateDirect(4);
         private final ByteBuffer[] cachedArray = new ByteBuffer[] { headerBuffer, null };
         private volatile long expireTime = -1;
@@ -338,11 +339,20 @@ final class RemoteConnection {
                 closed = true;
                 terminateHeartbeat();
                 final ConduitStreamSinkChannel sinkChannel = connection.getSinkChannel();
+                if (! queue.isEmpty()) {
+                    sinkChannel.resumeWrites();
+                    return;
+                }
+                if (!flushing) {
+                    doShutdownWrites();
+                }
+            }
+        }
+
+        private void doShutdownWrites() {
+            synchronized (queue) {
+                final ConduitStreamSinkChannel sinkChannel = connection.getSinkChannel();
                 try {
-                    if (! queue.isEmpty()) {
-                        sinkChannel.resumeWrites();
-                        return;
-                    }
                     sinkChannel.shutdownWrites();
                     if (! sinkChannel.flush()) {
                         sinkChannel.resumeWrites();
@@ -386,6 +396,11 @@ final class RemoteConnection {
                             //that are to be send they can all be batched into a single write, while also
                             //preventing a resumeWrites unless it is actually required
                             if (identity != null) {
+                                synchronized (queue) {
+                                    flushing = true;
+                                }
+                                //do not check for already flushing... we could end up with a race where we
+                                // havent finished the task but have already written previous data
                                 connection.getIoThread().execute(flushTask);
                             } else
                                 // if identity is null, we are opening connection
@@ -436,6 +451,12 @@ final class RemoteConnection {
                 handleEvent(RemoteConnection.this.connection.getSinkChannel());
                 if(!queue.isEmpty()) {
                     connection.getSinkChannel().resumeWrites();
+                }
+                synchronized (queue) {
+                    if (closed) {
+                        doShutdownWrites();
+                    }
+                    flushing = false;
                 }
             }
         };
