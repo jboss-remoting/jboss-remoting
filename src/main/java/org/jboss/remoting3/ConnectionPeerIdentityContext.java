@@ -218,6 +218,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
         boolean intr = Thread.currentThread().isInterrupted();
         if (intr) {
             futureResult.setException(log.authenticationInterrupted());
+            authMap.remove(authentication);
             futureAuths.remove(configuration, futureResult.getIoFuture());
             return;
         }
@@ -234,6 +235,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                     saslClient = client.createSaslClient(connection.getPeerURI(), configuration, mechanisms, factoryOperator, sslSession);
                 } catch (SaslException e) {
                     futureResult.setException(log.authenticationNoSaslClient(e));
+                    authMap.remove(authentication);
                     futureAuths.remove(configuration, futureResult.getIoFuture());
                     return;
                 }
@@ -375,6 +377,7 @@ public final class ConnectionPeerIdentityContext extends PeerIdentityContext {
                 triedStr = "(none)";
             }
             futureResult.setException(log.noAuthMechanismsLeft(triedStr));
+            authMap.remove(authentication);
             futureAuths.remove(configuration, futureResult.getIoFuture());
             return;
         } finally {
