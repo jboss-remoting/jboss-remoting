@@ -28,6 +28,8 @@ import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 
+import static org.jboss.remoting3._private.Messages.log;
+
 /**
  * A handle for helping service protocol providers to create and maintain a single channel per connection.
  *
@@ -47,6 +49,7 @@ public final class ClientServiceHandle<T> {
      */
     @SuppressWarnings("unchecked")
     public ClientServiceHandle(final String serviceName, final Function<Channel, IoFuture<T>> constructor) {
+        log.tracef("Creating ClientServiceHandle for service '%s':  %s", serviceName, this);
         key = (Attachments.Key<IoFuture<T>>) (Object) new Attachments.Key<>(IoFuture.class);
         this.serviceName = serviceName;
         this.constructor = constructor;
@@ -65,6 +68,7 @@ public final class ClientServiceHandle<T> {
         // check for prior
         IoFuture<T> existing = attachments.getAttachment(key);
         if (existing != null) {
+            log.tracef("ClientServiceHandle %s ('%s') found existing service at connection %s", this, serviceName, connection);
             return existing;
         }
 
@@ -73,8 +77,11 @@ public final class ClientServiceHandle<T> {
         final IoFuture<T> future = futureResult.getIoFuture();
         existing = attachments.attachIfAbsent(key, future);
         if (existing != null) {
+            log.tracef("ClientServiceHandle %s ('%s') found existing service at connection %s", this, serviceName, connection);
             return existing;
         }
+
+        log.tracef("ClientServiceHandle %s ('%s') constructing future service at connection %s", this, serviceName, connection);
 
         // open the channel and create notifiers to trigger user construction operation
         final IoFuture<Channel> futureChannel = connection.openChannel(serviceName, optionMap);
@@ -95,12 +102,14 @@ public final class ClientServiceHandle<T> {
                     public void handleCancelled(final FutureResult<T> futureResult) {
                         safeClose(channel);
                         futureResult.setCancelled();
+                        log.tracef("ClientServiceHandle %s ('%s') cancelling service at connection %s", this, serviceName, connection);
                         attachments.removeAttachment(key, futureResult.getIoFuture());
                     }
 
                     public void handleFailed(final IOException exception, final FutureResult<T> futureResult) {
                         safeClose(channel);
                         futureResult.setException(exception);
+                        log.tracef("ClientServiceHandle %s ('%s') failed service at connection %s", this, serviceName, connection);
                         attachments.removeAttachment(key, futureResult.getIoFuture());
                     }
 
@@ -110,7 +119,11 @@ public final class ClientServiceHandle<T> {
                         // Optimize overall
                         attachments.replaceAttachment(key, futureResult.getIoFuture(), new FinishedIoFuture<T>(result));
                         // Remove on close
-                        channel.addCloseHandler((closed, exception) -> attachments.removeAttachment(key));
+                        channel.addCloseHandler((closed, exception) -> {
+                            log.tracef("ClientServiceHandle %s ('%s') closing service at connection %s", this, serviceName, connection);
+                            attachments.removeAttachment(key);
+
+                        });
                     }
                 }, futureResult);
                 // make sure cancel requests now pass up to the service future
