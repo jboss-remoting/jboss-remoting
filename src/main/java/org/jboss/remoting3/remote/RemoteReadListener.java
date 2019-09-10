@@ -32,9 +32,12 @@ import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
+import org.xnio.ChannelListeners;
+import org.xnio.Connection;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
 import org.xnio.Pooled;
+import org.xnio.StreamConnection;
 import org.xnio.conduits.ConduitStreamSourceChannel;
 import org.xnio.sasl.SaslWrapper;
 
@@ -48,12 +51,20 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
     private static final byte[] NO_BYTES = new byte[0];
     private final RemoteConnectionHandler handler;
     private final RemoteConnection connection;
+    private ChannelListener previousCloseListener = null;
 
     RemoteReadListener(final RemoteConnectionHandler handler, final RemoteConnection connection) {
+        Connection xnioConnection = connection.getConnection();
+        if(xnioConnection instanceof StreamConnection) {
+            previousCloseListener = ((StreamConnection) connection.getConnection()).getCloseListener();
+        }
         synchronized (connection.getLock()) {
             connection.getConnection().getCloseSetter().set((ChannelListener<Channel>) channel -> connection.getExecutor().execute(() -> {
                 handler.handleConnectionClose();
                 handler.closeComplete();
+                if(previousCloseListener != null) {
+                    ChannelListeners.invokeChannelListener(channel, previousCloseListener);
+                }
             }));
         }
         this.handler = handler;
