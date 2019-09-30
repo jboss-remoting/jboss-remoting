@@ -120,6 +120,8 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
         boolean ok = false;
         try {
             final ByteBuffer sendBuffer = pooledSendBuffer.getResource();
+            final int maxInboundChannels = optionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_INBOUND_CHANNELS);
+            final int maxOutboundChannels = optionMap.get(RemotingOptions.MAX_OUTBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_OUTBOUND_CHANNELS);
             sendBuffer.put(Protocol.CAPABILITIES);
             ProtocolUtils.writeByte(sendBuffer, Protocol.CAP_VERSION, Protocol.VERSION);
             final String localEndpointName = connectionProviderContext.getEndpoint().getName();
@@ -128,8 +130,8 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
             }
             ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_MESSAGE_CLOSE);
             ProtocolUtils.writeString(sendBuffer, Protocol.CAP_VERSION_STRING, Version.getVersionString());
-            ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_IN, optionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_INBOUND_CHANNELS));
-            ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_OUT, optionMap.get(RemotingOptions.MAX_OUTBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_OUTBOUND_CHANNELS));
+            ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_IN, maxInboundChannels);
+            ProtocolUtils.writeInt(sendBuffer, Protocol.CAP_CHANNELS_OUT, maxOutboundChannels);
             ProtocolUtils.writeEmpty(sendBuffer, Protocol.CAP_AUTHENTICATION);
             final Collection<String> serverMechs = this.serverMechs;
             if (serverMechs != null) {
@@ -138,7 +140,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                 }
             }
             sendBuffer.flip();
-            connection.setReadListener(new Capabilities(remoteServerName, uri), true);
+            connection.setReadListener(new Capabilities(remoteServerName, uri, maxInboundChannels, maxOutboundChannels), true);
             connection.send(pooledSendBuffer);
             ok = true;
             // all set
@@ -243,10 +245,14 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
 
         private final String remoteServerName;
         private final URI uri;
+        private int maxInboundChannels;
+        private int maxOutboundChannels;
 
-        Capabilities(final String remoteServerName, final URI uri) {
+        Capabilities(final String remoteServerName, final URI uri, final int maxInboundChannels, final int maxOutboundChannels) {
             this.remoteServerName = remoteServerName;
             this.uri = uri;
+            this.maxInboundChannels = maxInboundChannels;
+            this.maxOutboundChannels = maxOutboundChannels;
         }
 
         public void handleEvent(final ConduitStreamSourceChannel channel) {
@@ -294,9 +300,6 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         String remoteEndpointName = null;
                         int version = Protocol.VERSION;
                         int behavior = Protocol.BH_FAULTY_MSG_SIZE;
-                        boolean useDefaultChannels = true;
-                        int channelsIn = 40;
-                        int channelsOut = 40;
                         boolean authCap = false;
                         while (receiveBuffer.hasRemaining()) {
                             final byte type = receiveBuffer.get();
@@ -344,17 +347,17 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                     break;
                                 }
                                 case Protocol.CAP_CHANNELS_IN: {
-                                    useDefaultChannels = false;
                                     // their channels in is our channels out
-                                    channelsOut = ProtocolUtils.readIntData(data, len);
-                                    client.tracef("Client received capability: remote channels in is \"%d\"", channelsOut);
+                                    final int channelsOut = ProtocolUtils.readIntData(data, len);
+                                    maxOutboundChannels = Math.min(maxOutboundChannels, channelsOut);
+                                    client.tracef("Client received capability: remote channels in is \"%d\"; resulting max outbound channels value is \"%d\"", channelsOut, maxOutboundChannels);
                                     break;
                                 }
                                 case Protocol.CAP_CHANNELS_OUT: {
-                                    useDefaultChannels = false;
                                     // their channels out is our channels in
-                                    channelsIn = ProtocolUtils.readIntData(data, len);
-                                    client.tracef("Client received capability: remote channels out is \"%d\"", channelsIn);
+                                    final int channelsIn = ProtocolUtils.readIntData(data, len);
+                                    maxInboundChannels = Math.min(maxInboundChannels, channelsIn);
+                                    client.tracef("Client received capability: remote channels out is \"%d\"; resulting max inbound channels value is \"%d\"", channelsIn, maxInboundChannels);
                                     break;
                                 }
                                 case Protocol.CAP_AUTHENTICATION: {
@@ -368,10 +371,6 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                     break;
                                 }
                             }
-                        }
-                        if (useDefaultChannels) {
-                            channelsIn = 40;
-                            channelsOut = 40;
                         }
                         if (starttls) {
                             // only initiate starttls if not forbidden by config and possible on the connection
@@ -453,7 +452,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                         connection.getMessageReader().suspendReads();
                         final int negotiatedVersion = version;
                         final SaslClient usedSaslClient = saslClient;
-                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, remoteEndpointName, behavior, channelsIn, channelsOut, authCap, offeredMechs);
+                        final Authentication authentication = new Authentication(usedSaslClient, remoteServerName, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels, authCap, offeredMechs);
                         connection.getExecutor().execute(() -> {
                             final byte[] response;
                             try {
