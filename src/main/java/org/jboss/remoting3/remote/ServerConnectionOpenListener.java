@@ -142,8 +142,8 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
         private boolean starttls;
         private Set<String> allowedMechanisms;
         private int version;
-        private int channelsIn = 40;
-        private int channelsOut = 40;
+        private int maxInboundChannels = optionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_INBOUND_CHANNELS);
+        private int maxOutboundChannels = optionMap.get(RemotingOptions.MAX_OUTBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_OUTBOUND_CHANNELS);
         private String remoteEndpointName;
         private int behavior = Protocol.BH_FAULTY_MSG_SIZE;
         private boolean authCap;
@@ -294,7 +294,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                             return;
                         }
                         suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, message, remoteEndpointName, behavior, channelsIn, channelsOut, authCap, null));
+                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, message, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels, authCap, null));
                         free = false;
                         return;
                     }
@@ -342,8 +342,6 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
 
         void handleClientCapabilities(final ByteBuffer receiveBuffer) {
             boolean useDefaultChannels = true;
-            int channelsIn = 40;
-            int channelsOut = 40;
             boolean authCap = false;
             while (receiveBuffer.hasRemaining()) {
                 final byte type = receiveBuffer.get();
@@ -377,17 +375,19 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                         break;
                     }
                     case Protocol.CAP_CHANNELS_IN: {
-                        useDefaultChannels = false;
                         // their channels in is our channels out
-                        channelsOut = ProtocolUtils.readIntData(data, len);
-                        server.tracef("Server received capability: remote channels in is \"%d\"", channelsOut);
+                        final int channelsOut = ProtocolUtils.readIntData(data, len);
+                        maxOutboundChannels = Math.min(maxOutboundChannels, channelsOut);
+                        server.tracef("Server received capability: remote channels in is \"%d\"; resulting max outbound channels value is \"%d\"",
+                                channelsOut, maxOutboundChannels);
                         break;
                     }
                     case Protocol.CAP_CHANNELS_OUT: {
-                        useDefaultChannels = false;
                         // their channels out is our channels in
-                        channelsIn = ProtocolUtils.readIntData(data, len);
-                        server.tracef("Server received capability: remote channels out is \"%d\"", channelsIn);
+                        final int channelsIn = ProtocolUtils.readIntData(data, len);
+                        maxInboundChannels = Math.min(maxInboundChannels, channelsIn);
+                        server.tracef("Server received capability: remote channels out is \"%d\"; resulting max inbound channels value is \"%d\"",
+                                channelsIn, maxInboundChannels);
                         break;
                     }
                     case Protocol.CAP_AUTHENTICATION: {
@@ -401,10 +401,6 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                         break;
                     }
                 }
-            }
-            if (! useDefaultChannels) {
-                this.channelsIn = channelsIn;
-                this.channelsOut = channelsOut;
             }
             this.authCap = authCap;
         }
