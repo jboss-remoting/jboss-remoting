@@ -41,6 +41,7 @@ import org.wildfly.security.sasl.WildFlySasl;
 import org.wildfly.security.sasl.util.ProtocolSaslServerFactory;
 import org.wildfly.security.sasl.util.SSLSaslServerFactory;
 import org.wildfly.security.sasl.util.ServerNameSaslServerFactory;
+import org.wildfly.security.sasl.util.SocketAddressCallbackSaslServerFactory;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
@@ -194,7 +195,7 @@ class ConnectionImpl extends AbstractHandleableCloseable<Connection> implements 
             final SSLSession sslSession = connectionHandler.getSslSession();
             try {
                 saslServer = authenticationFactory.createMechanism(mechName, f ->
-                    new ServerNameSaslServerFactory(new ProtocolSaslServerFactory(sslSession != null ? new SSLSaslServerFactory(f, connectionHandler::getSslSession) : f, saslProtocol), connectionHandler.getLocalSaslServerName())
+                    new ServerNameSaslServerFactory(new ProtocolSaslServerFactory(new SocketAddressCallbackSaslServerFactory(sslSession != null ? new SSLSaslServerFactory(f, connectionHandler::getSslSession) : f, getLocalAddress(), getPeerAddress()), saslProtocol), connectionHandler.getLocalSaslServerName())
                 );
             } catch (SaslException e) {
                 log.trace("Authentication failed at mechanism creation", e);
