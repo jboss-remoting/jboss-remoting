@@ -39,6 +39,7 @@ public final class ClientServiceHandle<T> {
     private final Attachments.Key<IoFuture<T>> key;
     private final String serviceName;
     private final Function<Channel, IoFuture<T>> constructor;
+    private Channel channel;
 
     /**
      * Construct a new instance.  Only one instance should be constructed per service; instances may be safely
@@ -97,6 +98,7 @@ public final class ClientServiceHandle<T> {
             }
 
             public void handleDone(final Channel channel, final FutureResult<T> futureResult) {
+                ClientServiceHandle.this.channel = channel;
                 final IoFuture<T> nextFuture = constructor.apply(channel);
                 nextFuture.addNotifier(new IoFuture.HandlingNotifier<T, FutureResult<T>>() {
                     public void handleCancelled(final FutureResult<T> futureResult) {
@@ -133,5 +135,12 @@ public final class ClientServiceHandle<T> {
         // make sure cancel requests pass up to the channel open request
         futureResult.addCancelHandler(futureChannel);
         return future;
+    }
+
+    /**
+     * Close the channel associated with this handle
+     */
+    public void closeChannel() throws IOException {
+        channel.close();
     }
 }
