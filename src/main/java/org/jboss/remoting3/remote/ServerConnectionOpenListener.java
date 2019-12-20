@@ -50,6 +50,7 @@ import org.wildfly.security.sasl.util.PropertiesSaslServerFactory;
 import org.wildfly.security.sasl.util.ProtocolSaslServerFactory;
 import org.wildfly.security.sasl.util.SSLSaslServerFactory;
 import org.wildfly.security.sasl.util.ServerNameSaslServerFactory;
+import org.wildfly.security.sasl.util.SocketAddressCallbackSaslServerFactory;
 import org.wildfly.security.ssl.SSLUtils;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
@@ -279,6 +280,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                         SaslServer saslServer;
                         try {
                             saslServer = saslAuthenticationFactory.createMechanism(mechName, saslServerFactory -> {
+                                saslServerFactory = new SocketAddressCallbackSaslServerFactory(saslServerFactory, connection.getLocalAddress(), connection.getPeerAddress());
                                 saslServerFactory = sslSession != null ? new SSLSaslServerFactory(saslServerFactory, () -> sslSession) : saslServerFactory;
                                 saslServerFactory = new ServerNameSaslServerFactory(saslServerFactory, serverName);
                                 saslServerFactory = new ProtocolSaslServerFactory(saslServerFactory, protocol);
