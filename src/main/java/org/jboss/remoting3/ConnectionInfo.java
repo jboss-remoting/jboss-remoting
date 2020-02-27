@@ -276,6 +276,7 @@ final class ConnectionInfo {
                     final FutureResult<Connection> futureResult = new FutureResult<>();
                     splice(futureResult, attempt, authenticationConfiguration);
                     newConnections.put(authenticationConfiguration, futureResult);
+                    state = new NotShared(newConnections);
                     return attempt;
                 }
             }
