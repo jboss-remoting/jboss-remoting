@@ -46,7 +46,7 @@
         <config.version>1.0.1.Final</config.version>
         <xnio.version>3.7.7.Final</xnio.version>
         <logging.version>3.4.1.Final</logging.version>
-        <logging-tools.version>2.2.0.Final</logging-tools.version>
+        <logging-tools.version>2.2.1.Final</logging-tools.version>
         <logmanager.version>2.1.10.Final</logmanager.version>
         <wildfly-common.version>1.5.1.Final</wildfly-common.version>
         <modules.version>1.6.0.Final</modules.version>
