@@ -50,7 +50,7 @@
         <logmanager.version>2.1.14.Final</logmanager.version>
         <wildfly-common.version>1.5.2.Final</wildfly-common.version>
         <modules.version>1.10.0.Final</modules.version>
-        <junit.version>4.11</junit.version>
+        <junit.version>4.12</junit.version>
         <byteman-version>4.0.6</byteman-version>
         <threads.version>2.3.0.Final</threads.version>
         <test.level>INFO</test.level>
