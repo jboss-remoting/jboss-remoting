@@ -52,7 +52,7 @@
         <modules.version>1.10.0.Final</modules.version>
         <junit.version>4.12</junit.version>
         <byteman-version>4.0.8</byteman-version>
-        <threads.version>2.3.0.Final</threads.version>
+        <threads.version>2.3.3.Final</threads.version>
         <test.level>INFO</test.level>
         <leak.debug>false</leak.debug>
 
