@@ -475,7 +475,32 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                 } else {
                                     ProtocolUtils.writeString(sendBuffer, mechanismName);
                                     if (response != null) {
-                                        sendBuffer.put(response);
+                                        // REM3-370: if message does not fit the buffer
+                                        if (sendBuffer.remaining() < response.length) {
+                                            final ByteBuffer newSendBuffer = ByteBuffer.allocate(sendBuffer.position() + response.length);
+                                            sendBuffer.flip();
+                                            newSendBuffer.put(sendBuffer);
+                                            pooledSendBuffer.free(); // free sendBuffer to prevent a leak
+                                            newSendBuffer.put(response);
+                                            newSendBuffer.flip();
+                                            connection.setReadListener(authentication, true);
+                                            // new send buffer is not actually a pooled buffer, mock up a pooled buffer
+                                            // and leave it for garbage collection after being sent
+                                            connection.send(new Pooled<ByteBuffer>() {
+                                                public void discard() {}
+                                   x             public void free(){}
+                                                public void close() {}
+
+                                                public ByteBuffer getResource() throws IllegalStateException {
+                                                    return newSendBuffer;
+                                                }
+                                            });
+                                            ok = true;
+                                            return;
+                                        } else {
+                                            // else: just write the message in the buffer as usual
+                                            sendBuffer.put(response);
+                                        }
                                     }
                                 }
 
