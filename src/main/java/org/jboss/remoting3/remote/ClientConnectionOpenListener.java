@@ -488,7 +488,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
                                             // and leave it for garbage collection after being sent
                                             connection.send(new Pooled<ByteBuffer>() {
                                                 public void discard() {}
-                                   x             public void free(){}
+                                                public void free(){}
                                                 public void close() {}
 
                                                 public ByteBuffer getResource() throws IllegalStateException {
