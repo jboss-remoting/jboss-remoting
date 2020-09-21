@@ -61,7 +61,14 @@ final class MessageReader {
                     if (first.remaining() >= 4) {
                         int size = first.getInt(first.position());
                         if (remaining(size + 4)) {
-                            ByteBuffer message = ByteBufferPool.MEDIUM_HEAP.allocate();
+                            ByteBuffer message;
+                            if (ByteBufferPool.MEDIUM_SIZE >= size) {
+                                message = ByteBufferPool.MEDIUM_HEAP.allocate();
+                            } else if (ByteBufferPool.LARGE_SIZE >= size) {
+                                message = ByteBufferPool.LARGE_HEAP.allocate();
+                            } else {
+                                message = ByteBuffer.allocate(size);
+                            }
                             first.getInt();
                             int cnt = 0;
                             while (cnt < size) {
