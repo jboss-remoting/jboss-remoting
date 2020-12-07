@@ -19,6 +19,7 @@
 package org.jboss.remoting3.remote;
 
 import static org.jboss.remoting3._private.Messages.conn;
+import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -39,6 +40,7 @@ import org.jboss.remoting3.spi.ExternalConnectionProvider;
 import org.wildfly.common.Assert;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.server.SaslAuthenticationFactory;
+import org.xnio.Cancellable;
 import org.xnio.ChannelListener;
 import org.xnio.ChannelListeners;
 import org.xnio.FailedIoFuture;
@@ -172,6 +174,17 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
             IoFuture<T> upgradeFuture = HttpUpgrade.performUpgrade(type.cast(channel), uri, headers, upgradeChannel -> {
                 ChannelListeners.invokeChannelListener(upgradeChannel, openListener);
             }, new RemotingHandshakeChecker(secKey));
+
+            futureResult.addCancelHandler(new Cancellable() {
+                @Override
+                public Cancellable cancel() {
+                    if (channel.isOpen()) {
+                        safeClose(channel);
+                    }
+                    return this;
+                }
+            });
+
             upgradeFuture.addNotifier( new IoFuture.HandlingNotifier<T, FutureResult<T>>() {
 
                 @Override
