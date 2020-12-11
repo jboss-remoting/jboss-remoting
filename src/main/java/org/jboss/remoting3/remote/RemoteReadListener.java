@@ -30,6 +30,8 @@ import org.jboss.remoting3.ServiceOpenException;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.jboss.remoting3.spi.RegisteredService;
 import org.jboss.remoting3.spi.SpiUtils;
+
+import org.wildfly.security.manager.WildFlySecurityManager;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
 import org.xnio.ChannelListeners;
@@ -47,6 +49,8 @@ import static org.jboss.remoting3._private.Messages.log;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class RemoteReadListener implements ChannelListener<ConduitStreamSourceChannel> {
+    // FIXME temporarily using a system property as a solution to ACK TIMEOUT issue until an RFE is properly submitted
+    private static final int MESSAGE_ACK_TIMEOUT = Integer.parseInt(WildFlySecurityManager.getPropertyPrivileged("org.jboss.remoting3.remote.message.ack.timeout", String.valueOf(RemotingOptions.DEFAULT_MESSAGE_ACK_TIMEOUT)));
 
     private static final byte[] NO_BYTES = new byte[0];
     private final RemoteConnectionHandler handler;
@@ -231,7 +235,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                             boolean ok1 = false;
                             try {
                                 // construct the channel
-                                RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessages, inboundMessages, outboundMessageSize, inboundMessageSize);
+                                RemoteConnectionChannel connectionChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessages, inboundMessages, outboundMessageSize, inboundMessageSize, MESSAGE_ACK_TIMEOUT);
                                 RemoteConnectionChannel existing = handler.addChannel(connectionChannel);
                                 if (existing != null) {
                                     log.tracef("Encountered open request for duplicate %s", existing);
@@ -358,6 +362,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                             int requestedInboundMessageCount = pendingChannel.getInboundMessageCount();
                             long requestedOutboundMessageSize = pendingChannel.getOutboundMessageSize();
                             long requestedInboundMessageSize = pendingChannel.getInboundMessageSize();
+                            int requestedMessageAckTimeout = pendingChannel.getMessageAckTimeout();
 
                             int outboundWindow = requestedOutboundWindow;
                             int inboundWindow = requestedInboundWindow;
@@ -422,7 +427,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                                 );
                             }
 
-                            RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount, outboundMessageSize, inboundMessageSize);
+                            RemoteConnectionChannel newChannel = new RemoteConnectionChannel(handler, connection, channelId, outboundWindow, inboundWindow, outboundMessageCount, inboundMessageCount, outboundMessageSize, inboundMessageSize, requestedMessageAckTimeout);
                             handler.putChannel(newChannel);
                             pendingChannel.getResult().setResult(newChannel);
                             break;
