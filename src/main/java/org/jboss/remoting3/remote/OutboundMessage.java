@@ -24,6 +24,7 @@ import static org.jboss.remoting3._private.Messages.log;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.TimeUnit;
 import java.util.function.ToIntFunction;
 
 import org.jboss.remoting3.MessageCancelledException;
@@ -43,6 +44,7 @@ final class OutboundMessage extends MessageOutputStream {
     final RemoteConnectionChannel channel;
     final BufferPipeOutputStream pipeOutputStream;
     final int maximumWindow;
+    final int ackTimeout;
     int window;
     boolean closeCalled;
     boolean closeReceived;
@@ -99,9 +101,11 @@ final class OutboundMessage extends MessageOutputStream {
                 final int msgSize = badMsgSize ? buffer.remaining() : buffer.remaining() - 8;
                 boolean sendCancel = cancelled && ! cancelSent;
                 boolean intr = false;
+                boolean timeoutExpired = false;
                 if (msgSize > 0 && ! sendCancel) {
                     // empty messages and cancellation both bypass the transmit window check
                     for (;;) {
+                        final int currentWindow = window;
                         if (window >= msgSize) {
                             window -= msgSize;
                             if (log.isTraceEnabled()) {
@@ -111,7 +115,12 @@ final class OutboundMessage extends MessageOutputStream {
                         }
                         try {
                             log.tracef("Outbound message ID %04x: message window is closed, waiting", getActualId());
-                            pipeOutputStream.wait();
+                            pipeOutputStream.wait(ackTimeout, 0);
+                            if (window == currentWindow) {
+                                // no changes, throw an exception
+                                timeoutExpired = true;
+                                break;
+                            }
                         } catch (InterruptedException e) {
                             cancelled = true;
                             intr = true;
@@ -128,7 +137,7 @@ final class OutboundMessage extends MessageOutputStream {
                         }
                     }
                 }
-                if (eof || sendCancel || intr) {
+                if (eof || sendCancel || intr || timeoutExpired) {
                     // EOF flag (sync close)
                     eofSent = true;
                     buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_EOF));
@@ -142,17 +151,23 @@ final class OutboundMessage extends MessageOutputStream {
                         channel.closeOutboundMessage();
                     }
                 }
-                if (sendCancel || intr) {
+                if (sendCancel || intr || timeoutExpired) {
                     cancelSent = true;
                     buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
                     buffer.limit(8); // discard everything in the buffer so we can send even if there is no window
                     log.tracef("Outbound message ID %04x: message includes cancel flag", getActualId());
+                }
+                if (timeoutExpired) {
+                    remoteClosed();
                 }
                 channel.getRemoteConnection().send(pooledBuffer);
                 ok = true;
                 if (intr) {
                     Thread.currentThread().interrupt();
                     throw new InterruptedIOException(this + ": interrupted on write (message cancelled)");
+                }
+                if (timeoutExpired) {
+                    throw new IOException(this + ": cancelled because ack timeout has expired, no acks for this message received from client within " + ackTimeout + " milliseconds");
                 }
             } finally {
                 if (! ok) pooledBuffer.free();
@@ -167,10 +182,11 @@ final class OutboundMessage extends MessageOutputStream {
 
     static final ToIntFunction<OutboundMessage> INDEXER = OutboundMessage::getActualId;
 
-    OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window, final long maxOutboundMessageSize) {
+    OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window, final long maxOutboundMessageSize, final int ackTimeout) {
         this.messageId = messageId;
         this.channel = channel;
         this.window = maximumWindow = window;
+        this.ackTimeout = ackTimeout;
         this.remaining = maxOutboundMessageSize;
         try {
             pipeOutputStream = new BufferPipeOutputStream(bufferWriter);
