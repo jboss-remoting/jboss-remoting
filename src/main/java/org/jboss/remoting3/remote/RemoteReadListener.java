@@ -187,6 +187,10 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                                 refuseService(channelId, "Unknown service name " + serviceType);
                                 break;
                             }
+                            if (! registeredService.validateService(handler.getConnectionContext().getConnection())) {
+                                refuseService(channelId, "Service refused");
+                                break;
+                            }
                             final OptionMap serviceOptionMap = registeredService.getOptionMap();
 
                             final int outboundWindowOptionValue = serviceOptionMap.get(RemotingOptions.TRANSMIT_WINDOW_SIZE, RemotingOptions.INCOMING_CHANNEL_DEFAULT_TRANSMIT_WINDOW_SIZE);

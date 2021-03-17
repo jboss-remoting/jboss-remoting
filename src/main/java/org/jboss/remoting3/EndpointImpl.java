@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
@@ -414,6 +415,15 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     }
 
     public Registration registerService(final String serviceType, final OpenListener openListener, final OptionMap optionMap) throws ServiceRegistrationException {
+        return registerService(serviceType, openListener, optionMap, EndpointImpl::alwaysTrue);
+    }
+
+    private static boolean alwaysTrue(Connection ignored) {
+        return true;
+    }
+
+    public Registration registerService(final String serviceType, final OpenListener openListener, final OptionMap optionMap, final Predicate<Connection> validationPredicate) throws ServiceRegistrationException {
+        Assert.checkNotNullParam("validationPredicate", validationPredicate);
         if (! VALID_SERVICE_PATTERN.matcher(serviceType).matches()) {
             throw new IllegalArgumentException("Service type must match " + VALID_SERVICE_PATTERN);
         }
@@ -421,7 +431,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(RemotingPermission.REGISTER_SERVICE);
         }
-        final RegisteredServiceImpl registeredService = new RegisteredServiceImpl(openListener, optionMap);
+        final RegisteredServiceImpl registeredService = new RegisteredServiceImpl(openListener, optionMap, validationPredicate);
         if (registeredServices.putIfAbsent(serviceType, registeredService) != null) {
             throw new ServiceRegistrationException("Service type '" + serviceType + "' is already registered");
         }
@@ -937,10 +947,12 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
     static class RegisteredServiceImpl implements RegisteredService {
         private final OpenListener openListener;
         private final OptionMap optionMap;
+        private final Predicate<Connection> predicate;
 
-        private RegisteredServiceImpl(final OpenListener openListener, final OptionMap optionMap) {
+        RegisteredServiceImpl(final OpenListener openListener, final OptionMap optionMap, final Predicate<Connection> predicate) {
             this.openListener = openListener;
             this.optionMap = optionMap;
+            this.predicate = predicate;
         }
 
         public OpenListener getOpenListener() {
@@ -949,6 +961,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
 
         public OptionMap getOptionMap() {
             return optionMap;
+        }
+
+        public boolean validateService(final Connection connection) {
+            return predicate.test(connection);
         }
     }
 

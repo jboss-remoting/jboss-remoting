@@ -26,6 +26,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.security.PrivilegedAction;
+import java.util.function.Predicate;
 
 import org.jboss.remoting3._private.Messages;
 import org.jboss.remoting3.security.RemotingPermission;
@@ -97,6 +98,18 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
      * @throws ServiceRegistrationException if the service could not be registered
      */
     Registration registerService(String serviceType, OpenListener openListener, OptionMap optionMap) throws ServiceRegistrationException;
+
+    /**
+     * Register a new service.
+     *
+     * @param serviceType the service type
+     * @param openListener the channel open listener
+     * @param optionMap the option map
+     * @param validationPredicate the validation predicate to apply
+     * @return the service registration which may be closed to remove the service
+     * @throws ServiceRegistrationException if the service could not be registered
+     */
+    Registration registerService(String serviceType, OpenListener openListener, OptionMap optionMap, Predicate<Connection> validationPredicate) throws ServiceRegistrationException;
 
     /**
      * Get a possibly shared, possibly existing connection to the destination.  The authentication and SSL configuration is selected from
