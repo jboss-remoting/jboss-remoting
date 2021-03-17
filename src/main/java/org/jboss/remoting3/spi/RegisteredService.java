@@ -18,6 +18,7 @@
 
 package org.jboss.remoting3.spi;
 
+import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.OpenListener;
 import org.xnio.OptionMap;
 
@@ -41,4 +42,14 @@ public interface RegisteredService {
      * @return the service option map
      */
     OptionMap getOptionMap();
+
+    /**
+     * Validate the service for the given connection.
+     *
+     * @param connection the connection (must not be {@code null})
+     * @return {@code true} if the service is allowed, {@code false} otherwise
+     */
+    default boolean validateService(Connection connection) {
+        return true;
+    }
 }

@@ -25,6 +25,7 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.util.function.Predicate;
 
 import javax.net.ssl.SSLContext;
 import javax.security.auth.callback.CallbackHandler;
@@ -103,6 +104,11 @@ public class LegacyEndpoint implements Endpoint {
 	public Registration registerService(String serviceType, OpenListener openListener, OptionMap optionMap)
 			throws ServiceRegistrationException {
 		return this.endpoint.registerService(serviceType, openListener, optionMap);
+	}
+	@Override
+	public Registration registerService(String serviceType, OpenListener openListener, OptionMap optionMap, Predicate<Connection> validationPredicate)
+			throws ServiceRegistrationException {
+		return this.endpoint.registerService(serviceType, openListener, optionMap, validationPredicate);
 	}
 
 	@Override
