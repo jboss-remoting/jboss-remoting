@@ -21,6 +21,7 @@ package org.jboss.remoting3;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.util.function.Predicate;
 
 import javax.net.ssl.SSLContext;
 
@@ -45,6 +46,10 @@ final class UncloseableEndpoint implements Endpoint {
 
     public Registration registerService(final String serviceType, final OpenListener openListener, final OptionMap optionMap) throws ServiceRegistrationException {
         return endpoint.registerService(serviceType, openListener, optionMap);
+    }
+
+    public Registration registerService(String serviceType, OpenListener openListener, OptionMap optionMap, Predicate<Connection> validationPredicate) throws ServiceRegistrationException {
+        return endpoint.registerService(serviceType, openListener, optionMap, validationPredicate);
     }
 
     public IoFuture<ConnectionPeerIdentity> getConnectedIdentity(final URI destination, final SSLContext sslContext, final AuthenticationConfiguration authenticationConfiguration) {
