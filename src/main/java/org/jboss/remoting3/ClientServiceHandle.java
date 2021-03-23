@@ -141,6 +141,6 @@ public final class ClientServiceHandle<T> {
      * Close the channel associated with this handle
      */
     public void closeChannel() throws IOException {
-        channel.close();
+        safeClose(channel);
     }
 }
