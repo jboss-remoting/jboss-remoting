@@ -324,4 +324,9 @@ public final class RemotingOptions {
      * The default SASL protocol name.
      */
     public static final String DEFAULT_SASL_PROTOCOL = "remote";
+
+    /**
+     * The default value for message ack timeout configuration
+     */
+    public static final int DEFAULT_MESSAGE_ACK_TIMEOUT = 300000;
 }
