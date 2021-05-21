@@ -24,6 +24,7 @@ import static org.jboss.remoting3._private.Messages.log;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.TimeUnit;
 import java.util.function.ToIntFunction;
 
 import org.jboss.remoting3.MessageCancelledException;
@@ -43,6 +44,7 @@ final class OutboundMessage extends MessageOutputStream {
     final RemoteConnectionChannel channel;
     final BufferPipeOutputStream pipeOutputStream;
     final int maximumWindow;
+    final int ackTimeout;
     int window;
     boolean closeCalled;
     boolean closeReceived;
@@ -80,13 +82,13 @@ final class OutboundMessage extends MessageOutputStream {
             try {
                 assert holdsLock(pipeOutputStream);
                 if (closeCalled) {
-                    throw new NotOpenException("Message was closed asynchronously by another thread");
+                    throw new NotOpenException(this + ": message was closed asynchronously by another thread");
                 }
                 if (cancelSent) {
-                    throw new MessageCancelledException("Message was cancelled");
+                    throw new MessageCancelledException(this + ": message was cancelled");
                 }
                 if (closeReceived) {
-                    throw new BrokenPipeException("Remote side closed the message stream");
+                    throw new BrokenPipeException(this + ": remote side closed the message stream");
                 }
                 if (eof) {
                     closeCalled = true;
@@ -99,40 +101,47 @@ final class OutboundMessage extends MessageOutputStream {
                 final int msgSize = badMsgSize ? buffer.remaining() : buffer.remaining() - 8;
                 boolean sendCancel = cancelled && ! cancelSent;
                 boolean intr = false;
+                boolean timeoutExpired = false;
                 if (msgSize > 0 && ! sendCancel) {
                     // empty messages and cancellation both bypass the transmit window check
                     for (;;) {
+                        final int currentWindow = window;
                         if (window >= msgSize) {
                             window -= msgSize;
                             if (log.isTraceEnabled()) {
-                                log.tracef("Message window is open (%d-%d=%d remaining), proceeding with send", Integer.valueOf(window + msgSize), Integer.valueOf(msgSize), Integer.valueOf(window));
+                                log.tracef("Outbound message ID %04x: message window is open (%d-%d=%d remaining), proceeding with send", getActualId(), window + msgSize, msgSize, window);
                             }
                             break;
                         }
                         try {
-                            log.trace("Message window is closed, waiting");
-                            pipeOutputStream.wait();
+                            log.tracef("Outbound message ID %04x: message window is closed, waiting", getActualId());
+                            pipeOutputStream.wait(ackTimeout, 0);
+                            if (window == currentWindow) {
+                                // no changes, throw an exception
+                                timeoutExpired = true;
+                                break;
+                            }
                         } catch (InterruptedException e) {
                             cancelled = true;
                             intr = true;
                             break;
                         }
                         if (closeReceived) {
-                            throw new BrokenPipeException("Remote side closed the message stream");
+                            throw new BrokenPipeException(this + ": remote side closed the message stream");
                         }
                         if (closeCalled && ! eof) {
-                            throw new NotOpenException("Message was closed asynchronously by another thread");
+                            throw new NotOpenException(this + ": message was closed asynchronously by another thread");
                         }
                         if (cancelSent) {
-                            throw new MessageCancelledException("Message was cancelled");
+                            throw new MessageCancelledException(this + ": message was cancelled");
                         }
                     }
                 }
-                if (eof || sendCancel || intr) {
+                if (eof || sendCancel || intr || timeoutExpired) {
                     // EOF flag (sync close)
                     eofSent = true;
                     buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_EOF));
-                    log.tracef("Sending message (with EOF) (%s) to %s", buffer, connection);
+                    log.tracef("Outbound message ID %04x: sending message (with EOF) (%s) to %s", getActualId(), buffer, connection);
                     if (! channel.getConnectionHandler().isMessageClose()) {
                         // free now, because we may never receive a close message
                         channel.free(OutboundMessage.this);
@@ -142,17 +151,23 @@ final class OutboundMessage extends MessageOutputStream {
                         channel.closeOutboundMessage();
                     }
                 }
-                if (sendCancel || intr) {
+                if (sendCancel || intr || timeoutExpired) {
                     cancelSent = true;
                     buffer.put(7, (byte) (buffer.get(7) | Protocol.MSG_FLAG_CANCELLED));
                     buffer.limit(8); // discard everything in the buffer so we can send even if there is no window
-                    log.trace("Message includes cancel flag");
+                    log.tracef("Outbound message ID %04x: message includes cancel flag", getActualId());
+                }
+                if (timeoutExpired) {
+                    remoteClosed();
                 }
                 channel.getRemoteConnection().send(pooledBuffer);
                 ok = true;
                 if (intr) {
                     Thread.currentThread().interrupt();
-                    throw new InterruptedIOException("Interrupted on write (message cancelled)");
+                    throw new InterruptedIOException(this + ": interrupted on write (message cancelled)");
+                }
+                if (timeoutExpired) {
+                    throw new IOException(this + ": cancelled because ack timeout has expired, no acks for this message received from client within " + ackTimeout + " milliseconds");
                 }
             } finally {
                 if (! ok) pooledBuffer.free();
@@ -160,17 +175,18 @@ final class OutboundMessage extends MessageOutputStream {
         }
 
         public void flush() throws IOException {
-            log.trace("Flushing message channel");
+            log.tracef("Outbound message ID %04x: flushing message channel", getActualId());
             // no op
         }
     };
 
     static final ToIntFunction<OutboundMessage> INDEXER = OutboundMessage::getActualId;
 
-    OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window, final long maxOutboundMessageSize) {
+    OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window, final long maxOutboundMessageSize, final int ackTimeout) {
         this.messageId = messageId;
         this.channel = channel;
         this.window = maximumWindow = window;
+        this.ackTimeout = ackTimeout;
         this.remaining = maxOutboundMessageSize;
         try {
             pipeOutputStream = new BufferPipeOutputStream(bufferWriter);
@@ -195,7 +211,7 @@ final class OutboundMessage extends MessageOutputStream {
         synchronized (pipeOutputStream) {
             if (log.isTraceEnabled()) {
                 // do trace enabled check because of boxing here
-                log.tracef("Acknowledged %d bytes on %s", Integer.valueOf(count), this);
+                log.tracef("%s: acknowledged %d bytes", this, Integer.valueOf(count));
             }
             window += count;
             pipeOutputStream.notifyAll();
@@ -253,7 +269,7 @@ final class OutboundMessage extends MessageOutputStream {
 
     private IOException overrun() {
         try {
-            return new IOException("Maximum message size overrun");
+            return new IOException(this + ": maximum message size overrun");
         } finally {
             cancel();
         }
@@ -312,11 +328,11 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     public String toString() {
-        return String.format("Outbound message ID %04x on %s", Short.valueOf(messageId), channel);
+        return String.format("Outbound message ID %04x on %s", getActualId(), channel);
     }
 
     void dumpState(final StringBuilder b) {
-        b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", Integer.valueOf(messageId & 0xFFFF), Integer.valueOf(window), Integer.valueOf(maximumWindow)));
+        b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", getActualId(), window, maximumWindow));
         b.append("            ").append("* flags: ");
         if (cancelled) b.append("cancelled ");
         if (cancelSent) b.append("cancel-sent ");

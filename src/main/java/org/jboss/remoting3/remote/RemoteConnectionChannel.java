@@ -71,6 +71,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private final int maxInboundMessages;
     private final long maxOutboundMessageSize;
     private final long maxInboundMessageSize;
+    private final int messageAckTimeout;
     private volatile int channelState = 0;
 
     private static final AtomicIntegerFieldUpdater<RemoteConnectionChannel> channelStateUpdater = AtomicIntegerFieldUpdater.newUpdater(RemoteConnectionChannel.class, "channelState");
@@ -84,7 +85,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private static final int INBOUND_MESSAGES_MASK = ((1 << 30) - 1) & ~OUTBOUND_MESSAGES_MASK;
     private static final int ONE_INBOUND_MESSAGE = (1 << 15);
 
-    RemoteConnectionChannel(final RemoteConnectionHandler connectionHandler, final RemoteConnection connection, final int channelId, final int outboundWindow, final int inboundWindow, final int maxOutboundMessages, final int maxInboundMessages, final long maxOutboundMessageSize, final long maxInboundMessageSize) {
+    RemoteConnectionChannel(final RemoteConnectionHandler connectionHandler, final RemoteConnection connection, final int channelId, final int outboundWindow, final int inboundWindow, final int maxOutboundMessages, final int maxInboundMessages, final long maxOutboundMessageSize, final long maxInboundMessageSize, final int messageAckTimeout) {
         super(connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor(), true);
         this.maxOutboundMessageSize = maxOutboundMessageSize;
         this.maxInboundMessageSize = maxInboundMessageSize;
@@ -96,6 +97,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
         this.inboundWindow = inboundWindow;
         this.maxOutboundMessages = maxOutboundMessages;
         this.maxInboundMessages = maxInboundMessages;
+        this.messageAckTimeout = messageAckTimeout;
     }
 
     void openOutboundMessage() throws IOException {
@@ -295,7 +297,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
             while (tries > 0) {
                 final int id = random.nextInt() & 0xfffe;
                 if (! outboundMessages.containsKey(id)) {
-                    OutboundMessage message = new OutboundMessage((short) id, this, outboundWindow, maxOutboundMessageSize);
+                    OutboundMessage message = new OutboundMessage((short) id, this, outboundWindow, maxOutboundMessageSize, messageAckTimeout);
                     OutboundMessage existing = outboundMessages.putIfAbsent(message);
                     if (existing == null) {
                         ok = true;

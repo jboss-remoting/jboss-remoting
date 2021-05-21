@@ -46,6 +46,7 @@ import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandler;
 import org.jboss.remoting3.spi.ConnectionHandlerContext;
 import org.wildfly.security.auth.server.SecurityIdentity;
+import org.wildfly.security.manager.WildFlySecurityManager;
 import org.xnio.Bits;
 import org.xnio.Cancellable;
 import org.xnio.Connection;
@@ -57,6 +58,9 @@ import org.xnio.channels.SslChannel;
 
 @SuppressWarnings("deprecation")
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
+
+    // TODO JBEAP-20756 temporarily using a system property as a solution to ACK TIMEOUT issue until an RFE is properly submitted
+    private static final int MESSAGE_ACK_TIMEOUT = Integer.parseInt(WildFlySecurityManager.getPropertyPrivileged("org.jboss.remoting3.remote.message.ack.timeout", String.valueOf(RemotingOptions.DEFAULT_MESSAGE_ACK_TIMEOUT)));
 
     private final ConnectionHandlerContext connectionContext;
     private final RemoteConnection remoteConnection;
@@ -343,7 +347,7 @@ final class RemoteConnectionHandler extends AbstractHandleableCloseable<Connecti
             for (;;) {
                 id = random.nextInt() | 0x80000000;
                 if (! pendingChannels.containsKey(id)) {
-                    PendingChannel pendingChannel = new PendingChannel(id, outboundWindowSize, inboundWindowSize, outboundMessageCount, inboundMessageCount, outboundMessageSize, inboundMessageSize, result);
+                    PendingChannel pendingChannel = new PendingChannel(id, outboundWindowSize, inboundWindowSize, outboundMessageCount, inboundMessageCount, outboundMessageSize, inboundMessageSize, MESSAGE_ACK_TIMEOUT, result);
                     if (pendingChannels.putIfAbsent(pendingChannel) == null) {
                         if (log.isTraceEnabled()) {
                             log.tracef("Outbound service request for channel %08x is configured as follows:\n" +
