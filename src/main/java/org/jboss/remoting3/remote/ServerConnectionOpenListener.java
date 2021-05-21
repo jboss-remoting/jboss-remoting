@@ -43,7 +43,7 @@ import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
-import org.wildfly.security.auth.server.SaslAuthenticationFactory;
+import org.wildfly.security.auth.server.sasl.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.wildfly.security.sasl.WildFlySasl;
 import org.wildfly.security.sasl.util.PropertiesSaslServerFactory;
