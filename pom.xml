@@ -44,7 +44,7 @@
         <apacheds.api.version>1.0.0</apacheds.api.version>        
         <elytron.version>1.11.2.Final</elytron.version>
         <config.version>1.0.1.Final</config.version>
-        <xnio.version>3.7.7.Final</xnio.version>
+        <xnio.version>3.7.9.Final</xnio.version>
         <logging.version>3.4.1.Final</logging.version>
         <logging-tools.version>2.2.1.Final</logging-tools.version>
         <logmanager.version>2.1.14.Final</logmanager.version>
