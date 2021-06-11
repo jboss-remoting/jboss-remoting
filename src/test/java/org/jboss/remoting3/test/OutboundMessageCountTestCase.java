@@ -24,6 +24,7 @@ import static org.xnio.IoUtils.safeClose;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -93,6 +94,8 @@ public class OutboundMessageCountTestCase {
     private Connection connection;
     private Registration serviceRegistration;
 
+    private static boolean ipV6Supported = true;
+
     @Rule
     public TestName name = new TestName();
     private static String providerName;
@@ -122,7 +125,8 @@ public class OutboundMessageCountTestCase {
         builder.setFactory(saslServerFactory);
         builder.setMechanismConfigurationSelector(mechanismInformation -> SaslMechanismInformation.Names.SCRAM_SHA_256.equals(mechanismInformation.getMechanismName()) ? MechanismConfiguration.EMPTY : null);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
-        streamServer = networkServerProvider.createServer(new InetSocketAddress("::1", 30123), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE), saslAuthenticationFactory, SSLContext.getDefault());
+        ipV6Supported = isIPV6Supported();
+        streamServer = networkServerProvider.createServer(new InetSocketAddress(ipV6Supported ? "::1" : "localhost", 30123), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE), saslAuthenticationFactory, SSLContext.getDefault());
     }
 
     @Before
@@ -142,7 +146,7 @@ public class OutboundMessageCountTestCase {
         IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.empty().useName("bob").usePassword("pass").setSaslMechanismSelector(SaslMechanismSelector.NONE.addMechanism("SCRAM-SHA-256"))).run(new PrivilegedAction<IoFuture<Connection>>() {
             public IoFuture<Connection> run() {
                 try {
-                    return endpoint.connect(new URI("remote://[::1]:30123"), OptionMap.EMPTY);
+                    return endpoint.connect(new URI("remote://" + (ipV6Supported ? "[::1]" : "localhost") + ":30123"), OptionMap.EMPTY);
                 } catch (URISyntaxException e) {
                     throw new RuntimeException(e);
                 }
@@ -155,6 +159,16 @@ public class OutboundMessageCountTestCase {
         serverChannel = passer.getIoFuture().get();
         assertNotNull(serverChannel);
 
+    }
+
+    private static boolean isIPV6Supported() {
+        try(Socket socket = new Socket()) {
+            socket.bind(new InetSocketAddress("::1", 0));
+            return true;
+        } catch (IOException e) {
+            logger.errorf(e, "IPV6 is not suuported");
+            return false;
+        }
     }
 
     @After
