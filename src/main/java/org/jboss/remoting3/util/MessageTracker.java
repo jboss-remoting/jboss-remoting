@@ -61,7 +61,7 @@ public final class MessageTracker {
             }
             this.counter = counter - 1;
         }
-        return getMessageInstance(channel.writeMessage());
+        return getMessageInstance(writeMessage());
     }
 
     /**
@@ -87,9 +87,22 @@ public final class MessageTracker {
                 }
                 this.counter = counter - 1;
             }
-            return getMessageInstance(channel.writeMessage());
+            return getMessageInstance(writeMessage());
         } finally {
             if (intr) Thread.currentThread().interrupt();
+        }
+    }
+
+    private MessageOutputStream writeMessage() throws IOException {
+        try {
+            return channel.writeMessage();
+        } catch (IOException e) {
+            final Object lock = this.lock;
+            synchronized (lock) {
+                this.counter ++;
+                lock.notify();
+            }
+            throw e;
         }
     }
 
