@@ -46,13 +46,15 @@ public final class EndpointBuilder {
     private List<ConnectionProviderFactoryBuilder> connectionProviderFactoryBuilders;
     private List<ConnectionBuilder> connectionBuilders;
     private XnioWorker.Builder workerBuilder;
-    //Default option map that sets heartbeat and read/write timeouts
+    // Default option map that sets heartbeat and read/write timeouts, as well as max inbound and max outbound channels
     private OptionMap defaultConnectionOptionMap = BUILTIN;
 
     private static final OptionMap BUILTIN = OptionMap.builder().set(RemotingOptions.HEARTBEAT_INTERVAL, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL)
             .set(Options.READ_TIMEOUT, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2)
             .set(Options.WRITE_TIMEOUT, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2)
             .set(Options.KEEP_ALIVE, Boolean.TRUE)
+            .set(RemotingOptions.MAX_INBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_INBOUND_CHANNELS)
+            .set(RemotingOptions.MAX_OUTBOUND_CHANNELS, RemotingOptions.DEFAULT_MAX_OUTBOUND_CHANNELS)
             .getMap();
 
     EndpointBuilder() {
