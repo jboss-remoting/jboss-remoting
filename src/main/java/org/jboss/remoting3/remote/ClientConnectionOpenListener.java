@@ -40,9 +40,12 @@ import org.jboss.remoting3.Version;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
+import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.wildfly.security.auth.client.MatchRule;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
 import org.wildfly.security.sasl.WildFlySasl;
+import org.wildfly.security.sasl.auth.util.AuthenticationContextSaslClientFactory;
 import org.wildfly.security.sasl.util.ServerNameSaslClientFactory;
 import org.xnio.Buffers;
 import org.xnio.ChannelListener;
@@ -405,7 +408,7 @@ final class ClientConnectionOpenListener implements ChannelListener<ConduitStrea
 
                         // OK now send our authentication request
                         final AuthenticationContextConfigurationClient configurationClient = AUTH_CONFIGURATION_CLIENT;
-                        UnaryOperator<SaslClientFactory> factoryOperator = factory -> new ServerNameSaslClientFactory(factory, remoteServerName);
+                        UnaryOperator<SaslClientFactory> factoryOperator = factory -> new AuthenticationContextSaslClientFactory(new ServerNameSaslClientFactory(factory, remoteServerName), AuthenticationContext.empty().with(MatchRule.ALL, configuration));
                         factoryOperator = and(ClientConnectionOpenListener.this.saslClientFactoryOperator, factoryOperator);
                         final SaslClient saslClient;
                         final SslChannel sslChannel = connection.getSslChannel();
