@@ -44,7 +44,7 @@ final class OutboundMessage extends MessageOutputStream {
     final RemoteConnectionChannel channel;
     final BufferPipeOutputStream pipeOutputStream;
     final int maximumWindow;
-    final int ackTimeout;
+    final long ackTimeout;
     int window;
     boolean closeCalled;
     boolean closeReceived;
@@ -115,7 +115,7 @@ final class OutboundMessage extends MessageOutputStream {
                         }
                         try {
                             log.tracef("Outbound message ID %04x: message window is closed, waiting", getActualId());
-                            pipeOutputStream.wait(ackTimeout, 0);
+                            pipeOutputStream.wait(ackTimeout/1_000_000, (int) ackTimeout % 1_000_000);
                             if (window == currentWindow) {
                                 // no changes, throw an exception
                                 timeoutExpired = true;
@@ -182,7 +182,7 @@ final class OutboundMessage extends MessageOutputStream {
 
     static final ToIntFunction<OutboundMessage> INDEXER = OutboundMessage::getActualId;
 
-    OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window, final long maxOutboundMessageSize, final int ackTimeout) {
+    OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window, final long maxOutboundMessageSize, final long ackTimeout) {
         this.messageId = messageId;
         this.channel = channel;
         this.window = maximumWindow = window;
