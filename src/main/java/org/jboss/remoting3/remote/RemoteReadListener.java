@@ -366,7 +366,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                             int requestedInboundMessageCount = pendingChannel.getInboundMessageCount();
                             long requestedOutboundMessageSize = pendingChannel.getOutboundMessageSize();
                             long requestedInboundMessageSize = pendingChannel.getInboundMessageSize();
-                            int requestedMessageAckTimeout = pendingChannel.getMessageAckTimeout();
+                            long requestedMessageAckTimeout = pendingChannel.getMessageAckTimeout();
 
                             int outboundWindow = requestedOutboundWindow;
                             int inboundWindow = requestedInboundWindow;
