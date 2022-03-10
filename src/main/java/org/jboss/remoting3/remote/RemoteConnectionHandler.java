@@ -60,7 +60,7 @@ import org.xnio.channels.SslChannel;
 final class RemoteConnectionHandler extends AbstractHandleableCloseable<ConnectionHandler> implements ConnectionHandler {
 
     // TODO JBEAP-20756 temporarily using a system property as a solution to ACK TIMEOUT issue until an RFE is properly submitted
-    private static final int MESSAGE_ACK_TIMEOUT = Integer.parseInt(WildFlySecurityManager.getPropertyPrivileged("org.jboss.remoting3.remote.message.ack.timeout", String.valueOf(RemotingOptions.DEFAULT_MESSAGE_ACK_TIMEOUT)));
+    private static final long MESSAGE_ACK_TIMEOUT = Long.parseLong(WildFlySecurityManager.getPropertyPrivileged("org.jboss.remoting3.remote.message.ack.timeout", String.valueOf(RemotingOptions.DEFAULT_MESSAGE_ACK_TIMEOUT))) * 1_000_000;
 
     private final ConnectionHandlerContext connectionContext;
     private final RemoteConnection remoteConnection;
