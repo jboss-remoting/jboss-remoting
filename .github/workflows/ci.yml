@@ -33,13 +33,12 @@ jobs:
         name: surefire-reports-build
         path: '**/surefire-reports/*.txt'
   test-matrix:
-    name: ${{ matrix.module }}-${{ matrix.openjdk_impl}}-${{ matrix.jdk }}-${{ matrix.os }}
+    name: ${{ matrix.openjdk_impl}}-${{ matrix.jdk }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build-all
     strategy:
       fail-fast: false
       matrix:
-        module: [api, nio-impl]
         os: [ubuntu-20.04, windows-latest, macos-latest]
         jdk: [8, 11]
         openjdk_impl: [hotspot, openj9]
@@ -95,11 +94,11 @@ jobs:
         version: ${{ matrix.jdk }}
         impl: ${{ matrix.jdk_impl }}
     - name: Run Tests
-      run: mvn -U -B -fae test -pl ${{ matrix.module }}
+      run: mvn -U -B -fae test
     - uses: actions/upload-artifact@v2
       if: failure()
       with:
-        name: surefire-reports-${{ matrix.module }}-${{ matrix.openjdk_impl}}-${{ matrix.jdk }}-${{ matrix.os }}
+        name: surefire-reports-${{ matrix.openjdk_impl}}-${{ matrix.jdk }}-${{ matrix.os }}
         path: '**/surefire-reports/*.txt'
     - name: Run netstat (post)
       if: always()
