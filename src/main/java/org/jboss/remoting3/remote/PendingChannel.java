@@ -34,10 +34,10 @@ final class PendingChannel {
     private final int inboundMessageCount;
     private final long outboundMessageSize;
     private final long inboundMessageSize;
-    private final int messageAckTimeout;
+    private final long messageAckTimeout;
     private final Result<Channel> result;
 
-    PendingChannel(final int id, final int outboundWindowSize, final int inboundWindowSize, final int outboundMessageCount, final int inboundMessageCount, final long outboundMessageSize, final long inboundMessageSize, final int messageAckTimeout, final Result<Channel> result) {
+    PendingChannel(final int id, final int outboundWindowSize, final int inboundWindowSize, final int outboundMessageCount, final int inboundMessageCount, final long outboundMessageSize, final long inboundMessageSize, final long messageAckTimeout, final Result<Channel> result) {
         this.id = id;
         this.outboundWindowSize = outboundWindowSize;
         this.inboundWindowSize = inboundWindowSize;
@@ -77,7 +77,7 @@ final class PendingChannel {
         return inboundMessageSize;
     }
 
-    int getMessageAckTimeout() {
+    long getMessageAckTimeout() {
         return messageAckTimeout;
     }
 

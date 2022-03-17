@@ -18,6 +18,7 @@
 
 package org.jboss.remoting3.remote;
 
+import static java.lang.System.nanoTime;
 import static java.lang.Thread.holdsLock;
 import static org.jboss.remoting3._private.Messages.log;
 
@@ -44,7 +45,7 @@ final class OutboundMessage extends MessageOutputStream {
     final RemoteConnectionChannel channel;
     final BufferPipeOutputStream pipeOutputStream;
     final int maximumWindow;
-    final int ackTimeout;
+    final long ackTimeout;
     int window;
     boolean closeCalled;
     boolean closeReceived;
@@ -104,36 +105,31 @@ final class OutboundMessage extends MessageOutputStream {
                 boolean timeoutExpired = false;
                 if (msgSize > 0 && ! sendCancel) {
                     // empty messages and cancellation both bypass the transmit window check
-                    for (;;) {
-                        final int currentWindow = window;
-                        if (window >= msgSize) {
-                            window -= msgSize;
-                            if (log.isTraceEnabled()) {
-                                log.tracef("Outbound message ID %04x: message window is open (%d-%d=%d remaining), proceeding with send", getActualId(), window + msgSize, msgSize, window);
-                            }
-                            break;
-                        }
-                        try {
-                            log.tracef("Outbound message ID %04x: message window is closed, waiting", getActualId());
-                            pipeOutputStream.wait(ackTimeout, 0);
-                            if (window == currentWindow) {
-                                // no changes, throw an exception
-                                timeoutExpired = true;
+                    if (!decrementWindow(msgSize)) {
+                        final long initialTime = nanoTime();
+                        long ackTimeout = OutboundMessage.this.ackTimeout;
+                        do {
+                            try {
+                                log.tracef("Outbound message ID %04x: message window is closed, waiting", getActualId());
+                                pipeOutputStream.wait(ackTimeout / 1_000_000, (int) (ackTimeout % 1_000_000));
+                            } catch (InterruptedException e) {
+                                cancelled = true;
+                                intr = true;
                                 break;
                             }
-                        } catch (InterruptedException e) {
-                            cancelled = true;
-                            intr = true;
-                            break;
-                        }
-                        if (closeReceived) {
-                            throw new BrokenPipeException(this + ": remote side closed the message stream");
-                        }
-                        if (closeCalled && ! eof) {
-                            throw new NotOpenException(this + ": message was closed asynchronously by another thread");
-                        }
-                        if (cancelSent) {
-                            throw new MessageCancelledException(this + ": message was cancelled");
+                            if (closeReceived) {
+                                throw new BrokenPipeException(this + ": remote side closed the message stream");
+                            }
+                            if (closeCalled && ! eof) {
+                                throw new NotOpenException(this + ": message was closed asynchronously by another thread");
+                            }
+                            if (cancelSent) {
+                                throw new MessageCancelledException(this + ": message was cancelled");
+                            }
+                        } while (!decrementWindow(msgSize) &&
+                                (ackTimeout = OutboundMessage.this.ackTimeout - (nanoTime() - initialTime)) > 0);
+                        if (ackTimeout <= 0) {
+                            timeoutExpired = true;
                         }
                     }
                 }
@@ -174,6 +170,18 @@ final class OutboundMessage extends MessageOutputStream {
             }
         }
 
+        private final boolean decrementWindow(long messageSize) {
+            if (window >= messageSize) {
+                window -= messageSize;
+                if (log.isTraceEnabled()) {
+                    log.tracef("Outbound message ID %04x: message window is open (%d-%d=%d remaining), proceeding with send",
+                            getActualId(), window + messageSize, messageSize, window);
+                }
+                return true;
+            }
+            return false;
+        }
+
         public void flush() throws IOException {
             log.tracef("Outbound message ID %04x: flushing message channel", getActualId());
             // no op
@@ -182,7 +190,7 @@ final class OutboundMessage extends MessageOutputStream {
 
     static final ToIntFunction<OutboundMessage> INDEXER = OutboundMessage::getActualId;
 
-    OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window, final long maxOutboundMessageSize, final int ackTimeout) {
+    OutboundMessage(final short messageId, final RemoteConnectionChannel channel, final int window, final long maxOutboundMessageSize, final long ackTimeout) {
         this.messageId = messageId;
         this.channel = channel;
         this.window = maximumWindow = window;

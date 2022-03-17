@@ -50,7 +50,7 @@ import static org.jboss.remoting3._private.Messages.log;
  */
 final class RemoteReadListener implements ChannelListener<ConduitStreamSourceChannel> {
     // FIXME temporarily using a system property as a solution to ACK TIMEOUT issue until an RFE is properly submitted
-    private static final int MESSAGE_ACK_TIMEOUT = Integer.parseInt(WildFlySecurityManager.getPropertyPrivileged("org.jboss.remoting3.remote.message.ack.timeout", String.valueOf(RemotingOptions.DEFAULT_MESSAGE_ACK_TIMEOUT)));
+    private static final long MESSAGE_ACK_TIMEOUT = Long.parseLong(WildFlySecurityManager.getPropertyPrivileged("org.jboss.remoting3.remote.message.ack.timeout", String.valueOf(RemotingOptions.DEFAULT_MESSAGE_ACK_TIMEOUT))) * 1_000_000;
 
     private static final byte[] NO_BYTES = new byte[0];
     private final RemoteConnectionHandler handler;
@@ -366,7 +366,7 @@ final class RemoteReadListener implements ChannelListener<ConduitStreamSourceCha
                             int requestedInboundMessageCount = pendingChannel.getInboundMessageCount();
                             long requestedOutboundMessageSize = pendingChannel.getOutboundMessageSize();
                             long requestedInboundMessageSize = pendingChannel.getInboundMessageSize();
-                            int requestedMessageAckTimeout = pendingChannel.getMessageAckTimeout();
+                            long requestedMessageAckTimeout = pendingChannel.getMessageAckTimeout();
 
                             int outboundWindow = requestedOutboundWindow;
                             int inboundWindow = requestedInboundWindow;

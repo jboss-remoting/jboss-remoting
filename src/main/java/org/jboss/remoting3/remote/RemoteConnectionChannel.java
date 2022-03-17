@@ -71,7 +71,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private final int maxInboundMessages;
     private final long maxOutboundMessageSize;
     private final long maxInboundMessageSize;
-    private final int messageAckTimeout;
+    private final long messageAckTimeout;
     private volatile int channelState = 0;
 
     private static final AtomicIntegerFieldUpdater<RemoteConnectionChannel> channelStateUpdater = AtomicIntegerFieldUpdater.newUpdater(RemoteConnectionChannel.class, "channelState");
@@ -85,7 +85,7 @@ final class RemoteConnectionChannel extends AbstractHandleableCloseable<Channel>
     private static final int INBOUND_MESSAGES_MASK = ((1 << 30) - 1) & ~OUTBOUND_MESSAGES_MASK;
     private static final int ONE_INBOUND_MESSAGE = (1 << 15);
 
-    RemoteConnectionChannel(final RemoteConnectionHandler connectionHandler, final RemoteConnection connection, final int channelId, final int outboundWindow, final int inboundWindow, final int maxOutboundMessages, final int maxInboundMessages, final long maxOutboundMessageSize, final long maxInboundMessageSize, final int messageAckTimeout) {
+    RemoteConnectionChannel(final RemoteConnectionHandler connectionHandler, final RemoteConnection connection, final int channelId, final int outboundWindow, final int inboundWindow, final int maxOutboundMessages, final int maxInboundMessages, final long maxOutboundMessageSize, final long maxInboundMessageSize, final long messageAckTimeout) {
         super(connectionHandler.getConnectionContext().getConnectionProviderContext().getExecutor(), true);
         this.maxOutboundMessageSize = maxOutboundMessageSize;
         this.maxInboundMessageSize = maxInboundMessageSize;
