@@ -625,9 +625,9 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                         if (! flag.compareAndSet(false, true)) {
                             return false;
                         }
+                        log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
+                        final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, protocolRegistration.getContext(), destination, null, configuration, protocol);
                         synchronized (connectionLock) {
-                            log.logf(getClass().getName(), Logger.Level.TRACE, null, "Registered successful result %s", connHandlerFactory);
-                            final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connHandlerFactory, protocolRegistration.getContext(), destination, null, configuration, protocol);
                             connections.add(connection);
                             connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                             connection.addCloseHandler(resourceCloseHandler);
@@ -916,23 +916,23 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         }
 
         public void accept(final ConnectionHandlerFactory connectionHandlerFactory, final SaslAuthenticationFactory authenticationFactory) {
-            synchronized (connectionLock) {
-                try {
-                    resourceUntick("an inbound connection");
-                } catch (NotOpenException e) {
-                    throw new IllegalStateException("Accept after endpoint close", e);
-                }
-                boolean ok = false;
-                try {
-                    final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, authenticationFactory, AuthenticationConfiguration.empty(), saslProtocol);
+            try {
+                resourceUntick("an inbound connection");
+            } catch (NotOpenException e) {
+                throw new IllegalStateException("Accept after endpoint close", e);
+            }
+            boolean ok = false;
+            try {
+                final ConnectionImpl connection = new ConnectionImpl(EndpointImpl.this, connectionHandlerFactory, this, null, authenticationFactory, AuthenticationConfiguration.empty(), saslProtocol);
+                synchronized (connectionLock) {
                     connections.add(connection);
                     connection.getConnectionHandler().addCloseHandler(SpiUtils.asyncClosingCloseHandler(connection));
                     connection.addCloseHandler(connectionCloseHandler);
                     connection.addCloseHandler(resourceCloseHandler);
-                    ok = true;
-                } finally {
-                    if (! ok) closeTick1("a failed inbound connection");
                 }
+                ok = true;
+            } finally {
+                if (! ok) closeTick1("a failed inbound connection");
             }
         }
 
