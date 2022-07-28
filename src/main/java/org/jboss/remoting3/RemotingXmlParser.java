@@ -23,16 +23,18 @@ import static javax.xml.stream.XMLStreamConstants.START_ELEMENT;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import org.wildfly.client.config.ClientConfiguration;
 import org.wildfly.client.config.ConfigXMLParseException;
 import org.wildfly.client.config.ConfigurationXMLStreamReader;
+import org.wildfly.common.Assert;
+import org.xnio.Option;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.XnioWorker;
+
+import javax.xml.stream.XMLStreamConstants;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -41,7 +43,9 @@ final class RemotingXmlParser {
     private static final String NS_REMOTING_5_0 = "urn:jboss-remoting:5.0";
     private static final String NS_REMOTING_5_1 = "urn:jboss-remoting:5.1";
 
-    private static final Set<String> validNamespaces = new HashSet<>(Arrays.asList(NS_REMOTING_5_0, NS_REMOTING_5_1));
+    private static final String NS_REMOTING_5_2 = "urn:jboss-remoting:5.2";
+
+    private static final Set<String> validNamespaces = new HashSet<>(Arrays.asList(NS_REMOTING_5_0, NS_REMOTING_5_1, NS_REMOTING_5_2));
 
     private RemotingXmlParser() {
     }
@@ -78,20 +82,25 @@ final class RemotingXmlParser {
     }
 
     private static void parseEndpointElement(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
+
+        OptionMap.Builder optionMapBuilder = OptionMap.builder();
+
         if( reader.hasNamespace()) {
             switch (reader.getNamespaceURI()) {
                 case NS_REMOTING_5_0:{
-                    parseEndpointElement50(reader, builder);
+                    parseEndpointElement50(reader, builder, optionMapBuilder);
                     break;
                 }
-                case NS_REMOTING_5_1: {
-                    parseEndpointElement51(reader, builder);
+                case NS_REMOTING_5_1:
+                case NS_REMOTING_5_2:{
+                    parseEndpointElement51(reader, builder, optionMapBuilder);
                     break;
                 }
                 default: {
                     throw reader.unexpectedElement();
                 }
             }
+
             while (reader.hasNext()) {
                 switch (reader.nextTag()) {
                     case START_ELEMENT: {
@@ -105,11 +114,20 @@ final class RemotingXmlParser {
                                 parseConnectionsElement(reader, builder);
                                 break;
                             }
+                            case "options": {
+                                if(reader.getNamespaceURI().equals(NS_REMOTING_5_2)) {
+                                    parseEndpointOptions(reader, optionMapBuilder);
+                                } else {
+                                    throw reader.unexpectedElement();
+                                }
+                                break;
+                            }
                             default: throw reader.unexpectedElement();
                         }
                         break;
                     }
                     case END_ELEMENT: {
+                        builder.setDefaultConnectionsOptionMap(optionMapBuilder.getMap());
                         return;
                     }
                 }
@@ -120,7 +138,7 @@ final class RemotingXmlParser {
         }
     }
 
-    private static void parseEndpointElement51(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
+    private static void parseEndpointElement51(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder, OptionMap.Builder optionMapBuilder) throws ConfigXMLParseException {
         final int attributeCount = reader.getAttributeCount();
         int readTimeout = -1;
         int writeTimeout = -1;
@@ -156,7 +174,6 @@ final class RemotingXmlParser {
                 }
             }
         }
-        OptionMap.Builder optionMapBuilder = OptionMap.builder();
         if (readTimeout != -1L) {
             optionMapBuilder.set(Options.READ_TIMEOUT, readTimeout);
         }
@@ -169,12 +186,74 @@ final class RemotingXmlParser {
         if (heartbeatInterval != -1) {
             optionMapBuilder.set(RemotingOptions.HEARTBEAT_INTERVAL, heartbeatInterval);
         }
+    }
 
-        builder.setDefaultConnectionsOptionMap(optionMapBuilder.getMap());
+    protected static void parseEndpointOptions(final ConfigurationXMLStreamReader reader, OptionMap.Builder optionMapBuilder) throws ConfigXMLParseException {
+        while (reader.hasNext() && reader.nextTag() != XMLStreamConstants.END_ELEMENT) {
+            switch (reader.getLocalName()) {
+                case "option": {
+                    parseEndpointOption(reader, optionMapBuilder);
+                    break;
+                }
+                default: {
+                    throw reader.unexpectedElement();
+                }
+            }
+        }
+    }
+
+    protected static void parseEndpointOption(final ConfigurationXMLStreamReader reader, OptionMap.Builder optionMapBuilder) throws ConfigXMLParseException {
+        final int count = reader.getAttributeCount();
+        String optionName = null;
+        String optionType = null;
+        String optionValue = null;
+        for (int i = 0; i < count; i++) {
+            final String attribute = reader.getAttributeLocalName(i);
+            final String attributeValue = reader.getAttributeValue(i);
+            switch (attribute) {
+                case "name":
+                    optionName = attributeValue;
+                    break;
+                case "type":
+                    optionType = attributeValue;
+                    if (!(optionType.equals("remoting") || optionType.equals("xnio"))) {
+                        throw reader.unexpectedAttribute(i);
+                    }
+                    break;
+                case "value":
+                    optionValue = attributeValue;
+                    break;
+                default:
+                    throw reader.unexpectedAttribute(i);
+            }
+        }
+        final ClassLoader loader = RemotingXmlParser.class.getClassLoader();
+        final String optionClassName = getClassNameForChannelOptionType(optionType);
+        final String fullyQualifiedOptionName = optionClassName + "." + optionName;
+        final Option option = Option.fromString(fullyQualifiedOptionName, loader);
+        optionMapBuilder.set(option, option.parseValue(optionValue, loader));
+        switch (reader.nextTag()) {
+            case END_ELEMENT: {
+                return;
+            }
+            default: {
+                throw reader.unexpectedElement();
+            }
+        }
+    }
+
+    private static String getClassNameForChannelOptionType(final String optionType) {
+        if ("remoting".equals(optionType)) {
+            return RemotingOptions.class.getName();
+        }
+        if ("xnio".equals(optionType)) {
+            return Options.class.getName();
+        }
+        throw Assert.unreachableCode();
     }
 
 
-    private static void parseEndpointElement50(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder) throws ConfigXMLParseException {
+    private static void parseEndpointElement50(final ConfigurationXMLStreamReader reader, final EndpointBuilder builder, OptionMap.Builder optionMapBuilder) throws ConfigXMLParseException {
         final int attributeCount = reader.getAttributeCount();
 
         for (int i = 0; i < attributeCount; i++) {
@@ -375,7 +454,9 @@ final class RemotingXmlParser {
     private static void checkElementNamespace(final ConfigurationXMLStreamReader reader) throws ConfigXMLParseException {
         switch (reader.getNamespaceURI()) {
             case NS_REMOTING_5_0:
-            case NS_REMOTING_5_1: break;
+            case NS_REMOTING_5_1:
+            case NS_REMOTING_5_2:
+                break;
             default: throw reader.unexpectedElement();
         }
     }
