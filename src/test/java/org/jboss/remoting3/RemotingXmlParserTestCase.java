@@ -108,6 +108,19 @@ public class RemotingXmlParserTestCase {
         assertEquals("Wrong value for keep_alive", true, optionMap.get(Options.KEEP_ALIVE, false));
     }
 
+    @Test
+    public void endpointOptionsTest() throws Exception {
+        ClassLoader classLoader = getClass().getClassLoader();
+        File file = new File(classLoader.getResource("wildfly-config-endpoint-options.xml").getFile());
+        System.setProperty("wildfly.config.url", file.getAbsolutePath());
+        // create endpoint
+        Endpoint endpoint = RemotingXmlParser.parseEndpoint();
+        OptionMap optionMap = ((EndpointImpl) endpoint).getDefaultConnectionOptionMap();
+
+        assertEquals("Wrong value for server_name", "foo-server", optionMap.get(RemotingOptions.SERVER_NAME, null));
+        assertEquals("Wrong value for allow_blocking", true, optionMap.get(Options.ALLOW_BLOCKING, false));
+    }
+
     /**
      * Tests that uses the default values.
      * @throws Exception
