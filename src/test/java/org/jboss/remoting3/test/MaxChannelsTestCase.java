@@ -100,7 +100,7 @@ public class MaxChannelsTestCase {
 
     public MaxChannelsTestCase() throws IOException {
         clientEndpoint = Endpoint.builder().setDefaultConnectionsOptionMap(optionMap()).setEndpointName("connection-test-client").build();
-        serverEndpoint = Endpoint.builder().setDefaultConnectionsOptionMap(optionMap()).setEndpointName("connection-test-server").build();
+        serverEndpoint = Endpoint.builder().setEndpointName("connection-test-server").build();
     }
 
     @Rule
@@ -125,8 +125,7 @@ public class MaxChannelsTestCase {
         builder.setFactory(saslServerFactory);
         builder.setMechanismConfigurationSelector(mechanismInformation -> SaslMechanismInformation.Names.SCRAM_SHA_256.equals(mechanismInformation.getMechanismName()) ? MechanismConfiguration.EMPTY : null);
         final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
-        // The default OptionMap defined in EndPoint should be honored even the OptionMap in createServer method does not specify any.
-        server = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE), saslAuthenticationFactory, SSLContext.getDefault());
+        server = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123), optionMap(), saslAuthenticationFactory, SSLContext.getDefault());
     }
 
     @After
@@ -168,7 +167,8 @@ public class MaxChannelsTestCase {
         IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.empty().useName("bob").usePassword("pass").setSaslMechanismSelector(SaslMechanismSelector.NONE.addMechanism("SCRAM-SHA-256"))).run(new PrivilegedAction<IoFuture<Connection>>() {
             public IoFuture<Connection> run() {
                 try {
-                    return clientEndpoint.connect(new URI("remote://localhost:30123"), optionMap());
+                    // use empty option, the default option map defined in client endpoint will be respected
+                    return clientEndpoint.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY);
                 } catch (URISyntaxException e) {
                     throw new RuntimeException(e);
                 }

@@ -422,7 +422,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         if (sm != null) {
             sm.checkPermission(RemotingPermission.REGISTER_SERVICE);
         }
-        final RegisteredServiceImpl registeredService = new RegisteredServiceImpl(openListener, EndpointBuilder.merge(optionMap, defaultConnectionOptionMap));
+        final RegisteredServiceImpl registeredService = new RegisteredServiceImpl(openListener, optionMap);
         if (registeredServices.putIfAbsent(serviceType, registeredService) != null) {
             throw new ServiceRegistrationException("Service type '" + serviceType + "' is already registered");
         }

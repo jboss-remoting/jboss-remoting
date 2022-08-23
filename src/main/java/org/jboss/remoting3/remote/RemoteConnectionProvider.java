@@ -39,7 +39,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.security.sasl.SaslClientFactory;
 
-import org.jboss.remoting3.EndpointBuilder;
 import org.jboss.remoting3.spi.AbstractHandleableCloseable;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
 import org.jboss.remoting3.spi.ConnectionProvider;
@@ -93,12 +92,10 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     private final Set<RemoteConnectionHandler> handlers = Collections.synchronizedSet(new HashSet<RemoteConnectionHandler>());
     private final MBeanServer server;
     private final ObjectName objectName;
-    private final OptionMap remoteConnectionOptionMap;
 
-    RemoteConnectionProvider(final OptionMap remoteConnectionOptionMap, final ConnectionProviderContext connectionProviderContext, final String protocolName) throws IOException {
+    RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final String protocolName) throws IOException {
         super(connectionProviderContext.getExecutor());
-        this.remoteConnectionOptionMap = remoteConnectionOptionMap;
-        sslRequired = this.remoteConnectionOptionMap.get(Options.SECURE, false);
+        sslRequired = optionMap.get(Options.SECURE, false);
         xnioWorker = connectionProviderContext.getXnioWorker();
         this.connectionProviderContext = connectionProviderContext;
         MBeanServer server = null;
@@ -133,10 +130,6 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         this.objectName = objectName;
     }
 
-    public OptionMap getRemoteConnectionOptionMap() {
-        return this.remoteConnectionOptionMap;
-    }
-
     private void doDumpConnectionState() {
         final StringBuilder b = new StringBuilder();
         doGetConnectionState(b);
@@ -158,17 +151,16 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
         return b.toString();
     }
 
-    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptionsIn, final Result<ConnectionHandlerFactory> result, final AuthenticationConfiguration authenticationConfiguration, final SSLContext sslContext, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final Collection<String> serverMechs) {
+    public Cancellable connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final Result<ConnectionHandlerFactory> result, final AuthenticationConfiguration authenticationConfiguration, final SSLContext sslContext, final UnaryOperator<SaslClientFactory> saslClientFactoryOperator, final Collection<String> serverMechs) {
         if (! isOpen()) {
             throw new IllegalStateException("Connection provider is closed");
         }
         Assert.checkNotNullParam("destination", destination);
-        Assert.checkNotNullParam("connectOptionsIn", connectOptionsIn);
+        Assert.checkNotNullParam("connectOptions", connectOptions);
         Assert.checkNotNullParam("result", result);
         Assert.checkNotNullParam("authenticationConfiguration", authenticationConfiguration);
         Assert.checkNotNullParam("saslClientFactoryOperator", saslClientFactoryOperator);
         if (sslRequired) Assert.checkNotNullParam("sslContext", sslContext);
-        final OptionMap connectOptions = EndpointBuilder.merge(connectOptionsIn, getRemoteConnectionOptionMap());
         log.tracef("Attempting to connect to \"%s\" with options %s", destination, connectOptions);
         // cancellable that will be returned by this method
         final FutureResult<ConnectionHandlerFactory> cancellableResult = new FutureResult<ConnectionHandlerFactory>();
@@ -329,11 +321,10 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
 
     final class ProviderInterface implements NetworkServerProvider {
 
-        public AcceptingChannel<StreamConnection> createServer(final SocketAddress bindAddress, final OptionMap optionMapIn, final SaslAuthenticationFactory saslAuthenticationFactory, final SSLContext sslContext) throws IOException {
+        public AcceptingChannel<StreamConnection> createServer(final SocketAddress bindAddress, final OptionMap optionMap, final SaslAuthenticationFactory saslAuthenticationFactory, final SSLContext sslContext) throws IOException {
             Assert.checkNotNullParam("bindAddress", bindAddress);
-            Assert.checkNotNullParam("optionMapIn", optionMapIn);
+            Assert.checkNotNullParam("optionMap", optionMap);
             Assert.checkNotNullParam("saslAuthenticationFactory", saslAuthenticationFactory);
-            final OptionMap optionMap = EndpointBuilder.merge(optionMapIn, getRemoteConnectionOptionMap());
             final AcceptingChannel<StreamConnection> result;
             // - SSL_ENABLED can be used to forbid SSL if SSL is not required, but not to require it if it is not present
             // - Both SSL_ENABLED and STARTTLS have to be enabled to provide SSL if SSL is not required
