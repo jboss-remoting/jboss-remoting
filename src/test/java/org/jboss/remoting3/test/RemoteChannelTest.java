@@ -156,6 +156,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
             futureConnection.awaitInterruptibly(2L, TimeUnit.SECONDS);
             if (futureConnection.getStatus() == IoFuture.Status.WAITING) {
                 futureConnection.cancel();
+                return;
             } else {
                 safeClose(futureConnection.get());
             }
@@ -166,6 +167,6 @@ public final class RemoteChannelTest extends ChannelTestBase {
                 return;
             }
         }
-        fail("Expected an IOException with 'refused' in the string");
+        fail("Expected an IOException with 'refused' in the string, future connection status is " + futureConnection.getStatus());
     }
 }
