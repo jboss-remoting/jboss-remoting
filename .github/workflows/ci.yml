@@ -4,8 +4,12 @@
 name: JBoss Remoting CI
 
 on:
+  push:
+    branches: [ "master", "5.0", "5.1" ]
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: 0 0 * * 0
 
 jobs:
   build-all:
@@ -33,15 +37,14 @@ jobs:
         name: surefire-reports-build
         path: '**/surefire-reports/*.txt'
   test-matrix:
-    name: ${{ matrix.module }}-${{ matrix.openjdk_impl}}-${{ matrix.jdk }}-${{ matrix.os }}
+    name: ${{ matrix.openjdk_impl}}-${{ matrix.jdk }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     needs: build-all
     strategy:
       fail-fast: false
       matrix:
-        module: [api, nio-impl]
         os: [ubuntu-20.04, windows-latest, macos-latest]
-        jdk: [8, 11]
+        jdk: [8, 11, 14, 17, 19]
         openjdk_impl: [hotspot, openj9]
         exclude:
           - os: macos-latest
@@ -80,9 +83,9 @@ jobs:
       if: always()
       run: netstat -an
       shell: bash
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Download Maven Repo
-      uses: actions/download-artifact@v1
+      uses: actions/download-artifact@v3
       with:
         name: maven-repo
         path: .
@@ -95,11 +98,11 @@ jobs:
         version: ${{ matrix.jdk }}
         impl: ${{ matrix.jdk_impl }}
     - name: Run Tests
-      run: mvn -U -B -fae test -pl ${{ matrix.module }}
-    - uses: actions/upload-artifact@v2
+      run: mvn -U -B -fae test
+    - uses: actions/upload-artifact@v3
       if: failure()
       with:
-        name: surefire-reports-${{ matrix.module }}-${{ matrix.openjdk_impl}}-${{ matrix.jdk }}-${{ matrix.os }}
+        name: surefire-reports-${{ matrix.openjdk_impl}}-${{ matrix.jdk }}-${{ matrix.os }}
         path: '**/surefire-reports/*.txt'
     - name: Run netstat (post)
       if: always()
