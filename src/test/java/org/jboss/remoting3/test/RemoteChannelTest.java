@@ -75,6 +75,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
     private Connection connection;
     private Registration serviceRegistration;
 
+
     @BeforeClass
     public static void create() throws Exception {
         endpoint = Endpoint.builder().setEndpointName("test").build();
@@ -137,6 +138,15 @@ public final class RemoteChannelTest extends ChannelTestBase {
     public static void destroy() throws IOException, InterruptedException {
         safeClose(streamServer);
         safeClose(endpoint);
+        //some environments seem to need a small delay to re-bind the socket
+        // we could alternatively shutdown the xnio worker, this would guarantee
+        // that all tasks were fully completely for closing, but the worker is not
+        // reachable from outside the remoting api
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            //ignore
+        }
     }
 
     @Test
