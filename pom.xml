@@ -34,7 +34,7 @@
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>35</version>
+        <version>39</version>
     </parent>
 
     <properties>
@@ -42,17 +42,17 @@
         <apacheds.jdbm1.version>2.0.0-M3</apacheds.jdbm1.version>
         <apacheds.shared.version>1.0.0-M13</apacheds.shared.version>
         <apacheds.api.version>1.0.0</apacheds.api.version>        
-        <elytron.version>1.11.2.Final</elytron.version>
+        <elytron.version>1.20.2.Final</elytron.version>
         <config.version>1.0.1.Final</config.version>
-        <xnio.version>3.7.9.Final</xnio.version>
-        <logging.version>3.4.1.Final</logging.version>
+        <xnio.version>3.8.8.Final</xnio.version>
+        <logging.version>3.4.3.Final</logging.version>
         <logging-tools.version>2.2.1.Final</logging-tools.version>
-        <logmanager.version>2.1.14.Final</logmanager.version>
-        <wildfly-common.version>1.5.2.Final</wildfly-common.version>
-        <modules.version>1.10.0.Final</modules.version>
-        <junit.version>4.13.1</junit.version>
-        <byteman-version>4.0.8</byteman-version>
-        <threads.version>2.3.3.Final</threads.version>
+        <logmanager.version>2.1.19.Final</logmanager.version>
+        <wildfly-common.version>1.6.0.Final</wildfly-common.version>
+        <modules.version>1.12.0.Final</modules.version>
+        <junit.version>4.13.2</junit.version>
+        <byteman-version>4.0.19</byteman-version>
+        <threads.version>2.4.0.Final</threads.version>
         <test.level>INFO</test.level>
         <leak.debug>false</leak.debug>
 
