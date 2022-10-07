@@ -158,6 +158,15 @@ public class RemoteChannelCloseTest {
         IoUtils.safeClose(streamServer);
         IoUtils.safeClose(endpoint);
         Security.removeProvider(providerName);
+        //some environments seem to need a small delay to re-bind the socket
+        // we could alternatively shutdown the xnio worker, this would guarantee
+        // that all tasks were fully completely for closing, but the worker is not
+        // reachable from outside the remoting api
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            //ignore
+        }
     }
 
     /**
