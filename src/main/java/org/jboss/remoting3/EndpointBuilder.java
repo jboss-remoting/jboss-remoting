@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.jboss.remoting3.security.RemotingPermission;
 import org.wildfly.common.Assert;
+import org.xnio.Option;
 import org.xnio.OptionMap;
 import org.xnio.Options;
 import org.xnio.Xnio;
@@ -46,10 +47,13 @@ public final class EndpointBuilder {
     private List<ConnectionBuilder> connectionBuilders;
     private XnioWorker.Builder workerBuilder;
     //Default option map that sets heartbeat and read/write timeouts
-    private OptionMap defaultConnectionOptionMap = OptionMap.builder().set(RemotingOptions.HEARTBEAT_INTERVAL, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL)
+    private OptionMap defaultConnectionOptionMap = BUILTIN;
+
+    private static final OptionMap BUILTIN = OptionMap.builder().set(RemotingOptions.HEARTBEAT_INTERVAL, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL)
             .set(Options.READ_TIMEOUT, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2)
             .set(Options.WRITE_TIMEOUT, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2)
-            .set(Options.KEEP_ALIVE, Boolean.TRUE).getMap();
+            .set(Options.KEEP_ALIVE, Boolean.TRUE)
+            .getMap();
 
     EndpointBuilder() {
     }
@@ -81,14 +85,22 @@ public final class EndpointBuilder {
     }
 
     public EndpointBuilder setDefaultConnectionsOptionMap(OptionMap optionMap) {
-        final OptionMap.Builder optionBuilder = OptionMap.builder();
-        optionBuilder.set(RemotingOptions.HEARTBEAT_INTERVAL, optionMap.get(RemotingOptions.HEARTBEAT_INTERVAL, defaultConnectionOptionMap.get(RemotingOptions.HEARTBEAT_INTERVAL)));
-        optionBuilder.set(Options.READ_TIMEOUT, optionMap.get(Options.READ_TIMEOUT, defaultConnectionOptionMap.get(Options.READ_TIMEOUT)));
-        optionBuilder.set(Options.WRITE_TIMEOUT, optionMap.get(Options.WRITE_TIMEOUT, defaultConnectionOptionMap.get(Options.WRITE_TIMEOUT)));
-        optionBuilder.set(Options.KEEP_ALIVE, optionMap.get(Options.KEEP_ALIVE, defaultConnectionOptionMap.get(Options.KEEP_ALIVE)));
-        defaultConnectionOptionMap = optionBuilder.getMap();
+        this.defaultConnectionOptionMap = merge(optionMap, BUILTIN);
         return this;
+    }
 
+    private static <T> void copy(OptionMap.Builder optionBuilder, OptionMap optionMap, Option<T> option) {
+        optionBuilder.set(option, optionMap.get(option));
+    }
+
+    public static OptionMap merge(OptionMap original, OptionMap defaultOptionMap) {
+        final OptionMap.Builder optionBuilder = OptionMap.builder().addAll(original);
+        for (Option<?> option: defaultOptionMap) {
+            if (!original.contains(option)) {
+                copy(optionBuilder, defaultOptionMap, option);
+            }
+        }
+        return optionBuilder.getMap();
     }
 
     public ConnectionBuilder addConnection(final URI destination) {

@@ -19,6 +19,7 @@
 package org.jboss.remoting3;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.net.URI;
 import java.security.Security;
@@ -130,6 +131,22 @@ public class ConnectionBuilderTestCase {
         assertEquals("Wrong value for keep_alive", true, optionMap.get(Options.KEEP_ALIVE, false));
         ep.close();
         ep = null;
+    }
+
+    @Test
+    public void testDefaultConnectionOptionMap() throws Exception {
+        final EndpointBuilder builder = Endpoint.builder().setEndpointName("test");
+        OptionMap optionMap = OptionMap.builder()
+                .set(RemotingOptions.MAX_INBOUND_CHANNELS, 80)
+                .getMap();
+        builder.setDefaultConnectionsOptionMap(optionMap);
+
+        OptionMap defaultOptionMap = builder.getDefaultConnectionOptionMap();
+        assertEquals(80, defaultOptionMap.get(RemotingOptions.MAX_INBOUND_CHANNELS).intValue());
+        assertEquals(RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL, defaultOptionMap.get(RemotingOptions.HEARTBEAT_INTERVAL).intValue());
+        assertEquals(RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2, defaultOptionMap.get(Options.READ_TIMEOUT).intValue());
+        assertEquals(RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL * 2, defaultOptionMap.get(Options.WRITE_TIMEOUT).intValue());
+        assertTrue(defaultOptionMap.get(Options.KEEP_ALIVE));
     }
 
 }

@@ -565,9 +565,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return connect(destination, bindAddress, connectOptions, connectionConfiguration, sslContext);
     }
 
-    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptions, final AuthenticationConfiguration configuration, final SSLContext sslContext) {
+    IoFuture<Connection> connect(final URI destination, final SocketAddress bindAddress, final OptionMap connectOptionsMap, final AuthenticationConfiguration configuration, final SSLContext sslContext) {
         Assert.checkNotNullParam("destination", destination);
-        Assert.checkNotNullParam("connectOptions", connectOptions);
+        Assert.checkNotNullParam("connectOptionsMap", connectOptionsMap);
+        final OptionMap connectOptions = EndpointBuilder.merge(connectOptionsMap, this.defaultConnectionOptionMap);
         final String protocol =  AUTH_CONFIGURATION_CLIENT.getSaslProtocol(configuration) != null ? AUTH_CONFIGURATION_CLIENT.getSaslProtocol(configuration)
                 : connectOptions.contains(RemotingOptions.SASL_PROTOCOL) ? connectOptions.get(RemotingOptions.SASL_PROTOCOL)
                 : RemotingOptions.DEFAULT_SASL_PROTOCOL;
@@ -686,7 +687,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         return t -> second.apply(first.apply(t));
     }
 
-    public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory, final OptionMap optionMap) throws IOException {
+    public Registration addConnectionProvider(final String uriScheme, final ConnectionProviderFactory providerFactory, final OptionMap optionMapIn) throws IOException {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
             sm.checkPermission(RemotingPermission.ADD_CONNECTION_PROVIDER);
@@ -694,6 +695,7 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
         boolean ok = false;
         resourceUntick("Connection provider for " + uriScheme);
         try {
+            final OptionMap optionMap = EndpointBuilder.merge(optionMapIn, defaultConnectionOptionMap);
             final String saslProtocol = optionMap.get(RemotingOptions.SASL_PROTOCOL, RemotingOptions.DEFAULT_SASL_PROTOCOL);
             final ConnectionProviderContextImpl context = new ConnectionProviderContextImpl(uriScheme, saslProtocol);
             final ConnectionProvider provider = providerFactory.createInstance(context, optionMap, uriScheme);
