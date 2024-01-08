@@ -92,6 +92,8 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
 
 
     public void handleEvent(final ConduitStreamSourceChannel channel) {
+        if (!connection.getConnection().isOpen())
+            return;
         final Pooled<ByteBuffer> pooled = connection.allocate();
         boolean ok = false;
         try {
