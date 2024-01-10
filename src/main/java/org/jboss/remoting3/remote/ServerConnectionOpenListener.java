@@ -42,6 +42,7 @@ import javax.security.sasl.SaslServer;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.Version;
 import org.jboss.remoting3.spi.ConnectionProviderContext;
+import org.wildfly.common.net.HostName;
 import org.wildfly.security.auth.principal.AnonymousPrincipal;
 import org.wildfly.security.auth.server.sasl.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityIdentity;
@@ -85,7 +86,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
         if (optionMap.contains(RemotingOptions.SERVER_NAME)) {
             serverName = optionMap.get(RemotingOptions.SERVER_NAME);
         } else {
-            serverName = InetUtils.determineServerName(connection.getLocalAddress().getHostName());
+            serverName = HostName.getQualifiedHostName();
         }
     }
 
