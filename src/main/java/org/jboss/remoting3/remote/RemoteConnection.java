@@ -19,6 +19,7 @@
 package org.jboss.remoting3.remote;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -29,6 +30,7 @@ import org.jboss.logging.Logger;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3._private.Messages;
 import org.jboss.remoting3.spi.ConnectionHandlerFactory;
+import org.wildfly.common.net.Inet;
 import org.wildfly.security.auth.server.SecurityIdentity;
 import org.xnio.Buffers;
 import org.xnio.ByteBufferPool;
@@ -64,6 +66,7 @@ final class RemoteConnection {
     private volatile SaslWrapper saslWrapper;
     private volatile SecurityIdentity identity;
     private final RemoteConnectionProvider remoteConnectionProvider;
+    private InetSocketAddress localAddress;
 
     RemoteConnection(final StreamConnection connection, final SslChannel sslChannel, final OptionMap optionMap, final RemoteConnectionProvider remoteConnectionProvider) {
         this.connection = connection;
@@ -233,7 +236,22 @@ final class RemoteConnection {
     }
 
     InetSocketAddress getLocalAddress() {
-        return connection.getLocalAddress(InetSocketAddress.class);
+        InetSocketAddress localAddress = this.localAddress;
+        if (localAddress == null) {
+            InetSocketAddress cla = connection.getLocalAddress(InetSocketAddress.class);
+            if (Inet.getHostNameIfResolved(cla) != null) {
+                // already resolved to a name
+                localAddress = cla;
+            } else {
+                // check cache
+                InetAddress claAddr = cla.getAddress();
+                InetAddress addr = remoteConnectionProvider.getCachedLocalAddress(claAddr);
+                localAddress = addr == claAddr ? cla : new InetSocketAddress(addr, cla.getPort());
+            }
+            // weakly cache it for later
+            this.localAddress = localAddress;
+        }
+        return localAddress;
     }
 
     Connection getConnection() {
