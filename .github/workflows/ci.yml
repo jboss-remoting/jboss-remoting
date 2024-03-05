@@ -45,13 +45,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-20.04, windows-latest, macos-latest]
-        jdk: [8, 11, 14, 17, 19]
+        jdk: [8, 11, 17, 21]
         openjdk_impl: [temurin, adopt-openj9]
-        exclude:
-          - openjdk_impl: temurin
-            jdk: 14
-          - openjdk_impl: adopt-openj9
-            jdk: 19
     steps:
     - name: Configure runner - Linux 
       if: contains(matrix.os, 'ubuntu')
