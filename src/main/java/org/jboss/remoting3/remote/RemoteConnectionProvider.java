@@ -197,6 +197,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
                 if (connection.isOpen()) {
                     remoteConnection.setResult(cancellableResult);
                     connection.getSinkChannel().setWriteListener(remoteConnection.getWriteListener());
+                    connection.getSinkChannel().setCloseListener(channel -> remoteConnection.getWriteListener().shutdownWrites());
                     final ClientConnectionOpenListener openListener = new ClientConnectionOpenListener(destination, remoteConnection, connectionProviderContext, authenticationConfiguration, saslClientFactoryOperator, serverMechs, connectOptions);
                     openListener.handleEvent(connection.getSourceChannel());
                 }
@@ -414,6 +415,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
             final RemoteConnection connection = new RemoteConnection(accepted, sslChannel, serverOptionMap, RemoteConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, connectionProviderContext, saslAuthenticationFactory, serverOptionMap);
             accepted.getSinkChannel().setWriteListener(connection.getWriteListener());
+            accepted.getSinkChannel().setCloseListener(channel -> connection.getWriteListener().shutdownWrites());
             log.tracef("Accepted connection from %s to %s", connection.getPeerAddress(), connection.getLocalAddress());
             openListener.handleEvent(accepted.getSourceChannel());
         }
