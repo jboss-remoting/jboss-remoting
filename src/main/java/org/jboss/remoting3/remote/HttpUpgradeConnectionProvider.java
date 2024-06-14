@@ -266,6 +266,7 @@ final class HttpUpgradeConnectionProvider extends RemoteConnectionProvider {
             final RemoteConnection connection = new RemoteConnection(channel, sslChannel, optionMap, HttpUpgradeConnectionProvider.this);
             final ServerConnectionOpenListener openListener = new ServerConnectionOpenListener(connection, getConnectionProviderContext(), saslAuthenticationFactory, optionMap);
             channel.getSinkChannel().setWriteListener(connection.getWriteListener());
+            channel.getSinkChannel().setCloseListener(c -> connection.getWriteListener().shutdownWrites());
             conn.tracef("Accepted connection from %s to %s", channel.getPeerAddress(), channel.getLocalAddress());
             openListener.handleEvent(channel.getSourceChannel());
         }
