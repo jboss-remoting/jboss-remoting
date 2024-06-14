@@ -23,6 +23,7 @@ import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
@@ -30,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.function.UnaryOperator;
 
@@ -92,6 +94,7 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
     private final Set<RemoteConnectionHandler> handlers = Collections.synchronizedSet(new HashSet<RemoteConnectionHandler>());
     private final MBeanServer server;
     private final ObjectName objectName;
+    private final ConcurrentHashMap<InetAddress, InetAddress> cachedAddresses = new ConcurrentHashMap<>();
 
     RemoteConnectionProvider(final OptionMap optionMap, final ConnectionProviderContext connectionProviderContext, final String protocolName) throws IOException {
         super(connectionProviderContext.getExecutor());
@@ -317,6 +320,14 @@ class RemoteConnectionProvider extends AbstractHandleableCloseable<ConnectionPro
 
     void removeConnectionHandler(final RemoteConnectionHandler connectionHandler) {
         handlers.remove(connectionHandler);
+    }
+
+    InetAddress getCachedLocalAddress(final InetAddress localAddress) {
+        return cachedAddresses.computeIfAbsent(localAddress, inetAddress -> {
+            // ensure it's resolved
+            inetAddress.getHostName();
+            return inetAddress;
+        });
     }
 
     final class ProviderInterface implements NetworkServerProvider {
