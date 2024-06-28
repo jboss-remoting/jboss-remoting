@@ -56,13 +56,13 @@ import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 
 /**
- * Attempt to connect to a non-responding socket. Since the socket does not respond, the 
+ * Attempt to connect to a non-responding socket. Since the socket does not respond, the
  * IoFuture<Connection> returned by Endpoint.connect stays on WAITING forever.
  * In an attempt to solve the issue, this method tries to close the endpoint.
- * 
+ *
  * <p>
  * This test is a reproduction of the scenario described by AS7-3537.
- * 
+ *
  * @author <a href="mailto:flavia.rainone@jboss.com">Flavia Rainone</a>
  */
 public class TimeOutConnectionTestCase {
@@ -138,7 +138,7 @@ public class TimeOutConnectionTestCase {
             }
         }
     }
-    
+
     @Test
     public void test() throws Exception {
         doTest(OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
@@ -147,7 +147,7 @@ public class TimeOutConnectionTestCase {
     @Test
     @Ignore
     public void testSslEnabled() throws Exception {
-        SslHelper.setKeyStoreAndTrustStore();
+        //SslHelper.setKeyStoreAndTrustStore();
         doTest(OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE));
     }
 

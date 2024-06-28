@@ -19,26 +19,43 @@
 package org.jboss.remoting3.test;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.Closeable;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.GeneralSecurityException;
+import java.security.PrivilegedAction;
 import java.security.Security;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import javax.net.ssl.SSLContext;
+import javax.security.sasl.SaslServerFactory;
+
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.CloseHandler;
+import org.jboss.remoting3.Connection;
+import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.MessageCancelledException;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
+import org.jboss.remoting3.OpenListener;
+import org.jboss.remoting3.Registration;
+import org.jboss.remoting3.spi.NetworkServerProvider;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -47,10 +64,29 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
 import org.wildfly.security.WildFlyElytronProvider;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
+import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.auth.client.MatchRule;
+import org.wildfly.security.auth.realm.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.auth.realm.SimpleRealmEntry;
+import org.wildfly.security.auth.server.MechanismConfiguration;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
+import org.wildfly.security.auth.server.SecurityDomain;
+import org.wildfly.security.credential.PasswordCredential;
+import org.wildfly.security.password.PasswordFactory;
+import org.wildfly.security.password.spec.ClearPasswordSpec;
+import org.wildfly.security.permission.PermissionVerifier;
+import org.wildfly.security.sasl.SaslMechanismSelector;
+import org.wildfly.security.sasl.util.ServiceLoaderSaslServerFactory;
+import org.xnio.FutureResult;
+import org.xnio.IoFuture;
+import org.xnio.IoFuture.Status;
 import org.xnio.IoUtils;
+import org.xnio.OptionMap;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
+ * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
 public abstract class ChannelTestBase {
 
@@ -59,6 +95,13 @@ public abstract class ChannelTestBase {
     protected Channel recvChannel;
     private static String providerName;
 
+    // Managed by "Create"
+    protected static Endpoint endpoint;
+    private static Closeable streamServer;
+    // Managed by "testStart"
+    private Connection connection;
+    private Registration serviceRegistration;
+
     @BeforeClass
     public static void doBeforeClass() {
         final WildFlyElytronProvider provider = new WildFlyElytronProvider();
@@ -66,9 +109,51 @@ public abstract class ChannelTestBase {
         providerName = provider.getName();
     }
 
+    protected static void create(OptionMap optionMap, String saslMech, SSLContext serverContext) throws Exception {
+        // Initial Remoting Initialisation
+        endpoint = Endpoint.builder().setEndpointName("test").build();
+        NetworkServerProvider networkServerProvider = endpoint.getConnectionProviderInterface("remote", NetworkServerProvider.class);
+
+        // WildFly Elytron Security Domain and SASL Authentication Factory
+        final SecurityDomain.Builder domainBuilder = SecurityDomain.builder();
+        final SimpleMapBackedSecurityRealm mainRealm = new SimpleMapBackedSecurityRealm();
+        domainBuilder.addRealm("mainRealm", mainRealm).build();
+        domainBuilder.setDefaultRealmName("mainRealm");
+        domainBuilder.setPermissionMapper((permissionMappable, roles) -> PermissionVerifier.ALL);
+        final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
+        mainRealm.setIdentityMap(Collections.singletonMap("bob", new SimpleRealmEntry(
+            Collections.singletonList(
+                new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())))))
+        ));
+        final SaslServerFactory saslServerFactory = new ServiceLoaderSaslServerFactory(RemoteSslChannelTest.class.getClassLoader());
+        // TODO REM3-414 We need to move to support the non-deprecated variant of SaslAuthenticationFactory.
+        final SaslAuthenticationFactory.Builder builder = SaslAuthenticationFactory.builder();
+        builder.setSecurityDomain(domainBuilder.build());
+        builder.setFactory(saslServerFactory);
+        builder.setMechanismConfigurationSelector(mechanismInformation -> saslMech.equals(mechanismInformation.getMechanismName()) ? MechanismConfiguration.EMPTY : null);
+        final SaslAuthenticationFactory saslAuthenticationFactory = builder.build();
+
+        // Final Remoting Initialisation
+        streamServer = networkServerProvider.createServer(new InetSocketAddress("localhost", 30123),
+                optionMap, saslAuthenticationFactory, serverContext);
+    }
+
     @AfterClass
     public static void doAfterClass() {
+        IoUtils.safeClose(streamServer);
+        IoUtils.safeClose(endpoint);
+
         Security.removeProvider(providerName);
+
+        //some environments seem to need a small delay to re-bind the socket
+        // we could alternatively shutdown the xnio worker, this would guarantee
+        // that all tasks were fully completely for closing, but the worker is not
+        // reachable from outside the remoting api
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            //ignore
+        }
     }
 
     @Rule
@@ -81,8 +166,62 @@ public abstract class ChannelTestBase {
         Logger.getLogger("TEST").infof("Running test %s", name.getMethodName());
     }
 
+    public void testStart(String saslMech, SSLContext clientContext, OptionMap optionMap) throws IOException, URISyntaxException, InterruptedException, GeneralSecurityException {
+        final FutureResult<Channel> passer = new FutureResult<Channel>();
+        serviceRegistration = endpoint.registerService("org.jboss.test", new OpenListener() {
+            public void channelOpened(final Channel channel) {
+                passer.setResult(channel);
+            }
+
+            public void registrationTerminated() {
+            }
+        }, OptionMap.EMPTY);
+
+
+        AuthenticationContext authenticationContext = AuthenticationContext.empty()
+            .with(MatchRule.ALL, AuthenticationConfiguration.empty()
+                .useName("bob")
+                .usePassword("pass")
+                .setSaslMechanismSelector(SaslMechanismSelector.NONE.addMechanism(saslMech)));
+
+        if (clientContext != null) {
+            authenticationContext = authenticationContext.withSsl(MatchRule.ALL, () -> clientContext);
+        }
+        IoFuture<Connection> futureConnection = authenticationContext.run(new PrivilegedAction<IoFuture<Connection>>() {
+            public IoFuture<Connection> run() {
+                try {
+                    return endpoint.connect(new URI("remote://localhost:30123"), optionMap);
+                } catch (URISyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        assertEquals(Status.DONE, futureConnection.await(500, TimeUnit.MILLISECONDS)); // Some situations cause indefinate hang.
+        connection = futureConnection.get();
+        if (clientContext != null) {
+            assertNotNull("SSLSession Available", connection.getSslSession());
+        } else {
+            assertNull("SSLSession Available", connection.getSslSession());
+        }
+
+        IoFuture<Channel> futureChannel = connection.openChannel("org.jboss.test", OptionMap.EMPTY);
+        sendChannel = futureChannel.get();
+        recvChannel = passer.getIoFuture().get();
+        assertNotNull(recvChannel);
+        if (clientContext != null) {
+            assertNotNull("SSLSession Available", recvChannel.getConnection().getSslSession());
+        } else {
+            assertNull("SSLSession Available", recvChannel.getConnection().getSslSession());
+        }
+    }
+
     @After
     public void doAfter() {
+        IoUtils.safeClose(sendChannel);
+        IoUtils.safeClose(recvChannel);
+        IoUtils.safeClose(connection);
+        serviceRegistration.close();
+
         System.gc();
         System.runFinalization();
         Logger.getLogger("TEST").infof("Finished test %s", name.getMethodName());
@@ -329,7 +468,7 @@ public abstract class ChannelTestBase {
             out.write(bytes[i]);
         }
         out.close();
-        
+
         final CountDownLatch latch = new CountDownLatch(1);
         final ArrayList<Byte> result = new ArrayList<Byte>();
         final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
@@ -361,7 +500,7 @@ public abstract class ChannelTestBase {
                 }
             }
         });
-        
+
         latch.await();
         assertNull(exRef.get());
         Byte[] resultBytes = result.toArray(new Byte[result.size()]);
@@ -371,7 +510,7 @@ public abstract class ChannelTestBase {
     @Test
     public void testSimpleWriteMethodWithWrappedOuputStream() throws Exception {
         Byte[] bytes = new Byte[] {1, 2, 3};
-        
+
         FilterOutputStream out = new FilterOutputStream(sendChannel.writeMessage());
         for (int i = 0 ; i < bytes.length ; i++) {
             out.write(bytes[i]);
@@ -379,7 +518,7 @@ public abstract class ChannelTestBase {
         //The close() method of FilterOutputStream will flush the underlying output stream before closing it,
         //so we end up with two messages
         out.close();
-        
+
         final CountDownLatch latch = new CountDownLatch(1);
         final ArrayList<Byte> result = new ArrayList<Byte>();
         final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
@@ -411,7 +550,7 @@ public abstract class ChannelTestBase {
                 }
             }
         });
-        
+
         latch.await();
         assertNull(exRef.get());
         Byte[] resultBytes = result.toArray(new Byte[result.size()]);
@@ -426,10 +565,10 @@ public abstract class ChannelTestBase {
             out.write(bytes[i]);
         }
         out.close();
-        
+
         final CountDownLatch latch = new CountDownLatch(1);
         final ArrayList<Byte> result = new ArrayList<Byte>();
-        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();        
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
         sendChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
                 error.printStackTrace();
@@ -474,11 +613,11 @@ public abstract class ChannelTestBase {
             out.write(bytes[i]);
         }
         out.close();
-        
+
         final CountDownLatch latch = new CountDownLatch(2);
         final ArrayList<Byte> senderResult = new ArrayList<Byte>();
         final ArrayList<Byte> receiverResult = new ArrayList<Byte>();
-        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();        
+        final AtomicReference<IOException> exRef = new AtomicReference<IOException>();
         recvChannel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
                 error.printStackTrace();
@@ -549,7 +688,7 @@ public abstract class ChannelTestBase {
                 }
             }
         });
-        
+
         latch.await();
         assertNull(exRef.get());
         Byte[] receiverBytes = receiverResult.toArray(new Byte[receiverResult.size()]);

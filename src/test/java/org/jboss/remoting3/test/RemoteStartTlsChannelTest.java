@@ -46,11 +46,11 @@ import org.xnio.Options;
  * @author <a href="mailto:flavia.rainone@jboss.com">Flavia Rainone</a>
  * @author <a href="mailto:darran.lofthouse@jboss.com">Darran Lofthouse</a>
  */
-public final class RemoteSslChannelTest extends ChannelTestBase {
+public final class RemoteStartTlsChannelTest extends ChannelTestBase {
 
     private static final String CA_LOCATION = "./target/test-classes/ca";
     private static final String CIPHER_SUITE = "TLS_AES_128_GCM_SHA256";
-    private static final OptionMap optionMap = OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE);
+    private static final OptionMap optionMap = OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE, Options.SSL_STARTTLS, Boolean.TRUE);
     private static final String SASL_MECH = SaslMechanismInformation.Names.SCRAM_SHA_256_PLUS;
 
     private static CAGenerationTool caGenerationTool = null;
