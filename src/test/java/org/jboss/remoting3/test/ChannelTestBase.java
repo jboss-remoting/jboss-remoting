@@ -166,7 +166,7 @@ public abstract class ChannelTestBase {
         Logger.getLogger("TEST").infof("Running test %s", name.getMethodName());
     }
 
-    public void testStart(String saslMech, SSLContext clientContext, OptionMap optionMap) throws IOException, URISyntaxException, InterruptedException, GeneralSecurityException {
+    public void testStart(String saslMech, SSLContext clientContext, String protocol, OptionMap optionMap) throws IOException, URISyntaxException, InterruptedException, GeneralSecurityException {
         final FutureResult<Channel> passer = new FutureResult<Channel>();
         serviceRegistration = endpoint.registerService("org.jboss.test", new OpenListener() {
             public void channelOpened(final Channel channel) {
@@ -190,7 +190,7 @@ public abstract class ChannelTestBase {
         IoFuture<Connection> futureConnection = authenticationContext.run(new PrivilegedAction<IoFuture<Connection>>() {
             public IoFuture<Connection> run() {
                 try {
-                    return endpoint.connect(new URI("remote://localhost:30123"), optionMap);
+                    return endpoint.connect(new URI(String.format("%s://localhost:30123", protocol)), optionMap);
                 } catch (URISyntaxException e) {
                     throw new RuntimeException(e);
                 }
