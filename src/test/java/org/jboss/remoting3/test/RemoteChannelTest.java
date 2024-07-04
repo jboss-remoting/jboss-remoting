@@ -44,6 +44,7 @@ import org.xnio.Options;
  */
 public final class RemoteChannelTest extends ChannelTestBase {
 
+    private static final String PROTOCOL = "remote";
     private static final OptionMap optionMap = OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE);
     private static final String SASL_MECH = SaslMechanismInformation.Names.SCRAM_SHA_256;
 
@@ -54,7 +55,7 @@ public final class RemoteChannelTest extends ChannelTestBase {
 
     @Before
     public void testStart() throws Exception {
-        testStart(SASL_MECH, null, optionMap);
+        testStart(SASL_MECH, null, PROTOCOL, optionMap);
     }
 
     @Test
