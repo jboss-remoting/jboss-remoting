@@ -37,7 +37,7 @@ import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
 import org.wildfly.security.auth.realm.SimpleMapBackedSecurityRealm;
 import org.wildfly.security.auth.server.MechanismConfiguration;
-import org.wildfly.security.auth.server.sasl.SaslAuthenticationFactory;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.wildfly.security.auth.server.SecurityDomain;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
