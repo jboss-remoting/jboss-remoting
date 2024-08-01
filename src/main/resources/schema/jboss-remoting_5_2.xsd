@@ -31,7 +31,7 @@
         <xs:all minOccurs="0" maxOccurs="1">
             <xs:element name="providers" type="providers-type" minOccurs="0" maxOccurs="1"/>
             <xs:element name="connections" type="connections-type" minOccurs="0" maxOccurs="1"/>
-            <xs:element name="options" type="connections-type" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="options" type="options-type" minOccurs="0" maxOccurs="1"/>
         </xs:all>
         <xs:attribute name="name" use="optional" type="xs:string"/>
         <xs:attribute name="read-timeout" use="optional" type="xs:nonNegativeInteger"/>
@@ -70,7 +70,7 @@
 
     <xs:complexType name="options-type">
         <xs:choice minOccurs="0" maxOccurs="unbounded">
-            <xs:element name="connection" type="option-type"/>
+            <xs:element name="option" type="option-type"/>
         </xs:choice>
     </xs:complexType>
 
@@ -85,7 +85,7 @@
             <xs:documentation>
                 <![CDATA[[
           Define the type of option.
-          Valid values are: NoTransaction, LocalTransaction, XATransaction
+          Valid values are: remoting, xnio
          ]]>
             </xs:documentation>
         </xs:annotation>
