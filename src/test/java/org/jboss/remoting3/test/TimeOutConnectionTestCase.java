@@ -26,7 +26,10 @@ import java.net.URISyntaxException;
 import java.nio.channels.ServerSocketChannel;
 import java.security.PrivilegedAction;
 import java.security.Security;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
+
+import javax.net.ssl.SSLContext;
 
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.Connection;
@@ -36,7 +39,6 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
@@ -45,28 +47,38 @@ import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
 import org.wildfly.security.auth.realm.SimpleMapBackedSecurityRealm;
+import org.wildfly.security.auth.realm.SimpleRealmEntry;
 import org.wildfly.security.auth.server.SecurityDomain;
+import org.wildfly.security.credential.PasswordCredential;
 import org.wildfly.security.password.PasswordFactory;
 import org.wildfly.security.password.spec.ClearPasswordSpec;
+import org.wildfly.security.ssl.CipherSuiteSelector;
+import org.wildfly.security.ssl.Protocol;
+import org.wildfly.security.ssl.ProtocolSelector;
+import org.wildfly.security.ssl.SSLContextBuilder;
+import org.wildfly.security.ssl.test.util.CAGenerationTool;
+import org.wildfly.security.ssl.test.util.CAGenerationTool.Identity;
+import org.wildfly.security.ssl.test.util.DefinedCAIdentity;
 import org.xnio.IoFuture;
 import org.xnio.IoFuture.Status;
 import org.xnio.OptionMap;
-import org.xnio.Options;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 
 /**
- * Attempt to connect to a non-responding socket. Since the socket does not respond, the 
+ * Attempt to connect to a non-responding socket. Since the socket does not respond, the
  * IoFuture<Connection> returned by Endpoint.connect stays on WAITING forever.
  * In an attempt to solve the issue, this method tries to close the endpoint.
- * 
+ *
  * <p>
  * This test is a reproduction of the scenario described by AS7-3537.
- * 
+ *
  * @author <a href="mailto:flavia.rainone@jboss.com">Flavia Rainone</a>
  */
 public class TimeOutConnectionTestCase {
 
+    private static final String CA_LOCATION = "./target/test-classes/ca";
+    private static final String CIPHER_SUITE = "TLS_AES_128_GCM_SHA256";
     protected static Endpoint endpoint;
 
     @Rule
@@ -100,7 +112,7 @@ public class TimeOutConnectionTestCase {
         Logger.getLogger("TEST").infof("Finished test %s", name.getMethodName());
     }
 
-    private void doTest(OptionMap connectionProviderOptions) throws Exception {
+    private void doTest(AuthenticationContext authenticationContext, boolean useTLS) throws Exception {
         try (final ServerSocketChannel channel = ServerSocketChannel.open()) {
             channel.configureBlocking(true);
             channel.socket().bind(new InetSocketAddress("localhost", 30123));
@@ -118,12 +130,16 @@ public class TimeOutConnectionTestCase {
                 domainBuilder.addRealm("mainRealm", mainRealm);
                 domainBuilder.setDefaultRealmName("mainRealm");
                 final PasswordFactory passwordFactory = PasswordFactory.getInstance("clear");
-                mainRealm.setPasswordMap("bob", passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())));
+                mainRealm.setIdentityMap(Collections.singletonMap("bob", new SimpleRealmEntry(
+                Collections.singletonList(
+                    new PasswordCredential(passwordFactory.generatePassword(new ClearPasswordSpec("pass".toCharArray())))))));
+
+
                 // create connect and close endpoint threads
-                IoFuture<Connection> futureConnection = AuthenticationContext.empty().with(MatchRule.ALL, AuthenticationConfiguration.empty().useName("bob").usePassword("pass")).run(new PrivilegedAction<IoFuture<Connection>>() {
+                IoFuture<Connection> futureConnection = authenticationContext.run(new PrivilegedAction<IoFuture<Connection>>() {
                     public IoFuture<Connection> run() {
                         try {
-                            return ep.connect(new URI("remote://localhost:30123"), OptionMap.EMPTY);
+                            return ep.connect(new URI(String.format("%s://localhost:30123", useTLS ? "remote+tls" : "remote")), OptionMap.EMPTY);
                         } catch (URISyntaxException e) {
                             throw new RuntimeException(e);
                         }
@@ -138,17 +154,46 @@ public class TimeOutConnectionTestCase {
             }
         }
     }
-    
-    @Test
-    public void test() throws Exception {
-        doTest(OptionMap.create(Options.SSL_ENABLED, Boolean.FALSE));
+
+    private static AuthenticationContext getAuthenticationContext(final SSLContext clientContext) {
+        AuthenticationContext authenticationContext = AuthenticationContext.empty()
+            .with(MatchRule.ALL, AuthenticationConfiguration.empty()
+                .useName("bob")
+                .usePassword("pass"));
+
+        if (clientContext != null) {
+            authenticationContext = authenticationContext.withSsl(MatchRule.ALL, () -> clientContext);
+        }
+
+        return authenticationContext;
     }
 
     @Test
-    @Ignore
+    public void test() throws Exception {
+        doTest(getAuthenticationContext(null), false);
+    }
+
+    @Test
     public void testSslEnabled() throws Exception {
-        SslHelper.setKeyStoreAndTrustStore();
-        doTest(OptionMap.create(Options.SSL_ENABLED, Boolean.TRUE));
+        CAGenerationTool caGenerationTool = CAGenerationTool.builder()
+                .setBaseDir(CA_LOCATION)
+                .setRequestIdentities(Identity.LADYBIRD)
+                .build();
+
+                        DefinedCAIdentity ca = caGenerationTool.getDefinedCAIdentity(Identity.CA);
+        SSLContext clientContext = new SSLContextBuilder()
+                .setCipherSuiteSelector(CipherSuiteSelector.fromNamesString(CIPHER_SUITE))
+                .setProtocolSelector(ProtocolSelector.empty().add(Protocol.TLSv1_3))
+                .setTrustManager(ca.createTrustManager())
+                .setClientMode(true)
+                .build()
+                .create();
+
+        try {
+            doTest(getAuthenticationContext(clientContext), true);
+        } finally {
+            caGenerationTool.close();
+        }
     }
 
     private class Accept implements Runnable {
