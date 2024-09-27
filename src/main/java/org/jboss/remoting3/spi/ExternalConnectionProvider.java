@@ -21,7 +21,7 @@ package org.jboss.remoting3.spi;
 import java.io.IOException;
 import java.util.function.Consumer;
 
-import org.wildfly.security.auth.server.sasl.SaslAuthenticationFactory;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.OptionMap;
 import org.xnio.StreamConnection;
 

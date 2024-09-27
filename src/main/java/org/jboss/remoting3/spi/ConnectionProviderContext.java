@@ -20,7 +20,7 @@ package org.jboss.remoting3.spi;
 
 import java.util.concurrent.Executor;
 import org.jboss.remoting3.Endpoint;
-import org.wildfly.security.auth.server.sasl.SaslAuthenticationFactory;
+import org.wildfly.security.auth.server.SaslAuthenticationFactory;
 import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 
