@@ -444,4 +444,8 @@ public interface Endpoint extends HandleableCloseable<Endpoint>, Attachable, Con
     static EndpointBuilder builder() {
         return new EndpointBuilder();
     }
+
+    default void addConnectionOptions(URI uri, OptionMap options) {
+        throw new UnsupportedOperationException("not implemented");
+    }
 }
