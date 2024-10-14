@@ -258,12 +258,14 @@ final class InboundMessage {
     }
 
     void dumpState(final StringBuilder b) {
-        b.append("            ").append(String.format("Inbound message ID %04x, window %d\n", messageId & 0xFFFF, inboundWindow));
-        b.append("            ").append("* flags: ");
-        if (cancelled) b.append("cancelled ");
-        if (closeSent) b.append("close-sent ");
-        if (streamClosed) b.append("stream-closed ");
-        if (eofReceived) b.append("eof-received ");
-        b.append('\n');
+        synchronized (inputStream) {
+            b.append("            ").append(String.format("Inbound message ID %04x, window %d\n", messageId & 0xFFFF, inboundWindow));
+            b.append("            ").append("* flags: ");
+            if (cancelled) b.append("cancelled ");
+            if (closeSent) b.append("close-sent ");
+            if (streamClosed) b.append("stream-closed ");
+            if (eofReceived) b.append("eof-received ");
+            b.append('\n');
+        }
     }
 }
