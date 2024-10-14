@@ -334,13 +334,15 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     void dumpState(final StringBuilder b) {
-        b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", getActualId(), window, maximumWindow));
-        b.append("            ").append("* flags: ");
-        if (cancelled) b.append("cancelled ");
-        if (cancelSent) b.append("cancel-sent ");
-        if (closeReceived) b.append("close-received ");
-        if (closeCalled) b.append("closed-called ");
-        if (eofSent) b.append("eof-sent ");
-        b.append('\n');
+        synchronized (pipeOutputStream) {
+            b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", getActualId(), window, maximumWindow));
+            b.append("            ").append("* flags: ");
+            if (cancelled) b.append("cancelled ");
+            if (cancelSent) b.append("cancel-sent ");
+            if (closeReceived) b.append("close-received ");
+            if (closeCalled) b.append("closed-called ");
+            if (eofSent) b.append("eof-sent ");
+            b.append('\n');
+        }
     }
 }
