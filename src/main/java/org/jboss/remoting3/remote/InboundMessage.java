@@ -36,14 +36,14 @@ import static org.xnio.IoUtils.safeClose;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class InboundMessage {
-    final short messageId;
-    final RemoteConnectionChannel channel;
-    int inboundWindow;
-    boolean streamClosed;
-    boolean closeSent;
-    boolean eofReceived;
-    boolean cancelled;
-    long remaining;
+    private final short messageId;
+    private final RemoteConnectionChannel channel;
+    private int inboundWindow;
+    private boolean streamClosed;
+    private boolean closeSent;
+    private boolean eofReceived;
+    private boolean cancelled;
+    private long remaining;
 
     static final ToIntFunction<InboundMessage> INDEXER = InboundMessage::getActualId;
 
