@@ -263,11 +263,13 @@ final class OutboundMessage extends MessageOutputStream {
 
     public void write(final int b) throws IOException {
         try {
-            if (remaining > 1) {
-                pipeOutputStream.write(b);
-                remaining--;
-            } else {
-                throw overrun();
+            synchronized (pipeOutputStream) {
+                if (remaining > 1) {
+                    pipeOutputStream.write(b);
+                    remaining--;
+                } else {
+                    throw overrun();
+                }
             }
         } catch (IOException e) {
             cancel();
@@ -294,11 +296,13 @@ final class OutboundMessage extends MessageOutputStream {
 
     public void write(final byte[] b, final int off, final int len) throws IOException {
         try {
-            if ((long) len > remaining) {
-                throw overrun();
+            synchronized (pipeOutputStream) {
+                if ((long) len > remaining) {
+                    throw overrun();
+                }
+                pipeOutputStream.write(b, off, len);
+                remaining -= len;
             }
-            pipeOutputStream.write(b, off, len);
-            remaining -= len;
         } catch (IOException e) {
             cancel();
             throw e;
