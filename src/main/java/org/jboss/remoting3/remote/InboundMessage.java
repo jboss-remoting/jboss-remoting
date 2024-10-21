@@ -36,14 +36,14 @@ import static org.xnio.IoUtils.safeClose;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class InboundMessage {
-    final short messageId;
-    final RemoteConnectionChannel channel;
-    int inboundWindow;
-    boolean streamClosed;
-    boolean closeSent;
-    boolean eofReceived;
-    boolean cancelled;
-    long remaining;
+    private final short messageId;
+    private final RemoteConnectionChannel channel;
+    private int inboundWindow;
+    private boolean streamClosed;
+    private boolean closeSent;
+    private boolean eofReceived;
+    private boolean cancelled;
+    private long remaining;
 
     static final ToIntFunction<InboundMessage> INDEXER = InboundMessage::getActualId;
 
@@ -258,12 +258,14 @@ final class InboundMessage {
     }
 
     void dumpState(final StringBuilder b) {
-        b.append("            ").append(String.format("Inbound message ID %04x, window %d\n", messageId & 0xFFFF, inboundWindow));
-        b.append("            ").append("* flags: ");
-        if (cancelled) b.append("cancelled ");
-        if (closeSent) b.append("close-sent ");
-        if (streamClosed) b.append("stream-closed ");
-        if (eofReceived) b.append("eof-received ");
-        b.append('\n');
+        synchronized (inputStream) {
+            b.append("            ").append(String.format("Inbound message ID %04x, window %d\n", messageId & 0xFFFF, inboundWindow));
+            b.append("            ").append("* flags: ");
+            if (cancelled) b.append("cancelled ");
+            if (closeSent) b.append("close-sent ");
+            if (streamClosed) b.append("stream-closed ");
+            if (eofReceived) b.append("eof-received ");
+            b.append('\n');
+        }
     }
 }

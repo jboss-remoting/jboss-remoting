@@ -40,20 +40,22 @@ import org.xnio.streams.BufferPipeOutputStream;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class OutboundMessage extends MessageOutputStream {
-    final short messageId;
-    final RemoteConnectionChannel channel;
-    final BufferPipeOutputStream pipeOutputStream;
-    final int maximumWindow;
-    final int ackTimeout;
-    int window;
-    boolean closeCalled;
-    boolean closeReceived;
-    boolean cancelled;
-    boolean cancelSent;
-    boolean eofSent;
-    boolean released;
-    long remaining;
-    final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
+
+    private final short messageId;
+    private final RemoteConnectionChannel channel;
+    private final BufferPipeOutputStream pipeOutputStream;
+    private final int maximumWindow;
+    private final long ackTimeout;
+    private int window;
+    private boolean closeCalled;
+    private boolean closeReceived;
+    private boolean cancelled;
+    private boolean cancelSent;
+    private boolean eofSent;
+    private boolean released;
+    private long remaining;
+
+    private final BufferPipeOutputStream.BufferWriter bufferWriter = new BufferPipeOutputStream.BufferWriter() {
         public Pooled<ByteBuffer> getBuffer(boolean firstBuffer) throws IOException {
             Pooled<ByteBuffer> pooled = allocate(Protocol.MESSAGE_DATA);
             boolean ok = false;
@@ -332,13 +334,15 @@ final class OutboundMessage extends MessageOutputStream {
     }
 
     void dumpState(final StringBuilder b) {
-        b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", getActualId(), window, maximumWindow));
-        b.append("            ").append("* flags: ");
-        if (cancelled) b.append("cancelled ");
-        if (cancelSent) b.append("cancel-sent ");
-        if (closeReceived) b.append("close-received ");
-        if (closeCalled) b.append("closed-called ");
-        if (eofSent) b.append("eof-sent ");
-        b.append('\n');
+        synchronized (pipeOutputStream) {
+            b.append("            ").append(String.format("Outbound message ID %04x, window %d of %d\n", getActualId(), window, maximumWindow));
+            b.append("            ").append("* flags: ");
+            if (cancelled) b.append("cancelled ");
+            if (cancelSent) b.append("cancel-sent ");
+            if (closeReceived) b.append("close-received ");
+            if (closeCalled) b.append("closed-called ");
+            if (eofSent) b.append("eof-sent ");
+            b.append('\n');
+        }
     }
 }
