@@ -39,7 +39,7 @@ import java.util.function.ToIntFunction;
 public final class IntIndexHashMap<V> extends AbstractCollection<V> implements IntIndexMap<V> {
     private static final int DEFAULT_INITIAL_CAPACITY = 512;
     private static final int MAXIMUM_CAPACITY = 1 << 30;
-    private static final float DEFAULT_LOAD_FACTOR = 0.60f;
+    private static final float DEFAULT_LOAD_FACTOR = 0.3f;
 
     /** A row which has been resized into the new view. */
     private static final Object[] RESIZED = new Object[0];
