@@ -24,8 +24,10 @@ import java.util.Map;
 
 import javax.security.sasl.Sasl;
 
+import org.jboss.logging.Logger;
 import org.wildfly.common.Assert;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
+import org.wildfly.security.manager.WildFlySecurityManager;
 import org.wildfly.security.sasl.SaslMechanismSelector;
 import org.xnio.Option;
 import org.xnio.OptionMap;
@@ -40,7 +42,15 @@ import org.xnio.sasl.SaslStrength;
  */
 public final class RemotingOptions {
 
+    private static final Logger log = Logger.getLogger("org.jboss.remoting");
+
     private static final String[] NO_STRINGS = new String[0];
+
+    private static final String MAX_INBOUND_CHANNELS_KEY = "remoting.endpoint.max.inbound.channels";
+    private static final String MAX_OUTBOUND_CHANNELS_KEY = "remoting.endpoint.max.outbound.channels";
+
+    private static final int HARD_CODED_DEFAULT_MAX_INBOUND_CHANNELS = 40;
+    private static final int HARD_CODED_DEFAULT_MAX_OUTBOUND_CHANNELS = 40;
 
     private RemotingOptions() {
     }
@@ -210,7 +220,7 @@ public final class RemotingOptions {
     /**
      * The default maximum number of outbound channels.
      */
-    public static final int DEFAULT_MAX_OUTBOUND_CHANNELS = 40;
+    public static final int DEFAULT_MAX_OUTBOUND_CHANNELS;
 
     /**
      * The maximum number of inbound channels to support for a connection.
@@ -220,7 +230,7 @@ public final class RemotingOptions {
     /**
      * The default maximum number of inbound channels.
      */
-    public static final int DEFAULT_MAX_INBOUND_CHANNELS = 40;
+    public static final int DEFAULT_MAX_INBOUND_CHANNELS;
 
     /**
      * The SASL authorization ID.  Used as authentication user name to use if no authentication {@code CallbackHandler} is specified
@@ -329,4 +339,69 @@ public final class RemotingOptions {
      * The default value for message ack timeout configuration
      */
     public static final int DEFAULT_MESSAGE_ACK_TIMEOUT = 300000;
+
+    static {
+
+        /*
+         * Add the possibility to overwrite the DEFAULT_MAX_INBOUND_CHANNELS and DEFAULT_MAX_OUTBOUND_CHANNELS using the system
+         * properties 'remoting.endpoint.max.inbound.channels' and 'remoting.endpoint.max.outbound.channels', see REM3-382
+         */
+        String maxInboundChannelsPropertyValue = WildFlySecurityManager.getPropertyPrivileged(MAX_INBOUND_CHANNELS_KEY, null);
+        int defaultMaxInboundChannels;
+
+        if (maxInboundChannelsPropertyValue != null) {
+
+            try {
+                defaultMaxInboundChannels = Integer.valueOf(maxInboundChannelsPropertyValue);
+
+                log.tracef(
+                        "RemotingOptions: hard coded default max_inbound_channels changed using system property '%s' from '%d' to '%d'",
+                        MAX_INBOUND_CHANNELS_KEY, RemotingOptions.HARD_CODED_DEFAULT_MAX_INBOUND_CHANNELS,
+                        defaultMaxInboundChannels);
+
+            } catch (Exception e) {
+                defaultMaxInboundChannels = RemotingOptions.HARD_CODED_DEFAULT_MAX_INBOUND_CHANNELS;
+
+                log.warnf(
+                        "RemotingOptions: unable to parse system property '%s' with value '%s' as an Integer value, using '%d' as default max_inbound_channels",
+                        MAX_INBOUND_CHANNELS_KEY, maxInboundChannelsPropertyValue,
+                        RemotingOptions.HARD_CODED_DEFAULT_MAX_INBOUND_CHANNELS);
+            }
+
+        } else {
+            defaultMaxInboundChannels = RemotingOptions.HARD_CODED_DEFAULT_MAX_INBOUND_CHANNELS;
+        }
+
+        // assign the final value
+        DEFAULT_MAX_INBOUND_CHANNELS = defaultMaxInboundChannels;
+
+        String maxOutboundChannelsPropertyValue = WildFlySecurityManager.getPropertyPrivileged(MAX_OUTBOUND_CHANNELS_KEY, null);
+        int defaultMaxOutboundChannels;
+
+        if (maxOutboundChannelsPropertyValue != null) {
+
+            try {
+                defaultMaxOutboundChannels = Integer.valueOf(maxOutboundChannelsPropertyValue);
+
+                log.tracef(
+                        "RemotingOptions: hard coded default max_outbound_channels changed using system property '%s' from '%d' to '%d'",
+                        MAX_OUTBOUND_CHANNELS_KEY, RemotingOptions.HARD_CODED_DEFAULT_MAX_OUTBOUND_CHANNELS,
+                        defaultMaxOutboundChannels);
+
+            } catch (Exception e) {
+                defaultMaxOutboundChannels = RemotingOptions.HARD_CODED_DEFAULT_MAX_OUTBOUND_CHANNELS;
+
+                log.warnf(
+                        "RemotingOptions: unable to parse system property '%s' with value '%s' as an Integer value, using '%d' as default max_outbound_channels",
+                        MAX_OUTBOUND_CHANNELS_KEY, maxOutboundChannelsPropertyValue,
+                        RemotingOptions.HARD_CODED_DEFAULT_MAX_OUTBOUND_CHANNELS);
+            }
+
+        } else {
+            defaultMaxOutboundChannels = RemotingOptions.HARD_CODED_DEFAULT_MAX_OUTBOUND_CHANNELS;
+        }
+
+        // assign the final value
+        DEFAULT_MAX_OUTBOUND_CHANNELS = defaultMaxOutboundChannels;
+    }
 }
