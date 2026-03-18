@@ -253,10 +253,10 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                     }
                 });
                 xnioWorker = workerBuilder.build();
-                endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName, connectionOptions.isEmpty() ? Collections.emptyMap() : connectionOptions, defaultConnectionOptionMap));
+                endpointRef.set(endpoint = new EndpointImpl(xnioWorker, true, endpointName, connectionOptions, defaultConnectionOptionMap));
             }
         } else {
-            endpoint = new EndpointImpl(xnioWorker, false, endpointName, connectionOptions.isEmpty() ? Collections.emptyMap() : connectionOptions, defaultConnectionOptionMap);
+            endpoint = new EndpointImpl(xnioWorker, false, endpointName, connectionOptions, defaultConnectionOptionMap);
         }
         boolean ok = false;
         try {
@@ -718,6 +718,11 @@ final class EndpointImpl extends AbstractHandleableCloseable<Endpoint> implement
                 closeTick1("Connection provider for " + uriScheme);
             }
         }
+    }
+
+    @Override
+    public void addConnectionOptions(URI uri, OptionMap options) {
+        connectionOptions.put(uri, options);
     }
 
     static final class ProtocolRegistration {
