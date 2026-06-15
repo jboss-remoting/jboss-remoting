@@ -37,16 +37,20 @@ import org.xnio.conduits.ConduitStreamSourceChannel;
  */
 final class MessageReader {
 
+    private static final int INT_OVERFLOW_SIZE_LIMIT = Integer.MAX_VALUE - 4;
+
     private final ConduitStreamSourceChannel sourceChannel;
     private final ArrayDeque<ByteBuffer> queue = new ArrayDeque<>();
     private final Object lock;
     private final ByteBuffer[] array = new ByteBuffer[16];
+    private final long maxSize;
 
     static final Pooled<ByteBuffer> EOF_MARKER = Buffers.emptyPooledByteBuffer();
 
-    MessageReader(final ConduitStreamSourceChannel sourceChannel, final Object lock) {
+    MessageReader(final ConduitStreamSourceChannel sourceChannel, final Object lock, final long maxSize) {
         this.sourceChannel = sourceChannel;
         this.lock = lock;
+        this.maxSize = maxSize;
     }
 
     ConduitStreamSourceChannel getSourceChannel() {
@@ -60,14 +64,17 @@ final class MessageReader {
                 if (first != null) {
                     if (first.remaining() >= 4) {
                         int size = first.getInt(first.position());
-                        if (remaining(size + 4)) {
+                        if (remaining(size)) {
                             ByteBuffer message;
                             if (ByteBufferPool.MEDIUM_SIZE >= size) {
                                 message = ByteBufferPool.MEDIUM_HEAP.allocate();
                             } else if (ByteBufferPool.LARGE_SIZE >= size) {
                                 message = ByteBufferPool.LARGE_HEAP.allocate();
-                            } else {
+                            } else if (maxSize == -1 || maxSize >= size) {
+                                // allocate it if there is no max size at all, or if size is within the maxSize limit
                                 message = ByteBuffer.allocate(size);
+                            } else {
+                                throw conn.inboundMessageSizeBiggerThanLimit(size, maxSize);
                             }
                             first.getInt();
                             int cnt = 0;
@@ -164,7 +171,12 @@ final class MessageReader {
         }
     }
 
-    private boolean remaining(int cnt) {
+    private boolean remaining(int messageSize) {
+        if (messageSize > INT_OVERFLOW_SIZE_LIMIT) {
+            return false;
+        }
+        // add header to total size
+        final int cnt = messageSize + 4;
         int rem = 0;
         for (ByteBuffer buffer : queue) {
             rem += buffer.remaining();

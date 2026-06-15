@@ -143,4 +143,7 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 309, value = "Authentication not supported for this peer")
     AuthenticationException authenticationNotSupported();
+
+    @Message(id = 310, value = "Inbound message size %d is bigger than max message size %d")
+    IOException inboundMessageSizeBiggerThanLimit(int messageSize, long maxMessageSize);
 }

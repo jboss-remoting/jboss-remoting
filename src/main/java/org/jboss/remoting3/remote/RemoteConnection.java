@@ -70,7 +70,8 @@ final class RemoteConnection {
 
     RemoteConnection(final StreamConnection connection, final SslChannel sslChannel, final OptionMap optionMap, final RemoteConnectionProvider remoteConnectionProvider) {
         this.connection = connection;
-        this.messageReader = new MessageReader(connection.getSourceChannel(), writeListener.queue);
+        final long maxInboundMessageSize = optionMap.get(RemotingOptions.MAX_INBOUND_MESSAGE_SIZE, RemotingOptions.DEFAULT_MAX_INBOUND_MESSAGE_SIZE);
+        this.messageReader = new MessageReader(connection.getSourceChannel(), writeListener.queue, maxInboundMessageSize);
         this.sslChannel = sslChannel;
         this.optionMap = optionMap;
         heartbeatInterval = optionMap.get(RemotingOptions.HEARTBEAT_INTERVAL, RemotingOptions.DEFAULT_HEARTBEAT_INTERVAL);
