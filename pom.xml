@@ -28,6 +28,7 @@
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting</artifactId>
     <version>5.0.32.Final-SNAPSHOT</version>
+    <url>https://jbossremoting.jboss.org</url>
 
     <packaging>jar</packaging>
 
@@ -38,6 +39,11 @@
     </parent>
 
     <properties>
+        <!-- Nexus Settings -->
+        <nexus.repository.staging>jboss-io</nexus.repository.staging>
+        <nexus.repository.release>releases</nexus.repository.release>
+        <nexus.staging.tag>xnio-${project.version}</nexus.staging.tag>
+
         <apacheds.version>2.0.0-M24</apacheds.version>
         <apacheds.jdbm1.version>2.0.0-M3</apacheds.jdbm1.version>
         <apacheds.shared.version>1.0.0-M13</apacheds.shared.version>
@@ -67,6 +73,27 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+
+    <developers>
+        <developer>
+            <name>David Lloyd</name>
+            <email>dmlloyd@ibm.com</email>
+            <organization>WildFly</organization>
+            <organizationUrl>https://www.wildfly.org/</organizationUrl>
+        </developer>
+        <developer>
+            <name>Flavia Rainone</name>
+            <email>frainone@ibm.com</email>
+            <organization>WildFly</organization>
+            <organizationUrl>https://www.wildfly.org/</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git@github.com:jboss-remoting/jboss-remoting.git</connection>
+        <developerConnection>scm:git:git@github.com:jboss-remoting/jboss-remoting.git</developerConnection>
+        <url>https://github.com/xnio/xnio</url>
+    </scm>
 
     <organization>
         <name>JBoss, a division of Red Hat, Inc.</name>
