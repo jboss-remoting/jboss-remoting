@@ -42,7 +42,7 @@
         <!-- Repository Deployment Settings -->
         <nexus.repository.staging>jboss-io</nexus.repository.staging>
         <nexus.repository.release>releases</nexus.repository.release>
-        <nexus.staging.tag>xnio-${project.version}</nexus.staging.tag>
+        <nexus.staging.tag>jboss-remoting-${project.version}</nexus.staging.tag>
         <nexus.serverId>jboss</nexus.serverId>
         <nexus.repository.url>https://repository.jboss.org/nexus/</nexus.repository.url>
 
@@ -99,7 +99,7 @@
     <scm>
         <connection>scm:git:git@github.com:jboss-remoting/jboss-remoting.git</connection>
         <developerConnection>scm:git:git@github.com:jboss-remoting/jboss-remoting.git</developerConnection>
-        <url>https://github.com/xnio/xnio</url>
+        <url>https://github.com/jboss-remoting/jboss-remoting</url>
     </scm>
 
     <organization>
