@@ -39,10 +39,17 @@
     </parent>
 
     <properties>
-        <!-- Nexus Settings -->
+        <!-- Repository Deployment Settings -->
         <nexus.repository.staging>jboss-io</nexus.repository.staging>
         <nexus.repository.release>releases</nexus.repository.release>
         <nexus.staging.tag>xnio-${project.version}</nexus.staging.tag>
+        <nexus.serverId>jboss</nexus.serverId>
+        <nexus.repository.url>https://repository.jboss.org/nexus/</nexus.repository.url>
+
+        <!-- maven-gpg-plugin -->
+        <gpg.pinEntryMode>loopback</gpg.pinEntryMode>
+        <version.gpg.plugin>3.2.8</version.gpg.plugin>
+        <version.nxrm3.plugin>1.0.7</version.nxrm3.plugin>
 
         <apacheds.version>2.0.0-M24</apacheds.version>
         <apacheds.jdbm1.version>2.0.0-M3</apacheds.jdbm1.version>
@@ -437,6 +444,44 @@
         </plugins>
         <pluginManagement>
             <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>${version.gpg.plugin}</version>
+                    <configuration>
+                        <useAgent>true</useAgent>
+                        <gpgArguments>
+                            <arg>--pinentry-mode</arg>
+                            <arg>${gpg.pinEntryMode}</arg>
+                        </gpgArguments>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nxrm3-maven-plugin</artifactId>
+                    <version>${version.nxrm3.plugin}</version>
+                    <configuration>
+                        <serverId>${nexus.serverId}</serverId>
+                        <nexusUrl>${nexus.repository.url}</nexusUrl>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>nexus-move</id>
+                            <configuration>
+                                <repository>${nexus.repository.staging}</repository>
+                                <destinationRepository>${nexus.repository.release}</destinationRepository>
+                                <tag>${nexus.staging.tag}</tag>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>nexus-delete</id>
+                            <configuration>
+                                <tag>${nexus.staging.tag}</tag>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
                 <!--TODO TEXT. This plugin's configuration is used in m2e only.-->
                 <plugin>
                     <groupId>org.eclipse.m2e</groupId>
@@ -484,10 +529,57 @@
                         <artifactId>maven-compiler-plugin</artifactId>
                         <configuration>
                             <compilerArgs combine.children="append">
-                                <!-- SE 23+ requires explicit config to turn on annotation processing -->
+                                <!-- SE 23 requires explicit config to turn on annotation processing -->
                                 <arg>-proc:full</arg>
                             </compilerArgs>
                         </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>jboss-release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-deploy-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>default-deploy</id>
+                                <phase>none</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nxrm3-maven-plugin</artifactId>
+                        <extensions>true</extensions>
+                        <executions>
+                            <execution>
+                                <id>nexus-deploy</id>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>staging-deploy</goal>
+                                </goals>
+                                <configuration>
+                                    <repository>${nexus.repository.staging}</repository>
+                                    <tag>${nexus.staging.tag}</tag>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>gpg-sign</id>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
