@@ -27,7 +27,7 @@
 
     <groupId>org.jboss.remoting</groupId>
     <artifactId>jboss-remoting</artifactId>
-    <version>5.0.32.Final</version>
+    <version>5.0.33.Final-SNAPSHOT</version>
     <url>https://jbossremoting.jboss.org</url>
 
     <packaging>jar</packaging>
