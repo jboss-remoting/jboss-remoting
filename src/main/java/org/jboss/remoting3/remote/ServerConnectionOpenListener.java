@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.net.ssl.SSLPeerUnverifiedException;
@@ -124,7 +125,7 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
     }
 
     private void resumeReads() {
-        connection.getMessageReader().getSourceChannel().getIoThread().execute(new Runnable() {
+        executeInIoThread(new Runnable() {
             @Override
             public void run() {
                 connection.getMessageReader().resumeReads();
@@ -133,12 +134,38 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
     }
 
     private void suspendReads() {
-        connection.getMessageReader().getSourceChannel().getIoThread().execute(new Runnable() {
+        executeInIoThread(new Runnable() {
             @Override
             public void run() {
                 connection.getMessageReader().suspendReads();
             }
         });
+    }
+
+    private void executeInIoThread(final Runnable task) {
+        try {
+            connection.getMessageReader().getSourceChannel().getIoThread().execute(task);
+        } catch (RejectedExecutionException e) {
+            task.run(); // IO thread is shutting down
+        }
+    }
+
+    /**
+     * Submits the authentication step to the endpoint executor.
+     *
+     * @return {@code true} if the task was submitted, {@code false} if it was rejected because the endpoint is
+     *         shutting down, in which case the SASL server is disposed and the connection is closed
+     */
+    private boolean executeAuthStep(final AuthStepRunnable task, final SaslServer saslServer) {
+        try {
+            connection.getExecutor().execute(task);
+            return true;
+        } catch (RejectedExecutionException e) {
+            saslDispose(saslServer);
+            // the endpoint is shutting down; close quietly (the close itself may race with IO thread termination)
+            connection.handleException(new IOException("Authentication step rejected, endpoint is shutting down", e), false);
+            return false;
+        }
     }
 
     final class Initial implements ChannelListener<ConduitStreamSourceChannel> {
@@ -298,8 +325,9 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                             return;
                         }
                         suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(true, saslServer, message, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels, authCap, null));
-                        free = false;
+                        if (executeAuthStep(new AuthStepRunnable(true, saslServer, message, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels, authCap, null), saslServer)) {
+                            free = false;
+                        }
                         return;
                     }
                     default: {
@@ -586,8 +614,9 @@ final class ServerConnectionOpenListener  implements ChannelListener<ConduitStre
                     case Protocol.AUTH_RESPONSE: {
                         server.tracef("Server received authentication response");
                         suspendReads();
-                        connection.getExecutor().execute(new AuthStepRunnable(false, saslServer, message, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels, authCap, offeredMechanisms));
-                        free = false;
+                        if (executeAuthStep(new AuthStepRunnable(false, saslServer, message, remoteEndpointName, behavior, maxInboundChannels, maxOutboundChannels, authCap, offeredMechanisms), saslServer)) {
+                            free = false;
+                        }
                         return;
                     }
                     case Protocol.CAPABILITIES: {
